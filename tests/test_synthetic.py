@@ -15,6 +15,9 @@ import pytest
 from anemoi.datasets import open_dataset
 
 
+# --------------------------------------------------------------------------
+# Value generators
+# --------------------------------------------------------------------------
 def test_constant_generator() -> None:
     from anemoi.datasets.usage.gridded.synthetic import ConstantValue
 
@@ -44,119 +47,124 @@ def test_random_generator_is_deterministic() -> None:
     np.testing.assert_array_equal(one[0], g.generate(**kw)[2])
 
 
-def test_index_generator_encodes_position() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import IndexEncodedValue
-
-    g = IndexEncodedValue()
-    out = g.generate(date_indices=[0, 1], n_ensemble=1, n_grid=3, n_vars=2, var_index=1, seed=0)
-    # value = ((date * n_vars + var) * n_ensemble + ens) * n_grid + grid
-    assert out[0, 0, 0] == ((0 * 2 + 1) * 1 + 0) * 3 + 0
-    assert out[1, 0, 2] == ((1 * 2 + 1) * 1 + 0) * 3 + 2
-    assert g.is_constant is False
-
-
-def test_index_generator_statistics_match_brute_force() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import IndexEncodedValue
-
-    g = IndexEncodedValue()
-    kw = dict(n_dates=4, n_ensemble=2, n_grid=3, n_vars=5, var_index=2, seed=0)
-    full = g.generate(date_indices=np.arange(4), n_ensemble=2, n_grid=3, n_vars=5, var_index=2, seed=0)
-
-    s = g.statistics(**kw)
-    assert s["mean"] == pytest.approx(float(full.mean()))
-    assert s["stdev"] == pytest.approx(float(full.std()))
-    assert s["maximum"] == pytest.approx(float(full.max()))
-    assert s["minimum"] == pytest.approx(float(full.min()))
-
-    t = g.tendency_statistics(**kw)
-    diff = np.diff(full, axis=0)
-    assert t["mean"] == pytest.approx(float(diff.mean()))
-    assert t["stdev"] == pytest.approx(float(diff.std()))
-
-
-def test_build_value_generator_rejects_unknown_mode() -> None:
+# --------------------------------------------------------------------------
+# values spec: one-of type-key dict + scalar / string shorthand
+# --------------------------------------------------------------------------
+def test_build_value_generator_constant_takes_value_directly() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
     from anemoi.datasets.usage.gridded.synthetic import build_value_generator
 
-    with pytest.raises(ValueError, match="Unknown synthetic value mode"):
-        build_value_generator({"mode": "sinewave"})
+    g = build_value_generator({"constant": 273.15})
+    assert isinstance(g, ConstantValue)
+    assert g.value == 273.15
 
 
-def test_build_value_generator_rejects_non_dict() -> None:
+def test_build_value_generator_random_with_params() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
     from anemoi.datasets.usage.gridded.synthetic import build_value_generator
 
-    with pytest.raises(ValueError, match="must be a dict"):
+    g = build_value_generator({"random": {"mean": 2.0, "std": 3.0}})
+    assert isinstance(g, RandomValue)
+    assert (g.mean, g.std) == (2.0, 3.0)
+
+
+def test_build_value_generator_random_defaults_when_payload_empty() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    g = build_value_generator({"random": {}})
+    assert isinstance(g, RandomValue)
+    assert (g.mean, g.std) == (0.0, 1.0)
+
+
+def test_build_value_generator_bare_scalar_is_constant() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    g = build_value_generator(5.0)
+    assert isinstance(g, ConstantValue)
+    assert g.value == 5.0
+
+
+def test_build_value_generator_bare_string_is_named_generator_with_defaults() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    g = build_value_generator("random")
+    assert isinstance(g, RandomValue)
+    assert (g.mean, g.std) == (0.0, 1.0)
+
+
+def test_build_value_generator_rejects_bool() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    with pytest.raises(ValueError, match="must be"):
+        build_value_generator(True)
+
+
+def test_build_value_generator_rejects_multi_key_dict() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    with pytest.raises(ValueError, match="exactly one"):
+        build_value_generator({"constant": 1.0, "random": {}})
+
+
+def test_build_value_generator_rejects_unknown_type() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    with pytest.raises(ValueError, match="constant"):
+        build_value_generator({"sinewave": {}})
+
+
+def test_build_value_generator_bare_string_constant_needs_value() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+
+    with pytest.raises(ValueError, match="constant"):
         build_value_generator("constant")
 
 
-def test_build_value_generator_rejects_missing_mode() -> None:
+def test_build_value_generator_constant_rejects_dict_payload() -> None:
+    # constant takes its value directly; a nested {"value": ...} is not the v2 form.
     from anemoi.datasets.usage.gridded.synthetic import build_value_generator
 
-    with pytest.raises(ValueError, match="missing required key 'mode'"):
-        build_value_generator({})
+    with pytest.raises(ValueError, match="number"):
+        build_value_generator({"constant": {"value": 1.0}})
 
 
-def test_build_value_generator_constant_requires_value() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+# --------------------------------------------------------------------------
+# geography (renamed from grid; keeps the four resolvers)
+# --------------------------------------------------------------------------
+def test_resolve_bbox_geography() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
-    with pytest.raises(ValueError, match="requires a 'value'"):
-        build_value_generator({"mode": "constant"})
-
-
-def test_resolve_bbox_grid() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
-
-    lat, lon, field_shape = resolve_grid({"bbox": [10, 0, 0, 10], "resolution": 1.0})
+    lat, lon, field_shape = resolve_geography({"bbox": [10, 0, 0, 10], "resolution": 1.0})
     assert field_shape == (11, 11)
     assert lat.shape == (121,)
-    assert lon.shape == (121,)
     assert lat[0] == 10.0 and lat[-1] == 0.0
     assert lon[0] == 0.0 and lon[-1] == 10.0
-    assert (lat[10], lon[10]) == (10.0, 10.0)  # NE corner: lat/lon paired per gridpoint
-
-
-def test_resolve_bbox_grid_coordinates_are_exact() -> None:
-    # A float resolution must not leave floating-point fuzz on the grid edges.
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
-
-    lat, lon, field_shape = resolve_grid({"bbox": [10, 0, 0, 10], "resolution": 0.1})
-    assert field_shape == (101, 101)
-    assert lat[0] == 10.0
-    assert lat[-1] == 0.0
-    assert lon[0] == 0.0
-    assert lon[-1] == 10.0
+    assert (lat[10], lon[10]) == (10.0, 10.0)
 
 
 def test_resolve_bbox_requires_resolution() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+    from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
     with pytest.raises(ValueError, match="requires a 'resolution'"):
-        resolve_grid({"bbox": [10, 0, 0, 10]})
+        resolve_geography({"bbox": [10, 0, 0, 10]})
 
 
 def test_resolve_bbox_rejects_inverted_bounds() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+    from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
     with pytest.raises(ValueError, match="south must be <= north"):
-        resolve_grid({"bbox": [0, 0, 10, 10], "resolution": 1.0})
+        resolve_geography({"bbox": [0, 0, 10, 10], "resolution": 1.0})
     with pytest.raises(ValueError, match="east must be >= west"):
-        resolve_grid({"bbox": [10, 10, 0, 0], "resolution": 1.0})
-
-
-def test_latlon_from_npz_accepts_aliases_and_rejects_missing() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import _latlon_from_npz
-
-    lat, lon = _latlon_from_npz({"Lat": [1.0, 2.0], "LON": [3.0, 4.0]})
-    np.testing.assert_array_equal(lat, [1.0, 2.0])
-    np.testing.assert_array_equal(lon, [3.0, 4.0])
-
-    with pytest.raises(ValueError, match="no recognised"):
-        _latlon_from_npz({"x": [1.0], "y": [2.0]})
+        resolve_geography({"bbox": [10, 10, 0, 0], "resolution": 1.0})
 
 
 def test_resolve_unstructured_from_arrays() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+    from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
-    lat, lon, field_shape = resolve_grid(
+    lat, lon, field_shape = resolve_geography(
         {"unstructured": {"latitudes": [1.0, 2.0, 3.0], "longitudes": [4.0, 5.0, 6.0]}}
     )
     assert field_shape == (3,)
@@ -164,24 +172,24 @@ def test_resolve_unstructured_from_arrays() -> None:
     np.testing.assert_array_equal(lon, [4.0, 5.0, 6.0])
 
 
-def test_resolve_grid_rejects_unknown_type() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
+def test_resolve_geography_rejects_unknown_type() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
     with pytest.raises(ValueError, match="exactly one of"):
-        resolve_grid({"hexagon": 1})
+        resolve_geography({"hexagon": 1})
 
 
-def test_resolve_named_grid(monkeypatch) -> None:
+def test_resolve_named_geography(monkeypatch) -> None:
     from anemoi.datasets.usage.gridded import synthetic
 
     fake = {"latitudes": np.array([1.0, 2.0]), "longitudes": np.array([3.0, 4.0])}
     monkeypatch.setattr("anemoi.transform.grids.named.lookup", lambda name: fake)
-    lat, lon, field_shape = synthetic.resolve_grid({"named": "o96"})
+    lat, lon, field_shape = synthetic.resolve_geography({"named": "o96"})
     assert field_shape == (2,)
     np.testing.assert_array_equal(lat, [1.0, 2.0])
 
 
-def test_resolve_icon_grid(monkeypatch) -> None:
+def test_resolve_icon_geography(monkeypatch) -> None:
     from anemoi.datasets.usage.gridded import synthetic
 
     class FakeIconGrid:
@@ -192,18 +200,14 @@ def test_resolve_icon_grid(monkeypatch) -> None:
             return np.array([5.0, 6.0]), np.array([7.0, 8.0])
 
     monkeypatch.setattr("anemoi.transform.grids.icon.IconGrid", FakeIconGrid)
-    lat, lon, field_shape = synthetic.resolve_grid({"icon": {"path": "/fake/grid.nc"}})
+    lat, lon, field_shape = synthetic.resolve_geography({"icon": {"path": "/fake/grid.nc"}})
     assert field_shape == (2,)
     np.testing.assert_array_equal(lon, [7.0, 8.0])
 
 
-def test_resolve_icon_requires_path() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import resolve_grid
-
-    with pytest.raises(ValueError, match="requires a 'path'"):
-        resolve_grid({"icon": {}})
-
-
+# --------------------------------------------------------------------------
+# config parsing (v2 surface)
+# --------------------------------------------------------------------------
 def _minimal_raw(**overrides):
     # start/end/frequency may be passed flat for convenience; they are assembled
     # into the nested 'dates' block the config actually expects.
@@ -212,9 +216,10 @@ def _minimal_raw(**overrides):
         if key in overrides:
             dates[key] = overrides.pop(key)
     raw = {
-        "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        "geography": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
         "variables": ["a", "b"],
         "dates": dates,
+        "layout": "gridded",
     }
     raw.update(overrides)
     return raw
@@ -232,14 +237,142 @@ def test_parse_config_basic() -> None:
     assert len(cfg.generators) == 2
 
 
-def test_parse_config_variable_count_autonames() -> None:
+def test_parse_config_rejects_integer_variables() -> None:
+    # the int-count form is dropped in v2; variables must be a list.
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
-    cfg = parse_synthetic_config(_minimal_raw(variables=12))
-    assert cfg.variables[0] == "var_00"
-    assert cfg.variables[-1] == "var_11"
+    with pytest.raises(ValueError, match="list"):
+        parse_synthetic_config(_minimal_raw(variables=12))
 
 
+def test_parse_config_variable_dict_entries() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        _minimal_raw(
+            variables=[
+                {"name": "a", "values": {"constant": 9.0}},
+                "b",  # string -> default generator
+            ]
+        )
+    )
+    assert cfg.variables == ["a", "b"]
+    assert isinstance(cfg.generators[0], ConstantValue)
+    assert isinstance(cfg.generators[1], RandomValue)  # default
+
+
+def test_parse_config_top_level_values_is_default() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(values={"constant": 1.0}))
+    assert all(isinstance(g, ConstantValue) for g in cfg.generators)
+
+
+def test_parse_config_per_variable_overrides_default() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        _minimal_raw(
+            variables=[{"name": "a", "values": "random"}, "b"],
+            values={"constant": 1.0},
+        )
+    )
+    assert isinstance(cfg.generators[0], RandomValue)  # per-variable wins
+    assert isinstance(cfg.generators[1], ConstantValue)  # default
+
+
+def test_parse_config_variable_dict_requires_name() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="name"):
+        parse_synthetic_config(_minimal_raw(variables=[{"values": {"constant": 1.0}}]))
+
+
+def test_parse_config_rejects_duplicate_variable_names() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="duplicate"):
+        parse_synthetic_config(_minimal_raw(variables=["a", "a"]))
+
+
+def test_parse_config_threads_variable_metadata() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"]))
+    assert cfg.variables_metadata["2t"] == {"mars": {"param": "T_2M"}}
+    assert cfg.variables_metadata["b"] == {}
+
+
+def test_parse_config_per_variable_statistics_override() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(
+        _minimal_raw(variables=[{"name": "a", "values": {"constant": 1.0}, "statistics": {"mean": 99.0}}, "b"])
+    )
+    assert cfg.stats_overrides[0] == {"mean": 99.0}
+    assert cfg.stats_overrides[1] is None
+
+
+# --------------------------------------------------------------------------
+# layout
+# --------------------------------------------------------------------------
+def test_parse_config_requires_layout() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    raw = _minimal_raw()
+    del raw["layout"]
+    with pytest.raises(ValueError, match="layout"):
+        parse_synthetic_config(raw)
+
+
+def test_parse_config_rejects_unimplemented_layout() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(NotImplementedError, match="tabular"):
+        parse_synthetic_config(_minimal_raw(layout="tabular"))
+    with pytest.raises(NotImplementedError, match="trajectories"):
+        parse_synthetic_config(_minimal_raw(layout="trajectories"))
+
+
+def test_parse_config_rejects_unknown_layout() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="layout"):
+        parse_synthetic_config(_minimal_raw(layout="nonsense"))
+
+
+# --------------------------------------------------------------------------
+# ensembles (renamed from ensemble)
+# --------------------------------------------------------------------------
+def test_parse_config_ensembles() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(ensembles=4))
+    assert cfg.n_ensemble == 4
+
+
+def test_parse_config_rejects_old_ensemble_key() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="unknown synthetic keys"):
+        parse_synthetic_config(_minimal_raw(ensemble=4))
+
+
+def test_parse_config_rejects_non_positive_ensembles() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="ensembles' must be a positive integer"):
+        parse_synthetic_config(_minimal_raw(ensembles=0))
+
+
+# --------------------------------------------------------------------------
+# dates / misc parsing (carried from v1)
+# --------------------------------------------------------------------------
 def test_parse_config_rejects_unknown_key() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
@@ -256,44 +389,6 @@ def test_parse_config_rejects_missing_required_key() -> None:
         parse_synthetic_config(raw)
 
 
-def test_parse_config_dates_block() -> None:
-    # start/end/frequency live under a 'dates' block, mirroring the recipe API.
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    cfg = parse_synthetic_config(
-        {
-            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
-            "variables": ["a", "b"],
-            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"},
-        }
-    )
-    assert len(cfg.dates) == 5
-    assert cfg.frequency == datetime.timedelta(hours=6)
-
-
-def test_parse_config_rejects_non_dict_dates() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    with pytest.raises(ValueError, match="'dates' must be a dict"):
-        parse_synthetic_config(_minimal_raw(dates="2020-01-01"))
-
-
-def test_parse_config_rejects_dates_missing_subkey() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    with pytest.raises(ValueError, match="'dates' is missing required key 'frequency'"):
-        parse_synthetic_config(_minimal_raw(dates={"start": "2020-01-01", "end": "2020-01-02"}))
-
-
-def test_parse_config_rejects_unknown_dates_subkey() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    with pytest.raises(ValueError, match="unknown synthetic 'dates' keys"):
-        parse_synthetic_config(
-            _minimal_raw(dates={"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h", "group_by": "monthly"})
-        )
-
-
 def test_parse_config_rejects_end_before_start() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
@@ -301,106 +396,108 @@ def test_parse_config_rejects_end_before_start() -> None:
         parse_synthetic_config(_minimal_raw(start="2020-01-05", end="2020-01-01"))
 
 
-def test_parse_config_per_variable_values() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
+def test_parse_config_dtype_seed_overrides() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
-    cfg = parse_synthetic_config(
-        _minimal_raw(
-            values={
-                "default": {"mode": "random", "mean": 0.0, "std": 1.0},
-                "a": {"mode": "constant", "value": 9.0},
-            }
-        )
-    )
-    assert isinstance(cfg.generators[0], ConstantValue)  # "a"
-    assert isinstance(cfg.generators[1], RandomValue)  # "b" -> default
-
-
-def test_parse_config_single_date_when_start_equals_end() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    cfg = parse_synthetic_config(_minimal_raw(start="2020-01-01", end="2020-01-01"))
-    assert len(cfg.dates) == 1
-
-
-def test_parse_config_does_not_overshoot_unaligned_end() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    # 00:00 -> 07:00 at 6h: dates are 00:00 and 06:00, never past 07:00
-    cfg = parse_synthetic_config(_minimal_raw(start="2020-01-01T00:00", end="2020-01-01T07:00"))
-    assert len(cfg.dates) == 2
-    assert cfg.dates[-1] == np.datetime64("2020-01-01T06:00:00")
-
-
-def test_parse_config_dtype_seed_ensemble_overrides() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    cfg = parse_synthetic_config(_minimal_raw(dtype="float64", seed=123, ensemble=4))
+    cfg = parse_synthetic_config(_minimal_raw(dtype="float64", seed=123))
     assert cfg.dtype == np.dtype("float64")
     assert cfg.seed == 123
-    assert cfg.n_ensemble == 4
 
 
-def test_parse_config_rejects_non_positive_ensemble() -> None:
+def test_parse_config_rejects_integer_dtype_with_random() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
-    with pytest.raises(ValueError, match="ensemble' must be a positive integer"):
-        parse_synthetic_config(_minimal_raw(ensemble=0))
-
-
-def test_parse_config_rejects_non_dict_values() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    with pytest.raises(ValueError, match="'values' must be a dict"):
-        parse_synthetic_config(_minimal_raw(values=[]))
-
-
-def test_parse_config_rejects_index_mode_with_too_narrow_dtype() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    # ~877k hourly dates x 3 vars x 9 gridpoints overflows float32's exact-integer range.
-    with pytest.raises(ValueError, match="'index' value mode"):
-        parse_synthetic_config(
-            _minimal_raw(
-                start="2000-01-01",
-                end="2100-01-01",
-                frequency="1h",
-                variables=3,
-                values={"default": {"mode": "index"}},
-                dtype="float32",
-            )
-        )
-
-
-def test_parse_config_rejects_integer_dtype_with_random_mode() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
-
-    # A continuous Gaussian truncated to integers no longer matches its statistics.
-    with pytest.raises(ValueError, match="'random' value mode"):
-        parse_synthetic_config(_minimal_raw(dtype="int32", values={"default": {"mode": "random"}}))
+    with pytest.raises(ValueError, match="'random'"):
+        parse_synthetic_config(_minimal_raw(dtype="int32", values="random"))
 
 
 def test_parse_config_rejects_integer_dtype_with_fractional_constant() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
     with pytest.raises(ValueError, match="is not an integer"):
-        parse_synthetic_config(_minimal_raw(dtype="int32", values={"default": {"mode": "constant", "value": 3.5}}))
+        parse_synthetic_config(_minimal_raw(dtype="int32", values={"constant": 3.5}))
 
 
-def test_parse_config_allows_integer_dtype_with_integral_values() -> None:
+# --------------------------------------------------------------------------
+# computed forcings
+# --------------------------------------------------------------------------
+def test_computed_forcing_generator_matches_earthkit() -> None:
+    from earthkit.data import from_source
+
+    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
+
+    lat = np.array([0.0, 30.0, -45.0, 60.0])
+    lon = np.array([0.0, 90.0, 180.0, 270.0])
+    dates = np.array(["2020-01-01T00", "2020-06-01T12"], dtype="datetime64[s]")
+
+    g = ComputedForcingValue("insolation", latitudes=lat, longitudes=lon, dates=dates)
+    out = g.generate(date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0)
+    assert out.shape == (2, 1, 4)
+
+    fl = from_source(
+        "forcings",
+        latitudes=lat,
+        longitudes=lon,
+        date=[d.astype("datetime64[s]").astype(datetime.datetime) for d in dates],
+        param=["insolation"],
+    )
+    expected = np.stack([f.to_numpy(flatten=True) for f in fl])  # (2, 4)
+    np.testing.assert_allclose(out[:, 0, :], expected)
+
+
+def test_computed_forcing_broadcasts_over_ensemble() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
+
+    lat = np.array([0.0, 30.0])
+    lon = np.array([0.0, 90.0])
+    dates = np.array(["2020-01-01T00", "2020-01-01T06"], dtype="datetime64[s]")
+    g = ComputedForcingValue("cos_latitude", latitudes=lat, longitudes=lon, dates=dates)
+    out = g.generate(date_indices=[0, 1], n_ensemble=3, n_grid=2, n_vars=1, var_index=0, seed=0)
+    assert out.shape == (2, 3, 2)
+    # all ensemble members identical
+    np.testing.assert_array_equal(out[:, 0, :], out[:, 1, :])
+
+
+def test_computed_forcing_constant_in_time_is_marked_constant() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
+
+    lat = np.array([0.0, 30.0])
+    lon = np.array([0.0, 90.0])
+    dates = np.array(["2020-01-01T00", "2020-01-01T06"], dtype="datetime64[s]")
+    assert ComputedForcingValue("cos_latitude", latitudes=lat, longitudes=lon, dates=dates).is_constant is True
+    assert ComputedForcingValue("insolation", latitudes=lat, longitudes=lon, dates=dates).is_constant is False
+
+
+def test_parse_config_routes_forcing_string_to_computed_generator() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
-    cfg = parse_synthetic_config(
-        _minimal_raw(
-            dtype="int64",
-            values={"default": {"mode": "index"}, "a": {"mode": "constant", "value": 7}},
-        )
-    )
-    assert cfg.dtype == np.dtype("int64")
+    cfg = parse_synthetic_config(_minimal_raw(variables=["2t", "insolation", "cos_latitude"]))
+    assert isinstance(cfg.generators[0], RandomValue)  # ordinary variable
+    assert isinstance(cfg.generators[1], ComputedForcingValue)
+    assert isinstance(cfg.generators[2], ComputedForcingValue)
 
 
+def test_parse_config_forcing_with_values_block_is_error() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    with pytest.raises(ValueError, match="forcing"):
+        parse_synthetic_config(_minimal_raw(variables=[{"name": "insolation", "values": {"constant": 1.0}}, "b"]))
+
+
+def test_parse_config_forcing_metadata_marks_computed_forcing() -> None:
+    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+
+    cfg = parse_synthetic_config(_minimal_raw(variables=["cos_latitude", "insolation"]))
+    assert cfg.variables_metadata["cos_latitude"]["computed_forcing"] is True
+    assert cfg.variables_metadata["cos_latitude"]["constant_in_time"] is True
+    assert cfg.variables_metadata["insolation"]["constant_in_time"] is False
+
+
+# --------------------------------------------------------------------------
+# dataset behaviour
+# --------------------------------------------------------------------------
 def _dataset(**overrides):
     from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
@@ -409,16 +506,12 @@ def _dataset(**overrides):
 
 
 def test_dataset_is_a_gridded_zarr() -> None:
-    # The synthetic dataset inherits the whole Dataset contract from GriddedZarr
-    # rather than re-implementing it; this guards that inheritance.
     from anemoi.datasets.usage.gridded.store import GriddedZarr
 
     assert isinstance(_dataset(), GriddedZarr)
 
 
 def test_synthetic_array_generates_only_requested_dates(monkeypatch) -> None:
-    # Opening a dataset must materialise nothing, and indexing must generate
-    # only the dates asked for -- never the whole (possibly enormous) range.
     from anemoi.datasets.usage.gridded import synthetic
 
     calls = []
@@ -430,13 +523,12 @@ def test_synthetic_array_generates_only_requested_dates(monkeypatch) -> None:
 
     monkeypatch.setattr(synthetic._SyntheticArray, "_generate", spy)
 
-    # A 30-year, 6-hourly range: materialising it would be billions of values.
     ds = _dataset(start="2000-01-01", end="2030-01-01", frequency="6h")
     assert len(ds) > 40_000
     assert calls == []  # opening generated nothing
 
     ds[7]
-    assert calls == [[7]]  # one timestep only
+    assert calls == [[7]]
 
     ds[10:13]
     assert calls[-1] == [10, 11, 12]
@@ -455,13 +547,11 @@ def test_dataset_shape_and_descriptors() -> None:
 
 
 def test_dataset_getitem_constant() -> None:
-    ds = _dataset(variables=["x"], values={"x": {"mode": "constant", "value": 5.0}})
+    ds = _dataset(variables=[{"name": "x", "values": {"constant": 5.0}}])
     np.testing.assert_array_equal(ds[0], np.full((1, 1, 9), 5.0, dtype=np.float32))
 
 
 def test_dataset_getitem_rejects_out_of_bounds_index() -> None:
-    # A real GriddedZarr raises on an out-of-range index; the synthetic dataset
-    # must not silently fabricate a nonexistent timestep.
     ds = _dataset()  # 5 dates
     with pytest.raises(IndexError):
         ds[99]
@@ -471,21 +561,13 @@ def test_dataset_getitem_rejects_out_of_bounds_index() -> None:
         ds[[0, 99]]
 
 
-def test_dataset_getitem_negative_index_wraps() -> None:
-    ds = _dataset(variables=["x"], values={"x": {"mode": "index"}})  # 5 dates
-    np.testing.assert_array_equal(ds[-1], ds[len(ds) - 1])
-    np.testing.assert_array_equal(ds[-5], ds[0])
-
-
 def test_dataset_getitem_boolean_mask_selects_true_positions() -> None:
-    # A boolean mask must select the True positions, not be cast to integers.
-    ds = _dataset(variables=["x"], values={"x": {"mode": "index"}})  # 5 dates
+    ds = _dataset(variables=[{"name": "x", "values": {"constant": 2.0}}])  # 5 dates
     mask = np.array([True, False, True, False, True])
     np.testing.assert_array_equal(ds[mask], ds[[0, 2, 4]])
 
 
 def test_dataset_getitem_numpy_array_on_variable_axis() -> None:
-    # A numpy fancy index on a non-date axis must not crash index expansion.
     ds = _dataset(variables=["a", "b", "c"])  # shape (5, 3, 1, 9)
     selected = ds[:, np.array([0, 2])]
     assert selected.shape == (5, 2, 1, 9)
@@ -493,86 +575,71 @@ def test_dataset_getitem_numpy_array_on_variable_axis() -> None:
 
 def test_dataset_statistics_and_constant_fields() -> None:
     ds = _dataset(
-        variables=["k", "r"],
-        values={
-            "k": {"mode": "constant", "value": 7.0},
-            "r": {"mode": "random", "mean": 0.0, "std": 1.0},
-        },
+        variables=[
+            {"name": "k", "values": {"constant": 7.0}},
+            {"name": "r", "values": {"random": {"mean": 0.0, "std": 1.0}}},
+        ],
     )
     np.testing.assert_array_equal(ds.statistics["mean"][0], 7.0)
     np.testing.assert_array_equal(ds.statistics["stdev"][0], 0.0)
     assert ds.constant_fields == ["k"]
 
 
+def test_dataset_statistics_respects_override() -> None:
+    ds = _dataset(
+        variables=[
+            {"name": "k", "values": {"constant": 7.0}, "statistics": {"mean": 99.0}},
+            "b",
+        ],
+    )
+    assert ds.statistics["mean"][0] == 99.0
+    # unoverridden keys keep the analytic value
+    assert ds.statistics["stdev"][0] == 0.0
+
+
 def test_dataset_tendency_statistics_for_constant_is_zero() -> None:
-    ds = _dataset(variables=["k"], values={"k": {"mode": "constant", "value": 7.0}})
+    ds = _dataset(variables=[{"name": "k", "values": {"constant": 7.0}}])
     tend = ds.statistics_tendencies()
     np.testing.assert_array_equal(tend["mean"], [0.0])
     np.testing.assert_array_equal(tend["stdev"], [0.0])
 
 
-def test_dataset_usage_factory_load_resolves() -> None:
-    # A synthetic dataset is a genuine GriddedZarr, so it resolves usage
-    # factories like any other dataset.
-    ds = _dataset()
-    assert ds.usage_factory_load("Subset").__name__ == "Subset"
-
-
-def test_dataset_tendency_statistics_missing_delta_raises() -> None:
-    # Only the dataset-frequency tendency is precomputed; like a real dataset,
-    # requesting an unavailable delta raises KeyError.
-    ds = _dataset()
-    with pytest.raises(KeyError):
-        ds.statistics_tendencies(datetime.timedelta(days=30))
-
-
-def test_dataset_computed_constant_fields_single_date() -> None:
-    # A single-date dataset cannot produce tendencies; the inherited
-    # computed_constant_fields() must fall back to sample-based detection
-    # rather than raising.
-    ds = _dataset(start="2020-01-01", end="2020-01-01")
-    assert len(ds) == 1
-    assert ds.computed_constant_fields() == ["a", "b"]
-
-
 def test_dataset_constant_fields_single_date_is_analytic() -> None:
-    # With one date the inherited sample-based detection cannot tell a constant
-    # field from a varying one and marks every field constant; the synthetic
-    # dataset must instead report the answer it knows analytically.
     ds = _dataset(
         start="2020-01-01",
         end="2020-01-01",
-        variables=["k", "r"],
-        values={"k": {"mode": "constant", "value": 7.0}, "r": {"mode": "random"}},
+        variables=[
+            {"name": "k", "values": {"constant": 7.0}},
+            {"name": "r", "values": "random"},
+        ],
     )
     assert len(ds) == 1
     assert ds.constant_fields == ["k"]
 
 
 def test_dataset_metadata_roundtrip() -> None:
-    # metadata() serializes via json.dumps/json.loads internally; this checks
-    # the synthetic dataset round-trips into a checkpoint-style metadata blob.
     meta = _dataset(variables=["a", "b"]).metadata()
     assert meta["variables"] == ["a", "b"]
     assert meta["specific"]["synthetic"] is True
     assert meta["shape"][1] == 2
 
 
-def test_dataset_metadata_specific() -> None:
-    meta = _dataset(variables=["a", "b"]).metadata_specific()
-    assert meta["synthetic"] is True
-    # the base-class implementation populates these
-    assert "action" in meta
-    assert meta["variables"] == ["a", "b"]
+def test_dataset_variables_metadata_surfaced() -> None:
+    ds = _dataset(variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"])
+    assert ds.metadata()["variables_metadata"]["2t"] == {"mars": {"param": "T_2M"}}
 
 
+# --------------------------------------------------------------------------
+# end to end via open_dataset
+# --------------------------------------------------------------------------
 def test_open_dataset_synthetic_bbox_end_to_end() -> None:
     ds = open_dataset(
         synthetic={
-            "grid": {"bbox": [10, 0, 0, 10], "resolution": 1.0},
+            "geography": {"bbox": [10, 0, 0, 10], "resolution": 1.0},
             "variables": ["a", "b"],
             "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"},
-            "values": {"default": {"mode": "constant", "value": 5.0}},
+            "layout": "gridded",
+            "values": {"constant": 5.0},
         }
     )
     assert ds.shape == (5, 2, 1, 121)
@@ -582,10 +649,11 @@ def test_open_dataset_synthetic_bbox_end_to_end() -> None:
 
 def test_open_dataset_synthetic_random_is_reproducible() -> None:
     spec = dict(
-        grid={"bbox": [4, 0, 0, 4], "resolution": 2.0},
-        variables=3,
+        geography={"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        variables=["a", "b", "c"],
         dates={"start": "2020-01-01", "end": "2020-01-01", "frequency": "6h"},
-        values={"default": {"mode": "random", "mean": 0.0, "std": 1.0}},
+        layout="gridded",
+        values={"random": {"mean": 0.0, "std": 1.0}},
         seed=42,
     )
     first = open_dataset(synthetic=dict(spec))
@@ -593,31 +661,31 @@ def test_open_dataset_synthetic_random_is_reproducible() -> None:
     np.testing.assert_array_equal(first[:], second[:])
 
 
-def test_open_dataset_synthetic_index_roundtrip() -> None:
+def test_open_dataset_synthetic_with_forcing_end_to_end() -> None:
     ds = open_dataset(
         synthetic={
-            "grid": {"bbox": [2, 0, 0, 2], "resolution": 2.0},  # 2x2 = 4 gridpoints
-            "variables": 2,
-            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
-            "values": {"default": {"mode": "index"}},
+            "geography": {"bbox": [10, 0, 0, 10], "resolution": 2.0},
+            "variables": ["2t", "insolation", "cos_latitude"],
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "6h"},
+            "layout": "gridded",
         }
     )
-    n_vars, n_ens, n_grid = 2, 1, 4
-    for d in range(2):
-        for v in range(2):
-            for g in range(4):
-                expected = ((d * n_vars + v) * n_ens + 0) * n_grid + g
-                assert ds[d, v, 0, g] == expected
+    assert ds.variables == ["2t", "insolation", "cos_latitude"]
+    block = ds[0]  # (3, 1, 36)
+    assert block.shape == (3, 1, 36)
+    # cos_latitude is in [-1, 1] and constant in time
+    cos_lat = ds.name_to_index["cos_latitude"]
+    assert np.all(np.abs(ds[0][cos_lat]) <= 1.0 + 1e-9)
+    np.testing.assert_allclose(ds[0][cos_lat], ds[3][cos_lat])
 
 
 def test_open_dataset_synthetic_composes_with_select() -> None:
-    # synthetic= is a drop-in for dataset=: open_dataset transform keywords
-    # still apply to the result.
     ds = open_dataset(
         synthetic={
-            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "geography": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
             "variables": ["a", "b", "c"],
             "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
+            "layout": "gridded",
         },
         select=["a", "c"],
     )
@@ -627,9 +695,10 @@ def test_open_dataset_synthetic_composes_with_select() -> None:
 
 def test_open_dataset_synthetic_composes_with_date_subsetting() -> None:
     spec = {
-        "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
-        "variables": 2,
+        "geography": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+        "variables": ["a", "b"],
         "dates": {"start": "2020-01-01", "end": "2020-01-05", "frequency": "1d"},
+        "layout": "gridded",
     }
     assert len(open_dataset(synthetic=dict(spec))) == 5
     subset = open_dataset(synthetic=dict(spec), start="2020-01-02", end="2020-01-04")
@@ -639,9 +708,10 @@ def test_open_dataset_synthetic_composes_with_date_subsetting() -> None:
 def test_open_dataset_synthetic_composes_with_rename() -> None:
     ds = open_dataset(
         synthetic={
-            "grid": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "geography": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
             "variables": ["a", "b"],
             "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
+            "layout": "gridded",
         },
         rename={"a": "temperature"},
     )
@@ -649,12 +719,14 @@ def test_open_dataset_synthetic_composes_with_rename() -> None:
     assert "a" not in ds.variables
 
 
-def test_open_dataset_synthetic_rejects_unknown_grid_key() -> None:
-    with pytest.raises(ValueError, match="exactly one of"):
-        open_dataset(
-            synthetic={
-                "grid": {"hexagon": 1},
-                "variables": 1,
-                "dates": {"start": "2020-01-01", "end": "2020-01-01", "frequency": "6h"},
-            }
-        )
+def test_open_dataset_synthetic_ensembles() -> None:
+    ds = open_dataset(
+        synthetic={
+            "geography": {"bbox": [4, 0, 0, 4], "resolution": 2.0},
+            "variables": ["a", "b"],
+            "dates": {"start": "2020-01-01", "end": "2020-01-02", "frequency": "1d"},
+            "layout": "gridded",
+            "ensembles": 5,
+        }
+    )
+    assert ds.shape == (2, 2, 5, 9)

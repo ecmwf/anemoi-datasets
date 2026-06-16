@@ -128,58 +128,178 @@ class RandomValue(ValueGenerator):
         return dict(mean=0.0, stdev=tendency_std, maximum=spread, minimum=-spread)
 
 
-class IndexEncodedValue(ValueGenerator):
-    """Each value encodes its own raveled ``(date, variable, ensemble, gridpoint)``
-    position: ``((date * n_vars + var) * n_ensemble + ens) * n_grid + grid``.
+# --------------------------------------------------------------------------
+# Computed forcings
+# --------------------------------------------------------------------------
+# Computed forcings reuse earthkit's canonical forcing formulas rather than
+# reimplementing them: ``from_source("forcings", latitudes=, longitudes=, ...)``
+# accepts raw lat/lon arrays with no template field, exactly fitting the
+# synthetic dataset's flat grid.
+_COMPUTED_FORCINGS = {
+    "latitude",
+    "longitude",
+    "cos_latitude",
+    "sin_latitude",
+    "cos_longitude",
+    "sin_longitude",
+    "cos_julian_day",
+    "sin_julian_day",
+    "cos_local_time",
+    "sin_local_time",
+    "insolation",
+    "cos_solar_zenith_angle",
+    "toa_incident_solar_radiation",
+    "ecef_x",
+    "ecef_y",
+    "ecef_z",
+}
 
-    Lets a test assert that a pipeline did not shuffle or misalign data.
+# Forcings whose value depends only on position, not on the valid time.
+_TIME_INVARIANT_FORCINGS = {
+    "latitude",
+    "longitude",
+    "cos_latitude",
+    "sin_latitude",
+    "cos_longitude",
+    "sin_longitude",
+    "ecef_x",
+    "ecef_y",
+    "ecef_z",
+}
+
+# Time-varying forcings have no closed-form statistics over an arbitrary date
+# range, so the generator evaluates the field on up to this many evenly-spaced
+# dates to estimate them. Opening stays cheap; the data path is never affected.
+_FORCING_STATS_MAX_SAMPLES = 128
+
+
+def _forcing_base(name: str) -> str:
+    """Strip an earthkit time-delta suffix (``insolation+6h`` -> ``insolation``)."""
+    for sep in ("+", "-"):
+        if sep in name:
+            return name.split(sep, 1)[0]
+    return name
+
+
+def is_computed_forcing(name: str) -> bool:
+    """Whether ``name`` names an earthkit computed forcing (delta suffixes allowed)."""
+    return _forcing_base(name) in _COMPUTED_FORCINGS
+
+
+class ComputedForcingValue(ValueGenerator):
+    """A computed forcing (``insolation``, ``cos_latitude``, ...) evaluated through
+    earthkit's forcings source from the dataset's own grid and dates.
+
+    Time-invariant forcings (latitude/longitude-derived) are flagged
+    :attr:`is_constant`; time-varying ones estimate their statistics from a sample
+    of dates (see :data:`_FORCING_STATS_MAX_SAMPLES`).
     """
 
-    is_constant = False
+    def __init__(
+        self,
+        param: str,
+        *,
+        latitudes: NDArray[Any],
+        longitudes: NDArray[Any],
+        dates: NDArray[np.datetime64],
+    ) -> None:
+        self.param = param
+        self.latitudes = np.asarray(latitudes, dtype=float)
+        self.longitudes = np.asarray(longitudes, dtype=float)
+        self.dates = dates
+        self.is_constant = _forcing_base(param) in _TIME_INVARIANT_FORCINGS
+
+    def _evaluate(self, dates: NDArray[np.datetime64]) -> NDArray[Any]:
+        """Return a ``(len(dates), n_grid)`` block of the forcing field."""
+        from earthkit.data import from_source
+
+        py_dates = [np.datetime64(d, "s").astype(datetime.datetime) for d in dates]
+        fields = from_source(
+            "forcings",
+            latitudes=self.latitudes,
+            longitudes=self.longitudes,
+            date=py_dates,
+            param=[self.param],
+        )
+        # One field per date (single param, no ensemble), in date order.
+        assert len(fields) == len(py_dates), (len(fields), len(py_dates))
+        return np.stack([f.to_numpy(flatten=True) for f in fields]).astype(np.float64)
 
     def generate(self, *, date_indices, n_ensemble, n_grid, n_vars, var_index, seed):
-        d = np.asarray(date_indices, dtype=np.int64).reshape(-1, 1, 1)
-        e = np.arange(n_ensemble).reshape(1, n_ensemble, 1)
-        g = np.arange(n_grid).reshape(1, 1, n_grid)
-        return (((d * n_vars + var_index) * n_ensemble + e) * n_grid + g).astype(np.float64)
+        dates = self.dates[np.asarray(date_indices, dtype=int)]
+        block = self._evaluate(dates)  # (len(dates), n_grid)
+        out = np.empty((len(dates), n_ensemble, n_grid), dtype=np.float64)
+        out[:] = block[:, None, :]  # forcings do not vary across ensemble members
+        return out
+
+    def _sample_indices(self, n_dates: int) -> NDArray[Any]:
+        if n_dates <= _FORCING_STATS_MAX_SAMPLES:
+            return np.arange(n_dates)
+        return np.unique(np.linspace(0, n_dates - 1, _FORCING_STATS_MAX_SAMPLES).round().astype(int))
 
     def statistics(self, *, n_dates, n_ensemble, n_grid, n_vars, var_index, seed):
-        # value = a*date + b*ensemble + grid + c, with date/ensemble/grid uniform.
-        a = n_vars * n_ensemble * n_grid
-        b = n_grid
-        c = var_index * n_ensemble * n_grid
-        mean = a * (n_dates - 1) / 2 + b * (n_ensemble - 1) / 2 + (n_grid - 1) / 2 + c
-        # The variance of a discrete uniform on 0..n-1 is (n**2 - 1) / 12; the three axes are independent.
-        var = a**2 * (n_dates**2 - 1) / 12 + b**2 * (n_ensemble**2 - 1) / 12 + (n_grid**2 - 1) / 12
-        maximum = a * (n_dates - 1) + b * (n_ensemble - 1) + (n_grid - 1) + c
-        return dict(mean=float(mean), stdev=float(np.sqrt(var)), maximum=float(maximum), minimum=float(c))
+        block = self._evaluate(self.dates[self._sample_indices(n_dates)])
+        return dict(
+            mean=float(block.mean()),
+            stdev=float(block.std()),
+            maximum=float(block.max()),
+            minimum=float(block.min()),
+        )
 
     def tendency_statistics(self, *, n_dates, n_ensemble, n_grid, n_vars, var_index, seed):
-        # value(date + 1) - value(date) is the constant a = n_vars * n_ensemble * n_grid.
-        a = float(n_vars * n_ensemble * n_grid)
-        return dict(mean=a, stdev=0.0, maximum=a, minimum=a)
+        idx = self._sample_indices(n_dates)
+        idx = idx[idx < n_dates - 1]  # need a successor date for each sampled step
+        if idx.size == 0:
+            idx = np.array([0])
+        diff = self._evaluate(self.dates[idx + 1]) - self._evaluate(self.dates[idx])
+        return dict(
+            mean=float(diff.mean()),
+            stdev=float(diff.std()),
+            maximum=float(diff.max()),
+            minimum=float(diff.min()),
+        )
 
 
-def build_value_generator(spec: dict[str, Any]) -> ValueGenerator:
-    """Build a :class:`ValueGenerator` from a ``values`` config entry."""
-    if not isinstance(spec, dict):
-        raise ValueError(f"synthetic value spec must be a dict, got {type(spec).__name__}")
-    mode = spec.get("mode")
-    if mode is None:
-        raise ValueError("synthetic value spec is missing required key 'mode'")
-    if mode == "constant":
-        if "value" not in spec:
-            raise ValueError("synthetic 'constant' value spec requires a 'value'")
-        return ConstantValue(spec["value"])
-    if mode == "random":
-        return RandomValue(spec.get("mean", 0.0), spec.get("std", 1.0))
-    if mode == "index":
-        return IndexEncodedValue()
-    raise ValueError(f"Unknown synthetic value mode {mode!r}; expected 'constant', 'random' or 'index'")
+_VALUE_TYPES = ("constant", "random")
+
+
+def _generator_from_type(type_name: str, payload: Any) -> ValueGenerator:
+    if type_name == "constant":
+        if isinstance(payload, bool) or not isinstance(payload, (int, float)):
+            raise ValueError("synthetic 'constant' value must be a number given directly, e.g. {'constant': 273.15}")
+        return ConstantValue(payload)
+    if type_name == "random":
+        if payload is None:
+            payload = {}
+        if not isinstance(payload, dict):
+            raise ValueError("synthetic 'random' value spec must be a dict of parameters")
+        return RandomValue(payload.get("mean", 0.0), payload.get("std", 1.0))
+    raise ValueError(f"unknown synthetic value type {type_name!r}; expected one of {list(_VALUE_TYPES)}")
+
+
+def build_value_generator(spec: Any) -> ValueGenerator:
+    """Build a :class:`ValueGenerator` from a ``values`` config entry.
+
+    Accepts a one-of type-key dict (``{"random": {...}}``, ``{"constant": 273.15}``),
+    a bare scalar (shorthand for ``constant``), or a bare string (a generator name
+    with default parameters).
+    """
+    if isinstance(spec, bool):  # bool is a subclass of int -- reject before the scalar branch
+        raise ValueError("synthetic value spec must be a number, a string, or a one-of dict")
+    if isinstance(spec, (int, float)):
+        return ConstantValue(spec)
+    if isinstance(spec, str):
+        return _generator_from_type(spec, None)
+    if isinstance(spec, dict):
+        if len(spec) != 1:
+            raise ValueError(f"synthetic value spec must have exactly one of {list(_VALUE_TYPES)}; got {sorted(spec)}")
+        ((type_name, payload),) = spec.items()
+        return _generator_from_type(type_name, payload)
+    raise ValueError("synthetic value spec must be a number, a string, or a one-of dict")
 
 
 # --------------------------------------------------------------------------
-# Grid resolvers
+# Geography resolvers
 # --------------------------------------------------------------------------
 def _latlon_from_npz(data: Any) -> tuple[NDArray[Any], NDArray[Any]]:
     """Extract latitude/longitude arrays from an ``.npz``-like mapping."""
@@ -188,22 +308,22 @@ def _latlon_from_npz(data: Any) -> tuple[NDArray[Any], NDArray[Any]]:
     lat_key = next((keys[k] for k in ("latitudes", "latitude", "lat") if k in keys), None)
     lon_key = next((keys[k] for k in ("longitudes", "longitude", "lon") if k in keys), None)
     if lat_key is None or lon_key is None:
-        raise ValueError(f"grid data has no recognised latitude/longitude arrays: {list(keys.values())}")
+        raise ValueError(f"geography data has no recognised latitude/longitude arrays: {list(keys.values())}")
     return np.asarray(data[lat_key], dtype=float), np.asarray(data[lon_key], dtype=float)
 
 
-def _resolve_bbox(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
-    bbox = grid["bbox"]
+def _resolve_bbox(geography: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    bbox = geography["bbox"]
     if len(bbox) != 4:
-        raise ValueError("synthetic 'bbox' grid must be [north, west, south, east]")
-    if "resolution" not in grid:
-        raise ValueError("synthetic 'bbox' grid requires a 'resolution'")
+        raise ValueError("synthetic 'bbox' geography must be [north, west, south, east]")
+    if "resolution" not in geography:
+        raise ValueError("synthetic 'bbox' geography requires a 'resolution'")
     north, west, south, east = (float(x) for x in bbox)
     if south > north:
-        raise ValueError("synthetic 'bbox' grid: south must be <= north")
+        raise ValueError("synthetic 'bbox' geography: south must be <= north")
     if east < west:
-        raise ValueError("synthetic 'bbox' grid: east must be >= west (antimeridian wrapping is not supported)")
-    res = grid["resolution"]
+        raise ValueError("synthetic 'bbox' geography: east must be >= west (antimeridian wrapping is not supported)")
+    res = geography["resolution"]
     if isinstance(res, (list, tuple)):
         dlat, dlon = float(res[0]), float(res[1])
     else:
@@ -221,23 +341,23 @@ def _resolve_bbox(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Sha
     return lat_grid.reshape(-1), lon_grid.reshape(-1), field_shape
 
 
-def _resolve_named(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+def _resolve_named(geography: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
     from anemoi.transform.grids.named import lookup
 
-    data = lookup(grid["named"])
+    data = lookup(geography["named"])
     lat, lon = _latlon_from_npz(data)
     lat, lon = lat.reshape(-1), lon.reshape(-1)
     return lat, lon, (lat.size,)
 
 
-def _resolve_icon(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+def _resolve_icon(geography: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
     from anemoi.transform.grids.icon import IconGrid
 
-    spec = grid["icon"]
+    spec = geography["icon"]
     if isinstance(spec, str):
         spec = {"path": spec}
     if "path" not in spec:
-        raise ValueError("synthetic 'icon' grid requires a 'path'")
+        raise ValueError("synthetic 'icon' geography requires a 'path'")
     icon_grid = IconGrid(spec["path"], spec.get("refinement_level_c"))
     lat, lon = icon_grid.latlon()
     lat = np.asarray(lat, dtype=float).reshape(-1)
@@ -245,19 +365,19 @@ def _resolve_icon(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Sha
     return lat, lon, (lat.size,)
 
 
-def _resolve_unstructured(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
-    spec = grid["unstructured"]
+def _resolve_unstructured(geography: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    spec = geography["unstructured"]
     if isinstance(spec, str):
         lat, lon = _latlon_from_npz(np.load(spec))
     else:
         lat, lon = _latlon_from_npz(spec)
     lat, lon = lat.reshape(-1), lon.reshape(-1)
     if lat.shape != lon.shape:
-        raise ValueError("synthetic 'unstructured' grid: latitudes and longitudes must have the same length")
+        raise ValueError("synthetic 'unstructured' geography: latitudes and longitudes must have the same length")
     return lat, lon, (lat.size,)
 
 
-_GRID_RESOLVERS = {
+_GEOGRAPHY_RESOLVERS = {
     "bbox": _resolve_bbox,
     "named": _resolve_named,
     "icon": _resolve_icon,
@@ -265,25 +385,40 @@ _GRID_RESOLVERS = {
 }
 
 
-def resolve_grid(grid: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
-    """Resolve a ``grid`` spec to flat ``(latitudes, longitudes, field_shape)``."""
-    if not isinstance(grid, dict):
-        raise ValueError("synthetic 'grid' must be a dict")
-    type_keys = [k for k in _GRID_RESOLVERS if k in grid]
+def resolve_geography(geography: dict[str, Any]) -> tuple[NDArray[Any], NDArray[Any], Shape]:
+    """Resolve a ``geography`` spec to flat ``(latitudes, longitudes, field_shape)``."""
+    if not isinstance(geography, dict):
+        raise ValueError("synthetic 'geography' must be a dict")
+    type_keys = [k for k in _GEOGRAPHY_RESOLVERS if k in geography]
     if len(type_keys) != 1:
         raise ValueError(
-            f"synthetic 'grid' must contain exactly one of {sorted(_GRID_RESOLVERS)}; got keys {sorted(grid)}"
+            f"synthetic 'geography' must contain exactly one of {sorted(_GEOGRAPHY_RESOLVERS)}; "
+            f"got keys {sorted(geography)}"
         )
-    return _GRID_RESOLVERS[type_keys[0]](grid)
+    return _GEOGRAPHY_RESOLVERS[type_keys[0]](geography)
 
 
 # --------------------------------------------------------------------------
 # Config parsing
 # --------------------------------------------------------------------------
-_KNOWN_KEYS = {"grid", "variables", "dates", "values", "ensemble", "seed", "dtype", "resolution"}
-_REQUIRED_KEYS = ("grid", "variables", "dates")
+_KNOWN_KEYS = {"geography", "variables", "dates", "layout", "values", "ensembles", "seed", "dtype", "resolution"}
+_REQUIRED_KEYS = ("geography", "variables", "dates", "layout")
 _DATE_KEYS = ("start", "end", "frequency")
-_DEFAULT_VALUE_SPEC = {"mode": "random", "mean": 0.0, "std": 1.0}
+_VARIABLE_KEYS = {"name", "metadata", "values", "statistics", "tendencies_statistics"}
+_LAYOUTS = ("gridded", "tabular", "trajectories")
+_DEFAULT_VALUE_SPEC = {"random": {"mean": 0.0, "std": 1.0}}
+_STAT_KEYS = ("mean", "stdev", "maximum", "minimum")
+
+
+@dataclass
+class _Variable:
+    """One parsed ``variables`` entry, before generators are built."""
+
+    name: str
+    metadata: dict[str, Any]
+    values: Any  # raw value spec, or None to use the dataset default
+    statistics: dict[str, float] | None
+    tendencies_statistics: dict[str, float] | None
 
 
 @dataclass
@@ -294,31 +429,63 @@ class SyntheticConfig:
     longitudes: NDArray[Any]
     field_shape: Shape
     variables: list[str]
+    variables_metadata: dict[str, dict[str, Any]]
     dates: NDArray[np.datetime64]
     frequency: datetime.timedelta
     n_ensemble: int
     generators: list[ValueGenerator]  # aligned with ``variables``
+    stats_overrides: list[dict[str, float] | None]  # aligned with ``variables``
+    tendency_overrides: list[dict[str, float] | None]  # aligned with ``variables``
+    layout: str
     dtype: np.dtype
     resolution: str
     seed: int
 
 
-def _build_variables(spec: Any) -> list[str]:
-    if isinstance(spec, bool):  # bool is a subclass of int — reject explicitly
-        raise ValueError("synthetic 'variables' must be a list of names or a positive integer")
-    if isinstance(spec, int):
-        if spec <= 0:
-            raise ValueError("synthetic 'variables' count must be a positive integer")
-        width = max(2, len(str(spec - 1)))
-        return [f"var_{i:0{width}d}" for i in range(spec)]
-    if isinstance(spec, (list, tuple)):
-        names = [str(v) for v in spec]
-        if not names:
-            raise ValueError("synthetic 'variables' list must be non-empty")
-        if len(set(names)) != len(names):
-            raise ValueError("synthetic 'variables' list contains duplicate names")
-        return names
-    raise ValueError("synthetic 'variables' must be a list of names or a positive integer")
+def _validate_stats_override(override: Any, label: str) -> dict[str, float] | None:
+    if override is None:
+        return None
+    if not isinstance(override, dict):
+        raise ValueError(f"synthetic '{label}' must be a dict of statistics")
+    unknown = set(override) - set(_STAT_KEYS)
+    if unknown:
+        raise ValueError(f"unknown synthetic '{label}' keys: {sorted(unknown)}; expected {sorted(_STAT_KEYS)}")
+    return {k: float(v) for k, v in override.items()}
+
+
+def _parse_variable_entry(entry: Any) -> _Variable:
+    if isinstance(entry, str):
+        return _Variable(name=entry, metadata={}, values=None, statistics=None, tendencies_statistics=None)
+    if not isinstance(entry, dict):
+        raise ValueError(f"synthetic 'variables' entry must be a string or a dict, got {type(entry).__name__}")
+    unknown = set(entry) - _VARIABLE_KEYS
+    if unknown:
+        raise ValueError(f"unknown synthetic variable keys: {sorted(unknown)}; expected {sorted(_VARIABLE_KEYS)}")
+    if "name" not in entry:
+        raise ValueError("synthetic 'variables' dict entry is missing required key 'name'")
+    name = str(entry["name"])
+    metadata = entry.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        raise ValueError(f"synthetic variable '{name}' metadata must be a dict")
+    return _Variable(
+        name=name,
+        metadata=dict(metadata),
+        values=entry.get("values"),
+        statistics=_validate_stats_override(entry.get("statistics"), "statistics"),
+        tendencies_statistics=_validate_stats_override(entry.get("tendencies_statistics"), "tendencies_statistics"),
+    )
+
+
+def _build_variables(spec: Any) -> list[_Variable]:
+    if not isinstance(spec, (list, tuple)):
+        raise ValueError("synthetic 'variables' must be a list of names or dicts")
+    if not spec:
+        raise ValueError("synthetic 'variables' list must be non-empty")
+    variables = [_parse_variable_entry(e) for e in spec]
+    names = [v.name for v in variables]
+    if len(set(names)) != len(names):
+        raise ValueError("synthetic 'variables' list contains duplicate names")
+    return variables
 
 
 def _build_dates(start: Any, end: Any, frequency: Any) -> tuple[NDArray[np.datetime64], datetime.timedelta]:
@@ -336,57 +503,52 @@ def _build_dates(start: Any, end: Any, frequency: Any) -> tuple[NDArray[np.datet
 def _resolve_resolution(raw: dict[str, Any]) -> str:
     if "resolution" in raw:
         return str(raw["resolution"])
-    grid = raw["grid"]
-    if "bbox" in grid and "resolution" in grid:
-        return str(grid["resolution"])
-    if "named" in grid:
-        return str(grid["named"])
+    geography = raw["geography"]
+    if "bbox" in geography and "resolution" in geography:
+        return str(geography["resolution"])
+    if "named" in geography:
+        return str(geography["named"])
     return "unknown"
 
 
-def _check_index_dtype(
-    generators: list[ValueGenerator],
-    dtype: np.dtype,
-    n_dates: int,
-    n_vars: int,
-    n_ensemble: int,
-    n_grid: int,
-) -> None:
-    """Reject an ``index`` value mode whose encoded positions overflow ``dtype``.
+def _forcing_metadata(name: str) -> dict[str, Any]:
+    return {"computed_forcing": True, "constant_in_time": _forcing_base(name) in _TIME_INVARIANT_FORCINGS}
 
-    :class:`IndexEncodedValue` encodes each cell's raveled position; that integer must
-    be exactly representable in ``dtype`` or the no-shuffle guarantee silently breaks.
-    """
-    if not any(isinstance(g, IndexEncodedValue) for g in generators):
-        return
-    max_value = n_dates * n_vars * n_ensemble * n_grid - 1
-    if np.issubdtype(dtype, np.floating):
-        limit = 2 ** (np.finfo(dtype).nmant + 1)
-    elif np.issubdtype(dtype, np.integer):
-        limit = int(np.iinfo(dtype).max)
-    else:
-        return
-    if max_value > limit:
-        raise ValueError(
-            f"synthetic 'index' value mode encodes positions up to {max_value}, which dtype "
-            f"'{dtype}' cannot represent exactly; use a wider dtype such as float64"
-        )
+
+def _build_generator(
+    variable: _Variable,
+    default_spec: Any,
+    *,
+    latitudes: NDArray[Any],
+    longitudes: NDArray[Any],
+    dates: NDArray[np.datetime64],
+) -> ValueGenerator:
+    if is_computed_forcing(variable.name):
+        if variable.values is not None:
+            raise ValueError(
+                f"synthetic variable '{variable.name}' is a computed forcing and cannot take a 'values' block; "
+                "it generates its own values"
+            )
+        return ComputedForcingValue(variable.name, latitudes=latitudes, longitudes=longitudes, dates=dates)
+    spec = variable.values if variable.values is not None else default_spec
+    return build_value_generator(spec)
 
 
 def _check_value_dtype(generators: list[ValueGenerator], dtype: np.dtype) -> None:
-    """Reject an integer ``dtype`` for value modes that produce non-integer data.
+    """Reject an integer ``dtype`` for generators that produce non-integer data.
 
-    A ``random`` draw is continuous and a ``constant`` may be fractional; storing
-    either in an integer array would silently truncate the values, leaving the
-    analytic statistics disagreeing with the data actually returned.
+    A ``random`` draw, a computed forcing, or a fractional ``constant`` stored in
+    an integer array would silently truncate, leaving the analytic statistics
+    disagreeing with the data actually returned.
     """
     if not np.issubdtype(dtype, np.integer):
         return
     for g in generators:
-        if isinstance(g, RandomValue):
+        if isinstance(g, (RandomValue, ComputedForcingValue)):
+            kind = "random" if isinstance(g, RandomValue) else f"computed forcing '{g.param}'"
             raise ValueError(
-                f"synthetic 'random' value mode produces non-integer values that integer "
-                f"dtype '{dtype}' would truncate; use a floating-point dtype"
+                f"synthetic '{kind}' produces non-integer values that integer dtype '{dtype}' would truncate; "
+                "use a floating-point dtype"
             )
         if isinstance(g, ConstantValue) and g.value != int(g.value):
             raise ValueError(
@@ -407,7 +569,13 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
         if key not in raw:
             raise ValueError(f"synthetic config is missing required key {key!r}")
 
-    latitudes, longitudes, field_shape = resolve_grid(raw["grid"])
+    layout = raw["layout"]
+    if layout not in _LAYOUTS:
+        raise ValueError(f"synthetic 'layout' must be one of {list(_LAYOUTS)}; got {layout!r}")
+    if layout != "gridded":
+        raise NotImplementedError(f"synthetic '{layout}' layout is not implemented yet; only 'gridded' is supported")
+
+    latitudes, longitudes, field_shape = resolve_geography(raw["geography"])
     variables = _build_variables(raw["variables"])
 
     date_spec = raw["dates"]
@@ -421,31 +589,38 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
             raise ValueError(f"synthetic 'dates' is missing required key {key!r}")
     dates, frequency = _build_dates(date_spec["start"], date_spec["end"], date_spec["frequency"])
 
-    n_ensemble = int(raw.get("ensemble", 1))
+    n_ensemble = int(raw.get("ensembles", 1))
     if n_ensemble < 1:
-        raise ValueError("synthetic 'ensemble' must be a positive integer")
+        raise ValueError("synthetic 'ensembles' must be a positive integer")
     seed = int(raw.get("seed", 0))
     dtype = np.dtype(raw.get("dtype", "float32"))
 
-    values = raw.get("values")
-    if values is None:
-        values = {}
-    elif not isinstance(values, dict):
-        raise ValueError("synthetic 'values' must be a dict")
-    default_spec = values.get("default", _DEFAULT_VALUE_SPEC)
-    generators = [build_value_generator(values.get(name, default_spec)) for name in variables]
-    _check_index_dtype(generators, dtype, len(dates), len(variables), n_ensemble, int(latitudes.size))
+    default_spec = raw.get("values", _DEFAULT_VALUE_SPEC)
+
+    generators = [
+        _build_generator(v, default_spec, latitudes=latitudes, longitudes=longitudes, dates=dates) for v in variables
+    ]
     _check_value_dtype(generators, dtype)
+
+    variables_metadata = {}
+    for v in variables:
+        meta = _forcing_metadata(v.name) if is_computed_forcing(v.name) else {}
+        meta.update(v.metadata)  # explicit metadata wins over the auto-derived forcing flags
+        variables_metadata[v.name] = meta
 
     return SyntheticConfig(
         latitudes=latitudes,
         longitudes=longitudes,
         field_shape=field_shape,
-        variables=variables,
+        variables=[v.name for v in variables],
+        variables_metadata=variables_metadata,
         dates=dates,
         frequency=frequency,
         n_ensemble=n_ensemble,
         generators=generators,
+        stats_overrides=[v.statistics for v in variables],
+        tendency_overrides=[v.tendencies_statistics for v in variables],
+        layout=layout,
         dtype=dtype,
         resolution=_resolve_resolution(raw),
         seed=seed,
@@ -455,9 +630,6 @@ def parse_synthetic_config(raw: dict[str, Any]) -> SyntheticConfig:
 # --------------------------------------------------------------------------
 # Lazy data
 # --------------------------------------------------------------------------
-_STAT_KEYS = ("mean", "stdev", "maximum", "minimum")
-
-
 def _expand_index(index: tuple[Any, ...], ndim: int) -> tuple[Any, ...]:
     """Expand a single ``Ellipsis`` and right-pad with full slices to ``ndim`` axes."""
     # Identity checks, not ``in`` / ``count``: an element may be a numpy array,
@@ -537,7 +709,9 @@ class _SyntheticStore:
 
 
 def _statistics_arrays(config: SyntheticConfig, method: str) -> dict[str, NDArray[Any]]:
-    """Collect the per-variable statistics returned by ``method`` on each generator."""
+    """Collect the per-variable statistics returned by ``method`` on each generator,
+    applying any per-variable override.
+    """
     kwargs = dict(
         n_dates=len(config.dates),
         n_ensemble=config.n_ensemble,
@@ -545,7 +719,13 @@ def _statistics_arrays(config: SyntheticConfig, method: str) -> dict[str, NDArra
         n_vars=len(config.variables),
         seed=config.seed,
     )
-    per_variable = [getattr(g, method)(var_index=v, **kwargs) for v, g in enumerate(config.generators)]
+    overrides = config.stats_overrides if method == "statistics" else config.tendency_overrides
+    per_variable = []
+    for v, g in enumerate(config.generators):
+        stats = getattr(g, method)(var_index=v, **kwargs)
+        if overrides[v]:
+            stats = {**stats, **overrides[v]}
+        per_variable.append(stats)
     return {key: np.array([s[key] for s in per_variable], dtype=np.float64) for key in _STAT_KEYS}
 
 
@@ -567,11 +747,11 @@ def _build_synthetic_store(config: SyntheticConfig) -> _SyntheticStore:
             arrays[f"statistics_tendencies_{delta}_{key}"] = values
 
     attrs = {
-        "layout": "gridded",
+        "layout": config.layout,
         "resolution": config.resolution,
         "frequency": frequency_to_string(config.frequency),
         "variables": list(config.variables),
-        "variables_metadata": {v: {} for v in config.variables},
+        "variables_metadata": dict(config.variables_metadata),
         "field_shape": [int(x) for x in config.field_shape],
         # Suppresses GriddedZarr's "no constant_fields" warning; it recomputes the value regardless.
         "constant_fields": [v for v, g in zip(config.variables, config.generators) if g.is_constant],
