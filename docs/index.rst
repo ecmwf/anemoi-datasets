@@ -138,6 +138,7 @@ You may also have to install pandoc on macOS:
    layouts/introduction
    layouts/gridded
    layouts/tabular
+   layouts/trajectories
 
 .. toctree::
    :maxdepth: 3

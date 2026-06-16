@@ -213,6 +213,12 @@ class ZarrStore(Dataset):
                 from anemoi.datasets.usage.tabular.store import TabularZarr
 
                 return TabularZarr(group, path, options=options).mutate()
+
+            case "trajectories":
+                from anemoi.datasets.usage.trajectories.store import TrajectoriesZarr
+
+                return TrajectoriesZarr(group, path).mutate()
+
             case _:
                 raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 
@@ -348,47 +354,48 @@ class ZarrStore(Dataset):
         return self.store.attrs.get("recipe", {}).get("name", self.path)
 
     def _usage_factory_load(self, name, package: str):
+        """Resolve ``name`` to a class or factory for this dataset's layout.
 
-        # Find a symbol in a submodule of the current package
-        # This is use to load different class where the dataset is gridded or tabular
-
+        Looks up ``<package>.<name.lower()>`` first (fast path for files
+        named after the symbol).  Otherwise, scans every submodule of the
+        layout package and then of the shared ``common`` package.
+        """
         import importlib
 
-        def try_import(module: str, symbol: str):
+        common = package.rsplit(".", 1)[0] + ".common"
+
+        def try_import(module: str):
             try:
-                module = importlib.import_module(module)
-                if hasattr(module, symbol):
-                    return getattr(module, symbol)
+                m = importlib.import_module(module)
             except ModuleNotFoundError:
                 return None
+            return getattr(m, name, None)
 
-        # First, check if the symbol is in a package of the same name
-        # e.g. "rename.Rename"
+        def scan(pkg: str):
+            try:
+                pkg_dir = os.path.dirname(importlib.import_module(pkg).__file__)
+            except ModuleNotFoundError:
+                return None
+            for entry in os.listdir(pkg_dir):
+                if entry == "__init__.py":
+                    continue
+                if not (entry.endswith(".py") or os.path.isdir(os.path.join(pkg_dir, entry))):
+                    continue
+                found = try_import(f"{pkg}.{os.path.splitext(entry)[0]}")
+                if found is not None:
+                    return found
+            return None
 
-        result = try_import(f"{package}.{name.lower()}", name)
+        # Fast path: file named exactly like the lowercased symbol.
+        result = try_import(f"{package}.{name.lower()}")
         if result is not None:
             return result
 
-        # Next, try to see if the package is common to both gridded and tabular
-        common = package.rsplit(".", 1)[0] + ".common"
-        result = try_import(f"{common}.{name.lower()}", name)
-        if result is not None:
-            return result
-
-        module = importlib.import_module(package)
-        assert hasattr(module, "__file__")
-
-        # Scan all submodules of the current package
-        # This is the last resort, and should be avoided if possible
-        module_path = os.path.dirname(module.__file__)
-        for submodule in os.listdir(module_path):
-            if (submodule.endswith(".py") and submodule != "__init__.py") or os.path.isdir(
-                os.path.join(module_path, submodule)
-            ):
-                module_name, _ = os.path.splitext(submodule)
-                result = try_import(f"{package}.{module_name}", name)
-                if result is not None:
-                    return result
+        # Fallback: scan layout package then common package for the symbol.
+        for pkg in (package, common):
+            result = scan(pkg)
+            if result is not None:
+                return result
 
         raise ValueError(f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})")
 

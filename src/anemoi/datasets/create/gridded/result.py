@@ -28,40 +28,45 @@ LOG = logging.getLogger(__name__)
 QUIET = set()
 
 
+# Synthetic variable names with known metadata flags.
+# These are computed forcings that do not come from GRIB fields.
+_KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
+    "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
+    "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
+    "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
+    "cos_longitude": dict(computed_forcing=True, constant_in_time=True),
+    "cos_solar_zenith_angle": dict(computed_forcing=True, constant_in_time=False),
+    "insolation": dict(computed_forcing=True, constant_in_time=False),
+    "latitude": dict(computed_forcing=True, constant_in_time=True),
+    "longitude": dict(computed_forcing=True, constant_in_time=True),
+    "sin_julian_day": dict(computed_forcing=True, constant_in_time=False),
+    "sin_latitude": dict(computed_forcing=True, constant_in_time=True),
+    "sin_local_time": dict(computed_forcing=True, constant_in_time=False),
+    "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
+}
+
+
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
-    """Retrieve metadata for the given variables and cube."""
+    """Retrieve metadata for the given variables and cube.
+
+    Parameters
+    ----------
+    variables : tuple of str
+        The variables to retrieve metadata for.
+    cube : Any
+        The data cube.
+    units_seen : dict
+        Mapping of variable name to its first-seen units, used to enforce that
+        all fields of a given variable share the same units.
+
+    Returns
+    -------
+    dict
+        The metadata dictionary.
+    """
     assert isinstance(variables, tuple), variables
 
-    KNOWN: dict[str, dict[str, bool]] = {
-        "cos_julian_day": dict(computed_forcing=True, constant_in_time=False),
-        "cos_latitude": dict(computed_forcing=True, constant_in_time=True),
-        "cos_local_time": dict(computed_forcing=True, constant_in_time=False),
-        "cos_longitude": dict(computed_forcing=True, constant_in_time=True),
-        "cos_solar_zenith_angle": dict(computed_forcing=True, constant_in_time=False),
-        "insolation": dict(computed_forcing=True, constant_in_time=False),
-        "latitude": dict(computed_forcing=True, constant_in_time=True),
-        "longitude": dict(computed_forcing=True, constant_in_time=True),
-        "sin_julian_day": dict(computed_forcing=True, constant_in_time=False),
-        "sin_latitude": dict(computed_forcing=True, constant_in_time=True),
-        "sin_local_time": dict(computed_forcing=True, constant_in_time=False),
-        "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
-    }
-
     def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
-        """Merge two metadata dictionaries, combining differing values into lists.
-
-        Parameters
-        ----------
-        md1 : dict[str, Any]
-            First metadata dictionary.
-        md2 : dict[str, Any]
-            Second metadata dictionary.
-
-        Returns
-        -------
-        dict[str, Any]
-            The merged metadata dictionary.
-        """
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result: dict[str, Any] = {}
         for k in md1.keys():
@@ -88,18 +93,36 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
     mars: dict[str, Any] = {}
     other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
-    i: int = -1
-    date: str | None = None
+
+    # Find the axis that corresponds to the variables dimension — the one whose
+    # values are the variable names.  This is position-agnostic so it works for
+    # both 3-key (gridded) and 5-key (trajectories, [date, time, step,
+    # param_level, number]) order_by configurations.
+    variables_set = set(variables)
+    variables_axis_idx: int | None = None
+    for axis_idx, axis_name in enumerate(cube.user_coords.keys()):
+        axis_values = cube.user_coords[axis_name]
+        if axis_values and axis_values[0] in variables_set:
+            variables_axis_idx = axis_idx
+            break
+    if variables_axis_idx is None:
+        raise ValueError(
+            f"Could not find variables axis among {list(cube.user_coords.keys())}; " f"variables={variables}"
+        )
+
+    # We hold the first axis fixed (so we only walk one "row" of the cube) and
+    # collect one representative field per variable.
+    seen_variables: set[str] = set()
+    primary_axis_value: Any = None
     for c in cube.iterate_cubelets():
 
-        if date is None:
-            date = c._coords_names[0]
+        if primary_axis_value is None:
+            primary_axis_value = c._coords_names[0]
 
-        if date != c._coords_names[0]:
+        if primary_axis_value != c._coords_names[0]:
             continue
 
-        if i == -1 or c._coords_names[1] != variables[i]:
-            i += 1
+        current_variable = c._coords_names[variables_axis_idx]
 
         f = cube[c.coords]
         md = f.metadata(namespace="mars")
@@ -200,37 +223,47 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
                 )
 
             # print(md["param"], "startStep", startStep, "endStep", endStep, "process", process, "typeOfStatisticalProcessing", typeOfStatisticalProcessing)
-            other[variables[i]]["process"] = process
-            other[variables[i]]["period"] = (startStep, endStep)
+            other[current_variable]["process"] = process
+            other[current_variable]["period"] = (startStep, endStep)
 
         units = f.metadata("units", default=None)
-        if variables[i] in units_seen:
-            if units_seen[variables[i]] != units:
-                raise ValueError(f"Variable {variables[i]} has multiple units: {units_seen[variables[i]]} and {units}")
+        if current_variable in units_seen:
+            if units_seen[current_variable] != units:
+                raise ValueError(
+                    f"Variable {current_variable} has multiple units: {units_seen[current_variable]} and {units}"
+                )
+        else:
+            units_seen[current_variable] = units
 
-        if units is None and variables[i] not in QUIET:
-            LOG.warning(f"Cannot establish units for variable '{variables[i]}'.")
-            QUIET.add(variables[i])
+        if units is None and current_variable not in QUIET:
+            LOG.warning(f"Cannot establish units for variable '{current_variable}'.")
+            QUIET.add(current_variable)
 
-        other[variables[i]]["units"] = units
+        other[current_variable]["units"] = units
+
+        grib = {k: f.metadata(k, default=None) for k in ("paramId", "shortName")}
+        if any(grib.values()):
+            other[current_variable]["grib"] = grib
 
         for k in md.copy().keys():
             if k.startswith("_"):
                 md.pop(k)
 
-        if variables[i] in mars:
-            mars[variables[i]] = _merge(md, mars[variables[i]])
+        if current_variable in mars:
+            mars[current_variable] = _merge(md, mars[current_variable])
         else:
-            mars[variables[i]] = md
+            mars[current_variable] = md
+
+        seen_variables.add(current_variable)
 
     result: dict[str, dict[str, Any]] = {}
     for k, v in mars.items():
         result[k] = dict(mars=v) if v else {}
         result[k].update(other[k])
-        result[k].update(KNOWN.get(k, {}))
+        result[k].update(_KNOWN_VARIABLES.get(k, {}))
         # assert result[k], k
 
-    assert i + 1 == len(variables), (i + 1, len(variables))
+    assert seen_variables == variables_set, (seen_variables, variables_set)
     return result
 
 
@@ -295,7 +328,7 @@ def _data_request(data: Any) -> dict[str, Any]:
 
 
 class GriddedResult(Result):
-    """Class to represent the result of an action in the dataset creation process."""
+    """Shared implementation for simple and trajectory gridded result classes."""
 
     empty: bool = False
     _coords_already_built: bool = False
@@ -313,14 +346,15 @@ class GriddedResult(Result):
             The data source for the result.
         """
 
+        from anemoi.datasets.create.arguments import ForecastDates
         from anemoi.datasets.dates.groups import GroupOfDates
 
         self.context: Any = context
         self.datasource = datasource
         self.group_of_dates = argument
         assert isinstance(
-            self.group_of_dates, GroupOfDates
-        ), f"Expected group_of_dates to be a GroupOfDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
+            self.group_of_dates, (GroupOfDates, ForecastDates)
+        ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
         # Used to check if units are consistent across fields for the same variable
@@ -349,7 +383,6 @@ class GriddedResult(Result):
 
         self.remapping: Any = self.context.remapping
         self.order_by: Any = self.context.order_by
-        self.flatten_grid: Any = self.context.flatten_grid
         self.start: float = time.time()
         LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
@@ -360,7 +393,7 @@ class GriddedResult(Result):
             cube: Any = ds.cube(
                 self.order_by,
                 remapping=self.remapping,
-                flatten_values=self.flatten_grid,
+                flatten_values=True,
                 patches=self.patches,
             )
             cube = cube.squeeze()
@@ -375,8 +408,7 @@ class GriddedResult(Result):
             raise
         except ValueError:
             self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
-            # raise ValueError(f"Error in {self}")
-            exit(1)
+            raise
 
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug("Cube shape: %s", cube)
@@ -544,6 +576,21 @@ class GriddedResult(Result):
         print("❌" * 40)
         print()
 
+    def _post_build_coords(self, from_data: Any, keys: list[str]) -> None:
+        """Hook for subclasses to extract extra coordinates from the cube.
+
+        Called at the end of ``build_coords()`` before the guard flag is set.
+        Override to capture additional coordinate arrays (e.g. step values for
+        trajectory datasets).
+
+        Parameters
+        ----------
+        from_data : Any
+            The ``cube.user_coords`` mapping.
+        keys : list of str
+            The ordered coordinate key names from ``context.order_by``.
+        """
+
     def build_coords(self) -> None:
         """Build the coordinate arrays for the result if not already built."""
         if self._coords_already_built:
@@ -558,8 +605,10 @@ class GriddedResult(Result):
         keys_from_data: list = list(from_data.keys())
         assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
 
-        variables_key: str = list(from_config.keys())[1]
-        ensembles_key: str = list(from_config.keys())[2]
+        # The last two order_by keys are always (variables, ensembles);
+        # extra leading keys (e.g. 'step' for trajectories) sit before them.
+        variables_key: str = keys_from_config[-2]
+        ensembles_key: str = keys_from_config[-1]
 
         if isinstance(from_config[variables_key], (list, tuple)):
             assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
@@ -569,6 +618,8 @@ class GriddedResult(Result):
 
         self._variables: Any = from_data[variables_key]  # "param_level"
         self._ensembles: Any = from_data[ensembles_key]  # "number"
+
+        self._post_build_coords(from_data, keys_from_config)
 
         first_field: Any = self.datasource[0]
         grid_points: Any = first_field.grid_points()
@@ -671,6 +722,10 @@ class GriddedResult(Result):
             len(self.ensembles),
             len(self.grid_values),
         )
+
+
+class SimpleGriddedResult(GriddedResult):
+    """Result class for simple (valid-date-indexed) gridded datasets."""
 
     @cached_property
     def coords(self) -> dict[str, Any]:

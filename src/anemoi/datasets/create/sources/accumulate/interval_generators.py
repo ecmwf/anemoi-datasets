@@ -16,8 +16,9 @@ from collections.abc import Iterable
 from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate_utils.covering_intervals import covering_intervals
+from anemoi.datasets.create.intervals import SignedInterval
+
+from .covering_intervals import covering_intervals
 
 LOG = logging.getLogger(__name__)
 

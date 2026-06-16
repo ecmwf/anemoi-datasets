@@ -689,9 +689,7 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
         root.attrs["last_date"] = big_dataset.metadata()["end_date"]
         root.attrs["resolution"] = big_dataset.resolution
         root.attrs["name_to_index"] = {k: i for i, k in enumerate(big_dataset.variables)}
-        root.attrs["ensemble_dimension"] = 2
         root.attrs["field_shape"] = big_dataset.field_shape
-        root.attrs["flatten_grid"] = True
         root.attrs["recipe"] = {}
 
 

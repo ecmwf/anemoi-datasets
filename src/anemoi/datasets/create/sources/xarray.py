@@ -57,7 +57,7 @@ class XarraySourceBase(Source):
         self.args = args
         self.kwargs = kwargs
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: DateList) -> ekd.FieldList:
         """Execute the data loading process for the given dates.
 
         Parameters

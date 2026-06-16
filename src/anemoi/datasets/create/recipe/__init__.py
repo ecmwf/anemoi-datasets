@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -9,6 +9,7 @@
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel
@@ -18,10 +19,18 @@ from pydantic import model_validator
 
 from .action import Action
 from .build import Build
+from .dates import BaseDates
 from .dates import Dates
+from .dates import Steps
 from .output import GriddedOutput
 from .output import Output
+from .output import TabularOutput
+from .output import TrajectoriesOutput
 from .statistics import Statistics
+
+if TYPE_CHECKING:
+    from anemoi.datasets.dates.groups import Groups
+    from anemoi.datasets.dates.groups import TrajectoryGroups
 
 LOG = logging.getLogger(__name__)
 
@@ -29,6 +38,26 @@ LOG = logging.getLogger(__name__)
 class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    @model_validator(mode="after")
+    def _check_steps(self) -> "Recipe":
+        is_traj = isinstance(self.output, TrajectoriesOutput)
+        if is_traj and self.steps is None:
+            raise ValueError("'steps' is required when output layout is 'trajectories'")
+        if is_traj:
+            if self.base_dates is None:
+                raise ValueError(
+                    "'base_dates' is required when output layout is 'trajectories' "
+                    "(use 'base_dates:' instead of 'dates:')"
+                )
+            if self.dates is not None:
+                raise ValueError("'dates' is not accepted for the 'trajectories' layout; " "use 'base_dates:' instead")
+        else:
+            if self.base_dates is not None:
+                raise ValueError("'base_dates' is only accepted for the 'trajectories' layout")
+            if self.dates is None:
+                raise ValueError("'dates' is required")
+        return self
 
     @model_validator(mode="after")
     def _post_init(self) -> "Recipe":
@@ -44,8 +73,13 @@ class Recipe(BaseModel):
     licence: str = "unknown"
     attribution: str = "unknown"
 
-    dates: Dates
-    """The date configuration for the dataset."""
+    dates: Dates | None = None
+    """The date configuration for gridded and tabular datasets.  Mutually
+    exclusive with ``base_dates`` (which is the trajectories equivalent)."""
+
+    base_dates: BaseDates | None = None
+    """The base-date (forecast initialisation time) configuration for the
+    ``trajectories`` layout.  Mutually exclusive with ``dates``."""
 
     input: Action | None = None
     """The input data sources configuration."""
@@ -65,6 +99,9 @@ class Recipe(BaseModel):
     )
 
     statistics: Statistics = Statistics()
+
+    steps: Steps | None = None
+    """The steps configuration for trajectory datasets (start, end, frequency)."""
 
     env: dict[str, str] | None = Field(
         default=None,
@@ -86,13 +123,43 @@ class Recipe(BaseModel):
         """
 
         defaults = Recipe(dates={"values": []}).model_dump()
+        output_defaults = {
+            "gridded": GriddedOutput().model_dump(),
+            "tabular": TabularOutput().model_dump(),
+            "trajectories": TrajectoriesOutput().model_dump(),
+        }
 
-        def _only_non_defaults(d, default_d):
+        def _dates_variant(config: dict) -> str:
+            if config.get("hindcasts", False):
+                return "hindcasts"
+            if "values" in config:
+                return "values"
+            return "start_end"
+
+        def _output_variant(config: dict) -> str:
+            return config.get("layout", config.get("format", "gridded"))
+
+        def _only_non_defaults(d, default_d, path: tuple[str, ...] = ()):
 
             if type(d) is not type(default_d):
                 return d
 
             if isinstance(d, dict):
+                # Output is a discriminated union. Compare against defaults of
+                # the active variant so we keep its discriminator naturally,
+                # without dropping then re-injecting it later.
+                if path == ("output",):
+                    variant = _output_variant(d)
+                    if variant not in output_defaults:
+                        return d
+                    default_d = output_defaults[variant]
+
+                # Dates is a discriminated union. If the recipe uses a
+                # different variant than the synthetic default (values), keep
+                # the whole section so variant-specific keys are preserved.
+                if path == ("dates",) and _dates_variant(d) != _dates_variant(default_d):
+                    return d
+
                 res = d.copy()
                 for k, v in list(d.items()):
                     if k not in default_d:
@@ -103,7 +170,7 @@ class Recipe(BaseModel):
                         del res[k]
                         continue
 
-                    res[k] = _only_non_defaults(v, default_d[k])
+                    res[k] = _only_non_defaults(v, default_d[k], path + (k,))
                 return res
 
             return d
@@ -113,7 +180,35 @@ class Recipe(BaseModel):
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
         defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
-        return {key: data[key] for key in defaults.keys()}
+        result = {key: data[key] for key in defaults.keys() if key in data}
+        # Trajectory-only keys are omitted when unused, so gridded/tabular
+        # recipes keep the same metadata shape they had before these fields
+        # existed.
+        for key in ("base_dates", "steps"):
+            if result.get(key) is None:
+                result.pop(key, None)
+        return result
+
+    def make_groups(self) -> "Groups | TrajectoryGroups":
+        """Build the appropriate Groups object for this recipe.
+
+        Returns
+        -------
+        Groups or TrajectoryGroups
+            Date groups matching the recipe output layout.
+        """
+        if isinstance(self.output, TrajectoriesOutput):
+            from anemoi.datasets.dates.groups import TrajectoryGroups
+
+            return TrajectoryGroups(
+                steps=self.steps,
+                group_by=self.build.group_by,
+                base_dates=self.base_dates,
+            )
+
+        from anemoi.datasets.dates.groups import Groups
+
+        return Groups(self.dates, group_by=self.build.group_by)
 
 
 def loader_recipe_from_yaml(path: str) -> dict:
