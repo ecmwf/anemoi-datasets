@@ -50,6 +50,12 @@ following algorithm:
    -  If the dataset covers 10 years or more, the last year is excluded.
    -  Otherwise, 80% of the dataset is used.
 
+For :ref:`trajectory datasets <layouts-trajectories>`, this split
+operates on **base dates** (forecast initialisation times), not on valid
+times. All steps belonging to a held-out base date are excluded — the
+split is always a clean cut along the base-date axis, never within a
+trajectory.
+
 You can override this behaviour by setting either the `start` parameter
 or the `end` parameter in the `statistics` config.
 

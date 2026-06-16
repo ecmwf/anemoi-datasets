@@ -42,5 +42,5 @@ class LegacySource(Source):
     def _execute(context, *args, **kwargs):
         pass
 
-    def execute(self, dates: Any) -> Any:
+    def execute_valid_dates(self, dates: Any) -> Any:
         return self._execute(self.context, dates, *self.args, **self.kwargs)

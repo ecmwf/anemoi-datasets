@@ -58,17 +58,19 @@ class MissingDates(Forwards):
 
         self._missing = set()
 
+        axis_dates = self._axis_dates(dataset)
+
         other = set()
         for date in missing_dates:
             if isinstance(date, int):
                 self._missing.add(date)
-                self.missing_dates.append(dataset.dates[date])
+                self.missing_dates.append(axis_dates[date])
             else:
                 date = to_datetime(date)
                 other.add(date)
 
         if other:
-            for i, date in enumerate(dataset.dates):
+            for i, date in enumerate(axis_dates):
                 if date in other:
                     self._missing.add(i)
                     self.missing_dates.append(date)
@@ -78,6 +80,13 @@ class MissingDates(Forwards):
         self.missing_dates = sorted(to_datetime(x) for x in self.missing_dates)
 
         assert len(self._missing), "No dates to force missing"
+
+    def _axis_dates(self, dataset: Dataset) -> NDArray[Any]:
+        """Return the datetime values of the dataset's first axis.
+
+        Trajectory subclasses override this to return ``base_dates``.
+        """
+        return dataset.dates
 
     @cached_property
     def missing(self) -> set[int]:
@@ -139,7 +148,7 @@ class MissingDates(Forwards):
         n : int
             The index of the missing date.
         """
-        raise MissingDateError(f"Date {self.forward.dates[n]} is missing (index={n})")
+        raise MissingDateError(f"Date {self._axis_dates(self.forward)[n]} is missing (index={n})")
 
     @property
     def reason(self) -> dict[str, Any]:

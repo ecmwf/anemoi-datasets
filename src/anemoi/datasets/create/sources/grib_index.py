@@ -24,8 +24,11 @@ from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
+
+from ..source import Source
 from . import source_registry
-from .legacy import LegacySource
 
 LOG = logging.getLogger(__name__)
 
@@ -574,72 +577,87 @@ class GribIndex:
 
 
 @source_registry.register("grib-index")
-class GribIndexSource(LegacySource):
-    @staticmethod
-    def _execute(
+class GribIndexSource(Source):
+    """GRIB-index data source."""
+
+    emoji = "🌧️"
+
+    def __init__(
+        self,
         context: Any,
-        dates: list[Any],
         indexdb: str,
         flavour: str | None = None,
+        grid_definition: dict | None = None,
         **kwargs: Any,
-    ) -> FieldArray:
-        """Execute the GRIB data retrieval process.
+    ) -> None:
+        """Initialise the GRIB-index source.
 
         Parameters
         ----------
         context : Any
             The execution context.
-        dates : List[Any]
-            List of dates to retrieve data for.
         indexdb : str
             Path to the GRIB index database.
-        flavour : Optional[str], optional
-            Flavour configuration for mapping fields, by default None.
+        flavour : str, optional
+            Flavour configuration for mapping fields.
+        grid_definition : dict, optional
+            Grid definition to reproject retrieved fields onto.
         **kwargs : Any
-            Additional filtering criteria.
-
-        Returns
-        -------
-        FieldArray
-            An array of retrieved GRIB fields.
+            Additional filtering criteria forwarded to ``GribIndex.retrieve``.
         """
+        super().__init__(context)
+        self.indexdb = indexdb
+        self.flavour = RuleBasedFlavour(flavour) if flavour is not None else None
+        self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
+        self.request = kwargs
 
-        grid_definition = kwargs.pop("grid_definition", None)
-        if grid_definition:
-            grid_definition = grid_registry.from_config(grid_definition)
+    def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
+        """Retrieve grib-indexed fields for a list of validity times."""
+        full_requests = [(list(dates), self.request)]
+        return self._run_requests(full_requests)
 
-        index = GribIndex(indexdb)
+    def execute_intervals(self, dates: Intervals) -> FieldArray:
+        """Retrieve grib-indexed fields covering accumulation windows.
 
-        if flavour is not None:
-            flavour = RuleBasedFlavour(flavour)
+        grib-index is valid-time indexed: each interval is resolved to its
+        validity time (``interval.max``) plus a ``step`` equal to the
+        accumulation period length. No basetime is involved — the
+        ``SignedInterval.base`` attribute is ignored here, which is why this
+        path does not go through ``Intervals.adjust_request``.
+        """
+        full_requests = []
+        for interval in dates.intervals:
+            # grib-index is valid-time indexed; intervals must not carry a basetime.
+            assert interval.base is None, (
+                f"GribIndexSource received an interval with a basetime: {interval!r}. "
+                "grib-index resolves intervals by valid time only."
+            )
+            self.context.trace(self.emoji, "interval:", interval)
+            request = self.request.copy()
+            request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            self.context.trace(self.emoji, "  request =", request)
+            full_requests.append(([interval.max], request))
+        return self._run_requests(full_requests)
 
-        if hasattr(dates, "date_to_intervals"):
-            # When using accumulate source
-            full_requests = []
-            for d, interval in dates.intervals:
-                context.trace("🌧️", "interval:", interval)
-                valid_date, request, _ = dates._adjust_request_to_interval(interval, kwargs)
-                context.trace("🌧️", "  request =", request)
-                full_requests.append(([valid_date], request))
-        else:
-            # Normal case, without accumulate source
-            full_requests = [(dates, kwargs)]
+    def _run_requests(self, full_requests: list[tuple[list, dict]]) -> FieldArray:
+        """Factorise, trace, and run a list of ``(valid_dates, request)`` pairs."""
+        index = GribIndex(self.indexdb)
 
         full_requests = factorise(full_requests)
-        context.trace("🌧️", f"number of (factorised) requests: {len(full_requests)}")
+        self.context.trace(self.emoji, f"number of (factorised) requests: {len(full_requests)}")
         for valid_dates, request in full_requests:
-            context.trace("🌧️", f"  dates: {valid_dates}, request: {request}")
+            self.context.trace(self.emoji, f"  dates: {valid_dates}, request: {request}")
 
         result = []
         for valid_dates, request in full_requests:
             for grib in index.retrieve(valid_dates, **request):
                 field = ekd.from_source("memory", grib)[0]
-                if flavour:
-                    field = flavour.apply(field)
+                if self.flavour:
+                    field = self.flavour.apply(field)
                 result.append(field)
 
-        if grid_definition is not None:
-            result = [new_field_from_grid(field, grid_definition) for field in result]
+        if self.grid is not None:
+            result = [new_field_from_grid(field, self.grid) for field in result]
 
         return FieldArray(result)
 
