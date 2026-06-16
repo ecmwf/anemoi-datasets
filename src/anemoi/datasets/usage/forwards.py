@@ -28,6 +28,7 @@ from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import length_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -255,15 +256,18 @@ class Forwards(Dataset):
 class Combined(Forwards):
     """A class to combine multiple datasets into a single dataset."""
 
-    def __init__(self, datasets: list[Dataset]) -> None:
+    def __init__(self, datasets: list[Dataset], options: Options) -> None:
         """Initializes a Combined object.
 
         Parameters
         ----------
         datasets : List[Dataset]
             List of datasets to be combined.
+        options : Options
+            Options for the combined dataset.
         """
         self.datasets = datasets
+        self.options = options
         assert len(self.datasets) > 1, len(self.datasets)
 
         for d in self.datasets[1:]:
@@ -433,7 +437,9 @@ class Combined(Forwards):
         """
         from anemoi.transform.variables import Variable
 
-        Variable.check_compatibility(d1.typed_variables, d2.typed_variables)
+        Variable.check_compatibility(
+            d1.typed_variables, d2.typed_variables, self.options.get("check_variables_compatibility")
+        )
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the lengths of two datasets are the same.
@@ -588,7 +594,7 @@ class Combined(Forwards):
 class GivenAxis(Combined):
     """A class to combine datasets along a given axis."""
 
-    def __init__(self, datasets: list[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int, options: Options) -> None:
         """Initializes a GivenAxis object.
 
         Parameters
@@ -597,9 +603,11 @@ class GivenAxis(Combined):
             List of datasets to be combined.
         axis : int
             Axis along which to combine the datasets.
+        options : Options
+            Options for the combined dataset.
         """
         self.axis = axis
-        super().__init__(datasets)
+        super().__init__(datasets, options)
 
         assert axis > 0 and axis < len(self.datasets[0].shape), (
             axis,

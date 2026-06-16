@@ -33,6 +33,7 @@ from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.misc import load_config
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -190,34 +191,35 @@ def open_zarr_store(
 class ZarrStore(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
         self.store = group
         self.path = path if path is not None else "<zarr>"
+        self.options = options
 
         # This seems to speed up the reading of the data a lot
         self.data = self.store["data"]
 
     @classmethod
-    def from_group(cls, group: zarr.Group, path: str = None) -> "ZarrStore":
+    def from_group(cls, group: zarr.Group, path: str = None, options: Options = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
 
         match layout:
             case "gridded":
                 from anemoi.datasets.usage.gridded.store import GriddedZarr
 
-                return GriddedZarr(group, path).mutate()
+                return GriddedZarr(group, path, options=options).mutate()
 
             case "tabular":
                 from anemoi.datasets.usage.tabular.store import TabularZarr
 
-                return TabularZarr(group, path).mutate()
+                return TabularZarr(group, path, options=options).mutate()
             case _:
                 raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 
     @classmethod
-    def from_name_or_path(cls, name: str) -> "ZarrStore":
+    def from_name_or_path(cls, name: str, options: Options = None) -> "ZarrStore":
         store, path = open_zarr_store(name, return_path=True)
-        return cls.from_group(store, path=path)
+        return cls.from_group(store, path=path, options=options)
 
     ####################################################
 

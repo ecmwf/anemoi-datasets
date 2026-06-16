@@ -25,6 +25,7 @@ from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ class Ensemble(GivenAxis):
         return {}
 
 
-def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Ensemble:
+def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Ensemble:
     """Factory function to create an Ensemble object.
 
     Parameters
@@ -162,6 +163,8 @@ def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Ensemble:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -176,7 +179,7 @@ def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Ensemble:
     assert len(args) == 0
     assert isinstance(ensemble, (list, tuple))
 
-    datasets = [_open(e) for e in ensemble]
+    datasets = [_open(e, options) for e in ensemble]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Ensemble(datasets, axis=axis)._subset(**kwargs)
+    return Ensemble(datasets, axis=axis, options=options)._subset(**kwargs)
