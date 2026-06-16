@@ -271,7 +271,14 @@ class Combined(Forwards):
         assert len(self.datasets) > 1, len(self.datasets)
 
         for d in self.datasets[1:]:
-            self.check_compatibility(self.datasets[0], d)
+            try:
+                self.check_compatibility(self.datasets[0], d)
+            except:
+                LOG.error("Check fail comparing:")
+                LOG.error("%s", self.datasets[0].tree())
+                LOG.error("With:")
+                LOG.error("%s", d.tree())
+                raise
 
         # Forward most properties to the first dataset
         super().__init__(datasets[0])
@@ -438,7 +445,7 @@ class Combined(Forwards):
         from anemoi.transform.variables import Variable
 
         Variable.check_compatibility(
-            d1.typed_variables, d2.typed_variables, self.options.get("check_variables_compatibility")
+            d1.typed_variables, d2.typed_variables, self.options.get("check_variables_compatibility") or {}
         )
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:

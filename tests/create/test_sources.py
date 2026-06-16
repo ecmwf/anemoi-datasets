@@ -492,7 +492,7 @@ def test_planetary_computer_conus404() -> None:
 
 
 @skip_if_offline
-@skip_missing_packages("planetary_computer", "adlfs")
+@skip_missing_packages("planetary_computer", "adlfs", "h5netcdf", "h5py")
 @pytest.mark.parametrize(
     ("collection_id", "year", "param", "search_params", "shape"),
     [
@@ -624,7 +624,7 @@ def test_odb(get_test_data: callable) -> None:
             "start": "2025-01-01T00:00:00",
             "end": "2025-12-21T23:59:59",
         },
-        "input": {"csv": {"odb": {"path": data}}},
+        "input": {"odb": {"path": data}},
     }
     frame = _run_one_group(recipe)
 

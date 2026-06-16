@@ -78,6 +78,35 @@ Please note that you can pass more than two datasets to the function.
    returned to the user. You can change this using the
    :ref:`selecting-statistics` option.
 
+When concatenating datasets, the package will check that they are compatible, i.e., that they have the same resolution, the same
+variables, etc. You can turn some of the check off:
+
+.. code:: python
+
+   ds = open_dataset(
+       concat=[dataset1, dataset2, ...],
+       check_variables_compatibility={
+           "ignore_units": True, # Don't check units
+           "ignore_time_processing": True, # Don't check time processing (e.g. whether the data are instantaneous or accumulated)
+           "ignore_processing_period": True, # Don't check time processing period (e.g. whether the data are 3-hourly or 6-hourly accumulations)
+           "ignore_type_of_level": True, # Don't check type of level (e.g. whether the data are on pressure levels or model levels)
+       },
+   )
+
+
+You can also turn off checks for individual variables by setting:
+
+.. code:: python
+
+   ds = open_dataset(
+       concat=[dataset1, dataset2, ...],
+       check_variables_compatibility={
+           "ignore_type_of_level": "msl", # Don't check type of level for the variable "msl"
+           "ignore_units": ["msl", "t2m"], # Don't check units for the variables "msl" and "t2m"
+       },
+   )
+
+
 .. _join:
 
 ******
