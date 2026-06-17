@@ -58,6 +58,7 @@ or the variable dimension depending on the dataset's structure.
    :caption: Using datasets
 
    opening
+   synthetic
    methods
    subsetting
    combining
