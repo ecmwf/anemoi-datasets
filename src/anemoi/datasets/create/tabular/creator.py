@@ -45,7 +45,7 @@ class TabularCreator(Creator):
 
         for message in check_dataset_name(
             name,
-            resolution=getattr(self.minimal_input, "resolution", None),  # optional for tabular
+            resolution=None,
             start_date=self.groups.first_date(),
             end_date=self.groups.last_date(),
             layout="tabular",
