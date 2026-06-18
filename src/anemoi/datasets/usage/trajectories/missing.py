@@ -15,12 +15,12 @@ from typing import Any
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.gridded.missing import MissingDates
-from anemoi.datasets.usage.trajectories.forwards import TrajectoryForwards
+from anemoi.datasets.usage.trajectories.metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
 
-class MissingBaseDates(TrajectoryForwards, MissingDates):
+class MissingBaseDates(MissingDates):
     """Force base dates of a trajectories dataset to be missing.
 
     Same behaviour as the gridded :class:`MissingDates` wrapper, but the
@@ -41,6 +41,14 @@ class MissingBaseDates(TrajectoryForwards, MissingDates):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"missing_base_dates": self.missing_dates}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md
 
     def statistics_tendencies(self, delta: Any = None) -> dict[str, Any]:
         """Delegate to the underlying dataset, which resolves a default delta

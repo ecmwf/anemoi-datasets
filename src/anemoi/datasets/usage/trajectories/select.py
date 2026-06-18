@@ -15,12 +15,12 @@ from typing import Any
 from numpy.typing import NDArray
 
 from ..gridded.select import Select as GriddedSelect
-from .forwards import TrajectoryForwards
+from .metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
 
-class Select(TrajectoryForwards, GriddedSelect):
+class Select(GriddedSelect):
     """Select a subset of variables from a trajectories dataset.
 
     The variable axis is at position 1 in the 5-D layout
@@ -52,3 +52,11 @@ class Select(TrajectoryForwards, GriddedSelect):
             if delta is None:
                 raise ValueError("statistics_tendencies: steps are not uniformly spaced, pass `delta` explicitly.")
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md

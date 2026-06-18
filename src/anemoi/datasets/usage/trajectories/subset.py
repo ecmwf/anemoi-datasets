@@ -32,12 +32,12 @@ from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import make_slice_or_index_from_list_or_tuple
 from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.trajectories.forwards import TrajectoryForwards
+from anemoi.datasets.usage.trajectories.metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
 
-class StepSubset(TrajectoryForwards):
+class StepSubset(Forwards):
     """A view of a trajectories dataset restricted to a subset of steps.
 
     Slices the step axis (position ``-2``, just before cells) of the
@@ -125,6 +125,14 @@ class StepSubset(TrajectoryForwards):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"step_indices": self.step_indices}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md
 
     def tree(self) -> Node:
         return Node(self, [self.forward.tree()])
@@ -215,7 +223,7 @@ class SingleStepView(Forwards):
         return Node(self, [self.forward.tree()])
 
 
-class Subset(TrajectoryForwards):
+class Subset(Forwards):
     """Select a subset of base dates from a trajectories dataset.
 
     Mirrors the gridded ``Subset`` but operates on ``base_dates`` instead
@@ -370,3 +378,11 @@ class Subset(TrajectoryForwards):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"indices": self.indices, "reason": self.reason}
+
+    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
+
+    def dataset_metadata(self) -> dict[str, Any]:
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md

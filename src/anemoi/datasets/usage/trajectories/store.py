@@ -15,7 +15,6 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -28,6 +27,7 @@ from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..store import ZarrStore
+from .metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -271,15 +271,7 @@ class TrajectoriesZarr(ZarrStore):
         ``self.frequency``, which raises for trajectory datasets because
         they have two frequencies (``base_frequency`` and ``step_frequency``).
         """
-        return super().metadata_specific(
-            base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(self.step_frequency) if self.step_frequency is not None else None,
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            step_start=frequency_to_string(self.step_start),
-            step_end=frequency_to_string(self.step_end),
-            **kwargs,
-        )
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
 
     def dataset_metadata(self) -> dict[str, Any]:
         """Return dataset metadata using trajectory-compatible properties.
@@ -291,14 +283,7 @@ class TrajectoriesZarr(ZarrStore):
         ``metadata_specific``, which already sets them explicitly.
         """
         md = super().dataset_metadata()
-        md.update(
-            base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(self.step_frequency) if self.step_frequency is not None else None,
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            step_start=frequency_to_string(self.step_start),
-            step_end=frequency_to_string(self.step_end),
-        )
+        md.update(trajectory_metadata(self))
         return md
 
     @property
