@@ -321,24 +321,34 @@ class TestTrajectoriesZarr:
         assert self.ds.frequency is None
 
     def test_metadata_specific_does_not_call_frequency(self):
-        """metadata_specific() must succeed; trajectory-specific keys are passed via ZarrStore super()."""
+        """metadata_specific() must succeed; trajectory-specific keys flow through ZarrStore super()."""
         md = self.ds.metadata_specific()
-        # ZarrStore.metadata_specific() does not forward **kwargs so trajectory-specific
-        # keys (base_frequency, step_frequency) are absent; frequency=None comes from
-        # Dataset.metadata_specific() which calls self.frequency.
+        assert md["action"] == "trajectorieszarr"
+        # frequency=None comes from Dataset.metadata_specific() which calls self.frequency.
         assert "frequency" in md
         assert md["frequency"] is None
-        assert md["action"] == "trajectorieszarr"
+        # ZarrStore now forwards **kwargs, so the trajectory-specific keys are present.
+        assert "base_frequency" in md
+        assert "step_frequency" in md
 
     def test_dataset_metadata_does_not_call_frequency(self):
-        """dataset_metadata() raises TypeError because Dataset.dataset_metadata() does not accept **kwargs."""
-        with pytest.raises(TypeError):
-            self.ds.dataset_metadata()
+        """dataset_metadata() must succeed; trajectory keys appear at top level and in 'specific'."""
+        md = self.ds.dataset_metadata()
+        assert md["frequency"] is None
+        # Top level
+        assert md["base_frequency"] is not None
+        assert "step_frequency" in md
+        assert "base_start_date" in md
+        assert "base_end_date" in md
+        # And inside specific
+        assert md["specific"]["base_frequency"] is not None
+        assert "step_frequency" in md["specific"]
 
     def test_metadata_does_not_call_frequency(self):
-        """metadata() raises TypeError because it calls dataset_metadata() which does not accept **kwargs."""
-        with pytest.raises(TypeError):
-            self.ds.metadata()
+        """metadata() must succeed and carry trajectory keys in specific."""
+        md = self.ds.metadata()
+        assert md["specific"]["action"] == "trajectorieszarr"
+        assert "base_frequency" in md["specific"]
 
 
 # ---------------------------------------------------------------------------

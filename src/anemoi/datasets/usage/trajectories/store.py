@@ -282,15 +282,24 @@ class TrajectoriesZarr(ZarrStore):
         )
 
     def dataset_metadata(self) -> dict[str, Any]:
-        """Return dataset metadata using trajectory-compatible properties."""
-        return super().dataset_metadata(
-            base_frequency=self.base_frequency,
-            step_frequency=self.step_frequency if self.step_frequency is not None else None,
+        """Return dataset metadata using trajectory-compatible properties.
+
+        The trajectory-specific keys are emitted both at the top level (for
+        consumers that read them directly) and, via ``metadata_specific``,
+        inside the ``specific`` sub-dict. They must not be passed as kwargs to
+        ``super().dataset_metadata`` because that forwards them into
+        ``metadata_specific``, which already sets them explicitly.
+        """
+        md = super().dataset_metadata()
+        md.update(
+            base_frequency=frequency_to_string(self.base_frequency),
+            step_frequency=frequency_to_string(self.step_frequency) if self.step_frequency is not None else None,
             base_start_date=str(self.base_start_date),
             base_end_date=str(self.base_end_date),
             step_start=frequency_to_string(self.step_start),
             step_end=frequency_to_string(self.step_end),
         )
+        return md
 
     @property
     def variables_metadata(self) -> dict[str, Any]:

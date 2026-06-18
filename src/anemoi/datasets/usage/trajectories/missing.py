@@ -15,11 +15,12 @@ from typing import Any
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.gridded.missing import MissingDates
+from anemoi.datasets.usage.trajectories.forwards import TrajectoryForwards
 
 LOG = logging.getLogger(__name__)
 
 
-class MissingBaseDates(MissingDates):
+class MissingBaseDates(TrajectoryForwards, MissingDates):
     """Force base dates of a trajectories dataset to be missing.
 
     Same behaviour as the gridded :class:`MissingDates` wrapper, but the
@@ -40,43 +41,6 @@ class MissingBaseDates(MissingDates):
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {"missing_base_dates": self.missing_dates}
-
-    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
-        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
-        from anemoi.utils.dates import frequency_to_string
-
-        action = self.__class__.__name__.lower()
-        return dict(
-            action=action,
-            variables=self.variables,
-            shape=self.shape,
-            base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(self.step_frequency),
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            forward=self.forward.metadata_specific(),
-            **self.forwards_subclass_metadata_specific(),
-            **kwargs,
-        )
-
-    def dataset_metadata(self) -> dict[str, Any]:
-        """Override to avoid calling self.frequency (trajectory datasets have two frequencies)."""
-        return dict(
-            specific=self.metadata_specific(),
-            base_frequency=self.base_frequency,
-            step_frequency=self.step_frequency,
-            variables=self.variables,
-            variables_metadata=self.variables_metadata,
-            shape=self.shape,
-            dtype=str(self.dtype),
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            name=self.name,
-        )
 
     def statistics_tendencies(self, delta: Any = None) -> dict[str, Any]:
         """Delegate to the underlying dataset, which resolves a default delta
