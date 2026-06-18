@@ -733,7 +733,7 @@ class Dataset(ABC, Sized):
         """Return the end date of the dataset."""
         return self.dates[-1]
 
-    def dataset_metadata(self, **kwargs: Any) -> dict[str, Any]:
+    def dataset_metadata(self) -> dict[str, Any]:
         """Return the metadata of the dataset.
 
         Returns
@@ -742,7 +742,7 @@ class Dataset(ABC, Sized):
             The metadata.
         """
         return dict(
-            specific=self.metadata_specific(**kwargs),
+            specific=self.metadata_specific(),
             frequency=self.frequency,
             variables=self.variables,
             variables_metadata=self.variables_metadata,
