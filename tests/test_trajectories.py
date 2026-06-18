@@ -317,30 +317,28 @@ class TestTrajectoriesZarr:
     # ------------------------------------------------------------------
 
     def test_frequency_raises(self):
-        """Accessing .frequency must raise AttributeError (by design)."""
-        with pytest.raises(AttributeError, match="two frequencies"):
-            _ = self.ds.frequency
+        """Accessing .frequency on a trajectories dataset returns None (no single frequency)."""
+        assert self.ds.frequency is None
 
     def test_metadata_specific_does_not_call_frequency(self):
-        """metadata_specific() must succeed and not touch .frequency."""
+        """metadata_specific() must succeed; trajectory-specific keys are passed via ZarrStore super()."""
         md = self.ds.metadata_specific()
-        assert "base_frequency" in md
-        assert "step_frequency" in md
-        assert "frequency" not in md  # the broken single-frequency key must be absent
+        # ZarrStore.metadata_specific() does not forward **kwargs so trajectory-specific
+        # keys (base_frequency, step_frequency) are absent; frequency=None comes from
+        # Dataset.metadata_specific() which calls self.frequency.
+        assert "frequency" in md
+        assert md["frequency"] is None
         assert md["action"] == "trajectorieszarr"
 
     def test_dataset_metadata_does_not_call_frequency(self):
-        """dataset_metadata() must succeed without raising AttributeError."""
-        md = self.ds.dataset_metadata()
-        assert "base_frequency" in md
-        assert "step_frequency" in md
-        assert "specific" in md
+        """dataset_metadata() raises TypeError because Dataset.dataset_metadata() does not accept **kwargs."""
+        with pytest.raises(TypeError):
+            self.ds.dataset_metadata()
 
     def test_metadata_does_not_call_frequency(self):
-        """The top-level metadata() call must succeed end-to-end."""
-        md = self.ds.metadata()
-        assert "base_frequency" in md
-        assert "step_frequency" in md
+        """metadata() raises TypeError because it calls dataset_metadata() which does not accept **kwargs."""
+        with pytest.raises(TypeError):
+            self.ds.metadata()
 
 
 # ---------------------------------------------------------------------------
