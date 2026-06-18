@@ -289,7 +289,7 @@ class TrajectoriesZarr(ZarrStore):
             base_start_date=str(self.base_start_date),
             base_end_date=str(self.base_end_date),
             step_start=frequency_to_string(self.step_start),
-            step_end=frequency_to_string(self.step_end),            
+            step_end=frequency_to_string(self.step_end),
         )
 
     @property

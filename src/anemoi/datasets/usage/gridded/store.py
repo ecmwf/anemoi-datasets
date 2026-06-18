@@ -212,7 +212,6 @@ class GriddedZarr(ZarrStore):
         """Return the end date of the statistics."""
         return self.dates[-1]
 
-
     def source(self, index: int) -> Source:
         """Return the source of the dataset."""
         return Source(self, index, info=self.path)
