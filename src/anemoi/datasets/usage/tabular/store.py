@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import copy
 import datetime
 import logging
 from functools import cached_property
@@ -51,6 +52,37 @@ class TabularZarr(ZarrStore):
                 self._window_view = self._window_view.set_window(window)
 
         return super()._subset(**kwargs)
+
+    @property
+    def shard_index(self) -> int | None:
+        return self._window_view.shard_index
+
+    @property
+    def num_shards(self) -> int:
+        return self._window_view.num_shards
+
+    @property
+    def unsharded_sizes(self) -> NDArray[np.int64]:
+        return self._window_view.unsharded_sizes
+
+    @property
+    def shard_sizes(self) -> NDArray[np.int64]:
+        return self._window_view.shard_sizes
+
+    @property
+    def total_size(self) -> int:
+        return self._window_view.total_size
+
+    def shard_view(self, index: int, count: int) -> "TabularZarr":
+        """Return a clone reading only shard ``index`` of ``count`` per window.
+
+        The shard is applied to the underlying ``WindowView`` so only the
+        shard's rows are read from the store. Raises if already sharded
+        (sharding cannot be chained).
+        """
+        shard = copy.copy(self)
+        shard._window_view = self._window_view._internal_set_shard(index, count)
+        return shard
 
     def __getitem__(self, n):
         return self._window_view[n]

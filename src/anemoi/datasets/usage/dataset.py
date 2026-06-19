@@ -89,6 +89,53 @@ def _tidy(v: Any) -> Any:
 class Dataset(ABC, Sized):
     arguments: dict[str, Any] = {}
     _name: str | None = None
+    _other_shards: "list[Dataset] | None" = None
+
+    # ------------------------------------------------------------------
+    # Sharding introspection (see usage/tabular/sharding.py).
+    #
+    # Defaults describe an unsharded, non-tabular dataset. The tabular leaf
+    # overrides these from its WindowView and the Forwards wrappers forward
+    # them, so a sharded (possibly transformed) tabular dataset reports the
+    # real values.
+    # ------------------------------------------------------------------
+
+    @property
+    def other_shards(self) -> "list[Dataset] | None":
+        """The sibling shards, or ``None``.
+
+        Populated with the other shard datasets when this dataset was produced
+        by ``open_dataset(..., sharding=N)`` in a single process. It is ``None``
+        for an unsharded dataset and for a single shard obtained with
+        ``open_dataset(..., sharding=N, shard=i)`` (the siblings live in other
+        processes).
+        """
+        return self._other_shards
+
+    @property
+    def shard_index(self) -> int | None:
+        """This dataset's shard index, or ``None`` if it is not a shard."""
+        return None
+
+    @property
+    def num_shards(self) -> int:
+        """The number of shards (``1`` if not sharded)."""
+        return 1
+
+    @property
+    def unsharded_sizes(self) -> NDArray[Any]:
+        """Per-window row counts of the unsharded dataset (tabular only)."""
+        raise NotImplementedError("sharding sizes are only available for tabular datasets")
+
+    @property
+    def shard_sizes(self) -> NDArray[Any]:
+        """Per-shard, per-window row counts (tabular only)."""
+        raise NotImplementedError("sharding sizes are only available for tabular datasets")
+
+    @property
+    def total_size(self) -> int:
+        """Total row count of the unsharded dataset (tabular only)."""
+        raise NotImplementedError("sharding sizes are only available for tabular datasets")
 
     def mutate(self) -> "Dataset":
         """Give an opportunity to a subclass to return a new Dataset object of a different class, if needed.
@@ -119,6 +166,30 @@ class Dataset(ABC, Sized):
     def _len(self) -> int:
         """Cache and return the length of the dataset."""
         return len(self)
+
+    def shard_view(self, index: int, count: int) -> "Dataset":
+        """Return a clone of this dataset exposing only one shard of the data.
+
+        Sharding splits each window's rows into ``count`` contiguous,
+        non-overlapping pieces and keeps only piece ``index``; the window
+        count, dates, frequency and variables are unchanged. It is only
+        supported for tabular datasets. Subclasses that support it (the tabular
+        leaf and the ``Forwards`` wrappers) override this method; the default
+        implementation rejects the operation.
+
+        Parameters
+        ----------
+        index : int
+            The shard index, in ``[0, count)``.
+        count : int
+            The total number of shards.
+
+        Returns
+        -------
+        Dataset
+            A clone restricted to the requested shard.
+        """
+        raise ValueError(f"sharding is only supported for tabular datasets, not {type(self).__name__}")
 
     def _subset(self, **kwargs: Any) -> "Dataset":
         """Create a subset of the dataset based on the provided keyword arguments.

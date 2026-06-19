@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 
+import copy
 import datetime
 import logging
 import warnings
@@ -296,6 +297,26 @@ class Forwards(Dataset):
     def project(self, projection):
         return self.forward.project(projection).add_transformation(self)
 
+    def shard_view(self, index: int, count: int) -> Dataset:
+        """Propagate sharding to the wrapped dataset.
+
+        Clones this wrapper (keeping the transform it applies) and shards the
+        dataset it forwards to, so the shard is applied at the underlying leaf.
+
+        Some wrappers keep their own reference to the child under a different
+        name (e.g. ``SelectBase.dataset``) and read from it directly, so every
+        attribute that currently points at ``self.forward`` is repointed at the
+        sharded child to keep the clone consistent. Cached properties such as
+        ``variables``/``shape``/``statistics`` are unaffected by sharding (only
+        the number of rows per window changes), so copying them is safe.
+        """
+        sharded = self.forward.shard_view(index, count)
+        shard = copy.copy(self)
+        for attr, value in vars(self).items():
+            if value is self.forward:
+                setattr(shard, attr, sharded)
+        return shard
+
     def usage_factory_load(self, name: str) -> Any:
         return self.forward.usage_factory_load(name)
 
@@ -303,6 +324,34 @@ class Forwards(Dataset):
     def window(self) -> Any:
         """Returns the window of the forward dataset."""
         return self.forward.window
+
+    # Sharding introspection — forwarded so a sharded, transformed dataset
+    # (e.g. select= on a shard) reports the leaf's real values.
+
+    @property
+    def shard_index(self) -> int | None:
+        """Returns the shard index of the forward dataset."""
+        return self.forward.shard_index
+
+    @property
+    def num_shards(self) -> int:
+        """Returns the number of shards of the forward dataset."""
+        return self.forward.num_shards
+
+    @property
+    def unsharded_sizes(self) -> NDArray[Any]:
+        """Returns the unsharded per-window sizes of the forward dataset."""
+        return self.forward.unsharded_sizes
+
+    @property
+    def shard_sizes(self) -> NDArray[Any]:
+        """Returns the per-shard per-window sizes of the forward dataset."""
+        return self.forward.shard_sizes
+
+    @property
+    def total_size(self) -> int:
+        """Returns the total unsharded row count of the forward dataset."""
+        return self.forward.total_size
 
 
 class Combined(Forwards):
@@ -334,6 +383,10 @@ class Combined(Forwards):
             Mutated dataset.
         """
         return self
+
+    def shard_view(self, index: int, count: int) -> Dataset:
+        """Reject sharding: combined datasets aggregate several sources."""
+        raise ValueError(f"sharding is not supported for combined datasets ({type(self).__name__})")
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the resolutions of two datasets are the same.

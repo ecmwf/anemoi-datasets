@@ -48,6 +48,7 @@ class WindowView:
         end_date: datetime.datetime | None = None,
         frequency: int | str | datetime.timedelta = 3,
         window: str | Window = "(-3,+0]",
+        shard: tuple[int, int] | None = None,
     ) -> None:
         """Initialise a WindowView for a Zarr tabular dataset.
 
@@ -63,6 +64,12 @@ class WindowView:
             The frequency of the windowed view.
         window : str or Window, default "(-3,+0]"
             The window specification.
+        shard : tuple of (int, int), optional
+            A ``(index, count)`` pair selecting one of ``count`` shards. Each
+            window's rows are partitioned into ``count`` contiguous,
+            non-overlapping pieces and only piece ``index`` is returned. The
+            window count, dates, and frequency are unchanged. ``None`` (default)
+            returns the whole window.
         """
         # Open the zarr group if a path is provided
         self.store = store if isinstance(store, zarr.Group) else zarr.open(store, mode="r")
@@ -83,6 +90,15 @@ class WindowView:
         # Convert frequency to timedelta and parse window if needed
         self.frequency = frequency_to_timedelta(frequency)
         self.window = window if isinstance(window, Window) else Window(window)
+
+        # Sharding: (index, count) or None for the whole window
+        if shard is not None:
+            index, count = shard
+            if not (isinstance(count, int) and count >= 1):
+                raise ValueError(f"WindowView: shard count must be a positive integer, got {count!r}")
+            if not (isinstance(index, int) and 0 <= index < count):
+                raise ValueError(f"WindowView: shard index must be in [0, {count}), got {index!r}")
+        self.shard = shard
 
         assert isinstance(self.start_date, datetime.datetime)
         assert isinstance(self.end_date, datetime.datetime)
@@ -108,6 +124,7 @@ class WindowView:
             end_date=self.end_date,
             frequency=self.frequency,
             window=self.window,
+            shard=self.shard,
         )
 
     def set_end(self, end: datetime.datetime) -> "WindowView":
@@ -130,6 +147,7 @@ class WindowView:
             end_date=as_last_date(end, None, frequency=self.frequency),
             frequency=self.frequency,
             window=self.window,
+            shard=self.shard,
         )
 
     def set_frequency(self, frequency: str | int | datetime.timedelta) -> "WindowView":
@@ -151,6 +169,7 @@ class WindowView:
             end_date=self.end_date,
             frequency=frequency,
             window=self.window,
+            shard=self.shard,
         )
 
     def set_window(self, window: str | Window) -> "WindowView":
@@ -172,6 +191,41 @@ class WindowView:
             end_date=self.end_date,
             frequency=self.frequency,
             window=window,
+            shard=self.shard,
+        )
+
+    def _internal_set_shard(self, index: int, count: int) -> "WindowView":
+        """Return a new WindowView that exposes only one shard of each window.
+
+        Each window's rows are partitioned into ``count`` contiguous,
+        non-overlapping pieces; the returned view yields only piece ``index``.
+
+        Parameters
+        ----------
+        index : int
+            The shard index, in ``[0, count)``.
+        count : int
+            The total number of shards.
+
+        Returns
+        -------
+        WindowView
+            A new WindowView restricted to the requested shard.
+
+        Raises
+        ------
+        ValueError
+            If this view is already sharded (sharding cannot be chained).
+        """
+        if self.shard is not None:
+            raise ValueError(f"WindowView: sharding cannot be chained (already sharded with {self.shard})")
+        return WindowView(
+            store=self.store,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            frequency=self.frequency,
+            window=self.window,
+            shard=(index, count),
         )
 
     @cached_property
@@ -201,6 +255,56 @@ class WindowView:
             last_index += 1
 
         return last_index + 1
+
+    # ------------------------------------------------------------------
+    # Sharding introspection
+    #
+    # These describe how each window's rows are (or would be) partitioned
+    # across shards. They depend only on the *unsharded* window sizes and the
+    # number of shards, so they are identical on every shard of the same view
+    # and never read the data itself (only the date index).
+    # ------------------------------------------------------------------
+
+    @property
+    def shard_index(self) -> int | None:
+        """The index of this shard, or ``None`` if the view is not sharded."""
+        return self.shard[0] if self.shard is not None else None
+
+    @property
+    def num_shards(self) -> int:
+        """The number of shards (``1`` if the view is not sharded)."""
+        return self.shard[1] if self.shard is not None else 1
+
+    @cached_property
+    def unsharded_sizes(self) -> np.ndarray:
+        """Row count of every window in the *unsharded* dataset.
+
+        One entry per window; ``unsharded_sizes[n]`` is the number of rows
+        window ``n`` holds before sharding. Computed from the date index only.
+        """
+        sizes = np.empty(self._len, dtype=np.int64)
+        for i in range(self._len):
+            range_slice = self._slice(i)
+            sizes[i] = range_slice.stop - range_slice.start
+        return sizes
+
+    @cached_property
+    def shard_sizes(self) -> np.ndarray:
+        """Row counts per shard per window, shaped ``(num_shards, num_windows)``.
+
+        ``shard_sizes[i, n]`` is the number of rows shard ``i`` holds for
+        window ``n``. Columns sum to :attr:`unsharded_sizes`.
+        """
+        n = self.num_shards
+        sizes = self.unsharded_sizes
+        # bounds[i, n] = sizes[n] * i // num_shards, for i in 0..num_shards
+        bounds = np.stack([(sizes * i) // n for i in range(n + 1)], axis=0)
+        return bounds[1:] - bounds[:-1]
+
+    @property
+    def total_size(self) -> int:
+        """Total number of rows in the *unsharded* dataset across all windows."""
+        return int(self.unsharded_sizes.sum())
 
     def __getitem__(self, index: Any) -> np.ndarray:
         """Retrieve the data for the specified window index, applying window boundaries and filtering.
@@ -287,6 +391,24 @@ class WindowView:
             # We should be in control here
             raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
 
+    def _apply_shard(self, range_slice: slice) -> slice:
+        """Narrow a window's row range to the configured shard.
+
+        The ``[start, stop)`` range is partitioned into ``count`` contiguous,
+        non-overlapping pieces that exactly cover the original range, and the
+        slice for piece ``index`` is returned. Returns ``range_slice`` unchanged
+        when no shard is configured.
+        """
+        if self.shard is None:
+            return range_slice
+
+        index, count = self.shard
+        start, stop = range_slice.start, range_slice.stop
+        total = stop - start
+        lo = start + (total * index) // count
+        hi = start + (total * (index + 1)) // count
+        return slice(lo, hi)
+
     def _getitem_int(self, index: any) -> np.ndarray:
 
         def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
@@ -300,7 +422,7 @@ class WindowView:
                 ),
             )
 
-        range_slice = self._slice(index)
+        range_slice = self._apply_shard(self._slice(index))
 
         try:
             # Find the boundaries in the date_indexing for the window
@@ -350,7 +472,7 @@ class WindowView:
         """
         return (
             f"WindowView(start_date={self.start_date}, end_date={self.end_date}, "
-            f"frequency={self.frequency}, window={self.window})"
+            f"frequency={self.frequency}, window={self.window}, shard={self.shard})"
         )
 
     @cached_property
