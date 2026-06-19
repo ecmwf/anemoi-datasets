@@ -212,15 +212,6 @@ class GriddedZarr(ZarrStore):
         """Return the end date of the statistics."""
         return self.dates[-1]
 
-    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
-        """Return the specific metadata of the dataset."""
-        return super().metadata_specific(
-            attrs=dict(self.store.attrs),
-            chunks=self.chunks,
-            dtype=str(self.dtype),
-            path=self.path,
-        )
-
     def source(self, index: int) -> Source:
         """Return the source of the dataset."""
         return Source(self, index, info=self.path)

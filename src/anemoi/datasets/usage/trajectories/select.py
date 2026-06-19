@@ -12,10 +12,10 @@ import datetime
 import logging
 from typing import Any
 
-from anemoi.utils.dates import frequency_to_string
 from numpy.typing import NDArray
 
 from ..gridded.select import Select as GriddedSelect
+from .metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -54,47 +54,9 @@ class Select(GriddedSelect):
         return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
-        """Return this wrapper's node of the recursive construction tree.
-
-        Override of the shared implementation only to avoid resolving
-        ``self.frequency`` (trajectory datasets have two frequencies:
-        ``base_frequency`` and ``step_frequency``).
-        """
-        action = self.__class__.__name__.lower()
-        step_freq = self.step_frequency
-        return dict(
-            action=action,
-            variables=self.variables,
-            shape=self.shape,
-            base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(step_freq) if step_freq is not None else None,
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            forward=self.forward.metadata_specific(),
-            **self.forwards_subclass_metadata_specific(),
-            **kwargs,
-        )
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
 
     def dataset_metadata(self) -> dict[str, Any]:
-        """Return the flat summary of the resulting dataset.
-
-        Override of the shared implementation only to avoid resolving
-        ``self.frequency`` (trajectory datasets have two frequencies:
-        ``base_frequency`` and ``step_frequency``).
-        """
-        return dict(
-            specific=self.metadata_specific(),
-            base_frequency=self.base_frequency,
-            step_frequency=self.step_frequency,
-            variables=self.variables,
-            variables_metadata=self.variables_metadata,
-            shape=self.shape,
-            dtype=str(self.dtype),
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            name=self.name,
-        )
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md
