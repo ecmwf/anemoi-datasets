@@ -50,6 +50,7 @@ dependencies = [
   "numcodecs<0.16",        # Until we move to zarr3
   "numpy",
   "pint",
+  "psutil",
   "pydantic",
   "pyodc>=1.6",
   "pyyaml",
