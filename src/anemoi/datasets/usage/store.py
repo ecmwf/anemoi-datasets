@@ -300,6 +300,7 @@ class ZarrStore(Dataset):
             chunks=self.chunks,
             dtype=str(self.dtype),
             path=self.path,
+            **kwargs,
         )
 
     def source(self, index: int) -> Source:
