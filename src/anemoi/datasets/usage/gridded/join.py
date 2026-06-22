@@ -30,6 +30,7 @@ from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -329,7 +330,7 @@ class Join(Combined):
         return projection.list_or_single(result)
 
 
-def join_factory(args: tuple, kwargs: dict) -> Dataset:
+def join_factory(args: tuple, kwargs: dict, options: Options) -> Dataset:
     """Create a joined dataset.
 
     Parameters
@@ -338,6 +339,8 @@ def join_factory(args: tuple, kwargs: dict) -> Dataset:
         The positional arguments.
     kwargs : dict
         The keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -350,11 +353,11 @@ def join_factory(args: tuple, kwargs: dict) -> Dataset:
 
     assert isinstance(datasets, (list, tuple))
 
-    datasets = [_open(e) for e in datasets]
+    datasets = [_open(e, options) for e in datasets]
 
     if len(datasets) == 1:
         return datasets[0]._subset(**kwargs)
 
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Join(datasets)._overlay()._subset(**kwargs)
+    return Join(datasets, options)._overlay()._subset(**kwargs)

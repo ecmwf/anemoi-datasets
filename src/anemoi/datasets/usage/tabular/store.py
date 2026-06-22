@@ -18,6 +18,7 @@ import zarr
 from numpy.typing import NDArray
 
 from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.store import ZarrStore
 from anemoi.datasets.windows.view import WindowView
 
@@ -25,8 +26,8 @@ LOG = logging.getLogger(__name__)
 
 
 class TabularZarr(ZarrStore):
-    def __init__(self, group: zarr.Group, path: str = None) -> None:
-        super().__init__(group, path=path)
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
+        super().__init__(group, path=path, options=options)
 
         self._window_view = WindowView(self.store)
         self._skip_columns = 4  # TODO: We should not hardcode this

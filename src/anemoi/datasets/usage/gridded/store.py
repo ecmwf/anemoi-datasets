@@ -28,6 +28,7 @@ from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.options import Options
 
 from ..store import ZarrStore
 
@@ -37,8 +38,8 @@ LOG = logging.getLogger(__name__)
 class GriddedZarr(ZarrStore):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.Group, path: str = None) -> None:
-        super().__init__(group, path=path)
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
+        super().__init__(group, path=path, options=options)
         self._missing = set()
 
     @property
