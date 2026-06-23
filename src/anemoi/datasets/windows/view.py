@@ -290,16 +290,16 @@ class WindowView:
 
     @cached_property
     def shard_sizes(self) -> np.ndarray:
-        """Row counts per shard per window, shaped ``(num_shards, num_windows)``.
+        """Row counts per window per shard, shaped ``(num_windows, num_shards)``.
 
-        ``shard_sizes[i, n]`` is the number of rows shard ``i`` holds for
-        window ``n``. Columns sum to :attr:`unsharded_sizes`.
+        ``shard_sizes[n, i]`` is the number of rows shard ``i`` holds for
+        window ``n``. Rows sum to :attr:`unsharded_sizes` (``sum(axis=1)``).
         """
         n = self.num_shards
         sizes = self.unsharded_sizes
-        # bounds[i, n] = sizes[n] * i // num_shards, for i in 0..num_shards
-        bounds = np.stack([(sizes * i) // n for i in range(n + 1)], axis=0)
-        return bounds[1:] - bounds[:-1]
+        # bounds[n, i] = sizes[n] * i // num_shards, for i in 0..num_shards
+        bounds = np.stack([(sizes * i) // n for i in range(n + 1)], axis=1)
+        return bounds[:, 1:] - bounds[:, :-1]
 
     @property
     def total_size(self) -> int:

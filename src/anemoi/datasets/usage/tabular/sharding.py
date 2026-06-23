@@ -67,7 +67,7 @@ class ShardedTabular(Sequence):
 
     @property
     def shard_sizes(self) -> NDArray:
-        """Per-shard, per-window row counts, shaped ``(num_shards, num_windows)``."""
+        """Per-window, per-shard row counts, shaped ``(num_windows, num_shards)``."""
         return self._shards[0].shard_sizes
 
     @property

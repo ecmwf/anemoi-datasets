@@ -387,11 +387,11 @@ collection returned by ``sharding``):
 .. code:: python
 
    shards.unsharded_sizes  # rows per window in the unsharded dataset
-   shards.shard_sizes      # rows per shard per window, shape (N, n_windows)
+   shards.shard_sizes      # rows per window per shard, shape (n_windows, N)
    shards.total_size       # total number of rows across all windows
 
-   # The columns of shard_sizes sum to the unsharded sizes:
-   assert np.array_equal(shards.shard_sizes.sum(axis=0), shards.unsharded_sizes)
+   # The rows of shard_sizes sum to the unsharded sizes:
+   assert np.array_equal(shards.shard_sizes.sum(axis=1), shards.unsharded_sizes)
 
 When a shard is indexed, the resulting array carries two boundary
 attributes. As for any tabular slice, ``boundaries`` gives the per-window

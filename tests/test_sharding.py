@@ -188,13 +188,13 @@ def test_unsharded_sizes_and_shard_sizes(tabular_store):
     assert ds.total_size == int(unsharded.sum())
 
     # An unsharded dataset is a single shard.
-    assert ds.shard_sizes.shape == (1, len(ds))
-    np.testing.assert_array_equal(ds.shard_sizes[0], unsharded)
+    assert ds.shard_sizes.shape == (len(ds), 1)
+    np.testing.assert_array_equal(ds.shard_sizes[:, 0], unsharded)
 
     # The N-way table is known to the shards / container.
     shard_sizes = shards.shard_sizes
-    assert shard_sizes.shape == (COUNT, len(ds))
-    np.testing.assert_array_equal(shard_sizes.sum(axis=0), unsharded)
+    assert shard_sizes.shape == (len(ds), COUNT)
+    np.testing.assert_array_equal(shard_sizes.sum(axis=1), unsharded)
 
     # Every shard reports the same global tables.
     for s in shards:
@@ -203,11 +203,11 @@ def test_unsharded_sizes_and_shard_sizes(tabular_store):
         assert s.total_size == ds.total_size
     assert shards.total_size == ds.total_size
 
-    # Each shard's actual row count per window matches shard_sizes[i].
+    # Each shard's actual row count per window matches shard_sizes[:, i].
     for i, s in enumerate(shards):
         np.testing.assert_array_equal(
             [s[n].shape[0] for n in range(len(s))],
-            shard_sizes[i],
+            shard_sizes[:, i],
         )
 
 

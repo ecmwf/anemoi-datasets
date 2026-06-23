@@ -129,7 +129,7 @@ class Dataset(ABC, Sized):
 
     @property
     def shard_sizes(self) -> NDArray[Any]:
-        """Per-shard, per-window row counts (tabular only)."""
+        """Per-window, per-shard row counts, shaped ``(num_windows, num_shards)`` (tabular only)."""
         raise NotImplementedError("sharding sizes are only available for tabular datasets")
 
     @property
