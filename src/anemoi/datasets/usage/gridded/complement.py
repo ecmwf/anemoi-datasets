@@ -25,6 +25,7 @@ from ..debug import Node
 from ..forwards import Combined
 from ..misc import _auto_adjust
 from ..misc import _open_dataset
+from ..options import Options
 from .indexing import apply_index_to_slices_changes
 from .indexing import expand_list_indexing
 from .indexing import index_to_slices
@@ -51,6 +52,7 @@ class Complement(Combined):
         self,
         target: Dataset,
         source: Dataset,
+        options: Options,
         what: str = "variables",
         interpolation: str = "nearest",
     ) -> None:
@@ -62,12 +64,14 @@ class Complement(Combined):
             The target dataset.
         source : Dataset
             The source dataset.
+        options : Options
+            Options for the combined dataset.
         what : str, optional
             What to complement, default is "variables".
         interpolation : str, optional
             Interpolation method, default is "nearest".
         """
-        super().__init__([target, source])
+        super().__init__([target, source], options)
 
         # We had the variables of dataset[1] to dataset[0]
         # interpoated on the grid of dataset[0]
@@ -213,7 +217,7 @@ class Complement(Combined):
 class ComplementNone(Complement):
     """A class to complement a target dataset with variables from a source dataset without interpolation."""
 
-    def __init__(self, target: Any, source: Any) -> None:
+    def __init__(self, target: Any, source: Any, options: Options) -> None:
         """Initializes the ComplementNone class.
 
         Parameters
@@ -222,8 +226,10 @@ class ComplementNone(Complement):
             The target dataset.
         source : Any
             The source dataset.
+        options : Options
+            Options for the combined dataset.
         """
-        super().__init__(target, source)
+        super().__init__(target, source, options)
 
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
@@ -247,7 +253,7 @@ class ComplementNone(Complement):
 class ComplementNearest(Complement):
     """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
-    def __init__(self, target: Any, source: Any, max_distance: float = None, k: int = 1) -> None:
+    def __init__(self, target: Any, source: Any, options: Options, max_distance: float = None, k: int = 1) -> None:
         """Initializes the ComplementNearest class.
 
         Parameters
@@ -256,12 +262,14 @@ class ComplementNearest(Complement):
             The target dataset.
         source : Any
             The source dataset.
+        options : Options
+            Options for the combined dataset.
         max_distance : float, optional
             The maximum distance for nearest neighbor interpolation, default is None.
         k : int, optional
             The number of k closest neighbors to consider for interpolation
         """
-        super().__init__(target, source)
+        super().__init__(target, source, options)
 
         self.k = k
         self._nearest_grid_points, self._distances = nearest_grid_points(
@@ -336,7 +344,7 @@ class ComplementNearest(Complement):
         return apply_index_to_slices_changes(result, changes)
 
 
-def complement_factory(args: tuple, kwargs: dict) -> Dataset:
+def complement_factory(args: tuple, kwargs: dict, options: Options) -> Dataset:
     """Factory function to create a Complement instance based on the provided arguments.
 
     Parameters
@@ -345,6 +353,8 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -365,8 +375,8 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
     if interpolation not in ("none", "nearest"):
         raise NotImplementedError(f"Complement method={interpolation} not implemented")
 
-    source = _open_dataset(source)
-    target = _open_dataset(target)
+    source = _open_dataset(source, options=options)
+    target = _open_dataset(target, options=options)
     # `select` is the same as `variables`
     (source, target), kwargs = _auto_adjust([source, target], kwargs, exclude=["select"])
 
@@ -379,11 +389,13 @@ def complement_factory(args: tuple, kwargs: dict) -> Dataset:
     if interpolation == "nearest":
         k = kwargs.pop("k", 1)
         max_distance = kwargs.pop("max_distance", None)
-        complement = Class(target=target, source=source, k=k, max_distance=max_distance)._subset(**kwargs)
+        complement = Class(target=target, source=source, options=options, k=k, max_distance=max_distance)._subset(
+            **kwargs
+        )
 
     else:
-        complement = Class(target=target, source=source)._subset(**kwargs)
+        complement = Class(target=target, source=source, options=options)._subset(**kwargs)
 
-    joined = _open_dataset([target, complement])
+    joined = _open_dataset([target, complement], options=options)
 
-    return _open_dataset(joined, reorder=sorted(joined.variables))
+    return _open_dataset(joined, reorder=sorted(joined.variables), options=options)
