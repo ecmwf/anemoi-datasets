@@ -8,38 +8,17 @@
 # nor does it submit to any jurisdiction.
 
 
-from typing import Any
-
-import earthkit.data as ekd
-
 from . import source_registry
-from .legacy import LegacySource
-from .xarray import load_many
+from .xarray import XarraySourceBase
 
 
 @source_registry.register("netcdf")
-class NetCDFSource(LegacySource):
+class NetCDFSource(XarraySourceBase):
+    """Read fields from NetCDF files (one ``path``, or a ``{date}`` pattern).
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-        """Execute the loading of multiple NetCDF files.
+    Supports both the analysis layout and the trajectory layout (where each
+    file is one forecast run, located from its basetime); see
+    :class:`XarraySourceBase`.
+    """
 
-        Parameters
-        ----------
-        context : object
-            The context in which the function is executed.
-        dates : list
-            List of dates for which data is to be loaded.
-        path : str
-            Path to the directory containing the NetCDF files.
-        *args : tuple
-            Additional positional arguments.
-        **kwargs : dict
-            Additional keyword arguments.
-
-        Returns
-        -------
-        object
-            The loaded data.
-        """
-        return load_many("📁", context, dates, path, *args, **kwargs)
+    emoji = "📁"

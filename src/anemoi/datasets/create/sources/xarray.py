@@ -14,15 +14,22 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 from ..source import Source
+from . import source_registry
 from .xarray_support import XarrayFieldList
 from .xarray_support import load_many
+from .xarray_support import load_many_forecast
 from .xarray_support import load_one
 
-__all__ = ["load_many", "load_one", "XarrayFieldList"]
+__all__ = ["load_many", "load_many_forecast", "load_one", "XarrayFieldList"]
 
 
 class XarraySourceBase(Source):
-    """An Xarray base data source, intended to be subclassed."""
+    """An Xarray base data source, intended to be subclassed.
+
+    Handles both the analysis layout (``execute_valid_dates``) and the
+    trajectory layout (``execute_forecast_dates``): in the latter the file is
+    selected from the forecast basetime and the step is recovered per field.
+    """
 
     emoji = "✖️"  # For tracing
 
@@ -39,20 +46,36 @@ class XarraySourceBase(Source):
         ----------
         context : Any
             The context for the data source.
+        path : str, optional
+            Path (or ``{date}`` pattern) to the dataset; mutually exclusive
+            with ``url``.
+        url : str, optional
+            URL (or ``{date}`` pattern) to the dataset; mutually exclusive
+            with ``path``.
         *args : Any
             Additional positional arguments.
         **kwargs : Any
-            Additional keyword arguments.
+            Additional keyword arguments; field-selection criteria (e.g.
+            ``param``) are forwarded to the loader.
         """
-        super().__init__(context, *args, **kwargs)
-
         if path is not None and url is not None:
             raise ValueError("Cannot specify both path and url")
 
         if path is not None:
             self.path_or_url = path
-        else:
+        elif url is not None:
             self.path_or_url = url
+
+        # ``options``, ``flavour`` and ``patch`` are xarray-specific knobs that
+        # some recipes set directly. Pull them out of kwargs (falling back to
+        # any subclass class-level default) so they do not collide with the
+        # explicit keyword arguments passed to the loaders; the rest of kwargs
+        # is forwarded as field-selection criteria.
+        self.options = kwargs.pop("options", self.options)
+        self.flavour = kwargs.pop("flavour", self.flavour)
+        self.patch = kwargs.pop("patch", self.patch)
+
+        super().__init__(context, *args, **kwargs)
 
         self.args = args
         self.kwargs = kwargs
@@ -70,15 +93,40 @@ class XarraySourceBase(Source):
         ekd.FieldList
             The loaded data fields.
         """
-
-        # For now, just a simple wrapper around load_many
-        # TODO: move the implementation here
-
         return load_many(
             self.emoji,
             self.context,
             dates,
-            pattern=self.path_or_url,
+            self.path_or_url,
+            options=self.options,
+            flavour=self.flavour,
+            patch=self.patch,
+            **self.kwargs,
+        )
+
+    def execute_forecast_dates(self, dates: Any) -> ekd.FieldList:
+        """Load forecast fields for the trajectory layout.
+
+        Each ``(valid_time, basetime)`` pair is resolved against a dataset
+        located by substituting the basetime into the ``path``/``url`` pattern;
+        the requested validity times are then selected within each dataset and
+        tagged with forecast ``date``/``time``/``step`` metadata.
+
+        Parameters
+        ----------
+        dates : ForecastDates
+            The ``(valid_time, basetime)`` pairs for this group.
+
+        Returns
+        -------
+        ekd.FieldList
+            The loaded forecast fields.
+        """
+        return load_many_forecast(
+            self.emoji,
+            self.context,
+            dates,
+            self.path_or_url,
             options=self.options,
             flavour=self.flavour,
             patch=self.patch,
@@ -86,5 +134,8 @@ class XarraySourceBase(Source):
         )
 
 
+@source_registry.register("xarray")
 class XarraySource(XarraySourceBase):
-    pass
+    """Read fields from any xarray-openable dataset (one path/url or a ``{date}`` pattern)."""
+
+    emoji = "🌐"

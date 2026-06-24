@@ -17,8 +17,6 @@ from earthkit.data.core.fieldlist import MultiFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 
-from .. import source_registry
-from ..legacy import LegacySource
 from .fieldlist import XarrayFieldList
 
 LOG = logging.getLogger(__name__)
@@ -165,30 +163,73 @@ def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern:
     return MultiFieldList(result)
 
 
-@source_registry.register("xarray")
-class LegacyXarraySource(LegacySource):
-    name = "xarray"
+def load_many_forecast(
+    emoji: str,
+    context: Any,
+    forecast_dates: Any,
+    path: str,
+    **kwargs: Any,
+) -> ekd.FieldList:
+    """Load forecast fields for a list of ``(valid_time, basetime)`` pairs.
 
-    @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
-        """Executes the loading of datasets.
+    Used by the trajectory layout, where each file holds one forecast run.  The
+    file is located by substituting the forecast basetime into the
+    ``{base_date}`` placeholder of *path* (distinct from ``{date}``, which is the
+    validity time used by the analysis layout), and the requested validity times
+    are selected within that file.  Each returned field's ``date``/``time``/
+    ``step`` metadata is rewritten to describe the forecast (base date and time,
+    step in hours), so the trajectory creator can place it on the
+    ``(basetime, step)`` grid.
 
-        Parameters
-        ----------
-        context : Any
-            Context object.
-        dates : List[str]
-            List of dates.
-        url : str
-            URL pattern for loading datasets.
-        *args : Any
-            Additional arguments.
-        **kwargs : Any
-            Additional keyword arguments.
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    forecast_dates : ForecastDates
+        Iterable of ``(valid_time, basetime)`` pairs.
+    path : str
+        Path pattern; the ``{base_date}`` placeholder is filled with the
+        forecast basetime, e.g. ``.../{base_date:strftime(%Y%m%dT%H)}Z.nc``.
+    **kwargs : Any
+        Additional keyword arguments forwarded to :func:`load_one` (e.g.
+        ``param``, ``options``, ``flavour``, ``patch``).
 
-        Returns
-        -------
-        ekd.FieldList
-            The loaded datasets.
-        """
-        return load_many("🌐", context, dates, url, *args, **kwargs)
+    Returns
+    -------
+    ekd.FieldList
+        The forecast fields, with forecast-aware ``date``/``time``/``step``.
+    """
+    from collections import defaultdict
+
+    from anemoi.transform.fields import new_field_with_metadata
+    from anemoi.transform.fields import new_fieldlist_from_list
+    from anemoi.utils.dates import as_datetime
+
+    # One file per basetime: group the requested validity times accordingly.
+    by_basetime: dict[Any, list[Any]] = defaultdict(list)
+    for valid_time, basetime in forecast_dates:
+        by_basetime[as_datetime(basetime)].append(as_datetime(valid_time))
+
+    fields: list[Any] = []
+    for basetime, valid_times in by_basetime.items():
+        valid_iso = [v.isoformat() for v in valid_times]
+        # The file is keyed by the forecast basetime (``{base_date}``); the
+        # validity times are what we select *inside* the file. ``dates`` is
+        # left empty so no ``{date}`` (validity-time) substitution is implied.
+        for resolved_path, _ in iterate_patterns(path, [], base_date=basetime, **kwargs):
+            loaded = load_one(emoji, context, valid_iso, resolved_path, **kwargs)
+            for field in loaded:
+                valid_time = as_datetime(field.metadata("valid_datetime"))
+                step_hours = round((valid_time - basetime).total_seconds() / 3600.0)
+                fields.append(
+                    new_field_with_metadata(
+                        field,
+                        date=int(basetime.strftime("%Y%m%d")),
+                        time=int(basetime.strftime("%H%M")),
+                        step=int(step_hours),
+                    )
+                )
+
+    return new_fieldlist_from_list(fields)
