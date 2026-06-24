@@ -200,9 +200,14 @@ class Recipe(BaseModel):
         if isinstance(self.output, TrajectoriesOutput):
             from anemoi.datasets.dates.groups import TrajectoryGroups
 
+            # The trajectories layout (tabular and gridded) defaults to
+            # group_by=1 (one trajectory per group), unless the recipe sets it
+            # explicitly.
+            group_by = self.build.group_by if "group_by" in self.build.model_fields_set else 1
+
             return TrajectoryGroups(
                 steps=self.steps,
-                group_by=self.build.group_by,
+                group_by=group_by,
                 base_dates=self.base_dates,
             )
 
