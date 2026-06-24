@@ -202,6 +202,13 @@ class Steps(BaseModel):
     def _check_range(self) -> "Steps":
         if self.frequency <= datetime.timedelta(0):
             raise ValueError(f"'steps.frequency' must be positive, got {self.frequency}")
+        # Step 0 (the basetime itself) is not a forecast lead time and is not
+        # supported for the 'trajectories' layout; steps must be strictly
+        # positive.
+        if self.start <= datetime.timedelta(0):
+            raise ValueError(
+                f"'steps.start' must be > 0 for the 'trajectories' layout, " f"got {frequency_to_string(self.start)}"
+            )
         if self.end < self.start:
             raise ValueError(f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})")
         if (self.end - self.start) % self.frequency != datetime.timedelta(0):
