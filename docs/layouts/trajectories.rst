@@ -74,6 +74,9 @@ can be used at the leaves of a trajectory recipe. Today this means:
 
 -  :ref:`mars <sources-mars>` — full forecast and forecast-accumulation
    support.
+-  ``netcdf`` (and the other xarray-based sources) — one file per forecast
+   run, selected from the basetime via the ``{base_date}`` path placeholder;
+   forecast-accumulation support via ``accumulate`` with ``source_period``.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
    the ``accumulation: from-zero | from-previous-step`` flag; see below.
 
@@ -93,11 +96,38 @@ accumulation fields anchored on the caller-imposed basetime. The
    (``a(0, step)``). The window ``[bt+sA, bt+sE]`` is reconstructed as
    ``+a(0, sE) − a(0, sA)``.
 -  ``from-previous-step`` — the archive stores per-step increments
-   (``a(step − period, step)``). The window is a single interval.
+   (``a(step − period, step)``). The window is a single interval, unless
+   ``source_period`` is set (see below).
 
 The ``covering:`` key used for archive accumulations is **not** used
 here: the covering is determined entirely by the basetime and the
 ``accumulation`` flag.
+
+When the source stores increments **finer** than the output ``period`` —
+e.g. a NetCDF source with hourly increments but a 2 h output step — set
+``source_period`` to that native increment. With ``from-previous-step`` the
+window is then summed from the ``source_period``-long increments tiling it
+(``source_period`` must divide ``period``; it defaults to ``period``, a single
+interval). This is how a NetCDF source whose files hold 1 h accumulations is
+re-accumulated to a 2 h trajectory step:
+
+.. code:: yaml
+
+   - accumulate:
+       period: 2h
+       source_period: 1h
+       accumulation: from-previous-step
+       source:
+         netcdf:
+           path: /path/{base_date:strftime(%Y%m%dT%H)}Z.nc
+           param: [tp, ssrd, strd]
+
+``accumulation: from-zero`` is **rejected** for xarray/NetCDF sources (they
+serve per-step increments, not cumulative ``a(0, step)`` fields). Several
+``accumulate`` blocks with different ``period`` values can be joined in one
+recipe (each renamed to a distinct variable); note the accumulation window may
+not straddle the basetime, so the smallest ``steps.start`` must be ``>=`` the
+largest ``period``.
 
 .. code:: yaml
 

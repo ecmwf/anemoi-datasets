@@ -8,76 +8,79 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import logging
 from typing import Any
 
-import numpy as np
+from anemoi.transform.fields import new_field_from_numpy
+from anemoi.transform.fields import new_field_with_valid_datetime
+from numpy.typing import NDArray
 
-LOG = logging.getLogger(__name__)
 
-
-def write_accumulated_field_with_valid_time(
-    template, values, valid_date: datetime.datetime, period: datetime.timedelta, output
+def build_accumulated_field_with_valid_time(
+    template: Any, values: NDArray, valid_date: datetime.datetime, period: datetime.timedelta
 ) -> Any:
-    MISSING_VALUE = 1e-38
-    assert np.all(values != MISSING_VALUE)
+    """Build an in-memory accumulated field stamped with its validity time.
 
-    date = (valid_date - period).strftime("%Y%m%d")
-    time = (valid_date - period).strftime("%H%M")
-    endStep = period
-
-    hours = endStep.total_seconds() / 3600
-    if hours != int(hours):
-        raise ValueError(f"Accumulation period must be integer hours, got {hours}")
-    hours = int(hours)
-
-    if template.metadata("edition") == 1:
-        # this is a special case for GRIB edition 1 which only supports integer hours up to 254
-        assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
-        output.write(
-            values,
-            template=template,
-            date=int(date),
-            time=int(time),
-            stepType="instant",
-            step=hours,
-            check_nans=True,
-            missing_value=MISSING_VALUE,
-        )
-    else:
-        # this is the normal case for GRIB edition 2. And with edition 1 when hours are integer and <=254
-        output.write(
-            values,
-            template=template,
-            date=int(date),
-            time=int(time),
-            stepType="accum",
-            startStep=0,
-            endStep=hours,
-            check_nans=True,
-            missing_value=MISSING_VALUE,
-        )
-
-
-def write_accumulated_forecast_field(
-    template,
-    values,
-    basetime: datetime.datetime,
-    valid_date: datetime.datetime,
-    period: datetime.timedelta,
-    output,
-) -> None:
-    """Write an accumulated forecast field stamped with the basetime.
-
-    Unlike :func:`write_accumulated_field_with_valid_time`, the output
-    field's ``date``/``time`` keys are the model-run basetime (so the
-    trajectory loader can recover ``(basetime, step)`` from metadata)
-    and the step is the offset from the basetime to the validity time.
+    The field's ``date``/``time`` keys are the window start (``valid_date −
+    period``) and the step is the accumulation period, so the field's valid time
+    is ``valid_date``. Used by the archive (validity-date) accumulation path.
 
     Parameters
     ----------
     template
-        Field used as GRIB template (header + grid).
+        Field providing the grid and the param/level/number metadata.
+    values
+        Accumulated values array.
+    valid_date
+        Validity time at the end of the accumulation window.
+    period
+        Length of the accumulation window.
+
+    Returns
+    -------
+    Any
+        A new field carrying *values*, the template's geography, and the
+        accumulation metadata.
+    """
+    base = valid_date - period
+    hours = period.total_seconds() / 3600
+    if hours != int(hours):
+        raise ValueError(f"Accumulation period must be integer hours, got {hours}")
+    hours = int(hours)
+
+    field = new_field_from_numpy(
+        values,
+        template=template,
+        date=int(base.strftime("%Y%m%d")),
+        time=int(base.strftime("%H%M")),
+        step=hours,
+        startStep=0,
+        endStep=hours,
+        stepType="accum",
+        # The cube builder reads ``stepTypeForConversion`` (not ``stepType``) to
+        # classify the field as an accumulation over [startStep, endStep].
+        stepTypeForConversion="accum",
+    )
+    return new_field_with_valid_datetime(field, valid_date)
+
+
+def build_accumulated_forecast_field(
+    template: Any,
+    values: NDArray,
+    basetime: datetime.datetime,
+    valid_date: datetime.datetime,
+    period: datetime.timedelta,
+) -> Any:
+    """Build an in-memory accumulated forecast field stamped with the basetime.
+
+    Unlike :func:`build_accumulated_field_with_valid_time`, the output field's
+    ``date``/``time`` keys are the model-run basetime (so the trajectory loader
+    can recover ``(basetime, step)`` from metadata) and the step is the offset
+    from the basetime to the validity time.
+
+    Parameters
+    ----------
+    template
+        Field providing the grid and the param/level/number metadata.
     values
         Accumulated values array.
     basetime
@@ -86,12 +89,13 @@ def write_accumulated_forecast_field(
         Validity time at the end of the accumulation window.
     period
         Length of the accumulation window.
-    output
-        ``new_grib_output`` writer.
-    """
-    MISSING_VALUE = 1e-38
-    assert np.all(values != MISSING_VALUE)
 
+    Returns
+    -------
+    Any
+        A new field carrying *values*, the template's geography, and the
+        forecast accumulation metadata.
+    """
     end_step = (valid_date - basetime).total_seconds() / 3600
     start_step = (valid_date - basetime - period).total_seconds() / 3600
     if not (end_step.is_integer() and start_step.is_integer()):
@@ -99,38 +103,22 @@ def write_accumulated_forecast_field(
     end_step = int(end_step)
     start_step = int(start_step)
 
-    date = int(basetime.strftime("%Y%m%d"))
-    time = int(basetime.strftime("%H%M"))
-
-    # Encode as an accumulation over [startStep, endStep] in the template's own
-    # edition. GRIB1 stores this as timeRangeIndicator=4 with P1=startStep,
-    # P2=endStep; GRIB2 as stepType=accum with startStep/endStep. Both keep the
-    # lead time (``step`` == endStep) so the trajectory loader can recover
-    # (basetime, step), while the accumulation period stays recoverable
-    # downstream. Writing an *instant* field instead would collapse the window
-    # and make the period unrecoverable.
-    #
-    # GRIB1 stores P1/P2 as single octets (<=255) counted in the hour time unit.
-    # (Coarser units would extend the range but only for steps divisible by them;
-    # we keep it simple and require hour-resolution offsets within the octet.)
-    # Steps are integer hours here, so the binding limit is endStep <= 255 h
-    # (~10.6 days). Fail early with a clear message rather than letting
-    # output.write raise an opaque WrongStepError.
-    if template.metadata("edition") == 1 and end_step > 255:
-        raise ValueError(
-            f"GRIB1 cannot encode an accumulation endStep of {end_step}h: P1/P2 are "
-            "single octets limited to 255 h. We would need to use a GRIB2 template for these lead times."
-            f"But we have the following template metadata: {template.metadata()}"
-        )
-
-    output.write(
+    # The forecast convention keeps ``date``/``time`` at the basetime and ``step``
+    # at the lead time, so the trajectory loader can recover ``(basetime, step)``.
+    # ``valid_datetime`` is set as a plain metadata override (rather than via
+    # ``new_field_with_valid_datetime``, which would rewrite date/time/step to the
+    # analysis convention, i.e. date/time = validity time and step = 0).
+    return new_field_from_numpy(
         values,
         template=template,
-        date=date,
-        time=time,
-        stepType="accum",
+        date=int(basetime.strftime("%Y%m%d")),
+        time=int(basetime.strftime("%H%M")),
+        step=end_step,
         startStep=start_step,
         endStep=end_step,
-        check_nans=True,
-        missing_value=MISSING_VALUE,
+        stepType="accum",
+        # The cube builder reads ``stepTypeForConversion`` (not ``stepType``) to
+        # classify the field as an accumulation over [startStep, endStep].
+        stepTypeForConversion="accum",
+        valid_datetime=valid_date,
     )

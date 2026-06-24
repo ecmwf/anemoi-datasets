@@ -18,9 +18,16 @@ from . import source_registry
 from .xarray_support import XarrayFieldList
 from .xarray_support import load_many
 from .xarray_support import load_many_forecast
+from .xarray_support import load_many_forecast_intervals
 from .xarray_support import load_one
 
-__all__ = ["load_many", "load_many_forecast", "load_one", "XarrayFieldList"]
+__all__ = [
+    "load_many",
+    "load_many_forecast",
+    "load_many_forecast_intervals",
+    "load_one",
+    "XarrayFieldList",
+]
 
 
 class XarraySourceBase(Source):
@@ -126,6 +133,34 @@ class XarraySourceBase(Source):
             self.emoji,
             self.context,
             dates,
+            self.path_or_url,
+            options=self.options,
+            flavour=self.flavour,
+            patch=self.patch,
+            **self.kwargs,
+        )
+
+    def execute_forecast_intervals(self, argument: Any) -> ekd.FieldList:
+        """Load source increment fields for forecast accumulation windows.
+
+        Used when ``AccumulateSource`` wraps this source in the trajectory
+        layout: each covering interval is served by the field at its validity
+        time, tagged with the interval metadata the accumulator needs.
+
+        Parameters
+        ----------
+        argument : ForecastIntervals
+            The accumulation intervals (``argument.intervals``).
+
+        Returns
+        -------
+        ekd.FieldList
+            The source increment fields.
+        """
+        return load_many_forecast_intervals(
+            self.emoji,
+            self.context,
+            argument.intervals,
             self.path_or_url,
             options=self.options,
             flavour=self.flavour,

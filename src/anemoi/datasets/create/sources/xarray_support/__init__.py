@@ -233,3 +233,89 @@ def load_many_forecast(
                 )
 
     return new_fieldlist_from_list(fields)
+
+
+def load_many_forecast_intervals(
+    emoji: str,
+    context: Any,
+    intervals: Any,
+    path: str,
+    **kwargs: Any,
+) -> ekd.FieldList:
+    """Load the source fields covering a set of forecast accumulation intervals.
+
+    Used by ``AccumulateSource`` (trajectory layout) when the inner source is
+    NetCDF: each :class:`SignedInterval` describes one increment ``[start, end]``
+    anchored on a basetime, and the field stored at validity time ``end`` carries
+    that increment. The returned fields are tagged with the GRIB-style
+    ``startStep``/``endStep``/``validityDate``/``validityTime`` (plus
+    ``date``/``time`` = basetime) that ``FieldToInterval`` reads to recover the
+    interval and match it to the accumulators.
+
+    Parameters
+    ----------
+    emoji : str
+        Emoji for tracing.
+    context : Any
+        Context object.
+    intervals : Iterable[SignedInterval]
+        Covering intervals (each with ``base``, ``start``, ``end``).
+    path : str
+        Path pattern; ``{base_date}`` is filled with the basetime.
+    **kwargs : Any
+        Additional keyword arguments forwarded to :func:`load_one`.
+
+    Returns
+    -------
+    ekd.FieldList
+        The source increment fields, tagged with interval metadata.
+    """
+    from collections import defaultdict
+
+    from anemoi.transform.fields import new_field_with_metadata
+    from anemoi.transform.fields import new_fieldlist_from_list
+    from anemoi.utils.dates import as_datetime
+
+    # Deduplicate intervals (the same increment can be requested by several
+    # targets) and group them by basetime (one file per run).
+    unique: dict[tuple, Any] = {}
+    for interval in intervals:
+        base = as_datetime(interval.base)
+        lo = as_datetime(interval.min)
+        hi = as_datetime(interval.max)
+        unique[(base, lo, hi)] = (base, lo, hi)
+
+    by_base: dict[Any, list[tuple]] = defaultdict(list)
+    for base, lo, hi in unique:
+        by_base[base].append((lo, hi))
+
+    fields: list[Any] = []
+    for base, windows in by_base.items():
+        valid_iso = [hi.isoformat() for _, hi in sorted(set((lo, hi) for lo, hi in windows))]
+        for resolved_path, _ in iterate_patterns(path, [], base_date=base, **kwargs):
+            loaded = load_one(emoji, context, valid_iso, resolved_path, **kwargs)
+
+            # Index the loaded fields by their validity time (several fields per
+            # time when multiple params/levels are selected).
+            by_valid: dict[Any, list[Any]] = defaultdict(list)
+            for field in loaded:
+                by_valid[as_datetime(field.metadata("valid_datetime"))].append(field)
+
+            for lo, hi in windows:
+                start_step = round((lo - base).total_seconds() / 3600.0)
+                end_step = round((hi - base).total_seconds() / 3600.0)
+                for field in by_valid.get(hi, []):
+                    fields.append(
+                        new_field_with_metadata(
+                            field,
+                            date=int(base.strftime("%Y%m%d")),
+                            time=int(base.strftime("%H%M")),
+                            step=int(end_step),
+                            startStep=int(start_step),
+                            endStep=int(end_step),
+                            validityDate=int(hi.strftime("%Y%m%d")),
+                            validityTime=int(hi.strftime("%H%M")),
+                        )
+                    )
+
+    return new_fieldlist_from_list(fields)

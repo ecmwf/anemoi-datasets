@@ -117,8 +117,9 @@ class ForecastCovering(Covering):
       the basetime. The window ``[basetime + sA, basetime + sE]`` is
       built as ``+a(0, sE) − a(0, sA)``.
     - ``"from-previous-step"``: archive stores per-step increments
-      ``a(step - period, step)``. The window is the single interval
-      ``a(sA, sE)``.
+      ``a(step - source_period, step)``. The window ``a(sA, sE)`` is the sum
+      of the ``source_period``-long increments tiling it (a single interval
+      when ``source_period`` equals the output ``period``).
 
     Parameters
     ----------
@@ -127,13 +128,30 @@ class ForecastCovering(Covering):
     accumulation
         Either ``"from-zero"`` or ``"from-previous-step"``. There is no
         default — the caller must declare it explicitly.
+    source_period
+        Native increment of the source data for ``"from-previous-step"`` (e.g.
+        ``1h`` when the archive stores hourly increments but ``period`` is
+        ``2h``). Defaults to ``period`` (one interval, the original behaviour);
+        must divide ``period``. Ignored for ``"from-zero"``.
     """
 
-    def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
+    def __init__(
+        self,
+        period: datetime.timedelta,
+        accumulation: str,
+        source_period: datetime.timedelta | None = None,
+    ) -> None:
         if accumulation not in _VALID_ACCUMULATIONS:
             raise ValueError(f"Invalid accumulation {accumulation!r}; " f"expected one of {_VALID_ACCUMULATIONS}")
         self.period = period
         self.accumulation = accumulation
+        self.source_period = source_period if source_period is not None else period
+        if self.source_period <= datetime.timedelta(0):
+            raise ValueError(f"'source_period' must be positive, got {self.source_period}")
+        if self.period % self.source_period != datetime.timedelta(0):
+            raise ValueError(
+                f"'source_period' ({self.source_period}) must divide the accumulation " f"'period' ({self.period})."
+            )
 
     def cover(
         self,
@@ -185,14 +203,25 @@ class ForecastCovering(Covering):
                 )
             return covering
 
-        # from-previous-step
-        return [
-            SignedInterval(
-                start=basetime + datetime.timedelta(hours=step_start_h),
-                end=basetime + datetime.timedelta(hours=step_end_h),
-                base=basetime,
+        # from-previous-step: tile [step_start, step_end] into source_period
+        # increments (a single interval when source_period == period).
+        src_h = self.source_period.total_seconds() / 3600
+        if not src_h.is_integer():
+            raise ValueError(f"'source_period' must be a whole number of hours, got {self.source_period}.")
+        src_h = int(src_h)
+
+        covering = []
+        k = step_start_h
+        while k < step_end_h:
+            covering.append(
+                SignedInterval(
+                    start=basetime + datetime.timedelta(hours=k),
+                    end=basetime + datetime.timedelta(hours=k + src_h),
+                    base=basetime,
+                )
             )
-        ]
+            k += src_h
+        return covering
 
 
 def covering_factory(

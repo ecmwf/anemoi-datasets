@@ -17,8 +17,8 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .writers import write_accumulated_field_with_valid_time
-from .writers import write_accumulated_forecast_field
+from .writers import build_accumulated_field_with_valid_time
+from .writers import build_accumulated_forecast_field
 
 LOG = logging.getLogger(__name__)
 
@@ -114,10 +114,7 @@ class Accumulator:
         self.done.append(matching)
         return True
 
-    def write_to_output(self, output, template) -> None:
-        assert self.is_complete(), (self.todo, self.done, self)
-        assert not self.locked  # prevent double writing
-
+    def _warn_if_negative(self) -> None:
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         for k, v in self.key:
             if k == "param" and v == "tp":
@@ -125,25 +122,42 @@ class Accumulator:
                     LOG.warning(
                         f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
                     )
+
+    def to_field(self, template) -> Any:
+        """Build the in-memory accumulated field and lock the accumulator.
+
+        Parameters
+        ----------
+        template
+            Field providing the grid and the param/level/number metadata.
+
+        Returns
+        -------
+        Any
+            The accumulated field (forecast- or validity-time-stamped).
+        """
+        assert self.is_complete(), (self.todo, self.done, self)
+        assert not self.locked  # prevent double writing
+
+        self._warn_if_negative()
         if self.basetime is not None:
-            write_accumulated_forecast_field(
+            field = build_accumulated_forecast_field(
                 template=template,
                 values=self.values,
                 basetime=self.basetime,
                 valid_date=self.valid_date,
                 period=self.period,
-                output=output,
             )
         else:
-            write_accumulated_field_with_valid_time(
+            field = build_accumulated_field_with_valid_time(
                 template=template,
                 values=self.values,
                 valid_date=self.valid_date,
                 period=self.period,
-                output=output,
             )
         # lock the accumulator to prevent further use
         self.locked = True
+        return field
 
     def __repr__(self, verbose: bool = False) -> str:
         key = ", ".join(f"{k}={v}" for k, v in self.key)

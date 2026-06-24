@@ -51,6 +51,31 @@ def test_from_previous_step_single_interval():
     assert cover == [SignedInterval(start=bt + _hours(6), end=bt + _hours(12), base=bt)]
 
 
+def test_from_previous_step_tiles_into_source_period():
+    """Window [bt+2, bt+4] with period 2h and source_period 1h tiles into two 1h increments."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(2), accumulation="from-previous-step", source_period=_hours(1))
+    cover = sel.cover(bt + _hours(2), bt + _hours(4), basetime=bt)
+    assert cover == [
+        SignedInterval(start=bt + _hours(2), end=bt + _hours(3), base=bt),
+        SignedInterval(start=bt + _hours(3), end=bt + _hours(4), base=bt),
+    ]
+    assert all(i.sign == 1 for i in cover)
+
+
+def test_source_period_defaults_to_period():
+    """source_period=None keeps the original single-interval behaviour."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(2), accumulation="from-previous-step")
+    cover = sel.cover(bt + _hours(2), bt + _hours(4), basetime=bt)
+    assert cover == [SignedInterval(start=bt + _hours(2), end=bt + _hours(4), base=bt)]
+
+
+def test_source_period_must_divide_period():
+    with pytest.raises(ValueError, match="must divide"):
+        ForecastCovering(period=_hours(3), accumulation="from-previous-step", source_period=_hours(2))
+
+
 def test_straddling_basetime_is_rejected():
     bt = datetime.datetime(2021, 1, 1, 12)
     sel = ForecastCovering(period=_hours(6), accumulation="from-zero")

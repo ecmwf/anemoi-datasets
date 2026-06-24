@@ -14,10 +14,8 @@ import logging
 import warnings
 from typing import Any
 
-import earthkit.data
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import frequency_to_timedelta
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
@@ -71,6 +69,7 @@ class AccumulateSource(Source):
         accumulation: str | None = None,
         patch: Any = None,
         group_by: dict | None = None,
+        source_period: str | int | datetime.timedelta | None = None,
     ) -> None:
         super().__init__(context)
 
@@ -91,6 +90,7 @@ class AccumulateSource(Source):
 
         self.source = source
         self.period = frequency_to_timedelta(period)
+        self.source_period = None if source_period is None else frequency_to_timedelta(source_period)
         self.covering = covering
         self.accumulation = accumulation
         self.patch = patch
@@ -116,6 +116,21 @@ class AccumulateSource(Source):
                 LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
         return source_name
 
+    def _inner_is_xarray(self) -> bool:
+        """Return ``True`` if the inner source is an xarray-based source (netcdf, …).
+
+        Such sources serve per-step increments in the trajectory layout, so they
+        only support ``from-previous-step`` accumulation.
+        """
+        from anemoi.datasets.create.sources import source_registry
+        from anemoi.datasets.create.sources.xarray import XarraySourceBase
+
+        try:
+            src_cls = source_registry.lookup(self._source_name)
+        except Exception:
+            return False
+        return isinstance(src_cls, type) and issubclass(src_cls, XarraySourceBase)
+
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
@@ -125,16 +140,27 @@ class AccumulateSource(Source):
 
     def _extract_field_info(self, field):
         """Extract values, grouping key, time interval, and log string from a field."""
-        values = field.values.copy()
+        # ``to_numpy(flatten=True)`` rather than ``.values``: the latter errors on
+        # xarray/NetCDF fields whose grid is 2D (y, x), while it is equivalent for
+        # GRIB fields (already 1D).
+        values = field.to_numpy(flatten=True)
         meta = field.metadata(namespace=self.group_by["namespace"])
         key = {k: v for k, v in meta.items() if k not in self.group_by["ignore"]}
+        # The GRIB ``mars`` namespace is empty for non-GRIB fields; fall back to a
+        # param/level/number key so different variables stay in separate accumulators.
+        if not key:
+            key = {
+                k: field.metadata(k, default=None)
+                for k in ("param", "levelist", "level", "number")
+                if field.metadata(k, default=None) is not None
+            }
         key = tuple(sorted(key.items()))
         log = " ".join(f"{k}={v}" for k, v in meta.items())
         field_interval = self._field_to_interval(field)
         return values, key, field_interval, log
 
-    def _finalise(self, accumulators, output, tmp):
-        """Clean empty accumulators, validate completeness, and return the dataset."""
+    def _finalise(self, accumulators, fields):
+        """Clean empty accumulators, validate completeness, and return the fieldlist."""
         # some accumulators may be empty, remove them
         # this can happen when the source provides fields that not exactly the one requested (scda/oper)
         empty = [k for k, acc in accumulators.items() if acc.values is None]
@@ -151,9 +177,9 @@ class AccumulateSource(Source):
         if not accumulators:
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
-        output.close()
-        ds = earthkit.data.from_source("file", tmp.path)
-        ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
+        # The accumulate source always returns in-memory fields, so it is
+        # backend-agnostic (works with GRIB and non-GRIB inner sources alike).
+        ds = new_fieldlist_from_list(fields)
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
         for f in ds:
@@ -178,12 +204,10 @@ class AccumulateSource(Source):
         Returns
         -------
         tuple
-            ``(accumulators, output, tmp)``.
+            ``(accumulators, fields)`` where *fields* is the list of completed
+            in-memory accumulated fields.
         """
-        # need a temporary file to store the accumulated fields for now, because earthkit-data
-        # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
-        tmp = temp_file()
-        output = new_grib_output(tmp.path)
+        fields: list = []
 
         accumulators = {}
         logs = Logs(
@@ -227,12 +251,12 @@ class AccumulateSource(Source):
                     logs[-1][4].append(acc.__repr__(verbose=True))
 
                     if acc.is_complete():
-                        acc.write_to_output(output, template=field)
+                        fields.append(acc.to_field(template=field))
 
             if not field_used:
                 logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
-        return accumulators, output, tmp
+        return accumulators, fields
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -262,7 +286,7 @@ class AccumulateSource(Source):
         intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
         targets = [(d, None) for d in dates]
 
-        accumulators, output, tmp = self._accumulate_fields(source_object, intervals, targets, coverages)
+        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
 
         # Final checks
         for date in dates:
@@ -276,7 +300,7 @@ class AccumulateSource(Source):
                         LOG.error(f"  Accumulator for key {k}")
                 raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
 
-        return self._finalise(accumulators, output, tmp)
+        return self._finalise(accumulators, fields)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations."""
@@ -285,12 +309,24 @@ class AccumulateSource(Source):
                 "Argument 'accumulation' (one of 'from-zero', 'from-previous-step') "
                 "is mandatory for accumulate sources used in trajectory recipes."
             )
+        if self.accumulation == "from-zero" and self._inner_is_xarray():
+            raise ValueError(
+                f"'accumulation: from-zero' is not supported for the '{self._source_name}' "
+                "source in the trajectory layout: xarray/NetCDF sources serve per-step "
+                "increments (the field stored at each step), not cumulative 'a(0, step)' "
+                "fields. Use 'accumulation: from-previous-step' (with 'source_period' if "
+                "the source's native increment is finer than 'period')."
+            )
         if self.covering is not None:
             LOG.debug("Trajectory branch: ignoring 'covering:' (basetime imposed by caller).")
 
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         source_object = self._create_source_object(self.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=self.accumulation)
+        covering = ForecastCovering(
+            period=self.period,
+            accumulation=self.accumulation,
+            source_period=self.source_period,
+        )
 
         coverages: dict = {}
         for vt, bt in dates.items:
@@ -305,6 +341,6 @@ class AccumulateSource(Source):
         )
         targets = [(vt, bt) for vt, bt in dates.items]
 
-        accumulators, output, tmp = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
+        accumulators, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
 
-        return self._finalise(accumulators, output, tmp)
+        return self._finalise(accumulators, fields)
