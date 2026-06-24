@@ -861,7 +861,9 @@ class Dataset(ABC, Sized):
             action=action,
             variables=self.variables,
             shape=self.shape,
-            frequency=frequency_to_string(frequency_to_timedelta(self.frequency)),
+            frequency=(
+                frequency_to_string(frequency_to_timedelta(self.frequency)) if self.frequency is not None else None
+            ),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
             **kwargs,

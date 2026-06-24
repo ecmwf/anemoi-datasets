@@ -28,6 +28,7 @@ from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.options import Options
 
 from ..store import ZarrStore
 
@@ -37,8 +38,8 @@ LOG = logging.getLogger(__name__)
 class GriddedZarr(ZarrStore):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.Group, path: str = None) -> None:
-        super().__init__(group, path=path)
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
+        super().__init__(group, path=path, options=options)
         self._missing = set()
 
     @property
@@ -211,15 +212,6 @@ class GriddedZarr(ZarrStore):
     def end_of_statistics_date(self) -> np.datetime64:
         """Return the end date of the statistics."""
         return self.dates[-1]
-
-    def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
-        """Return the specific metadata of the dataset."""
-        return super().metadata_specific(
-            attrs=dict(self.store.attrs),
-            chunks=self.chunks,
-            dtype=str(self.dtype),
-            path=self.path,
-        )
 
     def source(self, index: int) -> Source:
         """Return the source of the dataset."""

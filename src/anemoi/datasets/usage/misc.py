@@ -20,6 +20,8 @@ import zarr
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
+from anemoi.datasets.usage.options import Options
+
 if TYPE_CHECKING:
     from anemoi.datasets.usage.dataset import Dataset
 
@@ -298,7 +300,9 @@ def as_last_date(
     return _as_date(d, dates, last=True, frequency=frequency)
 
 
-def _concat_or_join(datasets: list["Dataset"], kwargs: dict[str, Any]) -> tuple["Dataset", dict[str, Any]]:
+def _concat_or_join(
+    datasets: list["Dataset"], kwargs: dict[str, Any], options: Options
+) -> tuple["Dataset", dict[str, Any]]:
     """Concatenate or join datasets based on their date ranges.
 
     Parameters
@@ -307,6 +311,8 @@ def _concat_or_join(datasets: list["Dataset"], kwargs: dict[str, Any]) -> tuple[
         The list of datasets.
     kwargs : Dict[str, Any]
         Additional arguments.
+    options : Options
+        Options for the combined dataset.
 
     Returns
     -------
@@ -323,22 +329,25 @@ def _concat_or_join(datasets: list["Dataset"], kwargs: dict[str, Any]) -> tuple[
     if len(set(ranges)) == 1:
         from anemoi.datasets.usage.gridded.join import Join
 
-        return Join(datasets)._overlay(), kwargs
+        return Join(datasets, options)._overlay(), kwargs
 
     from anemoi.datasets.usage.gridded.concat import Concat
 
     Concat.check_dataset_compatibility(datasets)
 
-    return Concat(datasets), kwargs
+    return Concat(datasets, options), kwargs
 
 
-def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "Dataset":
+def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...], options: Options) -> "Dataset":
     """Open a dataset from various input types.
 
     Parameters
     ----------
     a : Union[str, PurePath, Dict[str, Any], List[Any], tuple[Any, ...]]
         The input to open.
+
+    options : Options
+        The options to use when opening the dataset.
 
     Returns
     -------
@@ -352,19 +361,19 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...]) -> "
         return a.mutate()
 
     if isinstance(a, zarr.Group):
-        return ZarrStore.from_group(a).mutate()
+        return ZarrStore.from_group(a, options).mutate()
 
     if isinstance(a, str):
-        return ZarrStore.from_name_or_path(a).mutate()
+        return ZarrStore.from_name_or_path(a, options).mutate()
 
     if isinstance(a, PurePath):
-        return _open(str(a)).mutate()
+        return _open(str(a), options).mutate()
 
     if isinstance(a, dict):
-        return _open_dataset(**a).mutate()
+        return _open_dataset(**a, options=options).mutate()
 
     if isinstance(a, (list, tuple)):
-        return _open_dataset(*a).mutate()
+        return _open_dataset(*a, options=options).mutate()
 
     raise NotImplementedError(f"Unsupported argument: {type(a)}")
 
@@ -466,13 +475,15 @@ def _auto_adjust(
     return datasets, kwargs
 
 
-def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
+def _open_dataset(*args: Any, options: Options = None, **kwargs: Any) -> "Dataset":
     """Open a dataset.
 
     Parameters
     ----------
     *args : Any
         Positional arguments.
+    options : Options, optional
+        The options to use when opening the dataset, by default None.
     **kwargs : Any
         Keyword arguments.
 
@@ -481,79 +492,91 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     Dataset
         The opened dataset.
     """
+
+    kwargs, options = Options.extract(kwargs, options)
+
     sets = []
     for a in args:
-        sets.append(_open(a))
+        a, local_options = Options.extract(a, options)
+        sets.append(_open(a, local_options))
 
     if "xy" in kwargs:
         # Experimental feature, may be removed
         from anemoi.datasets.usage.gridded.xy import xy_factory
 
         assert not sets, sets
-        return xy_factory(args, kwargs).mutate()
+        return xy_factory(args, kwargs, options).mutate()
 
     if "x" in kwargs and "y" in kwargs:
         # Experimental feature, may be removed
         from anemoi.datasets.usage.gridded.xy import xy_factory
 
         assert not sets, sets
-        return xy_factory(args, kwargs).mutate()
+        return xy_factory(args, kwargs, options).mutate()
 
     if "zip" in kwargs:
         # Experimental feature, may be removed
         from anemoi.datasets.usage.gridded.xy import zip_factory
 
         assert not sets, sets
-        return zip_factory(args, kwargs).mutate()
+        return zip_factory(args, kwargs, options).mutate()
 
     if "chain" in kwargs:
         # Experimental feature, may be removed
         from anemoi.datasets.usage.gridded.unchecked import chain_factory
 
         assert not sets, sets
-        return chain_factory(args, kwargs).mutate()
+        return chain_factory(args, kwargs, options).mutate()
 
     if "join" in kwargs:
         from anemoi.datasets.usage.gridded.join import join_factory
 
         assert not sets, sets
-        return join_factory(args, kwargs).mutate()
+        return join_factory(args, kwargs, options).mutate()
 
     if "concat" in kwargs:
         from anemoi.datasets.usage.gridded.concat import concat_factory
 
         assert not sets, sets
-        return concat_factory(args, kwargs).mutate()
+        return concat_factory(args, kwargs, options).mutate()
 
     if "merge" in kwargs:
         from anemoi.datasets.usage.gridded.merge import merge_factory
 
         assert not sets, sets
-        return merge_factory(args, kwargs).mutate()
+        return merge_factory(args, kwargs, options).mutate()
 
     if "ensemble" in kwargs:
         from anemoi.datasets.usage.gridded.ensemble import ensemble_factory
 
         assert not sets, sets
-        return ensemble_factory(args, kwargs).mutate()
+        return ensemble_factory(args, kwargs, options).mutate()
 
     if "grids" in kwargs:
         from anemoi.datasets.usage.gridded.grids import grids_factory
 
         assert not sets, sets
-        return grids_factory(args, kwargs).mutate()
+        return grids_factory(args, kwargs, options).mutate()
 
     if "cutout" in kwargs:
         from anemoi.datasets.usage.gridded.grids import cutout_factory
 
         assert not sets, sets
-        return cutout_factory(args, kwargs).mutate()
+        return cutout_factory(args, kwargs, options).mutate()
 
     if "complement" in kwargs:
         from anemoi.datasets.usage.gridded.complement import complement_factory
 
         assert not sets, sets
-        return complement_factory(args, kwargs).mutate()
+        return complement_factory(args, kwargs, options).mutate()
+
+    if "synthetic" in kwargs:
+        from anemoi.datasets.usage.gridded.synthetic import synthetic_factory
+
+        assert not sets, sets
+        # synthetic_factory consumes only 'synthetic'; any remaining transform
+        # keywords are applied through _subset, as for a normal dataset=.
+        return synthetic_factory(args, kwargs).mutate()._subset(**kwargs)
 
     for name in ("datasets", "dataset"):
         if name in kwargs:
@@ -561,12 +584,12 @@ def _open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
             if not isinstance(datasets, (list, tuple)):
                 datasets = [datasets]
             for a in datasets:
-                sets.append(_open(a))
+                sets.append(_open(a, options=options))
 
     assert len(sets) > 0, (args, kwargs)
 
     if len(sets) > 1:
-        dataset, kwargs = _concat_or_join(sets, kwargs)
+        dataset, kwargs = _concat_or_join(sets, kwargs, options)
         return dataset._subset(**kwargs)
 
     return sets[0]._subset(**kwargs)

@@ -37,6 +37,7 @@ from anemoi.datasets.usage.gridded.indexing import length_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ class Concat(Combined):
 class GridsBase(GivenAxis):
     """A base class for handling grids in datasets."""
 
-    def __init__(self, datasets: list[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int, options: Options) -> None:
         """Initializes a GridsBase object.
 
         Parameters
@@ -200,8 +201,10 @@ class GridsBase(GivenAxis):
             List of datasets.
         axis : int
             Axis along which to combine the datasets.
+        options : Options
+            Options for the combined dataset.
         """
-        super().__init__(datasets, axis)
+        super().__init__(datasets, axis, options)
         # Shape: (dates, variables, ensemble, 1d-values)
         assert len(datasets[0].shape) == 4, "Grids must be 1D for now"
 
@@ -309,6 +312,7 @@ class Cutout(GridsBase):
     def __init__(
         self,
         datasets: list[Any],
+        options: Options,
         axis: int = 3,
         cropping_distance: float = 2.0,
         neighbours: int = 5,
@@ -324,6 +328,8 @@ class Cutout(GridsBase):
         ----------
         datasets : list
             List of LAM and global datasets.
+        options : Options
+            Options for the combined dataset.
         axis : int
             Concatenation axis, must be set to 3.
         cropping_distance : float
@@ -343,7 +349,7 @@ class Cutout(GridsBase):
             location. ``True`` is reserved for a future default cache location and
             currently raises ``NotImplementedError``.
         """
-        super().__init__(datasets, axis)
+        super().__init__(datasets, axis, options)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
         assert axis == 3, "CutoutGrids requires axis=3"
         assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
@@ -719,7 +725,7 @@ class Cutout(GridsBase):
         return {}
 
 
-def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
+def grids_factory(args: tuple[Any, ...], kwargs: dict, options: Options) -> Dataset:
     """Factory function to create a Grids object.
 
     Parameters
@@ -728,6 +734,8 @@ def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -743,13 +751,13 @@ def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
     assert len(args) == 0
     assert isinstance(grids, (list, tuple))
 
-    datasets = [_open(e) for e in grids]
+    datasets = [_open(e, options) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Grids(datasets, axis=axis)._subset(**kwargs)
+    return Grids(datasets, axis=axis, options=options)._subset(**kwargs)
 
 
-def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
+def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Dataset:
     """Factory function to create a Cutout object.
 
     Parameters
@@ -758,6 +766,8 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         Positional arguments.
     kwargs : Dict[str, Any]
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -778,11 +788,12 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     assert len(args) == 0
     assert isinstance(cutout, (list, tuple)), "cutout must be a list or tuple"
 
-    datasets = [_open(e) for e in cutout]
+    datasets = [_open(e, options) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return Cutout(
         datasets,
+        options=options,
         axis=axis,
         neighbours=neighbours,
         min_distance_km=min_distance_km,
