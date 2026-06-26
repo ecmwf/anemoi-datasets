@@ -55,7 +55,7 @@ class RollingAverage(Forwards):
         # window = (0, 0, 'freq') means no change
         self.i_start = -window[0]
         self.i_end = window[1] + 1
-        if self.i_start <= 0:
+        if self.i_start < 0:
             raise ValueError(f"Window start must be negative, got {window}")
         if self.i_end <= 0:
             raise ValueError(f"Window end must be positive, got {window}")
