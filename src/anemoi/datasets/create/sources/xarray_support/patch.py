@@ -113,7 +113,7 @@ def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> xr.Datase
         - Single values (int, float, str, datetime)
         - Lists or arrays of values
         - Slices (using slice() objects)
-        - Boolean arrays
+        - Boolean arrays.
 
     Returns
     -------

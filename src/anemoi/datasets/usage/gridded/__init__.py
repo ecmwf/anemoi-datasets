@@ -26,10 +26,10 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 __all__ = [
-    "open_dataset",
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
+    "open_dataset",
 ]
 
 
@@ -108,7 +108,7 @@ def save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None
     Parameters
     ----------
     dataset : Dataset
-        anemoi-dataset opened from python to save to Zarr store
+        anemoi-dataset opened from python to save to Zarr store.
     zarr_path : str
         Path to store the obtained anemoi dataset to disk.
     n_workers : int

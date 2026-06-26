@@ -122,7 +122,7 @@ class DateBisect(DateIndexing):
         end : int
             The ending epoch (inclusive).
         dataset_length : int
-            The total length of the dataset
+            The total length of the dataset.
         Returns
         -------
         slice

@@ -707,7 +707,7 @@ def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> Non
     Parameters
     ----------
     dataset : Dataset
-        anemoi-dataset opened from python to save to Zarr store
+        anemoi-dataset opened from python to save to Zarr store.
     zarr_path : str
         The path to the Zarr store.
     n_workers : int, optional
