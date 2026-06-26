@@ -126,10 +126,10 @@ version_file = "src/anemoi/datasets/_version.py"
 profile = "black"
 
 [tool.mypy]
-strict = false
 exclude = [
   "docs/.*",
 ]
+strict = false
 
 [tool.pytest]
 ini_options.testpaths = "tests"

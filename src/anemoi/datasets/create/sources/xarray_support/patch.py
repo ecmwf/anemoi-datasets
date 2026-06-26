@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -113,7 +113,7 @@ def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> xr.Datase
         - Single values (int, float, str, datetime)
         - Lists or arrays of values
         - Slices (using slice() objects)
-        - Boolean arrays
+        - Boolean arrays.
 
     Returns
     -------
