@@ -329,3 +329,97 @@ windows:
 .. image:: ../_static/window-3.png
    :width: 75%
    :align: center
+
+.. _tabular-sharding:
+
+*********
+ Sharding
+*********
+
+.. note::
+
+   Sharding is currently only available for the tabular layout.
+
+For distributed loading, a tabular dataset can be split into ``N``
+**shards**. Each shard returns the *same* windows (same ``dates``,
+``frequency``, ``variables`` and ``len``), but every window yields only
+a contiguous ``1/N`` slice of its rows. The shards are non-overlapping
+and together cover every row exactly once, so no observation is
+duplicated or lost.
+
+To obtain the shards, pass the ``sharding`` parameter:
+
+.. code:: python
+
+   shards = open_dataset(path, sharding=8)
+
+   assert len(shards) == 8
+
+   shard = shards[3]  # the 4th shard, itself a dataset
+
+   sample = shard[42]  # only this shard's rows of window 42
+
+The object returned by ``sharding`` behaves like a list of the shard
+datasets (you can index it, iterate it and take its length), and each
+shard accepts all the usual tabular methods and attributes.
+
+A single process can request just one shard with the ``shard``
+parameter (``shard`` requires ``sharding``):
+
+.. code:: python
+
+   shard = open_dataset(path, sharding=8, shard=3)
+
+   assert shard.shard_index == 3
+   assert shard.num_shards == 8
+
+Reassembling the shards
+=======================
+
+The library does **not** reassemble the shards for you; it provides the
+sizes and offsets needed to do so. Because the split is deterministic,
+every shard can compute the full layout on its own, without
+communicating with the others.
+
+The following sizing information is available on each shard (and on the
+collection returned by ``sharding``):
+
+.. code:: python
+
+   shards.unsharded_sizes  # rows per window in the unsharded dataset
+   shards.shard_sizes      # rows per window per shard, shape (n_windows, N)
+   shards.total_size       # total number of rows across all windows
+
+   # The rows of shard_sizes sum to the unsharded sizes:
+   assert np.array_equal(shards.shard_sizes.sum(axis=1), shards.unsharded_sizes)
+
+When a shard is indexed, the resulting array carries two boundary
+attributes. As for any tabular slice, ``boundaries`` gives the per-window
+slices **within the shard's own array**. In addition,
+``unsharded_boundaries`` gives the per-window slices into the **full,
+unsharded** array, i.e. where this shard's rows belong once all shards
+are put back together.
+
+.. code:: python
+
+   # In each worker, holding a single shard:
+   full = np.zeros((shards.unsharded_sizes[a:b].sum(), len(shard.variables)), dtype=...)
+
+   arr = shard[a:b]
+   data = np.asarray(arr)
+   for src, dst in zip(arr.boundaries, arr.unsharded_boundaries):
+       full[dst] = data[src]
+
+For an unsharded dataset, ``unsharded_boundaries`` is equal to
+``boundaries``.
+
+When the shards are created in a single process with ``sharding=N``,
+each shard also exposes its siblings through the ``other_shards``
+attribute. In ``shard=i`` mode the siblings live in other processes, so
+``other_shards`` is ``None`` (but ``shard_sizes`` and ``total_size``
+remain available).
+
+Sharding composes with the other tabular parameters (``start``, ``end``,
+``window``, ``frequency``, ``select``, ...): they are applied first, and
+each window of the resulting dataset is then sharded. Sharding cannot be
+applied twice (you cannot shard an already-sharded dataset).
