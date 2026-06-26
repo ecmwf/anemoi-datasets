@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -240,6 +240,10 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             QUIET.add(current_variable)
 
         other[current_variable]["units"] = units
+
+        grib = {k: f.metadata(k, default=None) for k in ("paramId", "shortName")}
+        if any(grib.values()):
+            other[current_variable]["grib"] = grib
 
         for k in md.copy().keys():
             if k.startswith("_"):

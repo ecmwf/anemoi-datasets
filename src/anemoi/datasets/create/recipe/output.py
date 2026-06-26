@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -65,9 +65,6 @@ class GriddedOutput(OutputBase):
 
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
-
-    ensemble_dimension: int = 2
-    """The ensemble dimension size."""
 
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Kept in sync with ``SimpleGriddedContext.order_by``.

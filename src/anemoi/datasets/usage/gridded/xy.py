@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -18,6 +18,7 @@ from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Combined
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -25,18 +26,20 @@ LOG = logging.getLogger(__name__)
 class ZipBase(Combined):
     """Base class for handling zipped datasets."""
 
-    def __init__(self, datasets: list[Any], check_compatibility: bool = True) -> None:
+    def __init__(self, datasets: list[Any], options: Options, check_compatibility: bool = True) -> None:
         """Initialize ZipBase with a list of datasets.
 
         Parameters
         ----------
         datasets : List[Any]
             List of datasets.
+        options : Options
+            Options for the combined dataset.
         check_compatibility : bool, optional
             Flag to check compatibility of datasets, by default True.
         """
         self._check_compatibility = check_compatibility
-        super().__init__(datasets)
+        super().__init__(datasets, options)
 
     def swap_with_parent(self, parent: Any) -> Any:
         """Swap datasets with the parent.
@@ -227,7 +230,7 @@ class XY(ZipBase):
     pass
 
 
-def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> XY:
+def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> XY:
     """Factory function to create an XY instance.
 
     Parameters
@@ -236,6 +239,8 @@ def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> XY:
         Positional arguments.
     kwargs : Dict[str, Any]
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -250,17 +255,17 @@ def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> XY:
     assert len(args) == 0
     assert isinstance(xy, (list, tuple))
 
-    datasets = [_open(e) for e in xy]
+    datasets = [_open(e, options) for e in xy]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     assert len(datasets) == 2
 
     check_compatibility = kwargs.pop("check_compatibility", True)
 
-    return XY(datasets, check_compatibility=check_compatibility)._subset(**kwargs)
+    return XY(datasets, options, check_compatibility=check_compatibility)._subset(**kwargs)
 
 
-def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Zip:
+def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Zip:
     """Factory function to create a Zip instance.
 
     Parameters
@@ -269,6 +274,8 @@ def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Zip:
         Positional arguments.
     kwargs : Dict[str, Any]
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -279,9 +286,9 @@ def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Zip:
     assert len(args) == 0
     assert isinstance(zip, (list, tuple))
 
-    datasets = [_open(e) for e in zip]
+    datasets = [_open(e, options) for e in zip]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     check_compatibility = kwargs.pop("check_compatibility", True)
 
-    return Zip(datasets, check_compatibility=check_compatibility)._subset(**kwargs)
+    return Zip(datasets, options, check_compatibility=check_compatibility)._subset(**kwargs)

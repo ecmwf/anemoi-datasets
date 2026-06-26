@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -7,18 +7,27 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
+import glob
 import logging
+import os
 from functools import cached_property
 from typing import Any
 
 import numpy as np
+import tqdm
+from anemoi.transform.variables import Variable
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
+from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +62,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
             resolution=self.minimal_input.resolution,
             start_date=base_dates[0],
             end_date=base_dates[-1],
-            frequency=provider.frequency,
+            frequency=provider.frequency,  # base-date frequency
+            step_frequency=provider.steps.frequency,  # forecast-step frequency
+            layout="trajectories",
         ):
             LOG.warning("Dataset name warning: %s", message)
 
@@ -79,14 +90,27 @@ class TrajectoryGriddedCreator(GriddedCreator):
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
-        # Variables live on axis 1 (same as gridded); ensembles on axis 2; steps on axis -2.
-        metadata["ensemble_dimension"] = 2
-        metadata["step_dimension"] = -2
+
+        metadata["dimensions"] = ["base_dates", "variables", "ensembles", "steps", "values"]
 
         # Base dates are trajectory-specific metadata.
         base_dates = self._metadata_dates()
         metadata["start_base_date"] = base_dates[0].isoformat()
         metadata["end_base_date"] = base_dates[-1].isoformat()
+
+        # The statistics envelope is defined on valid times (base date + step),
+        # matching ``TrajectoryStatisticsFilter`` and the behaviour of
+        # ``open_dataset(start=, end=)``: a trajectory is kept only when its
+        # whole envelope lies within the statistics interval.  Overwrite the
+        # base-date-derived values written by ``super().collect_metadata``.
+        provider = self.groups.provider
+        assert isinstance(provider, TrajectoryDates), type(provider)
+        _, steps = provider.factorise()
+        stats_filter = self.recipe.statistics.trajectory_statistics_filter(
+            np.array(base_dates, dtype="datetime64[s]"), steps
+        )
+        metadata["statistics_start_date"] = stats_filter.statistics_start_date
+        metadata["statistics_end_date"] = stats_filter.statistics_end_date
 
     def _metadata_dates(self):
         """Return the sorted-unique base dates (not ``(basetime, step)`` tuples)."""
@@ -169,8 +193,34 @@ class TrajectoryGriddedCreator(GriddedCreator):
         ), "provider.factorise() base_dates do not match dataset.base_dates"
         assert np.array_equal(steps_from_provider, all_steps), "provider.factorise() steps do not match dataset.steps"
 
+        # Coverage guard (mirrors the gridded creator's ``check_shape``): the
+        # cube's leading axis is ``traj_point`` -- one entry per unique
+        # ``(basetime, step)`` pair actually present in the retrieved fields. If
+        # a whole basetime/step is missing across all variables (e.g. a MARS
+        # gap), the cube is smaller than the group and those slots would stay
+        # NaN. Fail loudly instead.
+        expected_traj_points = len(list(result.group_of_dates))
+        got_traj_points = cube.extended_user_shape[0]
+        if got_traj_points != expected_traj_points:
+            raise ValueError(
+                f"Trajectories: cube has {got_traj_points} (basetime, step) points, "
+                f"expected {expected_traj_points} for this group -- some fields are missing."
+            )
+
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
+
+        # Use the same remapping (``build.variable_naming``) that named the
+        # variables at init time, so e.g. wave spectra are recovered as
+        # ``{param}_{directionNumber}_{frequencyNumber}`` rather than bare
+        # ``param``/``param_levelist``.
+        remapping = result.context.remapping
+
+        # Map GRIB member numbers to positions on the ensemble axis.  Member
+        # numbering schemes vary (0-based with control, 1-based perturbed
+        # members, ...), so the number cannot be used as an index directly.
+        numbers = cube.user_coords.get("number")
+        number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
             "Loading trajectory cube: cube shape=%s, variables=%d, steps=%d",
@@ -209,13 +259,22 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 )
                 step_td = datetime.timedelta(hours=int(field.metadata("step")))
 
-                # Recover variable name via remapping (param_level = param_levelist)
-                param = field.metadata("param")
-                levelist = field.metadata("levelist", default=None)
-                var_name = f"{param}_{levelist}" if levelist is not None else str(param)
+                # Recover variable name via the build.variable_naming remapping
+                # (param_level pattern), matching the names declared at init.
+                var_name = remapping(field.metadata)("param_level", default=None)
+                if var_name is None:
+                    var_name = str(field.metadata("param"))
 
                 number = field.metadata("number", default=0) or 0
-                ens_idx = int(number) if int(number) > 0 else 0
+                if number_to_index is None:
+                    ens_idx = 0
+                else:
+                    ens_idx = number_to_index.get(int(number))
+                    if ens_idx is None:
+                        raise ValueError(
+                            f"Trajectories: member number {number} not in the cube's "
+                            f"'number' coordinate {list(numbers)}"
+                        )
 
                 date_idx = basetime_index_of(basetime)
                 step_idx = step_index_of(step_td)
@@ -225,6 +284,16 @@ class TrajectoryGriddedCreator(GriddedCreator):
                     raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
 
                 array[(date_idx, var_idx, ens_idx, step_idx)] = data
+
+        # Detect silently-missing data. A source that returns no fields for this
+        # group (e.g. a corrupt earthkit cache, a MARS gap, or an over-narrow
+        # filter) drops its variables from the cube, leaving NaN holes in the
+        # dataset. The gridded creator guards against this via
+        # ``Variable.check_compatibility``; mirror it here so trajectories fail
+        # loudly instead of writing a corrupt dataset. ``result.typed_variables``
+        # is derived from the actually-retrieved fields, ``dataset.typed_variables``
+        # from the variables declared at init.
+        Variable.check_compatibility(dataset.typed_variables, result.typed_variables)
 
     def context(self):
         return TrajectoryGriddedContext(self.recipe)
@@ -241,3 +310,83 @@ class TrajectoryGriddedCreator(GriddedCreator):
             n_steps = len(set(vt - bt for vt, bt in g)) if len(g) > 0 else 0
             shapes.append((n_base_dates, n_steps))
         return shapes
+
+    def _tendencies_to_compute(self, dataset: Dataset) -> dict[str, int]:
+        """Return ``{name: step_delta}`` for the tendencies to compute.
+
+        The reference frequency is the **step spacing** of the trajectory,
+        not the base-date frequency, because tendencies are computed along
+        the step axis within a single trajectory.  Deltas that are not whole
+        multiples of the step spacing are skipped with a warning, mirroring
+        the gridded behaviour.
+        """
+        tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is None:
+            # Tendencies are disabled by default.
+            tendencies_config = False
+        if tendencies_config is True:
+            tendencies_list = [1, 3, 6, 12, 24]
+        elif tendencies_config is False:
+            return {}
+        else:
+            tendencies_list = list(tendencies_config)
+
+        steps = dataset.steps
+        if len(steps) < 2:
+            LOG.warning("Trajectory has fewer than 2 steps; cannot compute tendencies.")
+            return {}
+
+        step_diffs = np.diff(steps)
+        if not np.all(step_diffs == step_diffs[0]):
+            LOG.warning("Trajectory steps are not uniformly spaced; skipping tendency statistics.")
+            return {}
+
+        step_spacing_seconds = int(step_diffs[0].astype("timedelta64[s]").astype("int64"))
+        step_spacing_td = datetime.timedelta(seconds=step_spacing_seconds)
+
+        tendencies: dict[str, int] = {}
+        for delta in tendencies_list:
+            td = frequency_to_timedelta(delta)
+            ratio = td / step_spacing_td
+            if int(ratio) == ratio:
+                tendencies[frequency_to_string(td)] = int(ratio)
+            else:
+                LOG.warning(
+                    f"Tendency delta {delta} is not a multiple of trajectory step spacing "
+                    f"{frequency_to_string(step_spacing_td)}, skipping."
+                )
+
+        return tendencies
+
+    def _compute_partial_statistics(self, dataset: Dataset, start, end) -> TrajectoryStatisticsCollector:
+        base_dates = dataset.base_dates
+        steps = dataset.steps
+
+        collector = TrajectoryStatisticsCollector(
+            variables_names=self.variables_names,
+            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            tendencies=self._tendencies_to_compute(dataset),
+        )
+
+        data = ReadAheadBuffer(dataset.data, start=start)
+        chunk_size = data.chunks[0]
+
+        for i in tqdm.tqdm(range(start, end, chunk_size)):
+            j = min(i + chunk_size, end)
+            chunk = data[i:j]
+            collector.collect(chunk, base_dates[i:j])
+
+        return collector
+
+    def compute_and_store_statistics(self, dataset: Dataset) -> None:
+        if os.path.exists(self.work_dir):
+            precomputed = list(glob.glob(os.path.join(self.work_dir, "statistics_*.pkl")))
+            if precomputed:
+                LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
+                collector = TrajectoryStatisticsCollector.load_precomputed(dataset, precomputed)
+                collector.add_to_dataset(dataset)
+                return
+
+        LOG.info("Computing statistics for the full trajectory dataset")
+        collector = self._compute_partial_statistics(dataset, 0, dataset.data.shape[0])
+        collector.add_to_dataset(dataset)

@@ -18,16 +18,27 @@ from typing import Any
 from typing import Union
 
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Discriminator
 from pydantic import Field
+from pydantic import PlainSerializer
 from pydantic import Tag
 from pydantic import model_validator
 
 LOG = logging.getLogger(__name__)
+
+# A datetime.timedelta that accepts frequency strings (e.g. "6h") on input
+# and serialises back to the same short form (e.g. "6h") rather than pydantic's
+# default ISO 8601 duration (e.g. "PT6H").
+Frequency = Annotated[
+    datetime.timedelta,
+    BeforeValidator(frequency_to_timedelta),
+    PlainSerializer(frequency_to_string, return_type=str, when_used="json"),
+]
 
 
 def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
@@ -102,11 +113,11 @@ class StartEndDates(DatesProvider):
     class MissingRange(BaseModel):
         start: datetime.datetime
         end: datetime.datetime
-        frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] | None = None
+        frequency: Frequency | None = None
 
     start: datetime.datetime
     end: datetime.datetime
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
+    frequency: Frequency = frequency_to_timedelta("1h")
     missing: list[datetime.datetime | str | MissingRange] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -128,10 +139,11 @@ class StartEndDates(DatesProvider):
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
+        missing_set = set(self.missing)
         dates = []
         date = self.start
         while date <= self.end:
-            if date not in self.missing:
+            if date not in missing_set:
                 dates.append(date)
             date += self.frequency
         return dates
@@ -144,6 +156,9 @@ class StartEndDates(DatesProvider):
         """Used for tabular datasets grouping."""
         return dates[-1] + self.frequency
 
+    def dump(self, dumper):
+        return dumper.start_end_dates(self.start, self.end, self.frequency)
+
 
 class BaseDates(StartEndDates):
     """Basetimes (forecast initialisation times) for the ``trajectories`` layout.
@@ -155,7 +170,7 @@ class BaseDates(StartEndDates):
 
     Unlike :class:`StartEndDates`, ``values`` retains the slots for ``missing``
     base dates: the on-disk trajectory array must keep an entry for every base
-    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryFilter`
+    date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryGroups`
     removes the missing ones only from the iteration that drives data loading.
     """
 
@@ -179,15 +194,41 @@ class Steps(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    start: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
-    end: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)]
+    start: Frequency
+    end: Frequency
+    frequency: Frequency
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "Steps":
+        if self.frequency <= datetime.timedelta(0):
+            raise ValueError(f"'steps.frequency' must be positive, got {self.frequency}")
+        if self.end < self.start:
+            raise ValueError(f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})")
+        if (self.end - self.start) % self.frequency != datetime.timedelta(0):
+            raise ValueError(
+                f"'steps.frequency' ({frequency_to_string(self.frequency)}) must divide "
+                f"'steps.end' - 'steps.start' "
+                f"({frequency_to_string(self.start)} to {frequency_to_string(self.end)})"
+            )
+        # The pipeline (MARS step requests, per-field placement) assumes
+        # whole-hour steps throughout.
+        for name in ("start", "end", "frequency"):
+            value = getattr(self, name)
+            if value.total_seconds() % 3600:
+                raise ValueError(
+                    f"'steps.{name}' must be a whole number of hours for the "
+                    f"'trajectories' layout, got {frequency_to_string(value)}"
+                )
+        return self
 
     @cached_property
     def values(self):
         import numpy as np
 
         return np.arange(self.start, self.end + self.frequency, self.frequency)
+
+    def dump(self, dumper):
+        return dumper.steps(self.start, self.end, self.frequency)
 
     def __len__(self) -> int:
         return len(self.values)
@@ -259,7 +300,7 @@ class HindcastsDates(DatesProvider):
     hindcasts: bool = True
     start: datetime.datetime
     end: datetime.datetime
-    frequency: Annotated[datetime.timedelta, BeforeValidator(frequency_to_timedelta)] = frequency_to_timedelta("1h")
+    frequency: Frequency = frequency_to_timedelta("1h")
     steps: list[int] = Field(default_factory=lambda: [0])
     years: int = 20
 

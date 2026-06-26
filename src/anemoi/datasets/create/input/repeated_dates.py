@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -83,7 +83,7 @@ class DateMapperClosest(DateMapper):
         Parameters
         ----------
         context:
-            The context of the RepeatedSource using the DateMapper
+            The context of the RepeatedSource using the DateMapper.
         group_of_dates : Any
             The group of dates to transform.
 
@@ -199,7 +199,7 @@ class DateMapperClimatology(DateMapper):
         Parameters
         ----------
         context:
-            The context of the RepeatedSource using the DateMapper (not used here)
+            The context of the RepeatedSource using the DateMapper (not used here).
         group_of_dates : Any
             The group of dates to transform.
 
@@ -264,7 +264,7 @@ class DateMapperConstant(DateMapper):
         Parameters
         ----------
         context:
-            The context of the RepeatedSource using the DateMapper (not used here)
+            The context of the RepeatedSource using the DateMapper (not used here).
         group_of_dates : Any
             The group of dates to transform.
 

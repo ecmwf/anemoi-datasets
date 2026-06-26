@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -19,6 +19,7 @@ from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoord
 from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
 from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
 from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
+from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
 from anemoi.datasets.create.sources.xarray_support.time import ForecastFromValidTimeAndStep
 from anemoi.datasets.create.sources.xarray_support.variable import Variable
 
@@ -81,3 +82,100 @@ def test_sel_multiple_coordinates(sample_variable):
     assert np.array_equal(
         result.variable["time"].values, np.array([datetime.datetime(2025, 2, 3)], dtype="datetime64[ns]")
     )
+
+
+@pytest.fixture
+def mixed_fieldlist():
+    """Create a mock xarray Dataset with both pressure-level and surface variables."""
+    nlev, nlat, nlon, ntime = 3, 4, 5, 2
+    times = [datetime.datetime(2025, 6, 4), datetime.datetime(2025, 6, 4, 6)]
+    levels = [850, 925, 1000]
+
+    ds = xr.Dataset(
+        {
+            # Pressure-level variable
+            "q": (("level", "latitude", "longitude", "time"), np.ones((nlev, nlat, nlon, ntime))),
+            "t": (("level", "latitude", "longitude", "time"), np.ones((nlev, nlat, nlon, ntime))),
+            # Surface variable (no level dimension)
+            "tcw": (("latitude", "longitude", "time"), np.ones((nlat, nlon, ntime))),
+        },
+        coords={
+            "level": ("level", levels),
+            "time": ("time", times),
+            "latitude": ("latitude", np.linspace(-90, 90, nlat)),
+            "longitude": ("longitude", np.linspace(-180, 180, nlon)),
+        },
+        attrs={"Conventions": "CF-1.8"},
+    )
+
+    # Set variable attributes as a real CF-compliant NetCDF would have
+    ds["q"].attrs.update({"units": "kg kg**-1", "standard_name": "specific_humidity", "long_name": "Specific humidity"})
+    ds["t"].attrs.update({"units": "K", "standard_name": "air_temperature", "long_name": "Temperature"})
+    ds["tcw"].attrs.update(
+        {
+            "units": "kg m-2",
+            "standard_name": "atmosphere_mass_content_of_water_vapor",
+            "long_name": "Total precipitable water",
+        }
+    )
+
+    return XarrayFieldList.from_xarray(ds)
+
+
+def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
+    """Fields from a variable with a level coordinate must expose levtype and units in metadata."""
+    q_fields = [f for f in mixed_fieldlist if f.metadata("variable") == "q"]
+    assert len(q_fields) > 0, "Expected at least one field for variable 'q'"
+
+    for field in q_fields:
+        levtype = field.metadata("levtype", default=None)
+        assert (
+            levtype is not None
+        ), f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
+
+        units = field.metadata("units", default=None)
+        assert units == "kg kg**-1", f"Expected units='kg kg**-1' for q, got {units!r}"
+
+
+def test_levtype_metadata_on_surface_field(mixed_fieldlist):
+    """Fields from a variable without a level coordinate must default levtype to 'sfc' and carry units."""
+    tcw_fields = [f for f in mixed_fieldlist if f.metadata("variable") == "tcw"]
+    assert len(tcw_fields) > 0, "Expected at least one field for variable 'tcw'"
+
+    for field in tcw_fields:
+        levtype = field.metadata("levtype")
+        assert levtype == "sfc", f"Expected levtype='sfc' for surface field tcw, got levtype={levtype!r}"
+
+        units = field.metadata("units")
+        assert units == "kg m-2", f"Expected units='kg m-2' for tcw, got {units!r}"
+
+
+def test_sel_by_levtype_pressure_level(mixed_fieldlist):
+    """Selecting by levtype='pl' must return only pressure-level fields."""
+    result = mixed_fieldlist.sel(levtype="pl")
+    assert len(result) > 0, "sel(levtype='pl') returned no fields"
+
+    for field in result:
+        assert field.metadata("levtype") == "pl"
+        assert field.metadata("variable") in ("q", "t")
+
+
+def test_sel_by_levtype_surface(mixed_fieldlist):
+    """Selecting by levtype='sfc' must return only surface fields."""
+    result = mixed_fieldlist.sel(levtype="sfc")
+    assert len(result) > 0, "sel(levtype='sfc') returned no fields"
+
+    for field in result:
+        assert field.metadata("levtype") == "sfc"
+        assert field.metadata("variable") == "tcw"
+
+
+def test_sel_by_param_and_levtype(mixed_fieldlist):
+    """Selecting by both param and surface level field sel(param=['tcw'], levtype='sfc')."""
+    result = mixed_fieldlist.sel(param=["tcw"], levtype="sfc")
+    assert len(result) > 0, "sel(param=['tcw'], levtype='sfc') returned no fields"
+
+    for field in result:
+        assert field.metadata("variable") == "tcw"
+        assert field.metadata("levtype") == "sfc"
+        assert field.metadata("units") == "kg m-2"

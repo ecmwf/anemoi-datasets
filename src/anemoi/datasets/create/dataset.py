@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -136,6 +136,12 @@ class Dataset:
         """Delete metadata from the dataset."""
         with self.synchronizer:
             self.store.attrs.pop(key, None)
+
+    def remove_lock_file(self) -> None:
+        """Remove the inter-process lock file, once no other process needs it."""
+        lock_file = self.path + ".lock"
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
 
     ##################################
     # Progress tracking methods

@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import tqdm
 import zarr
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.statistics import STATISTICS
 from anemoi.datasets.usage.store import open_zarr_store
@@ -317,6 +318,17 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
             return
 
     if reference != actual:
+        # Frequencies in older fixtures are stored as ISO-8601 durations
+        # ("PT6H") while newer recipes serialise them as the short form
+        # ("6h"). Treat both forms as equal when they parse to the same
+        # timedelta so the references stay valid.
+        if isinstance(reference, str) and isinstance(actual, str):
+            try:
+                if frequency_to_timedelta(reference) == frequency_to_timedelta(actual):
+                    return
+            except (ValueError, TypeError):
+                pass
+
         msg = f"🏷️ {'.'.join(path)} {reference=} ({type(reference)}) != {actual=} ({type(actual)})"
         errors.error(msg)
 

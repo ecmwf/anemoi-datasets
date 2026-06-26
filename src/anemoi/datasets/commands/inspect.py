@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -406,7 +406,7 @@ class Version:
         try:
             self.dataset.statistics
             return True
-        except AttributeError:
+        except KeyError:
             return False
 
     @property
@@ -462,9 +462,9 @@ class Version:
             )
             return
 
-        build_flags = self.build_flags or np.array([], dtype=bool)
+        build_flags = np.array([], dtype=bool) if self.build_flags is None else self.build_flags
 
-        build_lengths = self.build_lengths or np.array([], dtype=bool)
+        build_lengths = np.array([], dtype=bool) if self.build_lengths is None else self.build_lengths
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
@@ -806,6 +806,10 @@ class Version0_15(Version0_14):
     pass
 
 
+class Version0_16(Version0_15):
+    pass
+
+
 VERSIONS = {
     "0.0.0": NoVersion,
     "0.4.0": Version0_4,
@@ -814,6 +818,7 @@ VERSIONS = {
     "0.13.0": Version0_13,
     "0.14.0": Version0_14,
     "0.15.0": Version0_15,
+    "0.16.0": Version0_16,
 }
 
 

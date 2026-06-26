@@ -8,6 +8,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.40](https://github.com/ecmwf/anemoi-datasets/compare/0.5.39...0.5.40) (2026-06-22)
+
+
+### Features
+
+* Add missing dependency, psutil ([#670](https://github.com/ecmwf/anemoi-datasets/issues/670)) ([e913047](https://github.com/ecmwf/anemoi-datasets/commit/e9130473a857ff45895bdd93959862b11201283a))
+* Add window and cycle date column option to ODB source ([#662](https://github.com/ecmwf/anemoi-datasets/issues/662)) ([d388399](https://github.com/ecmwf/anemoi-datasets/commit/d388399d4a4531c2f47d0e3d0505e9e9ba577d3f))
+* Extract constants and climatologies from a dataset for use in inference ([#628](https://github.com/ecmwf/anemoi-datasets/issues/628)) ([55af3ce](https://github.com/ecmwf/anemoi-datasets/commit/55af3ce31d8036a263992768053fdd3a0bf7f44f))
+* **metadata:** Store GRIB paramId in `variables_metadata` ([#664](https://github.com/ecmwf/anemoi-datasets/issues/664)) ([f283884](https://github.com/ecmwf/anemoi-datasets/commit/f283884efa65318e2efeea6fb5e0159ff965d12d))
+* Not resolution check for tabular ([#672](https://github.com/ecmwf/anemoi-datasets/issues/672)) ([8956a2a](https://github.com/ecmwf/anemoi-datasets/commit/8956a2a00e7c620ee1bc8404039796e93bc95b57))
+* Option when checking variables compatibility ([#669](https://github.com/ecmwf/anemoi-datasets/issues/669)) ([1345ba9](https://github.com/ecmwf/anemoi-datasets/commit/1345ba992936f39f7b2a31304a655cb1e2d649fd))
+* Support empty data for bufr ([#673](https://github.com/ecmwf/anemoi-datasets/issues/673)) ([ca78ec0](https://github.com/ecmwf/anemoi-datasets/commit/ca78ec0e02d3c835c393195d64d123e5f3faca17))
+* Synthetic gridded dataset ([#637](https://github.com/ecmwf/anemoi-datasets/issues/637)) ([8cbfc01](https://github.com/ecmwf/anemoi-datasets/commit/8cbfc015d6f441113f2bd2dc213c9c2b95d0f187))
+
+
+### Bug Fixes
+
+* Netcdf level and unit metadata handling ([#663](https://github.com/ecmwf/anemoi-datasets/issues/663)) ([c636598](https://github.com/ecmwf/anemoi-datasets/commit/c6365988f513af9c1c49861577e20ab5cfe4a892))
+* Update metadata specific ([#671](https://github.com/ecmwf/anemoi-datasets/issues/671)) ([ace93c6](https://github.com/ecmwf/anemoi-datasets/commit/ace93c6b4fd13f3a80985d0f2006eefac95b3c15))
+
+## [0.5.39](https://github.com/ecmwf/anemoi-datasets/compare/0.5.38...0.5.39) (2026-06-11)
+
+
+### Features
+
+* Analyse-recipe command for workflow automation ([#659](https://github.com/ecmwf/anemoi-datasets/issues/659)) ([836b6ba](https://github.com/ecmwf/anemoi-datasets/commit/836b6bafac5e0ad970a4a7599542982615b62e77))
+* Trajectories missing features 3 ([#655](https://github.com/ecmwf/anemoi-datasets/issues/655)) ([ecd9d85](https://github.com/ecmwf/anemoi-datasets/commit/ecd9d85e16e2be8e4a1e46afdb0f89aa2ba0840e))
+* Trajectory select file ([#656](https://github.com/ecmwf/anemoi-datasets/issues/656)) ([5d507a1](https://github.com/ecmwf/anemoi-datasets/commit/5d507a119c7ce746a4513a254b775fe8fc81a304))
+
+## [0.5.38](https://github.com/ecmwf/anemoi-datasets/compare/0.5.37...0.5.38) (2026-06-09)
+
+
+### Features
+
+* Add `create-test-recipe` workflow for test dataset creation and stabilize missing-date CI tests ([#639](https://github.com/ecmwf/anemoi-datasets/issues/639)) ([8b82da8](https://github.com/ecmwf/anemoi-datasets/commit/8b82da874c9589dadff38add6e840cf1a0a96c77))
+* Missing features for trajectories ([#646](https://github.com/ecmwf/anemoi-datasets/issues/646)) ([62bdbb5](https://github.com/ecmwf/anemoi-datasets/commit/62bdbb50732021ade1c3faffef2ee4879a36cb2f))
+* Renaming a dataset ([#640](https://github.com/ecmwf/anemoi-datasets/issues/640)) ([2ae6c89](https://github.com/ecmwf/anemoi-datasets/commit/2ae6c8990c1075a541eba0c06b5c627142d2d610))
+* Trajectories datasets ([#618](https://github.com/ecmwf/anemoi-datasets/issues/618)) ([46fe4b9](https://github.com/ecmwf/anemoi-datasets/commit/46fe4b96586a9d0db3496808035803845c336035))
+* Trajectories missing features 2 ([#652](https://github.com/ecmwf/anemoi-datasets/issues/652)) ([139ef75](https://github.com/ecmwf/anemoi-datasets/commit/139ef75ba50d21e56fe09c5b6499f64c4283987a))
+
+
+### Bug Fixes
+
+* Inspect failure when dataset is not finalised ([#648](https://github.com/ecmwf/anemoi-datasets/issues/648)) ([1d73c01](https://github.com/ecmwf/anemoi-datasets/commit/1d73c01bb235ae48c9b6681454406a4e338a8b5d))
+* Missing-dates-efficiency ([#649](https://github.com/ecmwf/anemoi-datasets/issues/649)) ([a32e7d8](https://github.com/ecmwf/anemoi-datasets/commit/a32e7d80364e6274c2f19b36b1d27d5669b07005))
+* Trajectory metadata ([#654](https://github.com/ecmwf/anemoi-datasets/issues/654)) ([fa92481](https://github.com/ecmwf/anemoi-datasets/commit/fa92481d08fb47cee7634ddefa06fda5c22446d4))
+
 ## [0.5.37](https://github.com/ecmwf/anemoi-datasets/compare/0.5.36...0.5.37) (2026-05-27)
 
 

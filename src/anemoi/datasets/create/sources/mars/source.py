@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -66,7 +66,13 @@ class MarsSource(Source):
         _reject_filters(base_requests, "forecast-date")
         per_item_requests: list[dict[str, Any]] = []
         for valid_time, basetime in dates.items:
-            step_hours = int((valid_time - basetime).total_seconds() // 3600)
+            step_seconds = (valid_time - basetime).total_seconds()
+            if step_seconds % 3600:
+                raise ValueError(
+                    f"MARS forecast requests only support whole-hour steps, got "
+                    f"step={valid_time - basetime} (valid_time={valid_time}, basetime={basetime})."
+                )
+            step_hours = int(step_seconds // 3600)
             for request in base_requests:
                 r = request.copy()
                 r["date"] = basetime.strftime("%Y%m%d")
