@@ -33,14 +33,21 @@ class DatasetMock:
 def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """Generate random data with known statistics.
 
-    Args:
-        N: Number of rows
-        C: Number of columns
-        nan_fraction: Fraction of values to set as NaN (0.0 to 1.0)
+    Parameters
+    ----------
+    N : int
+        Number of rows.
+    C : int, optional
+        Number of columns.
+    nan_fraction : float, optional
+        Fraction of values to set as NaN (0.0 to 1.0).
 
-    Returns:
-        data: The generated data array
-        target_stats: Dictionary with expected statistics
+    Returns
+    -------
+    data : np.ndarray
+        The generated data array.
+    target_stats : dict[str, np.ndarray]
+        Dictionary with expected statistics.
     """
     print("Generating random data...")
 
@@ -70,7 +77,7 @@ def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str
         nan_mask[:, constants_without_nan] = False  # Do not introduce NaNs in constant columns
         data[nan_mask] = np.nan
         nan_count = np.sum(nan_mask)
-        print(f"Introduced {nan_count} NaN values ({100*nan_count/(N*C):.1f}%)")
+        print(f"Introduced {nan_count} NaN values ({100 * nan_count / (N * C):.1f}%)")
 
     # Capture the actual stats of the modified data
     target_stats = _compute_statistics(data, nan=(nan_fraction > 0))
