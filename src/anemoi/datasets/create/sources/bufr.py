@@ -217,7 +217,7 @@ class BUFRSource(Source):
     def _create_source(self, source_config: dict):
         if len(source_config) != 1:
             raise ValueError("Exactly one source must be specified")
-        name, config = source_config.popitem()
+        name, config = next(iter(source_config.items()))
         if name != "mars":
             raise ValueError(f"Invalid source name: {name}, must be 'mars'")
         return create_source(self.context, {name: config})
