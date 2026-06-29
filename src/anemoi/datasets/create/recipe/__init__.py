@@ -10,6 +10,7 @@
 import json
 import logging
 from typing import TYPE_CHECKING
+from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -38,6 +39,34 @@ LOG = logging.getLogger(__name__)
 class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_dates_group_by(cls, data: Any) -> Any:
+        """Move the legacy ``dates.group_by`` key to ``build.group_by``.
+
+        ``group_by`` controls how dates are grouped into build parts and belongs
+        to the ``build`` section.  Older recipes placed it under ``dates``, where
+        the ``Dates`` model silently ignores it (so it would fall back to the
+        ``build.group_by`` default).  Honour it here instead, mirroring
+        :func:`anemoi.datasets.commands.recipe.migrate.migrate_group_by`, so
+        every recipe-loading path (analyse, init, load) behaves consistently.
+        """
+        if not isinstance(data, dict):
+            return data
+        dates = data.get("dates")
+        if isinstance(dates, dict) and "group_by" in dates:
+            # Copy rather than mutate the caller's dicts in place.
+            dates = dict(dates)
+            group_by = dates.pop("group_by")
+            build = dict(data.get("build") or {})
+            build.setdefault("group_by", group_by)
+            data = {**data, "dates": dates, "build": build}
+            LOG.warning(
+                "'dates.group_by' is deprecated; use 'build.group_by'. " "Moved group_by=%r to build.group_by.",
+                group_by,
+            )
+        return data
 
     @model_validator(mode="after")
     def _check_steps(self) -> "Recipe":
