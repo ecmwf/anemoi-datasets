@@ -11,18 +11,18 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import EnsembleCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import ScalarCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import UnsupportedCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import XCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import YCoordinate
-from anemoi.datasets.create.sources.xarray_support.flavour import DefaultCoordinateGuesser
+from earthkit.data.readers.xarray.coordinates import DateCoordinate
+from earthkit.data.readers.xarray.coordinates import EnsembleCoordinate
+from earthkit.data.readers.xarray.coordinates import LatitudeCoordinate
+from earthkit.data.readers.xarray.coordinates import LevelCoordinate
+from earthkit.data.readers.xarray.coordinates import LongitudeCoordinate
+from earthkit.data.readers.xarray.coordinates import ScalarCoordinate
+from earthkit.data.readers.xarray.coordinates import StepCoordinate
+from earthkit.data.readers.xarray.coordinates import TimeCoordinate
+from earthkit.data.readers.xarray.coordinates import UnsupportedCoordinate
+from earthkit.data.readers.xarray.coordinates import XCoordinate
+from earthkit.data.readers.xarray.coordinates import YCoordinate
+from earthkit.data.readers.xarray.flavour import DefaultCoordinateGuesser
 
 
 def create_ds(var_name, standard_name, long_name, units, coord_length=5):

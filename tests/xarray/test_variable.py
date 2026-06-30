@@ -13,15 +13,15 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
-from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
-from anemoi.datasets.create.sources.xarray_support.time import ForecastFromValidTimeAndStep
-from anemoi.datasets.create.sources.xarray_support.variable import Variable
+from earthkit.data.readers.xarray.coordinates import DateCoordinate
+from earthkit.data.readers.xarray.coordinates import LatitudeCoordinate
+from earthkit.data.readers.xarray.coordinates import LevelCoordinate
+from earthkit.data.readers.xarray.coordinates import LongitudeCoordinate
+from earthkit.data.readers.xarray.coordinates import StepCoordinate
+from earthkit.data.readers.xarray.coordinates import TimeCoordinate
+from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
+from earthkit.data.readers.xarray.time import ForecastFromValidTimeAndStep
+from earthkit.data.readers.xarray.variable import Variable
 
 
 @pytest.fixture
@@ -119,63 +119,67 @@ def mixed_fieldlist():
         }
     )
 
-    return XarrayFieldList.from_xarray(ds)
+    return XArrayFieldList.from_xarray(ds)
 
 
 def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
-    """Fields from a variable with a level coordinate must expose levtype and units in metadata."""
-    q_fields = [f for f in mixed_fieldlist if f.metadata("variable") == "q"]
+    """Fields from a variable with a level coordinate must expose level_type and units in metadata."""
+    q_fields = [f for f in mixed_fieldlist if f.get("parameter.variable", default=None) == "q"]
     assert len(q_fields) > 0, "Expected at least one field for variable 'q'"
 
     for field in q_fields:
-        levtype = field.metadata("levtype", default=None)
+        level_type = field.get("vertical.level_type", default=None)
         assert (
-            levtype is not None
-        ), f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
+            level_type is not None
+        ), f"level_type is None for pressure-level field q at level={field.get('vertical.level', default='?')}"
 
-        units = field.metadata("units", default=None)
-        assert units == "kg kg**-1", f"Expected units='kg kg**-1' for q, got {units!r}"
+        units = field.get("parameter.units", default=None)
+        assert units is not None, f"Expected units to be set for q, got None"
+        # kg kg**-1 is dimensionless in SI units
+        assert str(units) == "dimensionless", f"Expected dimensionless for q (kg/kg), got {str(units)!r}"
 
 
 def test_levtype_metadata_on_surface_field(mixed_fieldlist):
-    """Fields from a variable without a level coordinate must default levtype to 'sfc' and carry units."""
-    tcw_fields = [f for f in mixed_fieldlist if f.metadata("variable") == "tcw"]
+    """Fields from a variable without a level coordinate must have unknown level_type and carry units."""
+    tcw_fields = [f for f in mixed_fieldlist if f.get("parameter.variable", default=None) == "tcw"]
     assert len(tcw_fields) > 0, "Expected at least one field for variable 'tcw'"
 
     for field in tcw_fields:
-        levtype = field.metadata("levtype")
-        assert levtype == "sfc", f"Expected levtype='sfc' for surface field tcw, got levtype={levtype!r}"
+        level_type = field.get("vertical.level_type", default=None)
+        assert level_type == "unknown", f"Expected level_type='unknown' for surface field tcw, got level_type={level_type!r}"
 
-        units = field.metadata("units")
-        assert units == "kg m-2", f"Expected units='kg m-2' for tcw, got {units!r}"
+        units = field.get("parameter.units", default=None)
+        assert units is not None, f"Expected units to be set for tcw, got None"
+        assert str(units) == "kilogram / meter ** 2", f"Expected 'kilogram / meter ** 2' for tcw, got {str(units)!r}"
 
 
 def test_sel_by_levtype_pressure_level(mixed_fieldlist):
-    """Selecting by levtype='pl' must return only pressure-level fields."""
-    result = mixed_fieldlist.sel(levtype="pl")
-    assert len(result) > 0, "sel(levtype='pl') returned no fields"
+    """Selecting by vertical.level_type='pressure' must return only pressure-level fields."""
+    result = mixed_fieldlist.sel(**{"vertical.level_type": "pressure"})
+    assert len(result) > 0, "sel(vertical.level_type='pressure') returned no fields"
 
     for field in result:
-        assert field.metadata("levtype") == "pl"
-        assert field.metadata("variable") in ("q", "t")
+        assert field.get("vertical.level_type") == "pressure"
+        assert field.get("parameter.variable") in ("q", "t")
 
 
 def test_sel_by_levtype_surface(mixed_fieldlist):
-    """Selecting by levtype='sfc' must return only surface fields."""
-    result = mixed_fieldlist.sel(levtype="sfc")
-    assert len(result) > 0, "sel(levtype='sfc') returned no fields"
+    """Selecting by vertical.level_type='unknown' must return only surface fields."""
+    result = mixed_fieldlist.sel(**{"vertical.level_type": "unknown"})
+    assert len(result) > 0, "sel(vertical.level_type='unknown') returned no fields"
 
     for field in result:
-        assert field.metadata("levtype") == "sfc"
-        assert field.metadata("variable") == "tcw"
+        assert field.get("vertical.level_type") == "unknown"
+        assert field.get("parameter.variable") == "tcw"
 
 
 def test_sel_by_param_and_levtype(mixed_fieldlist):
-    """Selecting by both param and surface level field sel(param=['tcw'], levtype='sfc')."""
-    result = mixed_fieldlist.sel(param=["tcw"], levtype="sfc")
-    assert len(result) > 0, "sel(param=['tcw'], levtype='sfc') returned no fields"
+    """Selecting by both param and surface level field sel(parameter.variable=['tcw'], vertical.level_type='unknown')."""
+    result = mixed_fieldlist.sel(**{"parameter.variable": ["tcw"], "vertical.level_type": "unknown"})
+    assert len(result) > 0, "sel(parameter.variable=['tcw'], vertical.level_type='unknown') returned no fields"
 
     for field in result:
-        assert field.metadata("variable") == "tcw"
-        assert field.metadata("levtype") == "sfc"
-        assert field.metadata("units") == "kg m-2"
+        assert field.get("parameter.variable") == "tcw"
+        assert field.get("vertical.level_type") == "unknown"
+        units = field.get("parameter.units", default=None)
+        assert str(units) == "kilogram / meter ** 2"

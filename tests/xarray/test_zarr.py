@@ -8,11 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 
+import datetime
+
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
-from anemoi.datasets.create.sources.xarray import XarrayFieldList
+from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
 from anemoi.datasets.misc.testing import assert_field_list
 
 
@@ -27,7 +29,7 @@ def test_arco_era5_1() -> None:
         storage_options=dict(token="anon"),
     )
 
-    fs = XarrayFieldList.from_xarray(ds)
+    fs = XArrayFieldList.from_xarray(ds)
     assert_field_list(
         fs,
         128677526,
@@ -47,7 +49,7 @@ def test_arco_era5_2() -> None:
         storage_options=dict(token="anon"),
     )
 
-    fs = XarrayFieldList.from_xarray(ds)
+    fs = XArrayFieldList.from_xarray(ds)
     assert_field_list(
         fs,
         128677526,
@@ -79,7 +81,7 @@ def test_weatherbench() -> None:
         "levtype": "pl",
     }
 
-    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
+    fs = XArrayFieldList.from_xarray(ds, flavour=flavour)
 
     assert_field_list(
         fs,
@@ -96,17 +98,22 @@ def test_inca_one_date() -> None:
     url = "https://object-store.os-api.cci1.ecmwf.int/ml-tests/test-data/example-inca-one-date.zarr"
 
     ds = xr.open_zarr(url)
-    fs = XarrayFieldList.from_xarray(ds)
+    fs = XArrayFieldList.from_xarray(ds)
     vars = ["DD_10M", "SP_10M", "TD_2M", "TOT_PREC", "T_2M"]
 
     for i, f in enumerate(fs):
         print(f)
-        assert f.metadata("valid_datetime") == "2023-01-01T00:00:00"
-        assert f.metadata("step") == 0
-        assert f.metadata("number") == 0
-        assert f.metadata("variable") == vars[i]
+        # earthkit 1.0 API: use component-path keys
+        vdt = f.get("time.valid_datetime", default=None)
+        assert vdt == datetime.datetime(2023, 1, 1, 0, 0), f"Expected 2023-01-01T00:00:00, got {vdt!r}"
+        step = f.get("time.step", default=None)
+        assert step == datetime.timedelta(0), f"Expected timedelta(0), got {step!r}"
+        # No ensemble dimension in INCA data → number is None
+        number = f.get("ensemble.number", default=None)
+        assert number is None, f"Expected None for number (no ensemble), got {number!r}"
+        assert f.get("parameter.variable") == vars[i]
 
-    print(fs[0].datetime())
+    print(fs[0].get("time.valid_datetime", default=None))
 
 
 @skip_if_offline
@@ -129,7 +136,7 @@ def test_noaa_replay() -> None:
         "levtype": "pl",
     }
 
-    fs = XarrayFieldList.from_xarray(ds, flavour=flavour)
+    fs = XArrayFieldList.from_xarray(ds, flavour=flavour)
 
     assert_field_list(
         fs,
