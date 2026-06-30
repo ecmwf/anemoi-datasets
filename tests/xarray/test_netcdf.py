@@ -9,7 +9,6 @@
 
 import os
 
-import earthkit.data as ekd
 import xarray as xr
 from multiurl import download
 

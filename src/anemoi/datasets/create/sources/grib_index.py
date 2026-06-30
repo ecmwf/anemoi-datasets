@@ -16,8 +16,8 @@ from collections import defaultdict
 from collections.abc import Iterator
 from typing import Any
 
-import earthkit.data as ekd
 import tqdm
+from anemoi.transform import Field
 from anemoi.transform.fields import new_field_from_grid
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
@@ -443,14 +443,14 @@ class GribIndex:
 
         return None
 
-    def _unknown(self, path: str, field: ekd.Field, i: int, param: tuple) -> None:
+    def _unknown(self, path: str, field: Field, i: int, param: tuple) -> None:
         """Log information about unknown parameters.
 
         Parameters
         ----------
         path : str
             Path to the GRIB file.
-        field : ekd.Field
+        field : Field
             The GRIB field object.
         i : int
             The index of the field in the file.

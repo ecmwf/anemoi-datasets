@@ -9,7 +9,7 @@
 
 from typing import TYPE_CHECKING
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.types import DateList
 
@@ -39,7 +39,7 @@ class Source:
         """
         self.context = context
 
-    def execute(self, argument) -> ekd.FieldList:
+    def execute(self, argument) -> FieldList:
         """Dispatch to the appropriate ``execute_*`` method based on argument type.
 
         Plain ``list[datetime]`` and ``GroupOfDates`` are wrapped in
@@ -52,7 +52,7 @@ class Source:
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The output data.
         """
         from anemoi.datasets.create.arguments import ForecastDates
@@ -80,7 +80,7 @@ class Source:
             f"{type(self).__name__}.execute() received unsupported argument type " f"'{type(argument).__name__}'."
         )
 
-    def execute_valid_dates(self, argument: "ValidDates") -> ekd.FieldList:
+    def execute_valid_dates(self, argument: "ValidDates") -> FieldList:
         """Handle instant analysis / reanalysis requests.
 
         Override in subclasses to process ``ValidDates`` arguments.
@@ -92,12 +92,12 @@ class Source:
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The output data.
         """
         raise NotImplementedError(f"'{type(self).__name__}' does not implement execute_valid_dates.")
 
-    def execute_forecast_dates(self, argument: "ForecastDates") -> ekd.FieldList:
+    def execute_forecast_dates(self, argument: "ForecastDates") -> FieldList:
         """Handle forecast (basetime, valid_time) requests — trajectories / step products.
 
         Override in subclasses to process ``ForecastDates`` arguments.
@@ -110,14 +110,14 @@ class Source:
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The output data.
         """
         raise NotImplementedError(
             f"'{type(self).__name__}' does not support the trajectory layout " f"(received {type(argument).__name__})."
         )
 
-    def execute_intervals(self, argument: "Intervals") -> ekd.FieldList:
+    def execute_intervals(self, argument: "Intervals") -> FieldList:
         """Handle archive-resolved interval requests from ``AccumulateSource``.
 
         Falls back to ``execute_valid_dates`` by default. Override explicitly
@@ -130,12 +130,12 @@ class Source:
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The output data.
         """
         return self.execute_valid_dates(argument)
 
-    def execute_forecast_intervals(self, argument: "ForecastIntervals") -> ekd.FieldList:
+    def execute_forecast_intervals(self, argument: "ForecastIntervals") -> FieldList:
         """Handle forecast accumulation requests.
 
         Falls back to ``execute_forecast_dates`` by default. Override explicitly
@@ -148,7 +148,7 @@ class Source:
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The output data.
         """
         return self.execute_forecast_dates(argument)
@@ -157,14 +157,14 @@ class Source:
 class FieldSource(Source):
     """A source that returns a predefined FieldList."""
 
-    def __init__(self, context: any, data: ekd.FieldList, *args: tuple, **kwargs: dict):
+    def __init__(self, context: any, data: FieldList, *args: tuple, **kwargs: dict):
         """Initialise the FieldSource.
 
         Parameters
         ----------
         context : Any
             The context for the data source.
-        data : ekd.FieldList
+        data : FieldList
             The predefined data to return.
         *args : tuple
             Additional positional arguments.
@@ -174,7 +174,7 @@ class FieldSource(Source):
         super().__init__(context, *args, **kwargs)
         self.data = data
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute(self, dates: DateList) -> FieldList:
         """Return the predefined FieldList.
 
         Parameters
@@ -184,7 +184,7 @@ class FieldSource(Source):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The predefined data.
         """
         self.context.trace(self.emoji, f"FieldSource returning {len(self.data)} fields")

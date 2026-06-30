@@ -9,7 +9,7 @@
 
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.types import DateList
 
@@ -57,7 +57,7 @@ class XarraySourceBase(Source):
         self.args = args
         self.kwargs = kwargs
 
-    def execute_valid_dates(self, dates: DateList) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: DateList) -> FieldList:
         """Execute the data loading process for the given dates.
 
         Parameters
@@ -67,7 +67,7 @@ class XarraySourceBase(Source):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The loaded data fields.
         """
 

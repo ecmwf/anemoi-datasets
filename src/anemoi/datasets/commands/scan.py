@@ -13,7 +13,6 @@ import sys
 from collections import defaultdict
 from typing import Any
 
-import earthkit.data as ekd
 import tqdm
 import yaml
 

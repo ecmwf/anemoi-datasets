@@ -18,7 +18,6 @@ class AnemoiDatasetSource(LegacySource):
 
     @staticmethod
     def _execute(context, dates, params=None, **kwargs):
-        import earthkit.data as ekd
 
         from anemoi.datasets import open_dataset
 

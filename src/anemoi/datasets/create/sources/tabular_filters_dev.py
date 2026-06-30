@@ -11,9 +11,9 @@
 import logging
 import sys
 
-import earthkit.data as ekd
 import numpy as np
 import pandas as pd
+from anemoi.transform import FieldList
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
@@ -78,9 +78,8 @@ def expect_tabular(func):
 
 
 def expect_gridded(func):
-    import earthkit.data as ekd
 
-    return _create_overload(ekd.FieldList, func)
+    return _create_overload(FieldList, func)
 
 
 @filter_registry.register("crop")

@@ -12,7 +12,7 @@ import glob
 import logging
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 from anemoi.transform.fields import new_field_from_grid
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
@@ -120,7 +120,7 @@ class GribSource(Source):
         self.args = args
         self.kwargs = kwargs
 
-    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: ValidDates) -> FieldList:
         """Load data from the GRIB files for the given dates.
 
         Parameters
@@ -130,7 +130,7 @@ class GribSource(Source):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The loaded dataset.
         """
         given_paths = self.path if isinstance(self.path, list) else [self.path]
