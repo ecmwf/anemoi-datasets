@@ -332,7 +332,12 @@ def test_grib_gridfile_with_refinement_level(
 def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
-    This function tests eccodes key type formatters.
+    This function tests eccodes key type formatters.  The ``level:d`` source
+    key selects fields by float-typed level.  The variable naming uses the
+    plain ``{param}_{level}`` template because grid-wrapped fields (produced
+    by ``grid_definition``) do not carry eccodes typed-key metadata
+    (``metadata.level:d``); only the component path ``vertical.level`` (int)
+    is available.
     """
 
     p = "anemoi-datasets/create/test_grib_gridfile_with_refinement_level/"
@@ -361,18 +366,18 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
             },
         },
         "build": {
-            "variable_naming": "{param}_{level:d}",
+            "variable_naming": "{param}_{level}",
         },
     }
 
     created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
-    assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
+    assert ds.to_index(date=0, variable="u_101", member=0) != ds.to_index(date=0, variable="u_119", member=0)
 
     with pytest.raises(ValueError):
-        ds.to_index(date=0, variable="u_101", member=0)  # param does not exist
+        ds.to_index(date=0, variable="u_101.0", member=0)  # float names not produced
     with pytest.raises(ValueError):
-        ds.to_index(date=0, variable="u_119", member=0)  # param does not exist
+        ds.to_index(date=0, variable="u_119.0", member=0)  # float names not produced
 
 
 @skip_if_offline

@@ -41,13 +41,14 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.4",
+  # TODO: replace with anemoi-transform release
+  "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@earthkit-1.0",
   "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",        # Until we move to zarr3
+  "numcodecs<0.16",                                                                    # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
@@ -69,9 +70,8 @@ optional-dependencies.comparelam = [
 ]
 optional-dependencies.create = [
   "cachetools",
-  "earthkit-data[mars]>=0.14,<1",
-  "earthkit-geo>=0.3,<1",
-  "earthkit-meteo>=0.3,<1",
+  "earthkit-data[mars]==1.0.0rc12",
+  "earthkit-geo==1.0.0rc8",
   "eccodes>=2.39.1",
   "entrypoints",
   "fasteners",

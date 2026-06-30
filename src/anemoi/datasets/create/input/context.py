@@ -82,7 +82,6 @@ class Context(ABC):
             The joined result.
         """
 
-        from functools import reduce
 
         import earthkit.data as ekd
 
@@ -92,7 +91,9 @@ class Context(ABC):
         # TODO: quick hack, find a more generic way to do this
 
         if all(isinstance(r, ekd.FieldList) for r in results):
-            return reduce(lambda x, y: x + y, results)
+            # earthkit 1.0: FieldList + FieldList is element-wise arithmetic;
+            # use ekd.concat() for concatenation.
+            return ekd.concat(*results)
 
         # Assume it's pandas-like
         import pandas as pd
