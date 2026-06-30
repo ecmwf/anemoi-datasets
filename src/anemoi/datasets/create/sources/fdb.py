@@ -12,7 +12,7 @@ from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
@@ -126,7 +126,7 @@ class FdbSource(Source):
             fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
 
         if self.grid is not None:
-            fl = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in fl])
+            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
 
         if self.flavour:
             fl = self.flavour.map(fl)

@@ -18,11 +18,11 @@ from typing import Any
 
 import earthkit.data as ekd
 import tqdm
-from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
-from earthkit.data.indexing.fieldlist import FieldArray
+from earthkit.data import SimpleFieldList
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
@@ -36,6 +36,22 @@ KEYS1 = ("class", "type", "stream", "expver", "levtype")
 KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "valid_datetime", "levelist")
 
 KEYS = KEYS1 + KEYS2
+
+
+def _safe_metadata(field: ekd.Field, key: str) -> Any:
+    """Retrieve a single GRIB metadata key, returning None when absent.
+
+    Datetime values are converted to ISO-format strings for consistent SQLite storage.
+    """
+    import datetime as _dt
+
+    try:
+        val = field.metadata(key)
+        if isinstance(val, _dt.datetime):
+            return val.isoformat()
+        return val
+    except (KeyError, Exception):
+        return None
 
 
 class GribIndex:
@@ -290,14 +306,14 @@ class GribIndex:
         """
         path_id = self._path_id(path)
 
-        fields = ekd.from_source("file", path)
+        fields = ekd.from_source("file", path).to_fieldlist()
         if self.flavour is not None:
             fields = self.flavour.map(fields)
 
         for i, field in enumerate(tqdm.tqdm(fields, leave=False)):
 
-            keys = field.metadata(namespace="mars").copy()
-            keys.update({k: field.metadata(k, default=None) for k in self.keys})
+            keys = (field.get(collections="metadata.mars") or {}).copy()
+            keys.update({k: _safe_metadata(field, k) for k in self.keys})
 
             keys.setdefault("param", keys.get("shortName", keys.get("paramId")))
 
@@ -305,9 +321,9 @@ class GribIndex:
 
             if keys.get("param") in (0, "unknown"):
                 param = (
-                    field.metadata("discipline", default=None),
-                    field.metadata("parameterCategory", default=None),
-                    field.metadata("parameterNumber", default=None),
+                    _safe_metadata(field, "discipline"),
+                    _safe_metadata(field, "parameterCategory"),
+                    _safe_metadata(field, "parameterNumber"),
                 )
                 if param not in self.warnings:
                     self._unknown(path, field, i, param)
@@ -465,13 +481,13 @@ class GribIndex:
                 return s
 
         LOG.warning(
-            f"Unknown param for message {i+1} in {path} at offset {int(field.metadata('offset', default=None))}"
+            f"Unknown param for message {i+1} in {path} at offset {int(_safe_metadata(field, 'offset'))}"
         )
         LOG.warning(
-            f"shortName/paramId: {field.metadata('shortName', default=None)}/{field.metadata('paramId', default=None)}"
+            f"shortName/paramId: {_safe_metadata(field, 'shortName')}/{_safe_metadata(field, 'paramId')}"
         )
-        name = field.metadata("parameterName", default=None)
-        units = field.metadata("parameterUnits", default=None)
+        name = _safe_metadata(field, "parameterName")
+        units = _safe_metadata(field, "parameterUnits")
         LOG.warning(f"Discipline/category/parameter: {param} ({name}, {units})")
         LOG.warning(f"grib_copy -w count={i+1} {path} tmp.grib")
 
@@ -611,12 +627,12 @@ class GribIndexSource(Source):
         self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
         self.request = kwargs
 
-    def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
+    def execute_valid_dates(self, dates: ValidDates) -> SimpleFieldList:
         """Retrieve grib-indexed fields for a list of validity times."""
         full_requests = [(list(dates), self.request)]
         return self._run_requests(full_requests)
 
-    def execute_intervals(self, dates: Intervals) -> FieldArray:
+    def execute_intervals(self, dates: Intervals) -> SimpleFieldList:
         """Retrieve grib-indexed fields covering accumulation windows.
 
         grib-index is valid-time indexed: each interval is resolved to its
@@ -639,7 +655,7 @@ class GribIndexSource(Source):
             full_requests.append(([interval.max], request))
         return self._run_requests(full_requests)
 
-    def _run_requests(self, full_requests: list[tuple[list, dict]]) -> FieldArray:
+    def _run_requests(self, full_requests: list[tuple[list, dict]]) -> SimpleFieldList:
         """Factorise, trace, and run a list of ``(valid_dates, request)`` pairs."""
         index = GribIndex(self.indexdb)
 
@@ -651,15 +667,15 @@ class GribIndexSource(Source):
         result = []
         for valid_dates, request in full_requests:
             for grib in index.retrieve(valid_dates, **request):
-                field = ekd.from_source("memory", grib)[0]
+                field = ekd.from_source("memory", grib).to_fieldlist()[0]
                 if self.flavour:
                     field = self.flavour.apply(field)
                 result.append(field)
 
         if self.grid is not None:
-            result = [new_field_from_grid(field, self.grid) for field in result]
+            result = [new_field_from_latitudes_longitudes(field, *self.grid.latlon()) for field in result]
 
-        return FieldArray(result)
+        return SimpleFieldList(result)
 
 
 def factorise(lst):

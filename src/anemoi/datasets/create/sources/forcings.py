@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 from typing import Any
 
 from anemoi.transform.fields import new_field_with_metadata
@@ -36,10 +37,18 @@ UNITS = dict(
 
 
 def _units_for(field: Any) -> str:
-    """Return the units of a forcing field, falling back to the ``UNITS`` table."""
-    units = field.metadata("units", default=None)
+    """Return the units of a forcing field.
+
+    Looks up the ``UNITS`` table by ``parameter.variable`` first so that
+    forcing fields (e.g. cos_latitude) get the correct units even when the
+    underlying template GRIB carries a different ``metadata.units`` value.
+    """
+    param_var = field.get("parameter.variable", default=None)
+    if param_var is not None and param_var in UNITS:
+        return UNITS[param_var]
+    units = field.get("metadata.units", default=None)
     if units is None:
-        units = UNITS[field.metadata("param")]
+        units = UNITS.get(field.metadata("param"))
     return units
 
 
@@ -66,19 +75,18 @@ class ForcingsSource(Source):
         # Index forcing fields by valid_datetime for quick lookup
         fields_by_vdt = {}
         for f in fields:
-            fields_by_vdt.setdefault(f.metadata("valid_datetime"), []).append(f)
+            fields_by_vdt.setdefault(f.time.valid_datetime(), []).append(f)
 
         # For each (valid_time, basetime) pair, clone the forcing fields
-        # with the correct date/time/step metadata
+        # with the correct base_datetime/step metadata
         result = []
         for vt, bt in dates:
             step_hours = int((vt - bt).total_seconds() // 3600)
             meta = dict(
-                date=int(bt.strftime("%Y%m%d")),
-                time=int(bt.strftime("%H%M")),
-                step=step_hours,
+                base_datetime=bt,
+                step=datetime.timedelta(hours=step_hours),
             )
-            for f in fields_by_vdt.get(vt.isoformat(), []):
+            for f in fields_by_vdt.get(vt, []):
                 result.append(new_field_with_metadata(f, units=_units_for(f), **meta))
 
         return new_fieldlist_from_list(result)
