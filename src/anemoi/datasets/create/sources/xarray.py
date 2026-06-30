@@ -29,6 +29,21 @@ __all__ = ["load_many", "load_one", "XArrayFieldList", "XarrayFieldList"]
 
 LOG = logging.getLogger(__name__)
 
+# Mapping from legacy earthkit 0.x sel keys to earthkit 1.0 component paths.
+# Used to translate recipe kwargs into component-path keys for sel().
+# Unlike grib.py which passes remapping= to sel(), xarray sources convert
+# kwargs directly to component-path keys.  This avoids a strict int/float
+# comparison issue in earthkit's remapping-based sel — xarray fields expose
+# levels as float64 while recipes typically specify integer values.
+_SEL_KEY_MAP = {
+    "valid_datetime": "time.valid_datetime",
+    "param": "parameter.variable",
+    "shortName": "parameter.variable",
+    "level": "vertical.level",
+    "levelist": "vertical.level",
+    "levtype": "metadata.levtype",
+}
+
 if TYPE_CHECKING:
     import xarray as xr
 
@@ -94,12 +109,66 @@ def load_one(
         print(f"Opening dataset {dataset} with options {options}")
         data = xr.open_dataset(dataset, **options)
 
+    # Pre-filter the xarray dataset before creating the FieldList.
+    # XArrayFieldList.sel() doesn't scale well on large FieldLists
+    # (hundreds of thousands of fields), and remapping-based sel has
+    # strict int/float comparison issues.  Filtering at the xarray level
+    # is fast and avoids both problems.  If a pre-filter can't be applied
+    # (e.g. param name doesn't match xarray variable names), the kwargs
+    # fall through to FieldList sel.
+    _xr_param_keys = {"param", "shortName"}
+    _xr_coord_keys = {"level", "levelist"}
+
+    remaining_kwargs: dict[str, Any] = {}
+
+    for k, v in kwargs.items():
+        if k in _xr_param_keys:
+            xr_vars = v if isinstance(v, list) else [v]
+            available = [name for name in xr_vars if name in data.data_vars]
+            if available:
+                data = data[available]
+            else:
+                # Variable names don't match xarray — defer to FieldList sel
+                remaining_kwargs[k] = v
+        elif k in _xr_coord_keys:
+            try:
+                data = data.sel(level=v)
+            except (KeyError, ValueError):
+                # Coordinate not in dataset — defer to FieldList sel
+                remaining_kwargs[k] = v
+        else:
+            remaining_kwargs[k] = v
+
+    # Pre-filter time dimension to keep the FieldList small.
+    # Datasets like CONUS404 span decades (15k+ time steps × levels =
+    # hundreds of thousands of fields); XArrayFieldList.sel() doesn't
+    # scale on those sizes.
+    if dates and "time" in data.dims:
+        try:
+            data = data.sel(time=dates)
+        except KeyError:
+            pass  # requested dates not in dataset — FieldList sel will handle
+
     fs = XArrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 
+    # Translate any remaining kwargs to component-path keys for sel().
+    sel_kwargs: dict[str, Any] = {}
+    for k, v in remaining_kwargs.items():
+        if ":" in k:
+            sel_kwargs[f"metadata.{k}"] = v
+        else:
+            sel_kwargs[_SEL_KEY_MAP.get(k, k)] = v
+
     if len(dates) == 0:
-        result = fs.sel(**kwargs)
+        if sel_kwargs:
+            result = fs.sel(**sel_kwargs)
+        else:
+            result = fs
     else:
-        result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date, **kwargs}) for date in dates])
+        if sel_kwargs:
+            result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date, **sel_kwargs}) for date in dates])
+        else:
+            result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
