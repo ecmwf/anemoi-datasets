@@ -12,7 +12,6 @@ import datetime
 import numpy as np
 import pytest
 import xarray as xr
-
 from earthkit.data.readers.xarray.coordinates import DateCoordinate
 from earthkit.data.readers.xarray.coordinates import LatitudeCoordinate
 from earthkit.data.readers.xarray.coordinates import LevelCoordinate
@@ -134,7 +133,7 @@ def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
         ), f"level_type is None for pressure-level field q at level={field.get('vertical.level', default='?')}"
 
         units = field.get("parameter.units", default=None)
-        assert units is not None, f"Expected units to be set for q, got None"
+        assert units is not None, "Expected units to be set for q, got None"
         # kg kg**-1 is dimensionless in SI units
         assert str(units) == "dimensionless", f"Expected dimensionless for q (kg/kg), got {str(units)!r}"
 
@@ -146,10 +145,12 @@ def test_levtype_metadata_on_surface_field(mixed_fieldlist):
 
     for field in tcw_fields:
         level_type = field.get("vertical.level_type", default=None)
-        assert level_type == "unknown", f"Expected level_type='unknown' for surface field tcw, got level_type={level_type!r}"
+        assert (
+            level_type == "unknown"
+        ), f"Expected level_type='unknown' for surface field tcw, got level_type={level_type!r}"
 
         units = field.get("parameter.units", default=None)
-        assert units is not None, f"Expected units to be set for tcw, got None"
+        assert units is not None, "Expected units to be set for tcw, got None"
         assert str(units) == "kilogram / meter ** 2", f"Expected 'kilogram / meter ** 2' for tcw, got {str(units)!r}"
 
 

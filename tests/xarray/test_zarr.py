@@ -13,8 +13,8 @@ import datetime
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
-
 from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
+
 from anemoi.datasets.misc.testing import assert_field_list
 
 

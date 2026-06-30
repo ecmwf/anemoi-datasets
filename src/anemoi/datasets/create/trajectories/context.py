@@ -15,7 +15,6 @@ from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.context import Context
-from anemoi.datasets.create.recipe.build import _to_earthkit10_template
 from anemoi.datasets.create.recipe.dates import Steps  # noqa: F401  (re-exported for back-compat)
 from anemoi.datasets.create.trajectories.result import TrajectoryGriddedResult
 

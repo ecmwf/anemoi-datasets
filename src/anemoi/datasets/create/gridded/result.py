@@ -61,6 +61,7 @@ def _field_metadata_callable(field: Any) -> Any:
 
     return _get
 
+
 # Synthetic variable names with known metadata flags.
 # These are computed forcings that do not come from GRIB fields.
 _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
@@ -108,7 +109,7 @@ def _strip_zero_level_suffix(name: str) -> str:
     # Known forcing variables: strip any trailing _<digits> level suffix
     for var_name in _KNOWN_VARIABLES:
         if name.startswith(var_name + "_"):
-            suffix = name[len(var_name) + 1:]
+            suffix = name[len(var_name) + 1 :]
             if suffix.isdigit():
                 return var_name
 
@@ -684,7 +685,11 @@ class GriddedResult(Result):
             for i, (k, v) in enumerate(sorted(duplicated.items())):
                 print(" ", k)
                 for f in v:
-                    x = {k: f.get(f"metadata.{k}", default=None) for k in METADATA if f.get(f"metadata.{k}", default=None) is not None}
+                    x = {
+                        k: f.get(f"metadata.{k}", default=None)
+                        for k in METADATA
+                        if f.get(f"metadata.{k}", default=None) is not None
+                    }
                     print("   ", f, x)
                 if i >= 9 and len(duplicated) > 10:
                     print("...", len(duplicated) - i - 1, "more")

@@ -45,6 +45,7 @@ class _GribOutputCompat:
 def _new_grib_output(path):
     return _GribOutputCompat(path)
 
+
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals

@@ -10,7 +10,6 @@
 import numpy as np
 import pytest
 import xarray as xr
-
 from earthkit.data.readers.xarray.coordinates import DateCoordinate
 from earthkit.data.readers.xarray.coordinates import EnsembleCoordinate
 from earthkit.data.readers.xarray.coordinates import LatitudeCoordinate

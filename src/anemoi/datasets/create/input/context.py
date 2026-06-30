@@ -82,7 +82,6 @@ class Context(ABC):
             The joined result.
         """
 
-        from functools import reduce
 
         import earthkit.data as ekd
 

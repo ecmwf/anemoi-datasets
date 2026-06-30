@@ -11,9 +11,8 @@ import os
 
 import earthkit.data as ekd
 import xarray as xr
-from multiurl import download
-
 from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
+from multiurl import download
 
 URLS = {
     "https://get.ecmwf.int/repository/test-data/earthkit-data/examples/efas.nc": dict(length=3),

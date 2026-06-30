@@ -18,9 +18,9 @@ from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.create.types import DateList
 
+from ..source import Source
 from . import source_registry
 from .legacy import LegacySource
-from ..source import Source
 
 # Backwards-compatibility alias
 XarrayFieldList = XArrayFieldList
@@ -45,7 +45,7 @@ _SEL_KEY_MAP = {
 }
 
 if TYPE_CHECKING:
-    import xarray as xr
+    pass
 
 
 def load_one(

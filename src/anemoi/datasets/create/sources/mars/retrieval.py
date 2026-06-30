@@ -21,8 +21,8 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
-from anemoi.utils.humanize import did_you_mean
 import earthkit.data as ekd
+from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
 

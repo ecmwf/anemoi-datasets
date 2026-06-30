@@ -480,12 +480,8 @@ class GribIndex:
             except ValueError:
                 return s
 
-        LOG.warning(
-            f"Unknown param for message {i+1} in {path} at offset {int(_safe_metadata(field, 'offset'))}"
-        )
-        LOG.warning(
-            f"shortName/paramId: {_safe_metadata(field, 'shortName')}/{_safe_metadata(field, 'paramId')}"
-        )
+        LOG.warning(f"Unknown param for message {i+1} in {path} at offset {int(_safe_metadata(field, 'offset'))}")
+        LOG.warning(f"shortName/paramId: {_safe_metadata(field, 'shortName')}/{_safe_metadata(field, 'paramId')}")
         name = _safe_metadata(field, "parameterName")
         units = _safe_metadata(field, "parameterUnits")
         LOG.warning(f"Discipline/category/parameter: {param} ({name}, {units})")

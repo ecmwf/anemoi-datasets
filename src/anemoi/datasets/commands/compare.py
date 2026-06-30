@@ -327,18 +327,14 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 
             if k not in actual_keys:
                 _fp = ".".join(path + (k,))
-                if _fp in IGNORE_MISSINGS or any(
-                    fnmatch.fnmatch(_fp, pat) for pat in IGNORE_MISSINGS
-                ):
+                if _fp in IGNORE_MISSINGS or any(fnmatch.fnmatch(_fp, pat) for pat in IGNORE_MISSINGS):
                     errors.missing_ok(f"🏷️ {'.'.join(path)}.{k}")
                 else:
                     errors.missing(f"🏷️ {'.'.join(path)}.{k}")
                 continue
 
             _full_path = ".".join(path + (k,))
-            if _full_path in IGNORE_VALUES or any(
-                fnmatch.fnmatch(_full_path, pat) for pat in IGNORE_VALUES
-            ):
+            if _full_path in IGNORE_VALUES or any(fnmatch.fnmatch(_full_path, pat) for pat in IGNORE_VALUES):
                 continue
 
             _compare_dot_zattrs(errors, reference[k], actual[k], *path, k)
