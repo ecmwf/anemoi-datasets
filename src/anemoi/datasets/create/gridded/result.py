@@ -80,7 +80,7 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 
 
 def _strip_zero_level_suffix(name: str) -> str:
-    """Strip the ``_0`` level suffix produced for surface fields.
+    """Strip level suffixes from surface fields and known forcing variables.
 
     In earthkit-data 1.0 ``vertical.level`` returns 0 for surface-type fields
     (level_type='surface', 'meanSea', etc.) rather than None.  The
@@ -91,10 +91,27 @@ def _strip_zero_level_suffix(name: str) -> str:
     evaluation, restoring the legacy variable naming (``"2t"``,
     ``"cos_latitude"``).
 
+    For known computed forcing variables (e.g. ``cos_julian_day``), any
+    trailing ``_<digits>`` level suffix is stripped regardless of the level
+    value, since these synthetic variables are identified by name alone and
+    never carry a meaningful level distinction.
+
     Level-bearing names such as ``"t_700"`` are returned unchanged.
     """
-    if name is not None and name.endswith("_0"):
+    if name is None:
+        return name
+
+    # Surface level: always strip _0
+    if name.endswith("_0"):
         return name[:-2]
+
+    # Known forcing variables: strip any trailing _<digits> level suffix
+    for var_name in _KNOWN_VARIABLES:
+        if name.startswith(var_name + "_"):
+            suffix = name[len(var_name) + 1:]
+            if suffix.isdigit():
+                return var_name
+
     return name
 
 

@@ -173,11 +173,17 @@ class GribSource(Source):
                     s = self.flavour.map(s)
 
                 # Build sel kwargs, remapping legacy key names to earthkit 1.0 paths.
-                # Strip type-hint suffixes (e.g. "level:d" → base key "level").
+                # Keys with eccodes type qualifiers (e.g. "level:d") are passed
+                # through as "metadata.key:type" — component paths do not
+                # support type qualifiers.  Plain keys are remapped via
+                # _SEL_REMAPPING.
                 sel_kwargs: dict[str, Any] = {}
                 for k, v in self.kwargs.items():
-                    base_key = k.split(":")[0]
-                    sel_kwargs[base_key] = v
+                    if ":" in k:
+                        # Typed key (e.g. "level:d") → metadata.level:d
+                        sel_kwargs[f"metadata.{k}"] = v
+                    else:
+                        sel_kwargs[k] = v
                 if dates:
                     sel_kwargs["valid_datetime"] = dates
 

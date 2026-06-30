@@ -38,9 +38,11 @@ _LEGACY_KEY_MAP = {
     "levelist": "vertical.level",
 }
 
-# Pattern that matches bare {key} template variables but leaves already-prefixed
-# {component.key} forms (e.g. {parameter.variable}) untouched.
-_BARE_TEMPLATE_VAR = re.compile(r"\{(\w+)\}")
+# Pattern that matches bare {key} or {key:type} template variables but leaves
+# already-prefixed {component.key} forms (e.g. {parameter.variable}) untouched.
+# Group 1: key name (no dots → bare key).  Group 2: optional eccodes type
+# qualifier (e.g. ":d" for double, ":l" for long).
+_BARE_TEMPLATE_VAR = re.compile(r"\{(\w+)(:\w+)?\}")
 
 
 def _to_earthkit10_template(template: str) -> str:
@@ -51,10 +53,22 @@ def _to_earthkit10_template(template: str) -> str:
     Already-prefixed forms such as ``{parameter.variable}`` are left unchanged
     (idempotent).  Unknown bare keys fall back to ``{metadata.key}`` so that
     custom remapping entries still work.
+
+    Eccodes type qualifiers (e.g. ``{level:d}`` for double) are preserved:
+    the base key is mapped and the qualifier is appended.  When a type
+    qualifier is present, the mapping always targets ``metadata.key:type``
+    (not a component path) because component paths like ``vertical.level:d``
+    are not supported.
     """
 
     def _replace(m: re.Match) -> str:
         key = m.group(1)
+        type_qual = m.group(2) or ""  # e.g. ":d" or ""
+
+        if type_qual:
+            # Type-qualified keys must use metadata.key:type — component
+            # paths (e.g. vertical.level:d) do not support eccodes types.
+            return "{metadata." + key + type_qual + "}"
         return "{" + _LEGACY_KEY_MAP.get(key, f"metadata.{key}") + "}"
 
     return _BARE_TEMPLATE_VAR.sub(_replace, template)
