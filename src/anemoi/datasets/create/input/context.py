@@ -83,8 +83,6 @@ class Context(ABC):
         """
 
 
-        from anemoi.transform import FieldList
-
         results = list(results)  # In case it's a generator
         assert results, "join: No results to join"
 
