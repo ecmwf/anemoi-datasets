@@ -134,7 +134,7 @@ class Crop(Filter):
 
         for field in fields:
             if mask is None:  # Assume all fields have the same grid
-                latitudes, longitudes = field.grid_points()
+                latitudes, longitudes = field.geography.latlons()
 
                 mask = cropping_mask(
                     latitudes,
@@ -237,12 +237,12 @@ class Griddify(Filter):
         from anemoi.utils.grids import latlon_to_xyz
         from scipy.spatial import KDTree
 
-        self.template = ekd.from_source("file", template)[0]
-        atitudes, longitudes = self.template.grid_points()
+        self.template = ekd.from_source("file", template).to_fieldlist()[0]
+        latitudes, longitudes = self.template.geography.latlons()
 
-        xyz = latlon_to_xyz(atitudes, longitudes)
+        xyz = latlon_to_xyz(latitudes, longitudes)
         self.tree = KDTree(np.array(xyz).transpose())
-        self.length = len(atitudes)
+        self.length = len(latitudes)
 
         self.max_distance = max_distance_km / 6371.0  # Convert from km to radians
 

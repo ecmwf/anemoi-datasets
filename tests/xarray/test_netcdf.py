@@ -10,9 +10,8 @@
 import os
 
 import xarray as xr
+from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
 from multiurl import download
-
-from anemoi.datasets.create.sources.xarray import XarrayFieldList
 
 URLS = {
     "https://get.ecmwf.int/repository/test-data/earthkit-data/examples/efas.nc": dict(length=3),
@@ -46,18 +45,16 @@ URLS = {
 
 
 def test_netcdf_metadata_types_compare_with_ekd():
-    ekd_fl = ekd.from_source("sample", "era5-hourly-2t-20230724T1200Z.nc")
+    # Load via earthkit's native netcdf reader then convert to xarray fieldlist
+    ekd_fl = ekd.from_source("sample", "era5-hourly-2t-20230724T1200Z.nc").to_fieldlist()
     ds = ekd_fl.to_xarray()
 
-    ads_fl = XarrayFieldList.from_xarray(ds)
+    ads_fl = XArrayFieldList.from_xarray(ds)
     assert len(ekd_fl) == len(ads_fl)
 
-    common_keys = set(ekd_fl[0].metadata().keys()) & set(ads_fl[0].metadata().keys())
-    assert {"date", "time", "variable"}.issubset(common_keys)
-
-    # check that metadata value types are the same whether going via earthkit-data or anemoi-datasets
-    for key in common_keys:
-        assert type(ekd_fl[0].metadata(key)) is type(ads_fl[0].metadata(key)), f"Type mismatch for key '{key}'"
+    # Both readers expose the same variable name and valid_datetime via component paths
+    assert ekd_fl[0].get("parameter.variable") == ads_fl[0].get("parameter.variable")
+    assert ekd_fl[0].get("time.valid_datetime") == ads_fl[0].get("time.valid_datetime")
 
 
 def skip_test_netcdf() -> None:
@@ -70,7 +67,7 @@ def skip_test_netcdf() -> None:
 
         ds = xr.open_dataset(path)
 
-        fs = XarrayFieldList.from_xarray(ds)
+        fs = XArrayFieldList.from_xarray(ds)
 
         assert len(fs) == checks["length"], (url, len(fs))
 

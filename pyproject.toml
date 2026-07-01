@@ -41,13 +41,14 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.4",
+  # TODO: replace with anemoi-transform release
+  "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@earthkit-1.0",
   "anemoi-utils[s3]>=0.5",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",        # Until we move to zarr3
+  "numcodecs<0.16",                                                                    # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
