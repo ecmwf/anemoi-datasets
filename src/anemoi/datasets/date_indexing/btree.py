@@ -136,13 +136,13 @@ class ZarrBTree:
             LOG.info(f"Zarr array chunk size: {chunk} rows x {cols_per_page} cols")
 
             # Initialize with root page
-            self.store.create_dataset(
+            self.store.create_array(
                 name,
                 shape=(chunk, cols_per_page),
                 chunks=(chunk, cols_per_page),
                 dtype="int64",
                 fill_value=0,
-                # compressor=compressor,
+                # compressors=compressor,
             )
             # Initialize root page (page_id=1, is_node=0/leaf, count=0)
             self.pages = self.store[name]

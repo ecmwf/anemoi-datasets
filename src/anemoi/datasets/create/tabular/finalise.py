@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import psutil
 import tqdm
-import zarr
 
 from anemoi.datasets.buffering import WriteBehindBuffer
+from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
 from anemoi.datasets.epochs import array_to_epoch
@@ -742,12 +742,12 @@ def finalise_tabular_dataset(
         f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
     )
 
-    store.create_dataset(
+    store.create_array(
         "data",
         shape=shape,
         chunks=chunking,
         dtype=np.float32,
-        compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
+        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
     )
 
     with WriteBehindBuffer(store["data"]) as data:

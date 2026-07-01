@@ -76,7 +76,7 @@ class DateBisect(DateIndexing):
         row_size = dates_ranges.nbytes // len(dates_ranges)
         chunck_size = 64 * 1024 * 1024 // row_size  # Adjust chunk size to approx 64MB
         LOG.info(f"Bulk loading {dates_ranges.shape} with chunk size {chunck_size}")
-        date_index_ranges = self.store.create_dataset(
+        date_index_ranges = self.store.create_array(
             "date_index_ranges",
             shape=dates_ranges.shape,
             dtype=dates_ranges.dtype,

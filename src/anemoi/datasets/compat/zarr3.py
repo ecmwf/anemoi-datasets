@@ -34,3 +34,26 @@ def HTTPStore(url: str) -> zarr.storage.FsspecStore:
 
 
 DebugStore = zarr.storage.LoggingStore
+
+
+def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.abc.codec.Codec":
+    """Return a Blosc compressor for zarr3.
+
+    Parameters
+    ----------
+    cname : str
+        The Blosc compressor name.
+    clevel : int
+        The compression level.
+    shuffle : int
+        The shuffle mode (0=none, 1=byte, 2=bit).
+
+    Returns
+    -------
+    zarr.abc.codec.Codec
+        The Blosc compressor codec.
+    """
+    from zarr.codecs import BloscCodec
+
+    shuffle_names = {0: "noshuffle", 1: "shuffle", 2: "bitshuffle"}
+    return BloscCodec(cname=cname, clevel=clevel, shuffle=shuffle_names[shuffle])

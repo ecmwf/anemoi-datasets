@@ -665,11 +665,11 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
-        root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
+        root.create_array("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
 
     if "data" not in root:
         dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
-        root.create_dataset(
+        root.create_array(
             "data",
             shape=dims,
             dtype=np.float64,
@@ -678,16 +678,16 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
 
     for k, v in big_dataset.statistics.items():
         if k not in root:
-            root.create_dataset(
+            root.create_array(
                 k,
                 data=v,
-                compressor=None,
+                compressors=None,
             )
 
     # Create spatial coordinate datasets if missing.
     if "latitudes" not in root or "longitudes" not in root:
-        root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None)
-        root.create_dataset("longitudes", data=big_dataset.longitudes, compressor=None)
+        root.create_array("latitudes", data=big_dataset.latitudes, compressors=None)
+        root.create_array("longitudes", data=big_dataset.longitudes, compressors=None)
     for k, v in big_dataset.metadata().items():
         if k not in root.attrs:
             root.attrs[k] = v
