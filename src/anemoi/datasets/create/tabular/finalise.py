@@ -698,6 +698,15 @@ def finalise_tabular_dataset(
     assert all(fragment.shape[1] == shape[1] for fragment in fragments), "Inconsistent number of columns in fragments"
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
+    # Backstop for the resume path: fragments reused from already-done groups
+    # are never revalidated against the metadata at load time, so confirm the
+    # on-disk width still matches the recorded schema before writing.
+    expected_cols = len(store.attrs["meta_variables"]) + len(variables_names)
+    assert shape[1] == expected_cols, (
+        f"Fragments have {shape[1]} columns but metadata declares {expected_cols} "
+        f"({len(store.attrs['meta_variables'])} meta + {len(variables_names)} variables)"
+    )
+
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
     LOG.info(f"Last fragment : {fragments[-1].first_date} to {fragments[-1].last_date}")
 

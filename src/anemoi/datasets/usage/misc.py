@@ -361,10 +361,10 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...], opti
         return a.mutate()
 
     if isinstance(a, zarr.Group):
-        return ZarrStore.from_group(a, options).mutate()
+        return ZarrStore.from_group(a, options=options).mutate()
 
     if isinstance(a, str):
-        return ZarrStore.from_name_or_path(a, options).mutate()
+        return ZarrStore.from_name_or_path(a, options=options).mutate()
 
     if isinstance(a, PurePath):
         return _open(str(a), options).mutate()
