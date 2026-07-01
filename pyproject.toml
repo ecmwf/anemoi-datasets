@@ -47,7 +47,6 @@ dependencies = [
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",        # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
@@ -58,7 +57,7 @@ dependencies = [
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.7",
+  "zarr",
 ]
 optional-dependencies.all = [
   "anemoi-datasets[comparelam,create,remote,xarray]",
