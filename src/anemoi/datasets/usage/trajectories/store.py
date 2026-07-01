@@ -104,7 +104,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def base_dates(self) -> NDArray[np.datetime64]:
         """Return the base dates (forecast initialisation times) of the dataset."""
-        return self.store.base_dates[:]
+        return self.store["base_dates"][:]
 
     def base_date(self, index: int) -> np.datetime64:
         """Return the base date at ``index``.
@@ -148,7 +148,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def steps(self) -> NDArray[np.timedelta64]:
         """Return the forecast step values stored in the dataset."""
-        return self.store.steps[:]
+        return self.store["steps"][:]
 
     @property
     def step_start(self) -> datetime.timedelta:
@@ -188,19 +188,19 @@ class TrajectoriesZarr(ZarrStore):
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the grid."""
         try:
-            return self.store.latitudes[:]
-        except AttributeError:
+            return self.store["latitudes"][:]
+        except KeyError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.store.latitude[:]
+            return self.store["latitude"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the grid."""
         try:
-            return self.store.longitudes[:]
-        except AttributeError:
+            return self.store["longitudes"][:]
+        except KeyError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.store.longitude[:]
+            return self.store["longitude"][:]
 
     # ------------------------------------------------------------------
     # Shape and type
@@ -214,12 +214,12 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.store.data.dtype
+        return self.store["data"].dtype
 
     @cached_property
     def chunks(self):
         """Return the chunk sizes of the data array."""
-        return self.store.data.chunks
+        return self.store["data"].chunks
 
     @property
     def field_shape(self) -> tuple:

@@ -154,7 +154,7 @@ def _create_tabular_store(indexing) -> zarr.Group:
 
     store = zarr.storage.MemoryStore()
     root = zarr.group(store=store, overwrite=True)
-    data = root.create_dataset("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
+    data = root.create_array("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
 
     start_stamp = date_to_epoch(START_DATE)
     if False:

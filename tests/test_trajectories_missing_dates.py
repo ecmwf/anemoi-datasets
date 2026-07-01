@@ -203,7 +203,7 @@ class TestTrajectoriesZarrWithMissingDates:
         from anemoi.datasets.usage.trajectories.store import TrajectoriesZarrWithMissingDates
 
         self.group = make_trajectories_zarr(n_dates=6, n_steps=3, n_vars=2, n_cells=5, frequency_h=6)
-        self.bd = np.array(self.group.base_dates)
+        self.bd = np.array(self.group["base_dates"])
         # Mark indices 1 and 4 as missing in the store
         self.group.attrs["missing_dates"] = [str(self.bd[1]), str(self.bd[4])]
 

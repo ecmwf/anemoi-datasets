@@ -94,11 +94,11 @@ def make_trajectories_zarr(
         rng = np.random.default_rng(0)
         data = rng.random(shape).astype("float32")
 
-    root.create_dataset("data", data=data, chunks=data.shape, compressor=None)
-    root.create_dataset("base_dates", data=dates, compressor=None)
-    root.create_dataset("steps", data=steps, compressor=None)
-    root.create_dataset("latitudes", data=np.linspace(-90, 90, n_cells), compressor=None)
-    root.create_dataset("longitudes", data=np.linspace(0, 360, n_cells), compressor=None)
+    root.create_array("data", data=data, chunks=data.shape, compressors=None)
+    root.create_array("base_dates", data=dates, compressors=None)
+    root.create_array("steps", data=steps, compressors=None)
+    root.create_array("latitudes", data=np.linspace(-90, 90, n_cells), compressors=None)
+    root.create_array("longitudes", data=np.linspace(0, 360, n_cells), compressors=None)
 
     root.attrs["layout"] = "trajectories"
     root.attrs["frequency"] = f"{frequency_h}h"
@@ -799,7 +799,7 @@ class TestTrajectoriesSelect:
         rng = np.random.default_rng(1)
         stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
         for k, v in stats.items():
-            self.group.create_dataset(k, data=v, compressor=None)
+            self.group.create_array(k, data=v, compressors=None)
 
         ds = self._open(select=["a", "c"])
         for k, v in stats.items():
@@ -809,7 +809,7 @@ class TestTrajectoriesSelect:
         rng = np.random.default_rng(2)
         stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
         for k, v in stats.items():
-            self.group.create_dataset(f"statistics_tendencies_6h_{k}", data=v, compressor=None)
+            self.group.create_array(f"statistics_tendencies_6h_{k}", data=v, compressors=None)
 
         # step_frequency is 6h, so delta=None must resolve to 6h, not crash on .frequency
         ds = self._open(select=["a", "c"])
