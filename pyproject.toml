@@ -97,8 +97,8 @@ optional-dependencies.tests = [
   "pytest-xdist>=3.7",
 ]
 optional-dependencies.xarray = [
-  "adlfs",
-  "gcsfs",
+  # "adlfs",
+  # "gcsfs",
   "h5netcdf>=1.8.1",
   "h5py>=3.16",
   "kerchunk",
@@ -143,3 +143,4 @@ ini_options.addopts = [
 write = true
 exclude = "docs/**"
 style = "numpydoc"
+ini_options.pythonpath = [ "tests" ]
