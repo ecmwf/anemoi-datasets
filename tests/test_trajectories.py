@@ -204,6 +204,20 @@ class TestRecipeStepsValidator:
         assert r.base_dates is not None
         assert r.dates is None
 
+    def test_trajectories_default_group_by_is_one(self):
+        from anemoi.datasets.create.recipe import Recipe
+
+        r = Recipe(**self._trajectories_recipe())
+        assert r.build.group_by == 1
+
+    def test_trajectories_respect_explicit_group_by(self):
+        from anemoi.datasets.create.recipe import Recipe
+
+        recipe_dict = self._trajectories_recipe()
+        recipe_dict["build"] = {"group_by": 3}
+        r = Recipe(**recipe_dict)
+        assert r.build.group_by == 3
+
     def test_gridded_without_steps_ok(self):
         from anemoi.datasets.create.recipe import Recipe
 

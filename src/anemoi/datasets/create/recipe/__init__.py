@@ -96,6 +96,10 @@ class Recipe(BaseModel):
         for member in self.__dict__.values():
             if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
                 member._post_init(self)
+
+        if isinstance(self.output, TrajectoriesOutput) and "group_by" not in self.build.model_fields_set:
+            self.build.group_by = 1
+
         return self
 
     description: str = "No description provided."
@@ -229,14 +233,9 @@ class Recipe(BaseModel):
         if isinstance(self.output, TrajectoriesOutput):
             from anemoi.datasets.dates.groups import TrajectoryGroups
 
-            # The trajectories layout (tabular and gridded) defaults to
-            # group_by=1 (one trajectory per group), unless the recipe sets it
-            # explicitly.
-            group_by = self.build.group_by if "group_by" in self.build.model_fields_set else 1
-
             return TrajectoryGroups(
                 steps=self.steps,
-                group_by=group_by,
+                group_by=self.build.group_by,
                 base_dates=self.base_dates,
             )
 
