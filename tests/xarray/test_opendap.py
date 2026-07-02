@@ -11,8 +11,8 @@
 import pytest
 import xarray as xr
 from anemoi.utils.testing import skip_if_offline
+from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
 
-from anemoi.datasets.create.sources.xarray import XarrayFieldList
 from anemoi.datasets.misc.testing import assert_field_list
 
 
@@ -24,7 +24,7 @@ def test_opendap() -> None:
         "https://thredds.met.no/thredds/dodsC/meps25epsarchive/2023/01/01/meps_det_2_5km_20230101T00Z.nc",
     )
 
-    fs = XarrayFieldList.from_xarray(ds)
+    fs = XArrayFieldList.from_xarray(ds)
     assert_field_list(fs, 79529, "2023-01-01T00:00:00", "2023-01-03T18:00:00")
 
 

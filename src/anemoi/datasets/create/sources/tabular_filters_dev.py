@@ -11,16 +11,16 @@
 import logging
 import sys
 
-import earthkit.data as ekd
 import numpy as np
 import pandas as pd
+from anemoi.transform import FieldList
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_field_from_numpy
 from anemoi.transform.fields import new_field_with_valid_datetime
 from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import to_datetime
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
-from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.usage.grids import cropping_mask
 
@@ -78,9 +78,8 @@ def expect_tabular(func):
 
 
 def expect_gridded(func):
-    import earthkit.data as ekd
 
-    return _create_overload(ekd.FieldList, func)
+    return _create_overload(FieldList, func)
 
 
 @filter_registry.register("crop")
@@ -135,7 +134,7 @@ class Crop(Filter):
 
         for field in fields:
             if mask is None:  # Assume all fields have the same grid
-                latitudes, longitudes = field.grid_points()
+                latitudes, longitudes = field.geography.latlons()
 
                 mask = cropping_mask(
                     latitudes,
@@ -238,12 +237,12 @@ class Griddify(Filter):
         from anemoi.utils.grids import latlon_to_xyz
         from scipy.spatial import KDTree
 
-        self.template = ekd.from_source("file", template)[0]
-        atitudes, longitudes = self.template.grid_points()
+        self.template = ekd.from_source("file", template).to_fieldlist()[0]
+        latitudes, longitudes = self.template.geography.latlons()
 
-        xyz = latlon_to_xyz(atitudes, longitudes)
+        xyz = latlon_to_xyz(latitudes, longitudes)
         self.tree = KDTree(np.array(xyz).transpose())
-        self.length = len(atitudes)
+        self.length = len(latitudes)
 
         self.max_distance = max_distance_km / 6371.0  # Convert from km to radians
 

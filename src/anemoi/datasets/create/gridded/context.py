@@ -11,9 +11,9 @@
 import logging
 from typing import Any
 
+from anemoi.transform.fields import build_remapping
 from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
-from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.gridded.result import SimpleGriddedResult
 from anemoi.datasets.create.input.context import Context
@@ -33,9 +33,13 @@ class SimpleGriddedContext(Context):
     # last two keys are assumed to be ``(variables, ensembles)`` by
     # ``BaseResult.build_coords``, and the first key is the time axis --
     # varying any of this breaks the coord construction. The deprecated
-    # ``output.order_by`` recipe field is validated against this value in
-    # ``Recipe.__init__``.
-    order_by: list[str] = ["valid_datetime", "param_level", "number"]
+    # ``output.order_by`` recipe field is validated against the old bare-key
+    # form (["valid_datetime", "param_level", "number"]) in ``Recipe.__init__``.
+    # Use ``time.valid_datetime`` (the time component path) rather than
+    # ``metadata.valid_datetime`` (raw GRIB metadata path): the time-component
+    # path survives field.set() wrapping (e.g. new_field_with_metadata) whereas
+    # the raw-metadata path does not.
+    order_by: list[str] = ["time.valid_datetime", "param_level", "metadata.number"]
 
     def __init__(self, recipe: Any) -> None:
         """Initialise a SimpleGriddedContext instance.
@@ -112,8 +116,8 @@ class SimpleGriddedContext(Context):
 
         result = []
         for fs in data:
-            previous = fs.metadata("anemoi_origin", default=None)
-            fall_through = fs.metadata("anemoi_fall_through", default=False)
+            previous = fs.get("metadata.anemoi_origin", default=None)
+            fall_through = fs.get("metadata.anemoi_fall_through", default=False)
             if fall_through:
                 # The field has pass unchanges in a filter
                 result.append(fs)

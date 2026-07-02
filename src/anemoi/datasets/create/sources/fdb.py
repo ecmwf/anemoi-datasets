@@ -11,8 +11,9 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
-import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform import FieldList
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
@@ -81,7 +82,7 @@ class FdbSource(Source):
         self.offset_from_date = kwargs.pop("offset_from_date", None)
         self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
-    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
+    def execute_valid_dates(self, dates: ValidDates) -> FieldList:
         """Handle instant requests."""
         requests = []
         for date in dates:
@@ -89,7 +90,7 @@ class FdbSource(Source):
             requests.append(self.request | time_request)
         return self._execute_requests(requests)
 
-    def execute_intervals(self, dates: Intervals) -> ekd.FieldList:
+    def execute_intervals(self, dates: Intervals) -> FieldList:
         """Handle archive-resolved interval requests from AccumulateSource."""
         requests = []
         for interval in dates.intervals:
@@ -103,7 +104,7 @@ class FdbSource(Source):
             requests.append(r)
         return self._execute_requests(requests)
 
-    def _execute_requests(self, requests: list) -> ekd.FieldList:
+    def _execute_requests(self, requests: list) -> FieldList:
         """Run factorised FDB requests and apply grid/flavour post-processing.
 
         Parameters
@@ -113,7 +114,7 @@ class FdbSource(Source):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The retrieved, post-processed fields.
         """
         # in some cases (e.g. repeated_dates 'constant' mode), we might have a fully
@@ -126,7 +127,7 @@ class FdbSource(Source):
             fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
 
         if self.grid is not None:
-            fl = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in fl])
+            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
 
         if self.flavour:
             fl = self.flavour.map(fl)

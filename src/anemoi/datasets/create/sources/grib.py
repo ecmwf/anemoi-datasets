@@ -12,13 +12,13 @@ import glob
 import logging
 from typing import Any
 
-import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import Pattern
+from anemoi.transform.fields import from_source
+from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
-from earthkit.data import from_source
-from earthkit.data.utils.patterns import Pattern
 
 from anemoi.datasets.create.arguments import ValidDates
 
@@ -120,7 +120,17 @@ class GribSource(Source):
         self.args = args
         self.kwargs = kwargs
 
-    def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
+    # Mapping from legacy earthkit 0.x sel keys to earthkit 1.0 component paths.
+    _SEL_REMAPPING = {
+        "valid_datetime": "{time.valid_datetime}",
+        "param": "{parameter.variable}",
+        "shortName": "{parameter.variable}",
+        "level": "{vertical.level}",
+        "levelist": "{vertical.level}",
+        "levtype": "{metadata.levtype}",
+    }
+
+    def execute_valid_dates(self, dates: ValidDates) -> ekd.EarthkitFieldList:
         """Load data from the GRIB files for the given dates.
 
         Parameters
@@ -130,12 +140,12 @@ class GribSource(Source):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The loaded dataset.
         """
         given_paths = self.path if isinstance(self.path, list) else [self.path]
 
-        ds = from_source("empty")
+        all_fields: list[Any] = []
         dates = [d.isoformat() for d in dates]
 
         for path in given_paths:
@@ -158,20 +168,35 @@ class GribSource(Source):
 
                     path = get_ecfs_file(path)
 
-                s = from_source("file", path)
+                s = from_source("file", path).to_fieldlist()
                 if self.flavour is not None:
                     s = self.flavour.map(s)
-                sel_kwargs = self.kwargs.copy()
-                if dates != []:
+
+                # Build sel kwargs, remapping legacy key names to earthkit 1.0 paths.
+                # Keys with eccodes type qualifiers (e.g. "level:d") are passed
+                # through as "metadata.key:type" — component paths do not
+                # support type qualifiers.  Plain keys are remapped via
+                # _SEL_REMAPPING.
+                sel_kwargs: dict[str, Any] = {}
+                for k, v in self.kwargs.items():
+                    if ":" in k:
+                        # Typed key (e.g. "level:d") → metadata.level:d
+                        sel_kwargs[f"metadata.{k}"] = v
+                    else:
+                        sel_kwargs[k] = v
+                if dates:
                     sel_kwargs["valid_datetime"] = dates
-                s = s.sel(**sel_kwargs)
-                ds = ds + s
+
+                s = s.sel(**sel_kwargs, remapping=self._SEL_REMAPPING)
+                all_fields.extend(list(s))
+
+        ds = ekd.EarthkitFieldList.from_fields(all_fields)
 
         # if kwargs and not context.partial_ok:
         # BACK    check(ds, given_paths, valid_datetime=dates, **kwargs)
 
         if self.grid is not None:
-            ds = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in ds])
+            ds = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in ds])
 
         if len(ds) == 0:
             LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={self.kwargs})")

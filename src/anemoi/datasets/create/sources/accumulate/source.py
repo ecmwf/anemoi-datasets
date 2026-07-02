@@ -14,10 +14,10 @@ import logging
 import warnings
 from typing import Any
 
-import earthkit.data
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import new_grib_output
+from anemoi.transform.fields import temp_file
 from anemoi.utils.dates import frequency_to_timedelta
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.readers.grib.output import new_grib_output
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
@@ -126,7 +126,7 @@ class AccumulateSource(Source):
     def _extract_field_info(self, field):
         """Extract values, grouping key, time interval, and log string from a field."""
         values = field.values.copy()
-        meta = field.metadata(namespace=self.group_by["namespace"])
+        meta = field.get(collections=f"metadata.{self.group_by['namespace']}")
         key = {k: v for k, v in meta.items() if k not in self.group_by["ignore"]}
         key = tuple(sorted(key.items()))
         log = " ".join(f"{k}={v}" for k, v in meta.items())
@@ -152,7 +152,7 @@ class AccumulateSource(Source):
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
         output.close()
-        ds = earthkit.data.from_source("file", tmp.path)
+        ds = ekd.from_source("file", tmp.path).to_fieldlist()
         ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")

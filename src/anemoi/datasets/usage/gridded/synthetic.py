@@ -211,7 +211,7 @@ class ComputedForcingValue(ValueGenerator):
 
     def _evaluate(self, dates: NDArray[np.datetime64]) -> NDArray[Any]:
         """Return a ``(len(dates), n_grid)`` block of the forcing field."""
-        from earthkit.data import from_source
+        from anemoi.transform.fields import from_source
 
         py_dates = [np.datetime64(d, "s").astype(datetime.datetime) for d in dates]
         fields = from_source(
@@ -220,7 +220,7 @@ class ComputedForcingValue(ValueGenerator):
             longitudes=self.longitudes,
             date=py_dates,
             param=[self.param],
-        )
+        ).to_fieldlist()
         # One field per date (single param, no ensemble), in date order.
         assert len(fields) == len(py_dates), (len(fields), len(py_dates))
         return np.stack([f.to_numpy(flatten=True) for f in fields]).astype(np.float64)

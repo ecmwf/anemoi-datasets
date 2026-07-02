@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import numpy as np
+from anemoi.transform import FieldList
 
 from . import source_registry
 from .legacy import LegacySource
@@ -18,7 +19,6 @@ class AnemoiDatasetSource(LegacySource):
 
     @staticmethod
     def _execute(context, dates, params=None, **kwargs):
-        import earthkit.data as ekd
 
         from anemoi.datasets import open_dataset
 
@@ -71,8 +71,4 @@ class AnemoiDatasetSource(LegacySource):
 
         print(results[0].keys())
 
-        # "list-of-dicts" does support resolution
-        results = ekd.from_source("list-of-dicts", results)
-
-        # return new_fieldlist_from_list([new_field_from_latitudes_longitudes(x, latitudes, longitudes) for x in results])
-        return results
+        return FieldList.from_dicts(results)

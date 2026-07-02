@@ -12,7 +12,7 @@ import glob
 from collections.abc import Generator
 from typing import Any
 
-from earthkit.data.utils.patterns import Pattern
+from anemoi.transform.fields import Pattern
 
 
 def _expand(paths: list[str]) -> Generator[str, None, None]:

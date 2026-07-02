@@ -27,6 +27,7 @@ from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
+from ..gridded.result import _strip_zero_level_suffix
 from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
@@ -219,7 +220,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # Map GRIB member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
-        numbers = cube.user_coords.get("number")
+        numbers = cube.user_coords.get("metadata.number")
         number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
@@ -247,25 +248,27 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 data = cubelet.to_numpy()
                 field = cube[cubelet.coords]
 
-                # Recover basetime from field metadata
-                date_int = int(field.metadata("date"))  # YYYYMMDD
-                time_int = int(field.metadata("time") or 0)  # HHMM
-                basetime = datetime.datetime(
-                    year=date_int // 10000,
-                    month=(date_int // 100) % 100,
-                    day=date_int % 100,
-                    hour=time_int // 100,
-                    minute=time_int % 100,
+                # Recover basetime from field component paths (works for raw GRIB and wrapped fields alike)
+                basetime = field.time.base_datetime()
+                step_td_raw = field.time.step()
+                # time.step() returns a datetime.timedelta in earthkit 1.0
+                step_td = (
+                    step_td_raw
+                    if isinstance(step_td_raw, datetime.timedelta)
+                    else datetime.timedelta(hours=int(step_td_raw))
                 )
-                step_td = datetime.timedelta(hours=int(field.metadata("step")))
 
                 # Recover variable name via the build.variable_naming remapping
                 # (param_level pattern), matching the names declared at init.
-                var_name = remapping(field.metadata)("param_level", default=None)
+                # Use field.get() so the remapping template {metadata.key} vars
+                # route correctly through earthkit 1.0's _get_single.
+                var_name = _strip_zero_level_suffix(
+                    remapping(lambda k, default=None: field.get(k, default=default))("param_level", default=None)
+                )
                 if var_name is None:
                     var_name = str(field.metadata("param"))
 
-                number = field.metadata("number", default=0) or 0
+                number = field.get("metadata.number", default=0) or 0
                 if number_to_index is None:
                     ens_idx = 0
                 else:

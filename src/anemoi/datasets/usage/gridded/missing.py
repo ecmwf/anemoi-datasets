@@ -14,7 +14,7 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
-from earthkit.data.utils.dates import to_datetime
+from anemoi.transform.fields import to_datetime
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError

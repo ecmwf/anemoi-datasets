@@ -10,7 +10,7 @@
 
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 
 from . import source_registry
 from .legacy import LegacySource
@@ -20,7 +20,7 @@ from .legacy import LegacySource
 class EmptySource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[str], **kwargs: Any) -> FieldList:
         """Executes the loading of an empty data source.
 
         Parameters
@@ -34,7 +34,7 @@ class EmptySource(LegacySource):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             Loaded empty data source.
         """
         return ekd.from_source("empty")

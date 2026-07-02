@@ -12,6 +12,8 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
+from anemoi.transform import fields as ekd
+
 LOG = logging.getLogger(__name__)
 
 
@@ -59,7 +61,7 @@ class Context(ABC):
         from anemoi.datasets.create.input.action import action_factory
 
         if not isinstance(config, dict):
-            # It is already a result (e.g. ekd.FieldList), loaded from ${a.b.c}
+            # It is already a result (e.g. FieldList), loaded from ${a.b.c}
             # TODO: something more elegant
             return lambda *args, **kwargs: config
 
@@ -82,17 +84,15 @@ class Context(ABC):
             The joined result.
         """
 
-        from functools import reduce
-
-        import earthkit.data as ekd
-
         results = list(results)  # In case it's a generator
         assert results, "join: No results to join"
 
         # TODO: quick hack, find a more generic way to do this
 
-        if all(isinstance(r, ekd.FieldList) for r in results):
-            return reduce(lambda x, y: x + y, results)
+        if all(isinstance(r, ekd.EarthkitFieldList) for r in results):
+            # earthkit 1.0: FieldList + FieldList is element-wise arithmetic;
+            # use ekd.concat() for concatenation.
+            return ekd.concat(*results)
 
         # Assume it's pandas-like
         import pandas as pd

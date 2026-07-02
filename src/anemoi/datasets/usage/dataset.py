@@ -1042,7 +1042,7 @@ class Dataset(ABC, Sized):
         tuple of int
             The indices.
         """
-        from earthkit.data.utils.dates import to_datetime
+        from anemoi.transform.fields import to_datetime
 
         if not isinstance(date, int):
             date = np.datetime64(to_datetime(date)).astype(self.dates[0].dtype)

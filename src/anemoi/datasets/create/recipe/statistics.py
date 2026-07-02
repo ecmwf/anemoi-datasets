@@ -11,7 +11,7 @@ import datetime
 import logging
 
 import numpy as np
-from earthkit.data.utils.dates import to_datetime
+from anemoi.transform.fields import to_datetime
 from pydantic import BaseModel
 from pydantic import Field
 
