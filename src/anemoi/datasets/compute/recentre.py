@@ -12,8 +12,8 @@ import logging
 from typing import Any
 
 import numpy as np
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.readers.grib.output import new_grib_output
+from anemoi.transform.fields import new_grib_output
+from anemoi.transform.fields import temp_file
 
 LOG = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ def recentre(
     if output is not None:
         return path
 
-    from earthkit.data import from_source
+    from anemoi.transform.fields import from_source
 
     ds = from_source("file", path).to_fieldlist()
 

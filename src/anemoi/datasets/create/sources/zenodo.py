@@ -10,8 +10,9 @@
 
 from typing import Any
 
-import earthkit.data as ekd
-from earthkit.data.sources.url import download_and_cache
+from anemoi.transform import FieldList
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import download_and_cache
 
 from . import source_registry
 from .legacy import LegacySource
@@ -43,7 +44,7 @@ class ZenodoSource(LegacySource):
 
         Returns
         -------
-        ekd.FieldList
+        ekd.EarthkitFieldList
             A list of fields loaded from the downloaded files.
         """
         import requests

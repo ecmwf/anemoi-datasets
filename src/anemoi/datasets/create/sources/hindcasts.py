@@ -10,7 +10,7 @@
 import logging
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import fields as ekd
 
 from anemoi.datasets.create.sources.mars.retrieval import fire_prebuilt_requests
 
@@ -42,7 +42,7 @@ def _to_list(x: list | tuple | Any) -> list[Any]:
 class HindcastsSource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[Any], **request: dict[str, Any]) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[Any], **request: dict[str, Any]) -> ekd.EarthkitFieldList:
         """Generates hindcast requests based on the provided dates and request parameters.
 
         Parameters
@@ -56,7 +56,7 @@ class HindcastsSource(LegacySource):
 
         Returns
         -------
-        ekd.FieldList
+        ekd.EarthkitFieldList
             A MultiFieldList containing the hindcast data.
         """
         from anemoi.datasets.dates import HindcastsDates

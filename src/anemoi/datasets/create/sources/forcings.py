@@ -10,9 +10,9 @@
 import datetime
 from typing import Any
 
+from anemoi.transform.fields import from_source
 from anemoi.transform.fields import new_field_with_metadata
 from anemoi.transform.fields import new_fieldlist_from_list
-from earthkit.data import from_source
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates

@@ -21,10 +21,10 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import Availability
+from anemoi.transform.fields import from_source
 from anemoi.utils.humanize import did_you_mean
-from earthkit.data import from_source
-from earthkit.data.utils.availability import Availability
 
 # ---------------------------------------------------------------------------
 # MARS key whitelist

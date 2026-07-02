@@ -14,37 +14,10 @@ import logging
 import warnings
 from typing import Any
 
-import earthkit.data
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import new_grib_output
+from anemoi.transform.fields import temp_file
 from anemoi.utils.dates import frequency_to_timedelta
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.encoders.grib import GribEncoder as _GribEncoder
-
-
-class _GribOutputCompat:
-    """Compatibility shim replacing removed earthkit.data.readers.grib.output.new_grib_output."""
-
-    def __init__(self, path):
-        self._file = open(path, "wb")
-
-    def write(self, values, check_nans=True, metadata=None, template=None, missing_value=9999, **kwargs):
-        if metadata is None:
-            metadata = {}
-        metadata = {**metadata, **kwargs}
-        _GribEncoder().encode(
-            values=values,
-            template=template,
-            check_nans=check_nans,
-            metadata=metadata,
-            missing_value=missing_value,
-        ).to_file(self._file)
-
-    def close(self):
-        self._file.close()
-
-
-def _new_grib_output(path):
-    return _GribOutputCompat(path)
-
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
@@ -179,7 +152,7 @@ class AccumulateSource(Source):
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
         output.close()
-        ds = earthkit.data.from_source("file", tmp.path).to_fieldlist()
+        ds = ekd.from_source("file", tmp.path).to_fieldlist()
         ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
@@ -210,7 +183,7 @@ class AccumulateSource(Source):
         # need a temporary file to store the accumulated fields for now, because earthkit-data
         # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
         tmp = temp_file()
-        output = _new_grib_output(tmp.path)
+        output = new_grib_output(tmp.path)
 
         accumulators = {}
         logs = Logs(

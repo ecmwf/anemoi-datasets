@@ -12,8 +12,9 @@ import logging
 from typing import TYPE_CHECKING
 from typing import Any
 
-import earthkit.data as ekd
-from earthkit.data.readers.xarray.fieldlist import XArrayFieldList
+from anemoi.transform import FieldList
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import XArrayFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.create.types import DateList
@@ -58,7 +59,7 @@ def load_one(
     flavour: str | None = None,
     patch: Any | None = None,
     **kwargs: Any,
-) -> ekd.FieldList:
+) -> ekd.EarthkitFieldList:
     """Loads a single dataset.
 
     Parameters
@@ -82,7 +83,7 @@ def load_one(
 
     Returns
     -------
-    ekd.FieldList
+    ekd.EarthkitFieldList
         The loaded dataset.
     """
 
@@ -186,7 +187,9 @@ def load_one(
     return result
 
 
-def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
+def load_many(
+    emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any
+) -> ekd.EarthkitFieldList:
     """Loads multiple datasets.
 
     Parameters
@@ -204,7 +207,7 @@ def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern:
 
     Returns
     -------
-    ekd.FieldList
+    ekd.EarthkitFieldList
         The loaded datasets.
     """
     result = []
@@ -291,7 +294,7 @@ class LegacyXarraySource(LegacySource):
     name = "xarray"
 
     @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.EarthkitFieldList:
         """Execute the loading of datasets.
 
         Parameters
@@ -309,7 +312,7 @@ class LegacyXarraySource(LegacySource):
 
         Returns
         -------
-        ekd.FieldList
+        ekd.EarthkitFieldList
             The loaded datasets.
         """
         return load_many("🌐", context, dates, url, *args, **kwargs)

@@ -10,7 +10,7 @@
 from datetime import datetime
 from typing import Any
 
-from earthkit.data import from_source
+from anemoi.transform.fields import from_source
 
 from anemoi.datasets.create.sources import source_registry
 

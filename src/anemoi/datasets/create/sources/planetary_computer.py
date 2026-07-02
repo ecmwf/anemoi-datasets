@@ -11,10 +11,10 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-import earthkit.data as ekd
 import planetary_computer
 import pystac
 import pystac_client
+from anemoi.transform import fields as ekd
 
 from anemoi.datasets.create.types import DateList
 
@@ -163,7 +163,7 @@ class PlanetaryComputerSource(XarraySourceBase):
             raise ValueError(msg)
         return uris
 
-    def execute(self, dates: DateList) -> ekd.FieldList:
+    def execute(self, dates: DateList) -> ekd.EarthkitFieldList:
         """Execute data loading for given dates.
 
         Parameters
@@ -173,7 +173,7 @@ class PlanetaryComputerSource(XarraySourceBase):
 
         Returns
         -------
-        ekd.FieldList
+        ekd.EarthkitFieldList
             Loaded data field(s).
 
         """

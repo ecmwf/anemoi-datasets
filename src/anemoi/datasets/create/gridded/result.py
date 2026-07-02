@@ -17,34 +17,18 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
+
+# Importing build_remapping from anemoi.transform.fields also applies the
+# earthkit-data 1.0 build_remapping compatibility shim (see that module).
+from anemoi.transform.fields import build_remapping
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
-from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
-
-# ---------------------------------------------------------------------------
-# earthkit 1.0rc12 compatibility shim:
-# earthkit.data.utils.unique.build_remapping always returns None (bug).
-# Patch it to actually return the built remapping.
-# Remove when fixed upstream.
-# ---------------------------------------------------------------------------
-import earthkit.data.utils.unique as _ekd_unique  # noqa: E402
-
-if not getattr(_ekd_unique, "_build_remapping_patched", False):
-    from earthkit.data.core.order import build_remapping as _core_build_remapping  # noqa: E402
-
-    def _patched_unique_build_remapping(remapping, patch):
-        if remapping is not None or patch is not None:
-            return _core_build_remapping(remapping, patch)
-        return None
-
-    _ekd_unique.build_remapping = _patched_unique_build_remapping
-    _ekd_unique._build_remapping_patched = True
 
 
 def _field_metadata_callable(field: Any) -> Any:

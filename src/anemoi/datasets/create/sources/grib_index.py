@@ -17,11 +17,12 @@ from collections.abc import Iterator
 from typing import Any
 
 import tqdm
+from anemoi.transform import fields as ekd
+from anemoi.transform.fields import SimpleFieldList
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
-from earthkit.data import SimpleFieldList
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
@@ -37,7 +38,7 @@ KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "val
 KEYS = KEYS1 + KEYS2
 
 
-def _safe_metadata(field: ekd.Field, key: str) -> Any:
+def _safe_metadata(field: ekd.EarthkitField, key: str) -> Any:
     """Retrieve a single GRIB metadata key, returning None when absent.
 
     Datetime values are converted to ISO-format strings for consistent SQLite storage.
@@ -458,7 +459,7 @@ class GribIndex:
 
         return None
 
-    def _unknown(self, path: str, field: Field, i: int, param: tuple) -> None:
+    def _unknown(self, path: str, field: ekd.EarthkitField, i: int, param: tuple) -> None:
         """Log information about unknown parameters.
 
         Parameters
