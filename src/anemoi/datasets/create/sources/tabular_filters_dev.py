@@ -134,7 +134,7 @@ class Crop(Filter):
 
         for field in fields:
             if mask is None:  # Assume all fields have the same grid
-                latitudes, longitudes = field.geography.latlons()
+                latitudes, longitudes = field.geography.latlons(flatten=True)
 
                 mask = cropping_mask(
                     latitudes,
@@ -237,8 +237,8 @@ class Griddify(Filter):
         from anemoi.utils.grids import latlon_to_xyz
         from scipy.spatial import KDTree
 
-        self.template = ekd.from_source("file", template).to_fieldlist()[0]
-        latitudes, longitudes = self.template.geography.latlons()
+        self.template = FieldList.from_source("file", template)[0]
+        latitudes, longitudes = self.template.geography.latlons(flatten=True)
 
         xyz = latlon_to_xyz(latitudes, longitudes)
         self.tree = KDTree(np.array(xyz).transpose())

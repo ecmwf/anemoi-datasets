@@ -11,7 +11,7 @@
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform import fields as ekd
+from anemoi.transform.fields import concat
 from anemoi.transform.fields import download_and_cache
 
 from . import source_registry
@@ -44,7 +44,7 @@ class ZenodoSource(LegacySource):
 
         Returns
         -------
-        ekd.EarthkitFieldList
+        FieldList
             A list of fields loaded from the downloaded files.
         """
         import requests
@@ -68,4 +68,4 @@ class ZenodoSource(LegacySource):
             path = download_and_cache(urls[url])
             result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
 
-        return ekd.concat(*result)
+        return concat(*result)

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform import fields as ekd
+from anemoi.transform.fields import concat
 from anemoi.transform.fields import XArrayFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
@@ -59,7 +59,7 @@ def load_one(
     flavour: str | None = None,
     patch: Any | None = None,
     **kwargs: Any,
-) -> ekd.EarthkitFieldList:
+) -> FieldList:
     """Loads a single dataset.
 
     Parameters
@@ -83,7 +83,7 @@ def load_one(
 
     Returns
     -------
-    ekd.EarthkitFieldList
+    FieldList
         The loaded dataset.
     """
 
@@ -162,14 +162,14 @@ def load_one(
 
     if len(dates) == 0:
         if sel_kwargs:
-            result = fs.sel(**sel_kwargs)
+            result = FieldList(fs.sel(**sel_kwargs))
         else:
-            result = fs
+            result = FieldList(fs)
     else:
         if sel_kwargs:
-            result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date, **sel_kwargs}) for date in dates])
+            result = concat(*[fs.sel(**{"time.valid_datetime": date, **sel_kwargs}) for date in dates])
         else:
-            result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
+            result = concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
@@ -189,7 +189,7 @@ def load_one(
 
 def load_many(
     emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any
-) -> ekd.EarthkitFieldList:
+) -> FieldList:
     """Loads multiple datasets.
 
     Parameters
@@ -207,7 +207,7 @@ def load_many(
 
     Returns
     -------
-    ekd.EarthkitFieldList
+    FieldList
         The loaded datasets.
     """
     result = []
@@ -215,7 +215,7 @@ def load_many(
     for path, dates in iterate_patterns(pattern, dates, **kwargs):
         result.append(load_one(emoji, context, dates, path, **kwargs))
 
-    return ekd.concat(*result) if result else ekd.create_fieldlist()
+    return concat(*result) if result else FieldList()
 
 
 class XarraySourceBase(Source):
@@ -294,7 +294,7 @@ class LegacyXarraySource(LegacySource):
     name = "xarray"
 
     @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.EarthkitFieldList:
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> FieldList:
         """Execute the loading of datasets.
 
         Parameters
@@ -312,7 +312,7 @@ class LegacyXarraySource(LegacySource):
 
         Returns
         -------
-        ekd.EarthkitFieldList
+        FieldList
             The loaded datasets.
         """
         return load_many("🌐", context, dates, url, *args, **kwargs)

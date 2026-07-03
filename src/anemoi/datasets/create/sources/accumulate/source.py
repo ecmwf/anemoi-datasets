@@ -14,7 +14,7 @@ import logging
 import warnings
 from typing import Any
 
-from anemoi.transform import fields as ekd
+from anemoi.transform import FieldList
 from anemoi.transform.fields import new_grib_output
 from anemoi.transform.fields import temp_file
 from anemoi.utils.dates import frequency_to_timedelta
@@ -152,7 +152,7 @@ class AccumulateSource(Source):
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
         output.close()
-        ds = ekd.from_source("file", tmp.path).to_fieldlist()
+        ds = FieldList.from_source("file", tmp.path)
         ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")

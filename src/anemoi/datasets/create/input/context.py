@@ -12,7 +12,9 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
-from anemoi.transform import fields as ekd
+from anemoi.transform.fields import EarthkitFieldList
+from anemoi.transform.fields import FieldList
+from anemoi.transform.fields import concat
 
 LOG = logging.getLogger(__name__)
 
@@ -89,10 +91,10 @@ class Context(ABC):
 
         # TODO: quick hack, find a more generic way to do this
 
-        if all(isinstance(r, ekd.EarthkitFieldList) for r in results):
+        if all(isinstance(r, (EarthkitFieldList, FieldList)) for r in results):
             # earthkit 1.0: FieldList + FieldList is element-wise arithmetic;
-            # use ekd.concat() for concatenation.
-            return ekd.concat(*results)
+            # use concat() for concatenation.
+            return concat(*results)
 
         # Assume it's pandas-like
         import pandas as pd

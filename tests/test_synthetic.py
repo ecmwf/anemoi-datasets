@@ -422,7 +422,7 @@ def test_parse_config_rejects_integer_dtype_with_fractional_constant() -> None:
 # computed forcings
 # --------------------------------------------------------------------------
 def test_computed_forcing_generator_matches_earthkit() -> None:
-    from earthkit.data import from_source
+    from anemoi.transform.fields import from_source
 
     from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
 

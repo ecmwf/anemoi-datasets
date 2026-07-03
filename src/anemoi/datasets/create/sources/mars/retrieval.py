@@ -21,8 +21,8 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
-from anemoi.transform import fields as ekd
 from anemoi.transform.fields import Availability
+from anemoi.transform.fields import concat
 from anemoi.transform.fields import from_source
 from anemoi.utils.humanize import did_you_mean
 
@@ -395,9 +395,9 @@ def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None)
                 )
         try:
             if use_cdsapi_dataset:
-                ds = ekd.concat(ds, from_source("cds", use_cdsapi_dataset, r).to_fieldlist())
+                ds = concat(ds, from_source("cds", use_cdsapi_dataset, r))
             else:
-                ds = ekd.concat(ds, from_source("mars", **r).to_fieldlist())
+                ds = concat(ds, from_source("mars", **r))
         except Exception as e:
             if "File is empty:" not in str(e):
                 raise

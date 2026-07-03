@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 import planetary_computer
 import pystac
 import pystac_client
-from anemoi.transform import fields as ekd
+from anemoi.transform import FieldList
+from anemoi.transform.fields import concat
 
 from anemoi.datasets.create.types import DateList
 
@@ -163,7 +164,7 @@ class PlanetaryComputerSource(XarraySourceBase):
             raise ValueError(msg)
         return uris
 
-    def execute(self, dates: DateList) -> ekd.EarthkitFieldList:
+    def execute(self, dates: DateList) -> FieldList:
         """Execute data loading for given dates.
 
         Parameters
@@ -173,7 +174,7 @@ class PlanetaryComputerSource(XarraySourceBase):
 
         Returns
         -------
-        ekd.EarthkitFieldList
+        FieldList
             Loaded data field(s).
 
         """
@@ -203,7 +204,7 @@ class PlanetaryComputerSource(XarraySourceBase):
                     **self.kwargs,
                 ),
             )
-        return ekd.concat(*result)
+        return concat(*result)
 
 
 def _signed_url_to_abfs(url: str) -> tuple[str, dict]:

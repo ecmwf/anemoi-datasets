@@ -12,7 +12,7 @@ import glob
 import logging
 from typing import Any
 
-from anemoi.transform import fields as ekd
+from anemoi.transform import FieldList
 from anemoi.transform.fields import Pattern
 from anemoi.transform.fields import from_source
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
@@ -130,7 +130,7 @@ class GribSource(Source):
         "levtype": "{metadata.levtype}",
     }
 
-    def execute_valid_dates(self, dates: ValidDates) -> ekd.EarthkitFieldList:
+    def execute_valid_dates(self, dates: ValidDates) -> FieldList:
         """Load data from the GRIB files for the given dates.
 
         Parameters
@@ -190,7 +190,7 @@ class GribSource(Source):
                 s = s.sel(**sel_kwargs, remapping=self._SEL_REMAPPING)
                 all_fields.extend(list(s))
 
-        ds = ekd.EarthkitFieldList.from_fields(all_fields)
+        ds = FieldList.from_fields(all_fields)
 
         # if kwargs and not context.partial_ok:
         # BACK    check(ds, given_paths, valid_datetime=dates, **kwargs)
