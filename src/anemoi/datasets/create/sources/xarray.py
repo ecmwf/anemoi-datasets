@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform.fields import concat
 from anemoi.transform.fields import XArrayFieldList
+from anemoi.transform.fields import concat
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.create.types import DateList
@@ -187,9 +187,7 @@ def load_one(
     return result
 
 
-def load_many(
-    emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any
-) -> FieldList:
+def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any) -> FieldList:
     """Loads multiple datasets.
 
     Parameters
