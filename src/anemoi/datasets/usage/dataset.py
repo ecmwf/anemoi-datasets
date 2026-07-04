@@ -1042,7 +1042,7 @@ class Dataset(ABC, Sized):
         tuple of int
             The indices.
         """
-        from anemoi.transform.fields import to_datetime
+        from earthkit.data.utils.dates import to_datetime
 
         if not isinstance(date, int):
             date = np.datetime64(to_datetime(date)).astype(self.dates[0].dtype)
@@ -1158,9 +1158,13 @@ class Dataset(ABC, Sized):
         """Return the metadata of the variables in the dataset."""
         pass
 
-    def origins(self) -> Any:
-        for p in self.components().ensure_list():
-            print(p.origins())
+    def origins(self) -> dict:
+        """Return the origin of each variable, including usage-time operations."""
+        return dict(self.components().compressed_origins())
+
+    def variables_origins(self) -> dict:
+        """Return a compressed representation of the variable origins."""
+        return self.components().variables_origins()
 
     def components(self) -> Any:
         Projection = self.usage_factory_load("Projection")

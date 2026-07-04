@@ -11,11 +11,8 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
+from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import concat
-from anemoi.transform.fields import from_source
-from anemoi.transform.fields import new_field_from_latitudes_longitudes
-from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
@@ -123,12 +120,12 @@ class FdbSource(Source):
         requests = requests or [self.request]
         requests = compress_prebuilt_requests(requests)
 
-        fl = from_source("empty")
+        fl = FieldList()
         for request in requests:
-            fl = concat(fl, from_source("fdb", request, **self.configs, read_all=True))
+            fl = FieldList.concat(fl, FieldList.from_source("fdb", request, **self.configs, read_all=True))
 
         if self.grid is not None:
-            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
+            fl = FieldList.from_fields([Field.from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
 
         if self.flavour:
             fl = self.flavour.map(fl)

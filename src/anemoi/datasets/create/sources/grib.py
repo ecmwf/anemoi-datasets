@@ -12,13 +12,11 @@ import glob
 import logging
 from typing import Any
 
+from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import Pattern
-from anemoi.transform.fields import from_source
-from anemoi.transform.fields import new_field_from_latitudes_longitudes
-from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
+from earthkit.data.utils.patterns import Pattern
 
 from anemoi.datasets.create.arguments import ValidDates
 
@@ -168,7 +166,7 @@ class GribSource(Source):
 
                     path = get_ecfs_file(path)
 
-                s = from_source("file", path).to_fieldlist()
+                s = FieldList.from_source("file", path)
                 if self.flavour is not None:
                     s = self.flavour.map(s)
 
@@ -196,7 +194,7 @@ class GribSource(Source):
         # BACK    check(ds, given_paths, valid_datetime=dates, **kwargs)
 
         if self.grid is not None:
-            ds = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in ds])
+            ds = FieldList.from_fields([Field.from_latitudes_longitudes(f, *self.grid.latlon()) for f in ds])
 
         if len(ds) == 0:
             LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={self.kwargs})")

@@ -301,6 +301,12 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.recipe.output.flatten_grid",
         "metadata.recipe.output.order_by",
         "metadata.flatten_grid",
+        # Field naming moved to anemoi.transform.naming ('variable_naming' in
+        # the metadata): fields carry their name in the labels.name label and
+        # no earthkit remapping is used any more.  References created before
+        # this change still store a 'remapping' key.
+        "metadata.remapping",
+        "metadata.recipe.build.remapping",
         # earthkit 1.0 wrapped fields do not expose metadata.startStep /
         # metadata.endStep, so period and process are not computed for
         # accumulated variables (startStep == endStep == None skips the block

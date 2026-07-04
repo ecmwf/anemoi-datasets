@@ -199,6 +199,21 @@ class ZarrStore(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.store["data"]
 
+    @cached_property
+    def origins(self):
+        """Return the origin of each variable, as stored in the dataset metadata."""
+        origins = self.store.attrs.get("origins")
+
+        if origins is None:
+            raise ValueError(f"No 'origins' in {self.path}")
+
+        result = {}
+        for origin in origins["origins"]:
+            for v in origin["variables"]:
+                result[v] = origin["origin"]
+
+        return result
+
     @classmethod
     def from_group(cls, group: zarr.Group, path: str = None, options: Options = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
@@ -323,27 +338,6 @@ class ZarrStore(Dataset):
     def collect_input_sources(self, collected: set) -> None:
         """Collect input sources."""
         pass
-
-    @cached_property
-    def origins(self):
-        origins = self.store.attrs.get("origins")
-
-        if origins is None:
-            import rich
-
-            rich.print(dict(self.store.attrs))
-            raise ValueError(f"No 'origins' in {self.dataset_name}")
-
-        # version = origins["version"]
-        origins = origins["origins"]
-
-        result = {}
-
-        for origin in origins:
-            for v in origin["variables"]:
-                result[v] = origin["origin"]
-
-        return result
 
     def project(self, projection):
         slices = tuple(slice(0, i, 1) for i in self.shape)

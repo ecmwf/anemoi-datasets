@@ -21,10 +21,9 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
-from anemoi.transform.fields import Availability
-from anemoi.transform.fields import concat
-from anemoi.transform.fields import from_source
+from anemoi.transform import FieldList
 from anemoi.utils.humanize import did_you_mean
+from earthkit.data.utils.availability import Availability
 
 # ---------------------------------------------------------------------------
 # MARS key whitelist
@@ -381,7 +380,7 @@ def _validate_keys(requests: tuple) -> None:
 
 def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None) -> Any:
     """Send a list of ready-to-fire request dicts to MARS or CDS."""
-    ds = from_source("empty").to_fieldlist()
+    ds = FieldList()
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
 
@@ -395,9 +394,9 @@ def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None)
                 )
         try:
             if use_cdsapi_dataset:
-                ds = concat(ds, from_source("cds", use_cdsapi_dataset, r))
+                ds = FieldList.concat(ds, FieldList.from_source("cds", use_cdsapi_dataset, r))
             else:
-                ds = concat(ds, from_source("mars", **r))
+                ds = FieldList.concat(ds, FieldList.from_source("mars", **r))
         except Exception as e:
             if "File is empty:" not in str(e):
                 raise

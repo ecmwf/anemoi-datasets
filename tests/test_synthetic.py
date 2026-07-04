@@ -11,6 +11,7 @@ import datetime
 
 import numpy as np
 import pytest
+from anemoi.transform import FieldList
 
 from anemoi.datasets import open_dataset
 
@@ -422,7 +423,6 @@ def test_parse_config_rejects_integer_dtype_with_fractional_constant() -> None:
 # computed forcings
 # --------------------------------------------------------------------------
 def test_computed_forcing_generator_matches_earthkit() -> None:
-    from anemoi.transform.fields import from_source
 
     from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
 
@@ -434,13 +434,13 @@ def test_computed_forcing_generator_matches_earthkit() -> None:
     out = g.generate(date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0)
     assert out.shape == (2, 1, 4)
 
-    fl = from_source(
+    fl = FieldList.from_source(
         "forcings",
         latitudes=lat,
         longitudes=lon,
         date=[d.astype("datetime64[s]").astype(datetime.datetime) for d in dates],
         param=["insolation"],
-    ).to_fieldlist()
+    )
     expected = np.stack([f.to_numpy(flatten=True) for f in fl])  # (2, 4)
     np.testing.assert_allclose(out[:, 0, :], expected)
 

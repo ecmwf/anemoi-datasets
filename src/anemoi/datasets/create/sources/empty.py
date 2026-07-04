@@ -37,4 +37,4 @@ class EmptySource(LegacySource):
         FieldList
             Loaded empty data source.
         """
-        return FieldList.from_source("empty")
+        return FieldList()

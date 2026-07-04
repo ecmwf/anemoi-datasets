@@ -132,7 +132,7 @@ class RandomValue(ValueGenerator):
 # Computed forcings
 # --------------------------------------------------------------------------
 # Computed forcings reuse earthkit's canonical forcing formulas rather than
-# reimplementing them: ``from_source("forcings", latitudes=, longitudes=, ...)``
+# reimplementing them: ``FieldList.from_source("forcings", latitudes=, longitudes=, ...)``
 # accepts raw lat/lon arrays with no template field, exactly fitting the
 # synthetic dataset's flat grid.
 _COMPUTED_FORCINGS = {
@@ -211,16 +211,16 @@ class ComputedForcingValue(ValueGenerator):
 
     def _evaluate(self, dates: NDArray[np.datetime64]) -> NDArray[Any]:
         """Return a ``(len(dates), n_grid)`` block of the forcing field."""
-        from anemoi.transform.fields import from_source
+        from anemoi.transform import FieldList
 
         py_dates = [np.datetime64(d, "s").astype(datetime.datetime) for d in dates]
-        fields = from_source(
+        fields = FieldList.from_source(
             "forcings",
             latitudes=self.latitudes,
             longitudes=self.longitudes,
             date=py_dates,
             param=[self.param],
-        ).to_fieldlist()
+        )
         # One field per date (single param, no ensemble), in date order.
         assert len(fields) == len(py_dates), (len(fields), len(py_dates))
         return np.stack([f.to_numpy(flatten=True) for f in fields]).astype(np.float64)

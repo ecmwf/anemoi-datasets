@@ -28,9 +28,24 @@ SCALINGS = {"s": 1, "ms": 1e3, "us": 1e6, "ns": 1e9}
 class TabularResult(Result):
     """Class to represent the result of an action in the dataset creation process."""
 
+    @property
+    def origins(self) -> dict:
+        """Return the origin (source and filters) of the frame's columns.
+
+        Tabular data carries a single origin for the whole frame
+        (``DataFrame.attrs["anemoi_origin"]``), so all the columns share it.
+        """
+        if self._origin is None:
+            raise ValueError("Tabular frame carries no origin (attrs['anemoi_origin'] not set)")
+        return {"version": 1, "origins": [{"origin": self._origin.as_dict(), "variables": sorted(self.variables)}]}
+
     def __init__(self, context: Any, argument: Any, frame: pd.DataFrame) -> None:
 
         original_frame = frame
+
+        # Capture the origin before the sort/filter operations below: pandas
+        # does not reliably propagate ``attrs`` through them.
+        self._origin = frame.attrs.get("anemoi_origin")
 
         assert isinstance(frame, pd.DataFrame), type(frame)
 

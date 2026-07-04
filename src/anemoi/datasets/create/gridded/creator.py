@@ -65,7 +65,8 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
-        metadata["remapping"] = self.recipe.build.remapping
+        metadata["variable_naming"] = self.recipe.build.variable_naming
+        metadata["origins"] = self.minimal_input.origins
         # Read from the context rather than the recipe so that layouts whose
         # cube ordering is internal (e.g. trajectories) can provide their own
         # ``order_by`` without exposing it in the recipe schema.

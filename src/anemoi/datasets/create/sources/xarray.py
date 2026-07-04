@@ -14,7 +14,6 @@ from typing import Any
 
 from anemoi.transform import FieldList
 from anemoi.transform.fields import XArrayFieldList
-from anemoi.transform.fields import concat
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.create.types import DateList
@@ -167,9 +166,9 @@ def load_one(
             result = FieldList(fs)
     else:
         if sel_kwargs:
-            result = concat(*[fs.sel(**{"time.valid_datetime": date, **sel_kwargs}) for date in dates])
+            result = FieldList.concat(*[fs.sel(**{"time.valid_datetime": date, **sel_kwargs}) for date in dates])
         else:
-            result = concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
+            result = FieldList.concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
@@ -213,7 +212,7 @@ def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern:
     for path, dates in iterate_patterns(pattern, dates, **kwargs):
         result.append(load_one(emoji, context, dates, path, **kwargs))
 
-    return concat(*result) if result else FieldList()
+    return FieldList.concat(*result) if result else FieldList()
 
 
 class XarraySourceBase(Source):

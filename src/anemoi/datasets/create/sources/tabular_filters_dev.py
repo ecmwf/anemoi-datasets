@@ -13,14 +13,11 @@ import sys
 
 import numpy as np
 import pandas as pd
+from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import new_field_from_latitudes_longitudes
-from anemoi.transform.fields import new_field_from_numpy
-from anemoi.transform.fields import new_field_with_valid_datetime
-from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.transform.fields import to_datetime
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
+from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.usage.grids import cropping_mask
 
@@ -151,13 +148,13 @@ class Crop(Filter):
             array = field.to_numpy()
             cropped_array = array[mask]
             result.append(
-                new_field_from_numpy(
+                Field.from_numpy(
                     cropped_array,
-                    template=new_field_from_latitudes_longitudes(field, latitudes, longitudes),
+                    template=Field.from_latitudes_longitudes(field, latitudes, longitudes),
                 )
             )
 
-        return new_fieldlist_from_list(result)
+        return FieldList.from_fields(result)
 
 
 @filter_registry.register("tabularise", aliases=["to_tabular", "tabularize"])
@@ -268,10 +265,10 @@ class Griddify(Filter):
                         gridded_values[idx] = df.iloc[i][col]
 
                 result.append(
-                    new_field_with_valid_datetime(
-                        new_field_from_numpy(gridded_values, template=self.template, valid_datetime=date, param=col),
+                    Field.with_valid_datetime(
+                        Field.from_numpy(gridded_values, template=self.template, valid_datetime=date, param=col),
                         valid_datetime=date,
                     )
                 )
 
-        return new_fieldlist_from_list(result)
+        return FieldList.from_fields(result)

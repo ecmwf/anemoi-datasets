@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.transform import Field
 from anemoi.transform.variables import Variable
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
@@ -27,7 +28,6 @@ from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
-from ..gridded.result import _strip_zero_level_suffix
 from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
@@ -87,7 +87,15 @@ class TrajectoryGriddedCreator(GriddedCreator):
         return base_dates[0] + step_start, base_dates[-1] + step_end
 
     def collect_metadata(self, metadata: dict):
-        """Collect metadata for the trajectories dataset."""
+        """Collect metadata for the trajectories dataset.
+
+        ``super().collect_metadata`` (the gridded creator) writes
+        ``metadata["origins"]`` from ``self.minimal_input`` — a one-date
+        selection of the input. For trajectories that selection is one
+        ``(basetime, step)`` group, which retrieves every variable through
+        the same sources and filters as the full dataset, so the collected
+        per-variable origins are representative of all trajectory points.
+        """
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
@@ -211,12 +219,6 @@ class TrajectoryGriddedCreator(GriddedCreator):
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
 
-        # Use the same remapping (``build.variable_naming``) that named the
-        # variables at init time, so e.g. wave spectra are recovered as
-        # ``{param}_{directionNumber}_{frequencyNumber}`` rather than bare
-        # ``param``/``param_levelist``.
-        remapping = result.context.remapping
-
         # Map GRIB member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
@@ -246,7 +248,8 @@ class TrajectoryGriddedCreator(GriddedCreator):
         with WriteBehindBuffer(dataset.data) as array:
             for cubelet in cube.iterate_cubelets():
                 data = cubelet.to_numpy()
-                field = cube[cubelet.coords]
+                # The cube yields raw earthkit fields; wrap for the Field properties.
+                field = Field(cube[cubelet.coords])
 
                 # Recover basetime from field component paths (works for raw GRIB and wrapped fields alike)
                 basetime = field.time.base_datetime()
@@ -258,17 +261,11 @@ class TrajectoryGriddedCreator(GriddedCreator):
                     else datetime.timedelta(hours=int(step_td_raw))
                 )
 
-                # Recover variable name via the build.variable_naming remapping
-                # (param_level pattern), matching the names declared at init.
-                # Use field.get() so the remapping template {metadata.key} vars
-                # route correctly through earthkit 1.0's _get_single.
-                var_name = _strip_zero_level_suffix(
-                    remapping(lambda k, default=None: field.get(k, default=default))("param_level", default=None)
-                )
-                if var_name is None:
-                    var_name = str(field.metadata("param"))
+                # The naming scheme (``build.variable_naming``) attached the
+                # variable name to the field when the input was built.
+                var_name = field.name
 
-                number = field.get("metadata.number", default=0) or 0
+                number = field.number
                 if number_to_index is None:
                     ens_idx = 0
                 else:

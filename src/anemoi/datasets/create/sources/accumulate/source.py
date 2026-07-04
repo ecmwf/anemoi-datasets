@@ -16,8 +16,8 @@ from typing import Any
 
 from anemoi.transform import FieldList
 from anemoi.transform.fields import new_grib_output
-from anemoi.transform.fields import temp_file
 from anemoi.utils.dates import frequency_to_timedelta
+from earthkit.data.core.temporary import temp_file
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
@@ -152,8 +152,9 @@ class AccumulateSource(Source):
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
         output.close()
-        ds = FieldList.from_source("file", tmp.path)
-        ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
+        # The temp file must outlive the fields (and any field derived from
+        # them downstream, e.g. by origin tagging or naming).
+        ds = FieldList.from_file(tmp.path, keep=tmp)
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
         for f in ds:

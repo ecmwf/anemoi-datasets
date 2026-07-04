@@ -10,9 +10,7 @@
 import logging
 from typing import Any
 
-from anemoi.transform.fields import build_remapping
-from anemoi.transform.fields import new_field_with_metadata
-from anemoi.transform.fields import new_fieldlist_from_list
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.context import Context
 from anemoi.datasets.create.recipe.dates import Steps  # noqa: F401  (re-exported for back-compat)
@@ -24,8 +22,25 @@ LOG = logging.getLogger(__name__)
 class TrajectoryGriddedContext(Context):
     """Context for building trajectories output data.
 
-    This class extends the base Context to provide additional logic and configuration
-    for trajectories datasets, including remapping, grid flattening, and origin tracking.
+    This class extends the base Context to provide additional logic and
+    configuration for trajectories datasets.
+
+    Origin tracking for trajectories works exactly as for plain gridded
+    data and is fully inherited from the base :class:`Context`:
+
+    - Every source/filter action tags the fields it produces with an
+      origin (``labels.anemoi_origin``), via :meth:`Context.origin`. A
+      trajectory dataset retrieves the *same* variables for many
+      ``(basetime, step)`` pairs, but each retrieval flows through the
+      same action objects, so all the fields of one variable share one
+      origin object — the trajectory structure lives in the time
+      metadata (``time.base_datetime``, ``time.step``), not in the
+      origin.
+    - The origins are collected per variable by
+      ``SimpleGriddedResult._collect_origins`` (which
+      :class:`TrajectoryGriddedResult` inherits) and written to the
+      dataset metadata by ``GriddedCreator.collect_metadata`` (which
+      ``TrajectoryGriddedCreator`` inherits).
     """
 
     # Fixed cube ordering for trajectories: a single composite ``traj_point``
@@ -37,7 +52,7 @@ class TrajectoryGriddedContext(Context):
     # affect the output. Keys use the ``metadata.`` prefix required by
     # earthkit 1.0's ``_get_single``; ``traj_point`` and ``param_level`` are
     # remapped synthetic keys and have no prefix.
-    order_by: list[str] = ["traj_point", "param_level", "metadata.number"]
+    order_by: list[str] = ["traj_point", "labels.name", "metadata.number"]
 
     def __init__(self, recipe: Any) -> None:
         super().__init__(recipe)
@@ -50,12 +65,20 @@ class TrajectoryGriddedContext(Context):
         # (basetime, step) pairs is not a Cartesian product of basetimes
         # and steps -- e.g. base_dates with frequency 12h starting at 00Z
         # but ending at 00Z (an odd number of basetimes).
-        remapping = dict(recipe.build.remapping)
-        remapping.setdefault("traj_point", "{time.base_datetime}_{time.step}")
-        self.remapping = build_remapping(remapping)
+        self.remapping = build_remapping({"traj_point": "{time.base_datetime}_{time.step}"})
 
     def create_result(self, argument: Any, data: Any) -> TrajectoryGriddedResult:
-        return TrajectoryGriddedResult(self, argument, data)
+        """Wrap the built input into a result, after naming the fields.
+
+        By the time this is called, every field already carries its origin
+        (``labels.anemoi_origin``, attached by the actions while the input
+        was built — for trajectories that means every ``(basetime, step)``
+        retrieval of every source and filter). The naming pass attaches
+        ``labels.name`` on top; ``set()`` preserves the origin label, so the
+        result fields carry both, and ``_collect_origins`` can later group
+        variable names by origin.
+        """
+        return TrajectoryGriddedResult(self, argument, self.naming(data))
 
     def matching_dates(self, filters: dict, group_of_dates: Any) -> Any:
         """Find dates that match between filters and group_of_dates.
@@ -93,36 +116,3 @@ class TrajectoryGriddedContext(Context):
             matched = [(vt, bt) for vt, bt in matched if (vt - bt) in steps_set]
 
         return ForecastDates(matched)
-
-    def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
-        """Update the origin metadata for each field in the data.
-
-        Parameters
-        ----------
-        data : Any
-            The data fields to update.
-        action : Any
-            The action providing the new origin.
-        action_arguments : Any
-            Arguments for the action.
-
-        Returns
-        -------
-        Any
-            A new field list with updated origin metadata.
-        """
-
-        origin = action.origin()
-
-        result = []
-        for fs in data:
-            previous = fs.get("metadata.anemoi_origin", default=None)
-            fall_through = fs.get("metadata.anemoi_fall_through", default=False)
-            if fall_through:
-                # The field has pass unchanges in a filter
-                result.append(fs)
-            else:
-                anemoi_origin = origin.combine(previous, action, action_arguments)
-                result.append(new_field_with_metadata(fs, anemoi_origin=anemoi_origin))
-
-        return new_fieldlist_from_list(result)

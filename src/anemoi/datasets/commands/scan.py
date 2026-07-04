@@ -118,10 +118,7 @@ class Scan(Command):
                 chunking=dict(dates=1, ensembles=1),
                 dtype="float32",
                 flatten_grid=True,
-                order_by=["valid_datetime", "param_level", "number"],
-                statistics="param_level",
                 statistics_end=2020,
-                remapping=dict(param_level="{param}_{levelist}"),
             ),
         )
 

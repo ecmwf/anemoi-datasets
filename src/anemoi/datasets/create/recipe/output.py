@@ -31,7 +31,7 @@ class OutputBase(BaseModel):
 
     remapping: dict[str, Any] | None = Field(
         default=None,
-        deprecated="'output.remapping' is deprecated. Please use 'build.remapping' instead.",
+        deprecated="'output.remapping' is deprecated. Please use 'build.variable_naming' instead.",
     )
 
     sanitise: bool = True

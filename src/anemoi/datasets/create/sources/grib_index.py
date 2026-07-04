@@ -19,7 +19,6 @@ from typing import Any
 import tqdm
 from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
@@ -669,7 +668,7 @@ class GribIndexSource(Source):
                 result.append(field)
 
         if self.grid is not None:
-            result = [new_field_from_latitudes_longitudes(field, *self.grid.latlon()) for field in result]
+            result = [Field.from_latitudes_longitudes(field, *self.grid.latlon()) for field in result]
 
         return FieldList.from_fields(result)
 

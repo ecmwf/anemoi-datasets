@@ -11,8 +11,7 @@
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform.fields import concat
-from anemoi.transform.fields import download_and_cache
+from earthkit.data.sources.url import download_and_cache
 
 from . import source_registry
 from .legacy import LegacySource
@@ -68,4 +67,4 @@ class ZenodoSource(LegacySource):
             path = download_and_cache(urls[url])
             result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
 
-        return concat(*result)
+        return FieldList.concat(*result)

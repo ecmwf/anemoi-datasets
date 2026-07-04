@@ -11,8 +11,8 @@
 import logging
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_valid_datetime
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform import Field
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.input.repeated_dates import DateMapper
 from anemoi.datasets.create.source import Source
@@ -51,6 +51,6 @@ class RepeatedDatesSource(Source):
             source_results = self.source(self.context, one_date_group)
             for field in source_results:
                 for date in many_dates_group:
-                    result.append(new_field_with_valid_datetime(field, date))
+                    result.append(Field.with_valid_datetime(field, date))
 
-        return new_fieldlist_from_list(result)
+        return FieldList.from_fields(result)

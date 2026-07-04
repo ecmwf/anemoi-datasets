@@ -17,13 +17,13 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-
-# Importing build_remapping from anemoi.transform.fields also applies the
-# earthkit-data 1.0 build_remapping compatibility shim (see that module).
-from anemoi.transform.fields import build_remapping
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
+
+# Importing build_remapping from anemoi.transform.fields also applies the
+# earthkit-data 1.0 build_remapping compatibility shim (see that module).
+from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
 
@@ -62,42 +62,6 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
     "sin_local_time": dict(computed_forcing=True, constant_in_time=False),
     "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
 }
-
-
-def _strip_zero_level_suffix(name: str) -> str:
-    """Strip level suffixes from surface fields and known forcing variables.
-
-    In earthkit-data 1.0 ``vertical.level`` returns 0 for surface-type fields
-    (level_type='surface', 'meanSea', etc.) rather than None.  The
-    ``{parameter.variable}_{vertical.level}`` remapping template therefore
-    produces names like ``"2t_0"`` or ``"cos_latitude_0"`` for surface
-    variables.  This callable is registered as a Patch on the ``param_level``
-    synthetic key so that the ``_0`` suffix is removed after template
-    evaluation, restoring the legacy variable naming (``"2t"``,
-    ``"cos_latitude"``).
-
-    For known computed forcing variables (e.g. ``cos_julian_day``), any
-    trailing ``_<digits>`` level suffix is stripped regardless of the level
-    value, since these synthetic variables are identified by name alone and
-    never carry a meaningful level distinction.
-
-    Level-bearing names such as ``"t_700"`` are returned unchanged.
-    """
-    if name is None:
-        return name
-
-    # Surface level: always strip _0
-    if name.endswith("_0"):
-        return name[:-2]
-
-    # Known forcing variables: strip any trailing _<digits> level suffix
-    for var_name in _KNOWN_VARIABLES:
-        if name.startswith(var_name + "_"):
-            suffix = name[len(var_name) + 1 :]
-            if suffix.isdigit():
-                return var_name
-
-    return name
 
 
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
@@ -456,7 +420,7 @@ class GriddedResult(Result):
             self.group_of_dates, (GroupOfDates, ForecastDates)
         ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
-        self._origins = []
+        self._origins = None
         # Used to check if units are consistent across fields for the same variable
         self._past_units = {}
 
@@ -467,8 +431,57 @@ class GriddedResult(Result):
 
     @property
     def origins(self) -> dict[str, Any]:
-        """Return a dictionary with the parameters needed to retrieve the data origins."""
+        """Return a dictionary with the origin (source and filters) of each variable."""
+        if self._origins is None:
+            self._origins = self._collect_origins()
         return {"version": 1, "origins": self._origins}
+
+    def _collect_origins(self) -> list[dict[str, Any]]:
+        """Group the variables by origin, from the fields' labels.
+
+        Each field carries its origin in the ``labels.anemoi_origin`` label
+        (attached by the source and filter actions) and its variable name in
+        ``labels.name`` (attached by the naming scheme).
+
+        For trajectories this iterates the fields of every ``(basetime,
+        step)`` pair of the group. A variable's fields all share the same
+        origin object regardless of the trajectory point they belong to
+        (the actions tag every retrieval with the same ``Source``/``Pipe``
+        instance), so the grouping below naturally collapses a whole
+        trajectory dataset to one origin entry per variable — identical in
+        shape to the plain gridded case.
+
+        Origins are first grouped per ensemble member; a variable whose
+        members come from different origins is not supported (asserted
+        below).
+        """
+        origins_per_number: DefaultDict[Any, DefaultDict[Any, set]] = defaultdict(lambda: defaultdict(set))
+
+        for fs in self.datasource:
+            o = fs.get("labels.anemoi_origin", default=None)
+            if o is None:
+                raise ValueError(f"Field {fs} carries no origin (labels.anemoi_origin)")
+            name = fs.name
+            number = fs.number
+
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
+
+        origins_per_variables: DefaultDict[Any, DefaultDict[Any, set]] = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
+
+        return [{"origin": k.as_dict(), "variables": sorted(v)} for k, v in origins.items()]
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -481,20 +494,17 @@ class GriddedResult(Result):
 
         ds: Any = self.datasource
 
-        self.remapping: Any = self.context.remapping
         self.order_by: Any = self.context.order_by
+        # Composite synthetic keys (e.g. the trajectories layout's
+        # ``traj_point``) still need an earthkit remapping; field naming
+        # itself is carried by the ``labels.name`` label.
+        self.remapping: Any = getattr(self.context, "remapping", None)
         self.start: float = time.time()
-        LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
+        LOG.info("Sorting dataset %s", self.order_by)
         assert self.order_by, self.order_by
 
         self.patches: dict[str, Any] = {
             "metadata.number": {None: 0},
-            # Strip the ``_0`` suffix produced for surface fields by the
-            # ``{parameter.variable}_{vertical.level}`` template.  In earthkit 1.0
-            # ``vertical.level`` returns 0 for surface fields (not None), so the
-            # template yields e.g. ``"2t_0"`` instead of ``"2t"``.  This callable
-            # Patch is applied to the final ``param_level`` value.
-            "param_level": _strip_zero_level_suffix,
         }
 
         try:
@@ -535,7 +545,7 @@ class GriddedResult(Result):
         args : Any
             Additional arguments.
         remapping : Any
-            The remapping configuration.
+            The remapping for composite synthetic keys (e.g. ``traj_point``).
         patches : Any
             The patches configuration.
         """

@@ -12,8 +12,9 @@ import logging
 from typing import Any
 
 import numpy as np
+from anemoi.transform import FieldList
 from anemoi.transform.fields import new_grib_output
-from anemoi.transform.fields import temp_file
+from earthkit.data.core.temporary import temp_file
 
 LOG = logging.getLogger(__name__)
 
@@ -56,9 +57,9 @@ def check_compatible(
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
 
     # Not in *_as_mars
-    assert f1.get("time.valid_datetime") == f2.get("time.valid_datetime"), (
-        f1.get("time.valid_datetime"),
-        f2.get("time.valid_datetime"),
+    assert f1.valid_datetime == f2.valid_datetime, (
+        f1.valid_datetime,
+        f2.valid_datetime,
     )
 
     for k in set(centre_field_as_mars.keys()) | set(ensemble_field_as_mars.keys()):
@@ -132,7 +133,7 @@ def recentre(
     seen = set()
 
     for i, centre_field in enumerate(centre):
-        param = centre_field.get("parameter.variable")
+        param = centre_field.param
         centre_field_as_mars = centre_field.get(collections="metadata.mars")
 
         # load the centre field
@@ -191,13 +192,8 @@ def recentre(
     if output is not None:
         return path
 
-    from anemoi.transform.fields import from_source
-
-    ds = from_source("file", path).to_fieldlist()
-
-    # save a reference to the tmp file so it is deleted
-    # only when the dataset is not used anymore
-    ds._tmp = tmp
+    # The temp file must outlive the fields (and any field derived from them).
+    ds = FieldList.from_file(path, keep=tmp)
 
     assert len(ds) == len(members), (len(ds), len(members))
 

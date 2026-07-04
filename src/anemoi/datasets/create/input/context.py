@@ -14,7 +14,6 @@ from typing import Any
 
 from anemoi.transform.fields import EarthkitFieldList
 from anemoi.transform.fields import FieldList
-from anemoi.transform.fields import concat
 
 LOG = logging.getLogger(__name__)
 
@@ -23,10 +22,13 @@ class Context(ABC):
     """Context for building input data."""
 
     def __init__(self, recipe) -> None:
+        from anemoi.transform.naming import create_naming
+
         self.recipe = recipe
         self.results = {}
         self.cache = {}
         self.use_grib_paramid = recipe.build.use_grib_paramid
+        self.naming = create_naming(recipe.build.variable_naming)
 
     def trace(self, emoji, *message) -> None:
 
@@ -72,6 +74,63 @@ class Context(ABC):
     @abstractmethod
     def create_result(self, data: Any) -> Any: ...
 
+    def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
+        """Tag the action's result with its origin.
+
+        Called by the source and filter actions after they produce their
+        result, so that the data carries the source it came from and the
+        filters applied to it.
+
+        Fields carry their origin individually, in the
+        ``labels.anemoi_origin`` label. Tabular data carries a single origin
+        for the whole frame, in ``DataFrame.attrs["anemoi_origin"]``
+        (pandas propagates ``attrs`` through most frame operations; when a
+        filter drops them, the origin is recovered from the filter's input,
+        see ``Filter.combine``).
+
+        For trajectories this is called once per ``(basetime, step)``
+        retrieval, exactly as for plain gridded data: the trajectory
+        structure is a property of the *dates* argument, not of the origin —
+        all the fields of one variable share the same origin object
+        regardless of which trajectory point they belong to.
+
+        Parameters
+        ----------
+        data : Any
+            The data to tag (a field list or a DataFrame).
+        action : Any
+            The action (source or filter) that produced the data.
+        action_arguments : Any
+            The argument the action was called with.
+
+        Returns
+        -------
+        Any
+            The tagged data.
+        """
+
+        import pandas as pd
+
+        origin = action.origin()
+
+        if isinstance(data, pd.DataFrame):
+            previous = data.attrs.get("anemoi_origin")
+            data.attrs["anemoi_origin"] = origin.combine(previous, action, action_arguments)
+            return data
+
+        result = []
+        for fs in data:
+            previous = fs.get("labels.anemoi_origin", default=None)
+            fall_through = fs.get("labels.anemoi_fall_through", default=False)
+            if fall_through:
+                # The field has passed unchanged through a filter
+                result.append(fs)
+            else:
+                anemoi_origin = origin.combine(previous, action, action_arguments)
+                result.append(fs.set(**{"labels.anemoi_origin": anemoi_origin}))
+
+        return FieldList.from_fields(result)
+
     def join(self, results: list[Any]) -> Any:
         """Join multiple results into a single result.
 
@@ -93,13 +152,21 @@ class Context(ABC):
 
         if all(isinstance(r, (EarthkitFieldList, FieldList)) for r in results):
             # earthkit 1.0: FieldList + FieldList is element-wise arithmetic;
-            # use concat() for concatenation.
-            return concat(*results)
+            # use FieldList.concat() for concatenation.
+            return FieldList.concat(*results)
 
         # Assume it's pandas-like
         import pandas as pd
 
         if all(isinstance(r, pd.DataFrame) for r in results):
-            return pd.concat(results, ignore_index=True)
+            # ``pd.concat`` only propagates ``attrs`` when they are identical
+            # on every input; combine the frame origins explicitly.
+            origins = [r.attrs["anemoi_origin"] for r in results if "anemoi_origin" in r.attrs]
+            frame = pd.concat(results, ignore_index=True)
+            if origins:
+                from .origin import Join
+
+                frame.attrs["anemoi_origin"] = origins[0] if len(set(origins)) == 1 else Join(origins)
+            return frame
 
         raise TypeError(f"join: Unsupported mix of types {[type(r) for r in results]}")

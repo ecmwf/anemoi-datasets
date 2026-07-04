@@ -10,9 +10,8 @@
 import datetime
 from typing import Any
 
-from anemoi.transform.fields import from_source
-from anemoi.transform.fields import new_field_with_metadata
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform import Field
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
@@ -62,19 +61,15 @@ class ForcingsSource(Source):
 
     def execute_valid_dates(self, dates: ValidDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
-        fields = from_source(
-            "forcings", source_or_dataset=self.template, date=list(dates), param=self.param
-        ).to_fieldlist()
-        result = [new_field_with_metadata(f, units=_units_for(f)) for f in fields]
-        return new_fieldlist_from_list(result)
+        fields = FieldList.from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
+        result = [Field.with_new_metadata(f, units=_units_for(f)) for f in fields]
+        return FieldList.from_fields(result)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
 
         valid_times = [vt for vt, _bt in dates]
-        fields = from_source(
-            "forcings", source_or_dataset=self.template, date=valid_times, param=self.param
-        ).to_fieldlist()
+        fields = FieldList.from_source("forcings", source_or_dataset=self.template, date=valid_times, param=self.param)
 
         # Index forcing fields by valid_datetime for quick lookup
         fields_by_vdt = {}
@@ -91,6 +86,6 @@ class ForcingsSource(Source):
                 step=datetime.timedelta(hours=step_hours),
             )
             for f in fields_by_vdt.get(vt, []):
-                result.append(new_field_with_metadata(f, units=_units_for(f), **meta))
+                result.append(Field.with_new_metadata(f, units=_units_for(f), **meta))
 
-        return new_fieldlist_from_list(result)
+        return FieldList.from_fields(result)
