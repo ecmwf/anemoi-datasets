@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from anemoi.transform import FieldList
+from anemoi.transform.fields import METADATA_KEY_MAPPING
 from anemoi.transform.fields import XArrayFieldList
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
@@ -35,14 +36,10 @@ LOG = logging.getLogger(__name__)
 # kwargs directly to component-path keys.  This avoids a strict int/float
 # comparison issue in earthkit's remapping-based sel — xarray fields expose
 # levels as float64 while recipes typically specify integer values.
-_SEL_KEY_MAP = {
-    "valid_datetime": "time.valid_datetime",
-    "param": "parameter.variable",
-    "shortName": "parameter.variable",
-    "level": "vertical.level",
-    "levelist": "vertical.level",
-    "levtype": "metadata.levtype",
-}
+# Derived from the canonical mapping; ``levtype`` deliberately targets the
+# raw ``metadata.levtype`` (recipes use MARS values such as "sfc"/"pl",
+# which ``vertical.level_type`` would not match).
+_SEL_KEY_MAP = {**METADATA_KEY_MAPPING, "levtype": "metadata.levtype"}
 
 if TYPE_CHECKING:
     pass

@@ -14,6 +14,7 @@ from typing import Any
 
 from anemoi.transform import Field
 from anemoi.transform import FieldList
+from anemoi.transform.fields import METADATA_KEY_MAPPING
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data.utils.patterns import Pattern
@@ -118,15 +119,10 @@ class GribSource(Source):
         self.args = args
         self.kwargs = kwargs
 
-    # Mapping from legacy earthkit 0.x sel keys to earthkit 1.0 component paths.
-    _SEL_REMAPPING = {
-        "valid_datetime": "{time.valid_datetime}",
-        "param": "{parameter.variable}",
-        "shortName": "{parameter.variable}",
-        "level": "{vertical.level}",
-        "levelist": "{vertical.level}",
-        "levtype": "{metadata.levtype}",
-    }
+    # Derived from the canonical mapping; ``levtype`` deliberately targets
+    # the raw ``metadata.levtype`` (recipes use MARS values such as
+    # "sfc"/"pl", which ``vertical.level_type`` would not match).
+    _SEL_REMAPPING = {k: "{" + v + "}" for k, v in {**METADATA_KEY_MAPPING, "levtype": "metadata.levtype"}.items()}
 
     def execute_valid_dates(self, dates: ValidDates) -> FieldList:
         """Load data from the GRIB files for the given dates.
