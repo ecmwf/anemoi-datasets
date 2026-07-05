@@ -242,10 +242,6 @@ class GriddedZarr(ZarrStore):
         """Collect input sources."""
         pass
 
-    def project(self, projection):
-        slices = tuple(slice(0, i, 1) for i in self.shape)
-        return projection.from_store(slices, self).apply(projection)
-
     @property
     def dataset_name(self) -> str:
         """Return the name of the dataset."""

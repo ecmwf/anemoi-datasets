@@ -1159,14 +1159,51 @@ class Dataset(ABC, Sized):
         pass
 
     def origins(self) -> dict:
-        """Return the origin of each variable, including usage-time operations."""
+        """Return the origin of each variable, including usage-time operations.
+
+        Returns
+        -------
+        dict
+            ``{variable: [origin, ...]}`` — the origin recorded when the
+            dataset was created, extended with the usage-time operations
+            of this view (see :meth:`components`).
+        """
         return dict(self.components().compressed_origins())
 
     def variables_origins(self) -> dict:
-        """Return a compressed representation of the variable origins."""
+        """Return a compressed, indexed representation of the variable origins.
+
+        Returns
+        -------
+        dict
+            ``{"datasets": [...], "origins": [...], "variables":
+            {variable: [origin_index, dataset_index]}, "version": "1"}``
+            (see ``ProjectionBase.variables_origins``).
+        """
         return self.components().variables_origins()
 
     def components(self) -> Any:
+        """Resolve this view onto the underlying zarr store(s).
+
+        Builds a full-shape :class:`Projection` (one ``slice(0, n, 1)``
+        per dimension of *this* view) and pushes it down the chain of
+        usage-time wrappers with :meth:`project`. Every wrapper
+        re-expresses the projection in its forward dataset's coordinates
+        and recurses, so the result is one ``ProjectionStore`` per store
+        region this view actually reads (a ``ProjectionList`` when there
+        are several — e.g. behind a ``join``), each carrying the
+        usage-time transformations traversed on the way down.
+
+        The ``Projection`` class is layout-specific and resolved through
+        :meth:`usage_factory_load` (currently only the gridded layout
+        provides one).
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projection(s) — see
+            ``anemoi.datasets.usage.common.projection``.
+        """
         Projection = self.usage_factory_load("Projection")
 
         slices = tuple(slice(0, i, 1) for i in self.shape)
@@ -1174,7 +1211,24 @@ class Dataset(ABC, Sized):
 
     # @abstractmethod
     def project(self, projection) -> Any:
-        """Return the project of the variable at the specified index."""
+        """Push a projection down to the underlying store(s).
+
+        Each dataset class re-expresses ``projection`` in the coordinates
+        of the dataset(s) it forwards to, and recurses; the zarr stores
+        terminate the descent (see :meth:`components` for the overall
+        flow). Subclasses that support origin tracking must override
+        this.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in this dataset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The projection(s) resolved onto the underlying store(s).
+        """
         raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
 
     @abstractmethod

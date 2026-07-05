@@ -339,7 +339,25 @@ class ZarrStore(Dataset):
         """Collect input sources."""
         pass
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Terminate the projection descent at this zarr store.
+
+        The store binds the projection to itself
+        (``projection.from_store`` builds a ``ProjectionStore`` covering
+        the store's full shape) and composes the selection accumulated by
+        the views above (``apply``), yielding the exact store region this
+        view reads.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the store's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved ``ProjectionStore``(s).
+        """
         slices = tuple(slice(0, i, 1) for i in self.shape)
         return projection.from_store(slices, self).apply(projection)
 
