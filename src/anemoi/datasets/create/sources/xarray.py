@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform.fields import METADATA_KEY_MAPPING
 from anemoi.transform.fields import XArrayFieldList
+from anemoi.transform.fields import metadata_key
 
 from anemoi.datasets.create.sources.patterns import iterate_patterns
 from anemoi.datasets.create.types import DateList
@@ -29,17 +29,6 @@ XarrayFieldList = XArrayFieldList
 __all__ = ["load_many", "load_one", "XArrayFieldList", "XarrayFieldList"]
 
 LOG = logging.getLogger(__name__)
-
-# Mapping from legacy earthkit 0.x sel keys to earthkit 1.0 component paths.
-# Used to translate recipe kwargs into component-path keys for sel().
-# Unlike grib.py which passes remapping= to sel(), xarray sources convert
-# kwargs directly to component-path keys.  This avoids a strict int/float
-# comparison issue in earthkit's remapping-based sel — xarray fields expose
-# levels as float64 while recipes typically specify integer values.
-# Derived from the canonical mapping; ``levtype`` deliberately targets the
-# raw ``metadata.levtype`` (recipes use MARS values such as "sfc"/"pl",
-# which ``vertical.level_type`` would not match).
-_SEL_KEY_MAP = {**METADATA_KEY_MAPPING, "levtype": "metadata.levtype"}
 
 if TYPE_CHECKING:
     pass
@@ -149,12 +138,21 @@ def load_one(
     fs = XArrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 
     # Translate any remaining kwargs to component-path keys for sel().
+    # Unlike grib.py which passes remapping= to sel(), xarray sources convert
+    # kwargs directly to component-path keys.  This avoids a strict int/float
+    # comparison issue in earthkit's remapping-based sel — xarray fields expose
+    # levels as float64 while recipes typically specify integer values.
+    # ``levtype`` deliberately targets the raw ``metadata.levtype`` (recipes
+    # use MARS values such as "sfc"/"pl", which ``vertical.level_type`` would
+    # not match).
     sel_kwargs: dict[str, Any] = {}
     for k, v in remaining_kwargs.items():
         if ":" in k:
             sel_kwargs[f"metadata.{k}"] = v
+        elif k == "levtype":
+            sel_kwargs["metadata.levtype"] = v
         else:
-            sel_kwargs[_SEL_KEY_MAP.get(k, k)] = v
+            sel_kwargs[metadata_key(k, default=k)] = v
 
     if len(dates) == 0:
         if sel_kwargs:

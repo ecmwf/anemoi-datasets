@@ -14,7 +14,7 @@ from typing import Any
 
 from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import METADATA_KEY_MAPPING
+from anemoi.transform.fields import metadata_key
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data.utils.patterns import Pattern
@@ -119,11 +119,6 @@ class GribSource(Source):
         self.args = args
         self.kwargs = kwargs
 
-    # Derived from the canonical mapping; ``levtype`` deliberately targets
-    # the raw ``metadata.levtype`` (recipes use MARS values such as
-    # "sfc"/"pl", which ``vertical.level_type`` would not match).
-    _SEL_REMAPPING = {k: "{" + v + "}" for k, v in {**METADATA_KEY_MAPPING, "levtype": "metadata.levtype"}.items()}
-
     def execute_valid_dates(self, dates: ValidDates) -> FieldList:
         """Load data from the GRIB files for the given dates.
 
@@ -141,6 +136,25 @@ class GribSource(Source):
 
         all_fields: list[Any] = []
         dates = [d.isoformat() for d in dates]
+
+        # Build sel kwargs, remapping legacy key names to earthkit 1.0 paths.
+        # Keys with eccodes type qualifiers (e.g. "level:d") are passed
+        # through as "metadata.key:type" — component paths do not support
+        # eccodes qualifiers.  ``levtype`` deliberately targets the raw
+        # ``metadata.levtype`` (recipes use MARS values such as "sfc"/"pl",
+        # which ``vertical.level_type`` would not match).
+        sel_kwargs: dict[str, Any] = {}
+        sel_remapping: dict[str, str] = {}
+        for k, v in self.kwargs.items():
+            if ":" in k:
+                sel_kwargs[f"metadata.{k}"] = v
+                continue
+            target = "metadata.levtype" if k == "levtype" else metadata_key(k, default=f"metadata.{k}")
+            sel_remapping[k] = "{" + target + "}"
+            sel_kwargs[k] = v
+        if dates:
+            sel_kwargs["valid_datetime"] = dates
+            sel_remapping["valid_datetime"] = "{time.valid_datetime}"
 
         for path in given_paths:
 
@@ -166,22 +180,7 @@ class GribSource(Source):
                 if self.flavour is not None:
                     s = self.flavour.map(s)
 
-                # Build sel kwargs, remapping legacy key names to earthkit 1.0 paths.
-                # Keys with eccodes type qualifiers (e.g. "level:d") are passed
-                # through as "metadata.key:type" — component paths do not
-                # support type qualifiers.  Plain keys are remapped via
-                # _SEL_REMAPPING.
-                sel_kwargs: dict[str, Any] = {}
-                for k, v in self.kwargs.items():
-                    if ":" in k:
-                        # Typed key (e.g. "level:d") → metadata.level:d
-                        sel_kwargs[f"metadata.{k}"] = v
-                    else:
-                        sel_kwargs[k] = v
-                if dates:
-                    sel_kwargs["valid_datetime"] = dates
-
-                s = s.sel(**sel_kwargs, remapping=self._SEL_REMAPPING)
+                s = s.sel(**sel_kwargs, remapping=sel_remapping)
                 all_fields.extend(list(s))
 
         ds = FieldList.from_fields(all_fields)
