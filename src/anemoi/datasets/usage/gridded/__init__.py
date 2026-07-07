@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -26,10 +26,10 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 __all__ = [
-    "open_dataset",
     "MissingDateError",
     "add_dataset_path",
     "add_named_dataset",
+    "open_dataset",
 ]
 
 
@@ -108,7 +108,7 @@ def save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> None
     Parameters
     ----------
     dataset : Dataset
-        anemoi-dataset opened from python to save to Zarr store
+        anemoi-dataset opened from python to save to Zarr store.
     zarr_path : str
         Path to store the obtained anemoi dataset to disk.
     n_workers : int

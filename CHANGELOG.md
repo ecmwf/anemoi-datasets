@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.40](https://github.com/ecmwf/anemoi-datasets/compare/0.5.39...0.5.40) (2026-06-22)
+
+
+### Features
+
+* Add missing dependency, psutil ([#670](https://github.com/ecmwf/anemoi-datasets/issues/670)) ([e913047](https://github.com/ecmwf/anemoi-datasets/commit/e9130473a857ff45895bdd93959862b11201283a))
+* Add window and cycle date column option to ODB source ([#662](https://github.com/ecmwf/anemoi-datasets/issues/662)) ([d388399](https://github.com/ecmwf/anemoi-datasets/commit/d388399d4a4531c2f47d0e3d0505e9e9ba577d3f))
+* Extract constants and climatologies from a dataset for use in inference ([#628](https://github.com/ecmwf/anemoi-datasets/issues/628)) ([55af3ce](https://github.com/ecmwf/anemoi-datasets/commit/55af3ce31d8036a263992768053fdd3a0bf7f44f))
+* **metadata:** Store GRIB paramId in `variables_metadata` ([#664](https://github.com/ecmwf/anemoi-datasets/issues/664)) ([f283884](https://github.com/ecmwf/anemoi-datasets/commit/f283884efa65318e2efeea6fb5e0159ff965d12d))
+* Not resolution check for tabular ([#672](https://github.com/ecmwf/anemoi-datasets/issues/672)) ([8956a2a](https://github.com/ecmwf/anemoi-datasets/commit/8956a2a00e7c620ee1bc8404039796e93bc95b57))
+* Option when checking variables compatibility ([#669](https://github.com/ecmwf/anemoi-datasets/issues/669)) ([1345ba9](https://github.com/ecmwf/anemoi-datasets/commit/1345ba992936f39f7b2a31304a655cb1e2d649fd))
+* Support empty data for bufr ([#673](https://github.com/ecmwf/anemoi-datasets/issues/673)) ([ca78ec0](https://github.com/ecmwf/anemoi-datasets/commit/ca78ec0e02d3c835c393195d64d123e5f3faca17))
+* Synthetic gridded dataset ([#637](https://github.com/ecmwf/anemoi-datasets/issues/637)) ([8cbfc01](https://github.com/ecmwf/anemoi-datasets/commit/8cbfc015d6f441113f2bd2dc213c9c2b95d0f187))
+
+
+### Bug Fixes
+
+* Netcdf level and unit metadata handling ([#663](https://github.com/ecmwf/anemoi-datasets/issues/663)) ([c636598](https://github.com/ecmwf/anemoi-datasets/commit/c6365988f513af9c1c49861577e20ab5cfe4a892))
+* Update metadata specific ([#671](https://github.com/ecmwf/anemoi-datasets/issues/671)) ([ace93c6](https://github.com/ecmwf/anemoi-datasets/commit/ace93c6b4fd13f3a80985d0f2006eefac95b3c15))
+
 ## [0.5.39](https://github.com/ecmwf/anemoi-datasets/compare/0.5.38...0.5.39) (2026-06-11)
 
 

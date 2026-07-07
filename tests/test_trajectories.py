@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -317,30 +317,38 @@ class TestTrajectoriesZarr:
     # ------------------------------------------------------------------
 
     def test_frequency_raises(self):
-        """Accessing .frequency must raise AttributeError (by design)."""
-        with pytest.raises(AttributeError, match="two frequencies"):
-            _ = self.ds.frequency
+        """Accessing .frequency on a trajectories dataset returns None (no single frequency)."""
+        assert self.ds.frequency is None
 
     def test_metadata_specific_does_not_call_frequency(self):
-        """metadata_specific() must succeed and not touch .frequency."""
+        """metadata_specific() must succeed; trajectory-specific keys flow through ZarrStore super()."""
         md = self.ds.metadata_specific()
+        assert md["action"] == "trajectorieszarr"
+        # frequency=None comes from Dataset.metadata_specific() which calls self.frequency.
+        assert "frequency" in md
+        assert md["frequency"] is None
+        # ZarrStore now forwards **kwargs, so the trajectory-specific keys are present.
         assert "base_frequency" in md
         assert "step_frequency" in md
-        assert "frequency" not in md  # the broken single-frequency key must be absent
-        assert md["action"] == "trajectorieszarr"
 
     def test_dataset_metadata_does_not_call_frequency(self):
-        """dataset_metadata() must succeed without raising AttributeError."""
+        """dataset_metadata() must succeed; trajectory keys appear at top level and in 'specific'."""
         md = self.ds.dataset_metadata()
-        assert "base_frequency" in md
+        assert md["frequency"] is None
+        # Top level
+        assert md["base_frequency"] is not None
         assert "step_frequency" in md
-        assert "specific" in md
+        assert "base_start_date" in md
+        assert "base_end_date" in md
+        # And inside specific
+        assert md["specific"]["base_frequency"] is not None
+        assert "step_frequency" in md["specific"]
 
     def test_metadata_does_not_call_frequency(self):
-        """The top-level metadata() call must succeed end-to-end."""
+        """metadata() must succeed and carry trajectory keys in specific."""
         md = self.ds.metadata()
-        assert "base_frequency" in md
-        assert "step_frequency" in md
+        assert md["specific"]["action"] == "trajectorieszarr"
+        assert "base_frequency" in md["specific"]
 
 
 # ---------------------------------------------------------------------------
