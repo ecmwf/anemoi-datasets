@@ -35,7 +35,7 @@ class AnalyseDataset(Command):
     The JSON document contains the top-level keys 'type' (always
     "dataset"), 'name' and 'record'. The 'record' is the catalogue
     record that can be registered with
-    ``anemoi-registry register <file.json>``.
+    ``anemoi-registry datasets <file.json> --register``.
     """
 
     def add_arguments(self, command_parser: Any) -> None:
@@ -85,6 +85,28 @@ class AnalyseDataset(Command):
             else:
                 LOG.warning("No statistics found in metadata.")
                 metadata["statistics"] = dict(mean=[], stdev=[], minimum=[], maximum=[])
+
+        tendencies = {}
+        try:
+            frequency = ds.frequency
+        except AttributeError:
+            frequency = None
+
+        if frequency is not None and frequency > datetime.timedelta(0):
+            from anemoi.utils.dates import frequency_to_string
+
+            delta = frequency
+            while delta <= datetime.timedelta(hours=24):
+                try:
+                    tendencies[frequency_to_string(delta)] = {
+                        k: v.tolist() for k, v in ds.statistics_tendencies(delta).items()
+                    }
+                except Exception:
+                    LOG.debug(f"No tendency statistics for delta {delta}.")
+                delta += frequency
+
+        if tendencies:
+            metadata["statistics_tendencies"] = tendencies
 
         shape = z["data"].shape
         if "shape" in metadata:
