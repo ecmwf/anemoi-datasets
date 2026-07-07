@@ -496,8 +496,16 @@ def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.Da
     """
     # Calculate the index variables, based on all variables not in columns or values.
     indices = list(filter(lambda a: a not in values + columns, df.columns))
+    # Drop duplicates to avoid errors in pivoting
+    df_dedup = df.drop_duplicates(subset=indices + columns, keep="first")
+    # Warn if there are duplicate rows for the combination of index and pivot columns
+    if len(df) != len(df_dedup):
+        LOG.warning(
+            "Duplicate rows found for the combination of index and pivot columns. "
+            "These will be dropped in the pivot operation. "
+        )
     # Perform the pivot
-    pivoted = df.pivot(index=indices, columns=columns, values=values)
+    pivoted = df_dedup.pivot(index=indices, columns=columns, values=values)
     # Flatten MultiIndex column names
     pivoted.columns = ["_".join(str(elem) for elem in col) for col in pivoted.columns]
     # Reset the dataframe index
