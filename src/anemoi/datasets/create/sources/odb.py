@@ -342,7 +342,7 @@ def odb_sql_str(
     default_select = f"{date_col}, {time_col}, {lat_col}, {lon_col}"
 
     if select != "":
-        if "*" in select:
+        if select.strip() == "*":
             required_columns = []
             default_select = ""
         else:
