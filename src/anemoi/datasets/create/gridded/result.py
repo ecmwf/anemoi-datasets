@@ -267,6 +267,11 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             pu = f.get("parameter.units", default=None)
             if pu is not None:
                 units = str(pu)
+        # Normalise the WMO fraction/percent spellings (native fields carry the
+        # raw GRIB string here); other GRIB unit spellings are left untouched.
+        from anemoi.transform.units import BUILD_UNIT_ALIASES
+
+        units = BUILD_UNIT_ALIASES.get(units, units)
         if current_variable in units_seen:
             if units_seen[current_variable] != units:
                 raise ValueError(
