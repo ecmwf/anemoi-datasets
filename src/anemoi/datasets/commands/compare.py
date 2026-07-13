@@ -376,12 +376,14 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
             except (ValueError, TypeError):
                 pass
             # Treat unit strings that are physically equivalent as equal
-            # (e.g. 'K' == 'kelvin', 'dimensionless' == '').
+            # (e.g. 'K' == 'kelvin', 'dimensionless' == ''). Units.from_any
+            # also normalises strings pint cannot parse, so GRIB prose such
+            # as 'm of water equivalent' matches its earthkit-normalised
+            # form 'm.of.water.equivalent'.
             try:
-                import pint as _pint
+                from earthkit.utils.units.units import Units
 
-                _ureg = _pint.UnitRegistry()
-                if _ureg.Unit(reference) == _ureg.Unit(actual):
+                if Units.from_any(reference) == Units.from_any(actual):
                     return
             except Exception:
                 pass

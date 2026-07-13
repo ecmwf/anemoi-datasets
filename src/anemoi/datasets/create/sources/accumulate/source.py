@@ -15,9 +15,7 @@ import warnings
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.transform.fields import new_grib_output
 from anemoi.utils.dates import frequency_to_timedelta
-from earthkit.data.core.temporary import temp_file
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
@@ -133,7 +131,7 @@ class AccumulateSource(Source):
         field_interval = self._field_to_interval(field)
         return values, key, field_interval, log
 
-    def _finalise(self, accumulators, output, tmp):
+    def _finalise(self, accumulators, fields):
         """Clean empty accumulators, validate completeness, and return the dataset."""
         # some accumulators may be empty, remove them
         # this can happen when the source provides fields that not exactly the one requested (scda/oper)
@@ -151,10 +149,7 @@ class AccumulateSource(Source):
         if not accumulators:
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
-        output.close()
-        # The temp file must outlive the fields (and any field derived from
-        # them downstream, e.g. by origin tagging or naming).
-        ds = FieldList.from_file(tmp.path, keep=tmp)
+        ds = FieldList.from_fields(fields)
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
         for f in ds:
@@ -179,13 +174,9 @@ class AccumulateSource(Source):
         Returns
         -------
         tuple
-            ``(accumulators, output, tmp)``.
+            ``(accumulators, fields)``.
         """
-        # need a temporary file to store the accumulated fields for now, because earthkit-data
-        # does not completely support in-memory fieldlists yet (metadata consistency is not fully ensured)
-        tmp = temp_file()
-        output = new_grib_output(tmp.path)
-
+        fields = []
         accumulators = {}
         logs = Logs(
             accumulators=accumulators,
@@ -228,12 +219,12 @@ class AccumulateSource(Source):
                     logs[-1][4].append(acc.__repr__(verbose=True))
 
                     if acc.is_complete():
-                        acc.write_to_output(output, template=field)
+                        fields.append(acc.as_field(template=field))
 
             if not field_used:
                 logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
-        return accumulators, output, tmp
+        return accumulators, fields
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -263,7 +254,7 @@ class AccumulateSource(Source):
         intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
         targets = [(d, None) for d in dates]
 
-        accumulators, output, tmp = self._accumulate_fields(source_object, intervals, targets, coverages)
+        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
 
         # Final checks
         for date in dates:
@@ -277,7 +268,7 @@ class AccumulateSource(Source):
                         LOG.error(f"  Accumulator for key {k}")
                 raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
 
-        return self._finalise(accumulators, output, tmp)
+        return self._finalise(accumulators, fields)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations."""
@@ -306,6 +297,6 @@ class AccumulateSource(Source):
         )
         targets = [(vt, bt) for vt, bt in dates.items]
 
-        accumulators, output, tmp = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
+        accumulators, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
 
-        return self._finalise(accumulators, output, tmp)
+        return self._finalise(accumulators, fields)

@@ -176,6 +176,18 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             endStep = as_timedelta(f.metadata("P1"))
             startStep = as_timedelta(f.metadata("P2"))
 
+        if startStep is None and endStep is None:
+            # In-memory fields (e.g. from the accumulate source) do not carry
+            # raw GRIB keys; recover the window from the time-processing and
+            # time components instead.
+            method = f.get("proc.time_method", default=None)
+            span = f.get("proc.time_value", default=None)
+            step = f.get("time.step", default=None)
+            if method is not None and method != "instant" and span is not None and step is not None:
+                endStep = as_timedelta(step)
+                startStep = endStep - as_timedelta(span)
+                stepTypeForConversion = str(method)
+
         if startStep is not None and endStep is not None:
             assert endStep >= startStep, (startStep, endStep, md)
 
@@ -210,6 +222,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
+                "avg": "average",
             }
 
             #
