@@ -12,9 +12,8 @@ import logging
 from typing import Any
 
 import numpy as np
+from anemoi.transform import Field
 from anemoi.transform import FieldList
-from anemoi.transform.fields import new_grib_output
-from earthkit.data.core.temporary import temp_file
 
 LOG = logging.getLogger(__name__)
 
@@ -93,12 +92,14 @@ def recentre(
     alpha : float, optional
         Scaling factor. Defaults to 1.0.
     output : Optional[str], optional
-        Output path. Defaults to None.
+        Output path. When given, the recentred fields are encoded to this
+        GRIB file and the path is returned; otherwise the fields are built
+        in memory and returned as a :class:`FieldList`.
 
     Returns
     -------
     Any
-        The recentred dataset or output path.
+        The recentred fieldlist (``output=None``) or the output path.
     """
     keys = ["parameter.variable", "vertical.level", "time.valid_datetime", "date", "time", "step", "ensemble.member"]
 
@@ -120,16 +121,7 @@ def recentre(
             LOG.error("centre: %r", f)
         raise ValueError(f"Inconsistent number of fields: {len(centre)} * {n_numbers} != {len(members)}")
 
-    if output is None:
-        # prepare output tmp file so we can read it back
-        tmp = temp_file()
-        path = tmp.path
-    else:
-        tmp = None
-        path = output
-
-    out = new_grib_output(path)
-
+    result = []
     seen = set()
 
     for i, centre_field in enumerate(centre):
@@ -182,19 +174,18 @@ def recentre(
 
             assert x.shape == e.shape, (x.shape, e.shape)
 
-            out.write(x, template=template)
-            template = None
+            result.append(Field.from_numpy(x, template=template))
 
     assert len(seen) == len(members), (len(seen), len(members))
-
-    out.close()
+    assert len(result) == len(members), (len(result), len(members))
 
     if output is not None:
-        return path
+        from anemoi.transform.grib import new_grib_output
 
-    # The temp file must outlive the fields (and any field derived from them).
-    ds = FieldList.from_file(path, keep=tmp)
+        out = new_grib_output(output)
+        for field in result:
+            out.write(field.to_numpy(), template=field)
+        out.close()
+        return output
 
-    assert len(ds) == len(members), (len(ds), len(members))
-
-    return ds
+    return FieldList.from_fields(result)

@@ -45,10 +45,7 @@ def _units_for(field: Any) -> str:
     param_var = field.get("parameter.variable", default=None)
     if param_var is not None and param_var in UNITS:
         return UNITS[param_var]
-    units = field.get("metadata.units", default=None)
-    if units is None:
-        units = UNITS.get(field.metadata("param"))
-    return units
+    return field.get("metadata.units", default=None)
 
 
 @source_registry.register("forcings")
