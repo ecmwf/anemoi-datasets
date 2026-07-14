@@ -314,6 +314,11 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         # but are absent in earthkit-1.0 output.
         "metadata.variables_metadata.*.period",
         "metadata.variables_metadata.*.process",
+        # The 'variable/1' serialisation schema stores units under
+        # parameter.units; references built with the legacy schema store a
+        # top-level units key. The added parameter/vertical/schema keys are
+        # reported as non-fatal Added entries.
+        "metadata.variables_metadata.*.units",
     ]
 
     if type(reference) is not type(actual):

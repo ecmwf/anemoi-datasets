@@ -17,7 +17,7 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-from anemoi.utils.dates import as_timedelta
+from anemoi.transform.variables import Variable
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 
@@ -67,6 +67,13 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
+    One representative field per variable (and per ensemble member /
+    trajectory point) is serialised via
+    ``Variable.from_field(...).as_dict()`` (the ``variable/1`` schema);
+    this function only walks the cube, merges the per-member ``mars``
+    request dictionaries, enforces units consistency across calls, and
+    overlays the known computed-forcing flags.
+
     Parameters
     ----------
     variables : tuple of str
@@ -80,7 +87,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
     Returns
     -------
     dict
-        The metadata dictionary.
+        The metadata dictionary, keyed by variable name.
     """
     assert isinstance(variables, tuple), variables
 
@@ -109,9 +116,6 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         return result
 
-    mars: dict[str, Any] = {}
-    other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
-
     # Find the axis that corresponds to the variables dimension — the one whose
     # values are the variable names.  This is position-agnostic so it works for
     # both 3-key (gridded) and 5-key (trajectories, [date, time, step,
@@ -129,9 +133,12 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         )
 
     # We hold the first axis fixed (so we only walk one "row" of the cube) and
-    # collect one representative field per variable.
+    # collect one representative field per variable (per remaining axis value,
+    # e.g. per ensemble member).
     seen_variables: set[str] = set()
     primary_axis_value: Any = None
+    result: dict[str, dict[str, Any]] = {}
+
     for c in cube.iterate_cubelets():
 
         if primary_axis_value is None:
@@ -142,136 +149,9 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         current_variable = c._coords_names[variables_axis_idx]
 
-        f = cube[c.coords]
-        md = f.get(collections="metadata.mars")
-        if not md:
-            md = f.get(collections="metadata.default")
-        if md is None:
-            md = {}
+        md = Variable.from_field(current_variable, cube[c.coords]).as_dict()
 
-        if md.get("param") == "~":
-            md["param"] = f.metadata("param")
-            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
-
-        if md.get("param") == "unknown":
-            md["param"] = str(f.get("metadata.paramId", default="unknown"))
-            # assert md['param'] != 'unknown', (md, f.metadata('param'))
-
-        startStep = f.get("metadata.startStep", default=None)
-        if startStep is not None:
-            startStep = as_timedelta(startStep)
-
-        endStep = f.get("metadata.endStep", default=None)
-        if endStep is not None:
-            endStep = as_timedelta(endStep)
-
-        stepTypeForConversion = f.get("metadata.stepTypeForConversion", default=None)
-        typeOfStatisticalProcessing = f.get("metadata.typeOfStatisticalProcessing", default=None)
-        timeRangeIndicator = f.get("metadata.timeRangeIndicator", default=None)
-
-        # GRIB1 precipitation accumulations are not correctly encoded
-        if startStep == endStep and stepTypeForConversion == "accum":
-            # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
-            # Note that this is, on purpose, the opposite of the usual convention.
-            endStep = as_timedelta(f.metadata("P1"))
-            startStep = as_timedelta(f.metadata("P2"))
-
-        if startStep is None and endStep is None:
-            # In-memory fields (e.g. from the accumulate source) do not carry
-            # raw GRIB keys; recover the window from the time-processing and
-            # time components instead.
-            method = f.get("proc.time_method", default=None)
-            span = f.get("proc.time_value", default=None)
-            step = f.get("time.step", default=None)
-            if method is not None and method != "instant" and span is not None and step is not None:
-                endStep = as_timedelta(step)
-                startStep = endStep - as_timedelta(span)
-                stepTypeForConversion = str(method)
-
-        if startStep is not None and endStep is not None:
-            assert endStep >= startStep, (startStep, endStep, md)
-
-        if startStep != endStep:
-            # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
-            TYPE_OF_STATISTICAL_PROCESSING: dict[int | None, str | None] = {
-                None: None,
-                0: "average",
-                1: "accumulation",
-                2: "maximum",
-                3: "minimum",
-                4: "difference(end-start)",
-                5: "root_mean_square",
-                6: "standard_deviation",
-                7: "covariance",
-                8: "difference(start-end)",
-                9: "ratio",
-                10: "standardized_anomaly",
-                11: "summation",
-                100: "severity",
-                101: "mode",
-            }
-
-            # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
-
-            TIME_RANGE_INDICATOR: dict[int, str] = {
-                4: "accumulation",
-                3: "average",
-            }
-
-            STEP_TYPE_FOR_CONVERSION: dict[str, str] = {
-                "min": "minimum",
-                "max": "maximum",
-                "accum": "accumulation",
-                "avg": "average",
-            }
-
-            #
-            # A few patches
-            #
-
-            PATCHES: dict[str, str] = {
-                "10fg6": "maximum",
-                "mntpr3": "minimum",  # Not in param db
-                "mntpr6": "minimum",  # Not in param db
-                "mxtpr3": "maximum",  # Not in param db
-                "mxtpr6": "maximum",  # Not in param db
-            }
-
-            process = TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)
-            if process is None:
-                process = TIME_RANGE_INDICATOR.get(timeRangeIndicator)
-            if process is None:
-                process = STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)
-            if process is None:
-                process = PATCHES.get(md["param"])
-                if process is not None:
-                    LOG.error(f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead")
-
-            if process is None:
-                raise ValueError(
-                    f"Unknown for {md['param']}:"
-                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)}),"
-                    f" {typeOfStatisticalProcessing=} ({TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)}),"
-                    f" {timeRangeIndicator=} ({TIME_RANGE_INDICATOR.get(timeRangeIndicator)})"
-                )
-
-            # print(md["param"], "startStep", startStep, "endStep", endStep, "process", process, "typeOfStatisticalProcessing", typeOfStatisticalProcessing)
-            other[current_variable]["process"] = process
-            other[current_variable]["period"] = (startStep, endStep)
-
-        units = f.get("metadata.units", default=None)
-        if units is None:
-            # earthkit 1.0: wrapped fields (new_field_with_valid_datetime /
-            # new_field_with_metadata) mask metadata.units; fall back to the
-            # richer parameter.units component (a PintUnits object).
-            pu = f.get("parameter.units", default=None)
-            if pu is not None:
-                units = str(pu)
-        # Normalise the WMO fraction/percent spellings (native fields carry the
-        # raw GRIB string here); other GRIB unit spellings are left untouched.
-        from anemoi.transform.units import BUILD_UNIT_ALIASES
-
-        units = BUILD_UNIT_ALIASES.get(units, units)
+        units = md.get("parameter", {}).get("units")
         if current_variable in units_seen:
             if units_seen[current_variable] != units:
                 raise ValueError(
@@ -284,29 +164,27 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             LOG.warning(f"Cannot establish units for variable '{current_variable}'.")
             QUIET.add(current_variable)
 
-        other[current_variable]["units"] = units
-
-        grib = {k: f.get(f"metadata.{k}", default=None) for k in ("paramId", "shortName")}
-        if any(grib.values()):
-            other[current_variable]["grib"] = grib
-
-        for k in md.copy().keys():
-            if k.startswith("_"):
-                md.pop(k)
-
-        if current_variable in mars:
-            mars[current_variable] = _merge(md, mars[current_variable])
+        # The mars request differs between cubelets of the same variable
+        # (e.g. ensemble members): merge differing values into sorted lists.
+        # Everything else is per-variable: the last cubelet wins, as before.
+        mars = md.pop("mars", None)
+        if current_variable in result:
+            previous = result[current_variable]
+            previous_mars = previous.pop("mars", None)
+            if mars and previous_mars:
+                mars = _merge(mars, previous_mars)
+            previous.update(md)
+            if mars or previous_mars:
+                previous["mars"] = mars or previous_mars
         else:
-            mars[current_variable] = md
+            if mars:
+                md["mars"] = mars
+            result[current_variable] = md
 
         seen_variables.add(current_variable)
 
-    result: dict[str, dict[str, Any]] = {}
-    for k, v in mars.items():
-        result[k] = dict(mars=v) if v else {}
-        result[k].update(other[k])
+    for k in result:
         result[k].update(_KNOWN_VARIABLES.get(k, {}))
-        # assert result[k], k
 
     assert seen_variables == variables_set, (seen_variables, variables_set)
     return result
@@ -818,8 +696,6 @@ class GriddedResult(Result):
     @property
     def typed_variables(self) -> dict[str, Any]:
         """Retrieve the typed metadata for the variables."""
-        from anemoi.transform.variables import Variable
-
         return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
 
     @property
