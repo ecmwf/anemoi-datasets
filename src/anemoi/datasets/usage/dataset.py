@@ -228,6 +228,12 @@ class Dataset(ABC, Sized):
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
+        if "extend" in kwargs:
+            Extend = self.usage_factory_load("Extend")
+
+            extend = kwargs.pop("extend")
+            return Extend(self, **extend)._subset(**kwargs).mutate()
+
         if "statistics" in kwargs or "statistics_tendencies" in kwargs:
 
             Statistics = self.usage_factory_load("Statistics")
