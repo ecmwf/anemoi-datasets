@@ -281,6 +281,116 @@ class MissingDatesInterpolate(MissingDatesFill):
         return Node(self, [self.forward.tree()])
 
 
+class MissingDatesFillWithNaNs(MissingDatesFill):
+    """Class to handle filling missing dates with NaNs."""
+
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+        """Fill the missing date at the given index with NaNs.
+
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
+
+        Returns
+        -------
+        NDArray[Any]
+            An array filled with NaNs for the missing date.
+        """
+        if n not in self._warnings:
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
+            self._warnings.add(n)
+
+        return np.full(self.shape[1:], np.nan)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get metadata specific to the subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
+        """
+        return {}
+
+    def tree(self) -> Node:
+        """Get the tree representation of the object.
+
+        Returns
+        -------
+        Node
+            The tree representation of the object.
+        """
+        return Node(self, [self.forward.tree()])
+
+
+class MissingDatesFillStatistics(MissingDatesFill):
+    """Class to handle filling missing dates with statistical values."""
+
+    def __init__(self, dataset: Any, method: str) -> None:
+        """Initialize the MissingDatesFillStatistics class.
+
+        Parameters
+        ----------
+        dataset : Any
+            The dataset with missing dates.
+        method : str
+            The statistical method to use for filling missing dates ('mean', 'maximum', 'minimum').
+        """
+        super().__init__(dataset)
+        self._method = method
+        self._statistics = self.statistics[method]
+
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+        """Fill the missing date at the given index with statistical values.
+
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
+
+        Returns
+        -------
+        NDArray[Any]
+            An array filled with statistical values for the missing date.
+        """
+
+        if n not in self._warnings:
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with {self._method}")
+            self._warnings.add(n)
+
+        statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
+        return np.broadcast_to(statistics, self.shape[1:])
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get metadata specific to the subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
+        """
+        return {"method": self._method}
+
+    def tree(self) -> Node:
+        """Get the tree representation of the object.
+
+        Returns
+        -------
+        Node
+            The tree representation of the object.
+        """
+        return Node(self, [self.forward.tree()], method=self._method)
+
+
 def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create an instance of a class to fill missing dates.
 
@@ -304,5 +414,11 @@ def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]
 
     if method == "interpolate":
         return MissingDatesInterpolate(dataset)
+
+    if method.lower() in ("nans", "nan"):
+        return MissingDatesFillWithNaNs(dataset)
+
+    if method in ("mean", "maximum", "minimum"):
+        return MissingDatesFillStatistics(dataset, method=method)
 
     raise ValueError(f"Invalid `fill_missing_dates` method '{method}'")
