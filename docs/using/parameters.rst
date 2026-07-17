@@ -149,12 +149,21 @@ as follows:
       -  List of datasets forming an ensemble (e.g. ``ensemble=[d1,
          d2]``).
 
+   -  -  extend
+      -  ✅
+      -  ❌
+      -  ❌
+      -  Extend the date range backwards and/or forwards with missing
+         dates (dict with optional ``start`` and ``end`` keys). See
+         :ref:`extend`.
+
    -  -  fill_missing_dates
       -  ✅
       -  ❌
       -  ❌
-      -  Method to fill missing dates ("interpolate" or "closest").
-         Trajectories have no missing-date concept.
+      -  Method to fill missing dates ("interpolate", "closest",
+         "nans", "mean", "maximum" or "minimum"). Trajectories have no
+         missing-date concept.
 
    -  -  fill_missing_gaps
       -  ✅

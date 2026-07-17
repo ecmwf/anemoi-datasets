@@ -70,6 +70,48 @@ dates.
 
    ds = open_dataset(dataset, interpolate_frequency="10m")
 
+.. _extend:
+
+********
+ extend
+********
+
+You can extend the date range of a dataset backwards and/or forwards by
+using the ``extend`` option. The new dates are added at the dataset's
+``frequency`` and are marked as :ref:`missing <selecting-missing>`, so
+accessing them will raise a ``MissingDateError`` unless you combine
+``extend`` with a :ref:`fill_missing_dates <selecting-missing>` method.
+
+The option takes a dictionary with the optional keys ``start`` and
+``end``:
+
+.. code:: python
+
+   ds = open_dataset(dataset, extend={"start": "2019-01-01", "end": "2021-12-31"})
+
+The ``start`` date must be before (or equal to) the first date of the
+dataset, and the ``end`` date must be after (or equal to) the last date.
+Either key can be omitted to extend in only one direction:
+
+.. code:: python
+
+   # Extend only backwards
+   ds = open_dataset(dataset, extend={"start": "2019-01-01"})
+
+   # Extend only forwards
+   ds = open_dataset(dataset, extend={"end": "2021-12-31"})
+
+This is typically combined with a fill method so that the added dates
+hold artificial values instead of raising an error:
+
+.. code:: python
+
+   ds = open_dataset(
+       dataset,
+       extend={"start": "2019-01-01", "end": "2021-12-31"},
+       fill_missing_dates="nans",
+   )
+
 .. _subsetting-trajectories:
 
 **************************
