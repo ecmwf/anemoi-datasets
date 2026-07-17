@@ -305,7 +305,7 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
             self._warnings.add(n)
 
-        return np.full(self.shape[1:], np.nan)
+        return np.full(self.shape[1:], np.nan, dtype=self.dtype)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -344,6 +344,8 @@ class MissingDatesFillStatistics(MissingDatesFill):
         super().__init__(dataset)
         self._method = method
         self._statistics = self.statistics[method]
+        self._statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
+        self._statistics = self._statistics.astype(self.dtype)
 
     def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
         """Fill the missing date at the given index with statistical values.
@@ -367,8 +369,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with {self._method}")
             self._warnings.add(n)
 
-        statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
-        return np.broadcast_to(statistics, self.shape[1:])
+        return np.broadcast_to(self._statistics, self.shape[1:])
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
