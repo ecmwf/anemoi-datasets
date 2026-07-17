@@ -26,9 +26,19 @@ from anemoi.datasets.create.sources import source_registry
 
 from .accumulator import Accumulator
 from .accumulator import Logs
+from .covering import AutoCovering
 from .covering import ForecastCovering
 from .covering import covering_factory
+from .description import ACCUMULATED_VALUES
+from .description import DESCRIPTION_KEYS
+from .description import MIGRATE_HINT
+from .description import AccumulateSchema
+from .description import FromTrajectories
+from .description import TrajectoryIntervalGenerator
+from .description import infer_from_trajectories
 from .field_to_interval import FieldToInterval
+from .interval_generators import CycleIntervalProvider
+from .interval_generators import increments_generator
 
 LOG = logging.getLogger(__name__)
 
@@ -59,6 +69,8 @@ def patch_groupby_keys(group_by: dict | None = None):
 @source_registry.register("accumulate")
 class AccumulateSource(Source):
 
+    schema = AccumulateSchema
+
     def __init__(
         self,
         context: Any,
@@ -67,34 +79,109 @@ class AccumulateSource(Source):
         availability=None,
         covering=None,
         accumulation: str | None = None,
+        accumulated: str | None = None,
+        from_trajectories: Any = None,
+        from_increments: str | int | datetime.timedelta | None = None,
+        from_lookup_table: dict | None = None,
         patch: Any = None,
         group_by: dict | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(context)
 
+        # Raw (non-pydantic-validated) configs spell the description keys with
+        # hyphens; accept both spellings.
+        def _pop_hyphenated(name: str, value: Any) -> Any:
+            alias = name.replace("_", "-")
+            if alias in kwargs:
+                if value is not None:
+                    raise ValueError(f"accumulate: cannot specify both '{name}' and '{alias}'")
+                value = kwargs.pop(alias)
+            return value
+
+        from_trajectories = _pop_hyphenated("from_trajectories", from_trajectories)
+        from_increments = _pop_hyphenated("from_increments", from_increments)
+        from_lookup_table = _pop_hyphenated("from_lookup_table", from_lookup_table)
+        if kwargs:
+            raise TypeError(f"accumulate: unknown argument(s) {sorted(kwargs)}")
+
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
+
+        # ── deprecated spellings (kept for one release) ──────────────────
+        if accumulation is not None:
+            if accumulated is not None:
+                raise ValueError("Cannot specify both 'accumulated' and its deprecated alias 'accumulation'.")
+            warnings.warn(
+                f"'accumulation:' is deprecated; use 'accumulated:' instead ({MIGRATE_HINT}).",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            accumulated = accumulation
 
         if availability is not None and covering is not None:
             raise ValueError(
                 "Cannot specify both 'availability' (deprecated) and 'covering' " "in the same accumulate block."
             )
         if availability is not None:
+            covering = {"auto": availability}
+        if covering is not None:
             warnings.warn(
-                "'availability:' is deprecated; use 'covering: { auto: <value> }' instead.",
+                "'covering:'/'availability:' are deprecated; describe the archive with "
+                "'from-trajectories:', 'from-increments:' or 'from-lookup-table:' instead "
+                f"({MIGRATE_HINT}).",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            covering = {"auto": availability}
+
+        # ── exactly one archive description ──────────────────────────────
+        descriptions = {
+            "from-trajectories": from_trajectories,
+            "from-increments": from_increments,
+            "from-lookup-table": from_lookup_table,
+            "covering": covering,
+        }
+        given = [k for k, v in descriptions.items() if v is not None]
+        if len(given) > 1:
+            raise ValueError(f"accumulate: only one archive description is allowed, got {given}")
+        self._description_key = given[0] if given else None
+
+        if accumulated is not None and self._description_key is not None:
+            raise ValueError(
+                f"accumulate: '{self._description_key}' and block-level 'accumulated:' are "
+                "mutually exclusive — in archive recipes 'accumulated:' belongs inside "
+                "'from-trajectories:'; bare 'accumulated:' is for trajectory-layout recipes"
+            )
+
+        if from_trajectories is not None and from_trajectories != "auto":
+            if not isinstance(from_trajectories, FromTrajectories):
+                from_trajectories = FromTrajectories.model_validate(from_trajectories)
+        if from_increments is not None:
+            from_increments = frequency_to_timedelta(from_increments)
 
         self.source = source
         self.period = frequency_to_timedelta(period)
         self.covering = covering
-        self.accumulation = accumulation
+        self.accumulated = accumulated
+        self.from_trajectories = from_trajectories
+        self.from_increments = from_increments
+        self.from_lookup_table = from_lookup_table
         self.patch = patch
         self.group_by = patch_groupby_keys(group_by)
         self._field_to_interval = FieldToInterval(patch)
         self._source_name = self._prepare_source()
+
+        if from_increments is not None:
+            if self.period % from_increments != datetime.timedelta(0):
+                raise ValueError(
+                    f"accumulate: 'from-increments' ({from_increments}) must divide 'period' ({self.period})"
+                )
+            if self._source_name in ("mars", "fdb"):
+                raise ValueError(
+                    f"accumulate: 'from-increments' describes a base-less, valid-time-indexed "
+                    f"archive, but '{self._source_name}' fields are anchored to a model run — "
+                    "use 'from-trajectories:' instead"
+                )
 
     # ── shared helpers ───────────────────────────────────────────────
 
@@ -228,18 +315,48 @@ class AccumulateSource(Source):
 
     # ── dispatch branches ────────────────────────────────────────────
 
+    def _archive_covering(self):
+        """Build the Covering for the archive (validity-date) path from the description."""
+        if self._description_key == "from-trajectories":
+            description = self.from_trajectories
+            if description == "auto":
+                description = infer_from_trajectories(self._source_name, self.source[self._source_name])
+                LOG.info("from-trajectories: auto resolved to: %s", description.model_dump(mode="json"))
+            return AutoCovering(TrajectoryIntervalGenerator(description))
+
+        if self._description_key == "from-increments":
+            return AutoCovering(increments_generator(self.from_increments))
+
+        if self._description_key == "from-lookup-table":
+            return AutoCovering(CycleIntervalProvider(**self.from_lookup_table))
+
+        # Deprecated 'covering:'/'availability:' — the legacy machinery.
+        return covering_factory(self.covering, self._source_name, self.source[self._source_name])
+
+    def _description_hash_part(self) -> str:
+        """A stable string identifying the archive description, for the source cache key."""
+        description = {
+            "from-trajectories": self.from_trajectories,
+            "from-increments": self.from_increments,
+            "from-lookup-table": self.from_lookup_table,
+            "covering": self.covering,
+        }.get(self._description_key)
+        if isinstance(description, FromTrajectories):
+            return f"{self._description_key}:{description.model_dump_json()}"
+        return f"{self._description_key}:{json.dumps(description, sort_keys=True, default=str)}"
+
     def execute_valid_dates(self, dates: ValidDates) -> Any:
         """Handle archive (validity-date) accumulations."""
-        if self.covering is None:
+        if self._description_key is None:
             raise ValueError(
-                "Argument 'covering' (or its deprecated alias 'availability') must be "
-                "specified for accumulate source. See "
+                "accumulate: describe the archive with exactly one of "
+                f"{', '.join(repr(k) for k in DESCRIPTION_KEYS)}. See "
                 "https://anemoi.readthedocs.io/projects/datasets/en/latest/building/sources/accumulate.html"
             )
 
         LOG.debug("💬 source for accumulations: %s", self.source)
-        source_object = self._create_source_object()
-        covering_obj = covering_factory(self.covering, self._source_name, self.source[self._source_name])
+        source_object = self._create_source_object(self._description_hash_part())
+        covering_obj = self._archive_covering()
 
         # generate the interval coverage for every date
         coverages = {}
@@ -272,17 +389,21 @@ class AccumulateSource(Source):
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations."""
-        if self.accumulation is None:
+        if self.accumulated is None:
             raise ValueError(
-                "Argument 'accumulation' (one of 'from-zero', 'from-previous-step') "
+                f"Argument 'accumulated' (one of {ACCUMULATED_VALUES}) "
                 "is mandatory for accumulate sources used in trajectory recipes."
             )
-        if self.covering is not None:
-            LOG.debug("Trajectory branch: ignoring 'covering:' (basetime imposed by caller).")
+        if self._description_key is not None:
+            raise ValueError(
+                f"accumulate: '{self._description_key}' is not allowed in a trajectory-layout "
+                "recipe — the layout imposes the basetime; remove the archive description "
+                "and declare 'accumulated:' on the accumulate block instead."
+            )
 
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
-        source_object = self._create_source_object(self.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=self.accumulation)
+        source_object = self._create_source_object(self.accumulated)
+        covering = ForecastCovering(period=self.period, accumulation=self.accumulated)
 
         coverages: dict = {}
         for vt, bt in dates.items:

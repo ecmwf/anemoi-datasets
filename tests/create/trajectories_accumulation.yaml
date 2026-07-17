@@ -23,7 +23,7 @@ input:
     - pipe:
         - accumulate:
             period: 1h
-            accumulation: from-zero
+            accumulated: from-zero
             source:
               mars:
                 type: fc
@@ -39,7 +39,7 @@ input:
     - pipe:
         - accumulate:
             period: 3h
-            accumulation: from-zero
+            accumulated: from-zero
             source:
               mars:
                 type: fc
@@ -55,7 +55,7 @@ input:
     - pipe:
         - accumulate:
             period: 6h
-            accumulation: from-zero
+            accumulated: from-zero
             source:
               mars:
                 type: fc
@@ -71,7 +71,7 @@ input:
     # - pipe:
     #     - accumulate:
     #         period: 24h
-    #         accumulation: from-zero
+    #         accumulated: from-zero
     #         source:
     #           mars:
     #             type: fc
@@ -87,7 +87,7 @@ input:
     # - pipe:
     #     - accumulate:
     #         period: 48h
-    #         accumulation: from-zero
+    #         accumulated: from-zero
     #         source:
     #           mars:
     #             type: fc

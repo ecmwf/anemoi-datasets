@@ -103,15 +103,12 @@ class AutoCovering(Covering):
         return self.availability.covering_intervals(start, end)
 
 
-_VALID_ACCUMULATIONS = ("from-zero", "from-previous-step")
-
-
 class ForecastCovering(Covering):
     """Covering for trajectory accumulations.
 
     The basetime is dictated by the caller (e.g. via ``ForecastDates``);
-    no archive search is performed. The covering is the trivial 1- or
-    2-interval decomposition determined by the ``accumulation`` flag:
+    no archive search is performed. The covering is the trivial signed
+    decomposition determined by the ``accumulation`` scheme:
 
     - ``"from-zero"``: archive stores ``a(0, step)`` accumulations from
       the basetime. The window ``[basetime + sA, basetime + sE]`` is
@@ -119,19 +116,25 @@ class ForecastCovering(Covering):
     - ``"from-previous-step"``: archive stores per-step increments
       ``a(step - period, step)``. The window is the single interval
       ``a(sA, sE)``.
+    - ``"from-zero-reset-every-<freq>"``: archive stores from-zero
+      accumulations restarting every *freq* of lead time. Within one
+      reset cycle the window is ``+a(r, sE) − a(r, sA)`` (r = last reset
+      at or before sA); a window straddling reset boundaries adds one
+      full-cycle interval per boundary crossed.
 
     Parameters
     ----------
     period
         Accumulation window length.
     accumulation
-        Either ``"from-zero"`` or ``"from-previous-step"``. There is no
-        default — the caller must declare it explicitly.
+        One of the ``accumulated:`` scheme values. There is no default —
+        the caller must declare it explicitly.
     """
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
-        if accumulation not in _VALID_ACCUMULATIONS:
-            raise ValueError(f"Invalid accumulation {accumulation!r}; " f"expected one of {_VALID_ACCUMULATIONS}")
+        from .description import parse_accumulated
+
+        self._kind, self._reset_hours = parse_accumulated(accumulation)
         self.period = period
         self.accumulation = accumulation
 
@@ -166,7 +169,7 @@ class ForecastCovering(Covering):
         if step_end_h <= step_start_h:
             raise ValueError(f"Window {start}..{end} has non-positive length relative to basetime {basetime}.")
 
-        if self.accumulation == "from-zero":
+        if self._kind == "from-zero":
             covering: list[SignedInterval] = []
             covering.append(
                 SignedInterval(
@@ -180,6 +183,29 @@ class ForecastCovering(Covering):
                     -SignedInterval(
                         start=basetime,
                         end=basetime + datetime.timedelta(hours=step_start_h),
+                        base=basetime,
+                    )
+                )
+            return covering
+
+        if self._kind == "from-zero-reset":
+            reset = self._reset_hours
+            first_cycle = step_start_h // reset * reset
+            last_cycle = (step_end_h - 1) // reset * reset
+            covering = []
+            if step_start_h > first_cycle:
+                covering.append(
+                    -SignedInterval(
+                        start=basetime + datetime.timedelta(hours=first_cycle),
+                        end=basetime + datetime.timedelta(hours=step_start_h),
+                        base=basetime,
+                    )
+                )
+            for cycle in range(first_cycle, last_cycle + 1, reset):
+                covering.append(
+                    SignedInterval(
+                        start=basetime + datetime.timedelta(hours=cycle),
+                        end=basetime + datetime.timedelta(hours=min(cycle + reset, step_end_h)),
                         base=basetime,
                     )
                 )

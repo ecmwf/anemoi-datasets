@@ -1,14 +1,10 @@
 accumulate:
   period: 6h
-  availability:
-    type: accumulated-from-previous-step
-    basetime: [6, 18]
-    frequency: 1h
-    last_step: 18
+  from-trajectories: auto
   source:
     mars:
       expver: "0001"
-      class: ea
+      class: od
       stream: oper
       type: fc
       grid: 20./20.

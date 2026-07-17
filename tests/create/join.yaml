@@ -28,7 +28,7 @@ input:
 
     - accumulate:
         period: 6
-        availability: "auto"
+        from-trajectories: auto
         source:
           mars:
             <<: *mars_request

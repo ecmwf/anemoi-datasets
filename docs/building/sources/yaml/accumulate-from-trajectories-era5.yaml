@@ -1,6 +1,9 @@
 accumulate:
   period: 6h
-  availability: auto
+  from-trajectories:
+    base_dates: {times: ["06:00", "18:00"]}
+    steps: {start: 0h, end: 18h, frequency: 1h}
+    accumulated: from-previous-step
   source:
     mars:
       expver: "0001"

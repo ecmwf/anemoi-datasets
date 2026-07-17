@@ -190,29 +190,237 @@ def migrate_group_by(config: dict) -> dict:
     return config
 
 
-def _fix_accumulate_availability(config) -> None:
-    """Rewrite legacy ``availability:`` to ``covering: { auto: <value> }`` inside accumulate blocks.
+# ---------------------------------------------------------------------------
+# accumulate: old spellings (availability/covering/accumulation) → new API
+# ---------------------------------------------------------------------------
 
-    Walks the recipe and looks for any ``accumulate:`` block that still
-    uses the deprecated ``availability:`` key. Replaces it in-place with
-    the discriminator form. Leaves blocks that already use
-    ``covering:`` untouched.
+
+def _grid_to_steps(grid: list[int]) -> dict | list[dict]:
+    """Convert a sorted step grid (hours) to Steps range dict(s)."""
+    runs = []
+    i, n = 0, len(grid)
+    while i < n:
+        if i + 1 < n:
+            frequency = grid[i + 1] - grid[i]
+            j = i + 1
+            while j + 1 < n and grid[j + 1] - grid[j] == frequency:
+                j += 1
+            runs.append((grid[i], grid[j], frequency))
+            i = j + 1
+        else:
+            value = grid[i]
+            runs.append((value, value, value if value > 0 else 1))
+            i += 1
+    result = [{"start": f"{a}h", "end": f"{b}h", "frequency": f"{f}h"} for a, b, f in runs]
+    return result[0] if len(result) == 1 else result
+
+
+def _factorise_pairs(pairs) -> tuple[str, list[int]] | None:
+    """Factorise raw (start, end) step pairs into (accumulated scheme, step grid)."""
+    from math import gcd
+
+    pairs = sorted({(int(a), int(b)) for a, b in pairs})
+
+    if all(a == 0 for a, b in pairs):
+        return "from-zero", sorted({b for _, b in pairs})
+
+    if len({a for a, _ in pairs}) == len(pairs) and all(
+        pairs[i][1] == pairs[i + 1][0] for i in range(len(pairs) - 1)
+    ):
+        return "from-previous-step", [pairs[0][0]] + [b for _, b in pairs]
+
+    reset = 0
+    for a, _ in pairs:
+        reset = gcd(reset, a)
+    if reset > 0 and all(a == (b - 1) // reset * reset for a, b in pairs):
+        return f"from-zero-reset-every-{reset}h", sorted({b for _, b in pairs})
+
+    return None
+
+
+def _factorise_entries(entries, day_of_month=None) -> dict | None:
+    """Factorise legacy (base_time, steps) entries into a from-trajectories payload."""
+    from anemoi.datasets.create.sources.accumulate.interval_generators import normalise_steps
+
+    groups: dict = {}
+    for base_time, steps in entries:
+        pairs = tuple(map(tuple, normalise_steps(steps)))
+        groups.setdefault(pairs, []).append(base_time)
+    if len(groups) != 1:
+        return None
+    pairs, base_times = next(iter(groups.items()))
+    factorised = _factorise_pairs(pairs)
+    if factorised is None:
+        return None
+    scheme, grid = factorised
+
+    # times as integer hours: unquoted "HH:MM" strings do not survive a
+    # YAML round-trip (YAML 1.1 parses 18:00 as the integer 1080)
+    base_dates = {"times": _parse_mars_times(base_times)}
+    if day_of_month is not None:
+        base_dates["day_of_month"] = day_of_month
+    return {"base_dates": base_dates, "steps": _grid_to_steps(grid), "accumulated": scheme}
+
+
+def _convert_legacy_description(value) -> tuple[str, object] | None:
+    """Convert a legacy availability/covering value to (description key, payload).
+
+    Returns None when no faithful conversion exists (the caller keeps the
+    old spelling and warns).
+    """
+    if value == "auto":
+        return "from-trajectories", "auto"
+
+    if isinstance(value, str):
+        # frequency string: fixed-period increments (grib-index)
+        import re
+
+        if re.fullmatch(r"\d+\s*[a-zA-Z]*", value.strip()):
+            return "from-increments", value
+        return None
+
+    if isinstance(value, dict):
+        if len(value) == 1:
+            key = next(iter(value))
+            if key == "auto":
+                return _convert_legacy_description(value["auto"])
+            if key == "cycle":
+                return "from-lookup-table", dict(value["cycle"])
+            if key == "accumulated-from-start":
+                return _convert_sugar("from-zero", value[key])
+            if key == "accumulated-from-previous-step":
+                return _convert_sugar("from-previous-step", value[key])
+
+        if value.get("type") == "cycle":
+            return "from-lookup-table", {k: v for k, v in value.items() if k != "type"}
+        if value.get("type") == "accumulated-from-start":
+            return _convert_sugar("from-zero", {k: v for k, v in value.items() if k != "type"})
+        if value.get("type") == "accumulated-from-previous-step":
+            return _convert_sugar("from-previous-step", {k: v for k, v in value.items() if k != "type"})
+
+        if "mars" in value and len(value) == 1:
+            from anemoi.datasets.create.sources.accumulate.description import _mars_archive_description
+
+            mars = value["mars"]
+            try:
+                description = _mars_archive_description(mars.get("class"), mars.get("stream"), mars.get("origin"))
+            except (ValueError, NotImplementedError):
+                return None
+            return "from-trajectories", description
+
+        if "base_time" in value and "steps" in value:
+            # legacy Pattern form
+            base_time = value["base_time"]
+            if base_time == "*":
+                return None
+            day_of_month = (value.get("base_date") or {}).get("day_of_month")
+            if "search_range" in value:
+                LOG.warning(
+                    "Dropping 'search_range: %s' from accumulate availability — "
+                    "the search reach is now derived from the archive description.",
+                    value["search_range"],
+                )
+            description = _factorise_entries([(base_time, value["steps"])], day_of_month=day_of_month)
+            if description is None:
+                return None
+            return "from-trajectories", description
+
+        return None
+
+    if isinstance(value, (list, tuple)):
+        try:
+            entries = [(base_time, steps) for base_time, steps in value]
+        except (TypeError, ValueError):
+            return None
+        description = _factorise_entries(entries)
+        if description is None:
+            return None
+        return "from-trajectories", description
+
+    return None
+
+
+def _convert_sugar(scheme: str, params: dict) -> tuple[str, dict] | None:
+    """Convert the accumulated-from-start/-previous-step sugar to from-trajectories."""
+    try:
+        basetime = params["basetime"]
+        frequency = int(params["frequency"])
+        last_step = int(params["last_step"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    first = frequency if scheme == "from-zero" else 0
+    return "from-trajectories", {
+        "base_dates": {"times": _parse_mars_times(basetime)},
+        "steps": {"start": f"{first}h", "end": f"{last_step}h", "frequency": f"{frequency}h"},
+        "accumulated": scheme,
+    }
+
+
+def migrate_accumulate(config, trajectories: bool | None = None):
+    """Rewrite accumulate blocks from the pre-redesign spellings to the new API.
+
+    - ``accumulation:`` → ``accumulated:`` (trajectory recipes);
+    - ``availability:`` / ``covering:`` → one of the description keys
+      ``from-trajectories:`` / ``from-increments:`` / ``from-lookup-table:``
+      (dropped instead in trajectory-layout recipes, where the old key was
+      silently ignored and a description key is now an error).
+
+    Legacy descriptions that cannot be factorised faithfully are left
+    unchanged (as ``covering:``, still accepted with a DeprecationWarning).
     """
     if isinstance(config, dict):
+        if trajectories is None:
+            trajectories = (config.get("output") or {}).get("layout") == "trajectories"
+        result = {}
         for k, v in config.items():
-            if k == "accumulate" and isinstance(v, dict) and "availability" in v and "covering" not in v:
-                v["covering"] = {"auto": v.pop("availability")}
+            if k == "accumulate" and isinstance(v, dict):
+                result[k] = _migrate_accumulate_block(v, trajectories)
             else:
-                _fix_accumulate_availability(v)
-    elif isinstance(config, list):
-        for item in config:
-            _fix_accumulate_availability(item)
+                result[k] = migrate_accumulate(v, trajectories)
+        return result
+    if isinstance(config, list):
+        return [migrate_accumulate(item, trajectories) for item in config]
+    return config
+
+
+def _migrate_accumulate_block(block: dict, trajectories: bool) -> dict:
+    result = {}
+    for k, v in block.items():
+        if k == "accumulation":
+            result["accumulated"] = v
+            continue
+        if k in ("availability", "covering"):
+            if trajectories:
+                # The old code silently ignored the key in the trajectory
+                # branch; the new API rejects a description there.
+                LOG.warning(
+                    "Dropping accumulate '%s: %s' — the trajectories layout imposes the "
+                    "basetime, an archive description is not used.",
+                    k,
+                    v,
+                )
+                continue
+            converted = _convert_legacy_description(v)
+            if converted is None:
+                LOG.warning(
+                    "Cannot rewrite accumulate '%s: %s' as a description key "
+                    "(from-trajectories/from-increments/from-lookup-table) — leaving it unchanged.",
+                    k,
+                    v,
+                )
+                result[k] = v
+            else:
+                new_key, payload = converted
+                result[new_key] = payload
+            continue
+        result[k] = migrate_accumulate(v, trajectories)
+    return result
 
 
 def migrate(config: dict) -> dict:
     config = fix_datetimes(config)
     config = migrate_accumulations(config)
-    _fix_accumulate_availability(config)
+    config = migrate_accumulate(config)
     config = migrate_allow_nans(config)
     config = migrate_group_by(config)
     config = remove_useless_common_block(config)
