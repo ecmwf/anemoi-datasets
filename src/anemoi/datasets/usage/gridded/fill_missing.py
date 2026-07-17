@@ -28,6 +28,8 @@ from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
+MAX_WARNINGS = 10
+
 
 class MissingDatesFill(Forwards):
     """Class to handle filling missing dates in a dataset."""
@@ -237,13 +239,14 @@ class MissingDatesInterpolate(MissingDatesFill):
         NDArray[Any]
             The filled data for the missing date.
         """
-        if n not in self._warnings:
-            LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
 
-            if a is None or b is None:
-                raise MissingDateError(
-                    f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
-                )
+        if a is None or b is None:
+            raise MissingDateError(
+                f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
+            )
+
+        if self._do_warning:
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
 
             assert a < n < b, (a, n, b)
 
@@ -255,10 +258,18 @@ class MissingDatesInterpolate(MissingDatesFill):
 
             self._alpha[n] = alpha
 
-            self._warnings.add(n)
+            self._register_warning(n)
 
         alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
+
+    def _issue_warning(self, n):
+        return n not in self._warnings and len(self._warnings) < MAX_WARNINGS
+
+    def _register_warning(self, n):
+        self._warnings.add(n)
+        if len(self._warnings) == MAX_WARNINGS:
+            LOG.warning("Reached maximum number of warnings for missing dates. Further warnings will be suppressed.")
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -301,9 +312,9 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
         NDArray[Any]
             An array filled with NaNs for the missing date.
         """
-        if n not in self._warnings:
+        if self._issue_warning(n):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
-            self._warnings.add(n)
+            self._register_warning(n)
 
         return np.full(self.shape[1:], np.nan, dtype=self.dtype)
 
@@ -365,9 +376,9 @@ class MissingDatesFillStatistics(MissingDatesFill):
             An array filled with statistical values for the missing date.
         """
 
-        if n not in self._warnings:
-            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with {self._method}")
-            self._warnings.add(n)
+        if self._issue_warning(n):
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with `{self._method}`")
+            self._register_warning(n)
 
         return np.broadcast_to(self._statistics, self.shape[1:])
 
