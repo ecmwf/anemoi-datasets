@@ -36,6 +36,39 @@ if TYPE_CHECKING:
 LOG = logging.getLogger(__name__)
 
 
+def _iter_accumulate_blocks(node: Any):
+    """Yield every accumulate-block payload found in an input/data_sources tree.
+
+    Payloads are yielded as ``AccumulateSchema`` instances: validated Action
+    models carry them directly; raw dicts (e.g. under ``concat``) are
+    validated on the fly.
+    """
+    from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
+
+    if node is None:
+        return
+    if isinstance(node, AccumulateSchema):
+        yield node
+        return
+    if isinstance(node, BaseModel):
+        for name in type(node).model_fields:
+            yield from _iter_accumulate_blocks(getattr(node, name))
+        if node.model_extra:
+            for value in node.model_extra.values():
+                yield from _iter_accumulate_blocks(value)
+        return
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "accumulate" and isinstance(value, dict):
+                yield AccumulateSchema.model_validate(value)
+            else:
+                yield from _iter_accumulate_blocks(value)
+        return
+    if isinstance(node, (list, tuple)):
+        for item in node:
+            yield from _iter_accumulate_blocks(item)
+
+
 class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -86,6 +119,50 @@ class Recipe(BaseModel):
                 raise ValueError("'base_dates' is only accepted for the 'trajectories' layout")
             if self.dates is None:
                 raise ValueError("'dates' is required")
+        return self
+
+    @model_validator(mode="after")
+    def _check_accumulate(self) -> "Recipe":
+        """Layout-dependent rules for accumulate blocks.
+
+        The per-block schema cannot know the output layout, so the two
+        cross-cutting rules live here: trajectory-layout recipes must not
+        carry an archive description (the layout imposes the basetime) and
+        must declare ``accumulated:``; other layouts require a description.
+        """
+        is_traj = isinstance(self.output, TrajectoriesOutput)
+        blocks = list(_iter_accumulate_blocks(self.input))
+        blocks += list(_iter_accumulate_blocks(self.data_sources))
+
+        for block in blocks:
+            description_key = block.description_key or ("covering" if block.covering is not None else None)
+            if is_traj:
+                if description_key is not None:
+                    raise ValueError(
+                        f"accumulate: '{description_key}' is not allowed in a "
+                        "'layout: trajectories' recipe — the layout imposes the basetime; "
+                        "remove the archive description and declare 'accumulated:' instead"
+                    )
+                if block.accumulated is None:
+                    raise ValueError(
+                        "accumulate: 'accumulated:' is required in a 'layout: trajectories' recipe"
+                    )
+                if self.steps is not None and self.steps.start < block.period:
+                    from anemoi.utils.dates import frequency_to_string
+
+                    raise ValueError(
+                        f"accumulate: 'steps.start' ({frequency_to_string(self.steps.start)}) must "
+                        f"be >= the accumulate 'period' ({frequency_to_string(block.period)}) — "
+                        "output windows must not straddle the basetime"
+                    )
+            else:
+                if description_key is None:
+                    raise ValueError(
+                        "accumulate: an archive description ('from-trajectories:', "
+                        "'from-increments:' or 'from-lookup-table:') is required — "
+                        "block-level 'accumulated:' alone is only valid in "
+                        "'layout: trajectories' recipes"
+                    )
         return self
 
     @model_validator(mode="after")

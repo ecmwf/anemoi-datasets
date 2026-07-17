@@ -5,13 +5,14 @@ dates:
 
 input:
     accumulate:
+      period: 6h
+      from-trajectories: auto
       source:
         mars:
           expver: "0001"
           class: ea
           stream: oper
+          type: fc
           grid: 20./20.
           levtype: sfc
           param: [ tp, cp]
-          accumulation_period: 6
-          data_accumulation_period: 6 # this argument will be ignored because of ERA-like accumulations

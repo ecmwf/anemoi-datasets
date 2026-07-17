@@ -1,12 +1,10 @@
 accumulate:
   period: 6h
-  availability:
-    - [0, "0-6/0-12/0-18"]
-    - [12, "0-6/0-12/0-18"]
+  from-trajectories: auto
   source:
     mars:
       expver: "0001"
-      class: od
+      class: ea
       stream: oper
       type: fc
       grid: 20./20.

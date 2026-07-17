@@ -40,6 +40,9 @@ def _tidy_json(obj: Any) -> Any:
         case datetime.timedelta():
             return frequency_to_string(obj)
 
+        case datetime.time():
+            return obj.strftime("%H:%M")
+
         case _:
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 

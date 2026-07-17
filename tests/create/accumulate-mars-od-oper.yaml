@@ -6,16 +6,10 @@ dates:
 input:
   accumulate:
     period: 6h
-    availability:
-      - [0, "0-6/0-12"]
-      - [12, "0-6/0-12"]
-    #available: 'od-oper'
-    # available:
-    #     type: accumulated-from-start
-    #     basetime: [0, 12]
-    #     frequency: 6
-    #     last_step: 18
-    #     # last_step: 12
+    from-trajectories:
+      base_dates: {times: ["00:00", "12:00"]}
+      steps: {start: 6h, end: 12h, frequency: 6h}
+      accumulated: from-zero
     source:
       mars:
         expver: "0001"

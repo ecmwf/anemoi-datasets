@@ -1,0 +1,13 @@
+accumulate:
+  period: 6h
+  from-trajectories: auto
+  group_by:
+    namespace: mars
+    ignore: [date, time, step, expver]  # accumulate fields together across expver
+  source:
+    mars:
+      class: ea
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]

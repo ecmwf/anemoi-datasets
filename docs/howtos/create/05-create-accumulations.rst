@@ -12,13 +12,14 @@ fields on specific periods of time.
 This depends on the data's native format. For an accumulated field (say
 `tp` for simplicity), one needs to know:
 
--  the `accumulation_period` over which to accumulate (e.g 6h).
+-  the `period` over which to accumulate (e.g 6h).
 -  the desired `validity_time` at which accumulation stops and for which
    the value is valid.
--  the `data_accumulation_period`, that is the duration over which the
-   data is already accumulated.
+-  how the data is already accumulated in the archive — described by the
+   `from-trajectories` / `from-increments` / `from-lookup-table` keys
+   (see :ref:`sources-accumulate`).
 
-The resulting field is then "`tp` accumulated over `accumulation_period`
+The resulting field is then "`tp` accumulated over `period`
 hours up to `validity_time`". In a common case, dataset features, e.g.,
 1h-accumulated `tp` at a 1 hour frequency, and each raw file features
 `tp` as accumulated over the *last* hour. So having 6h-accumulated `tp`
@@ -70,8 +71,8 @@ That recipe will generate the following dataset:
    🔋 Dataset ready, last update 26 seconds ago.
    📊 Statistics ready.
 
-The "legacy" way to do is the following (syntax is only slightly
-different)
+The "legacy" way to do is the following (deprecated —
+``anemoi-datasets recipe --migrate`` converts it to the recipe above)
 
 .. literalinclude:: yaml/recipe-accumulation-era.yaml
 

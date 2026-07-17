@@ -66,8 +66,51 @@ def test_missing_basetime_is_rejected():
 
 
 def test_invalid_accumulation_flag_is_rejected():
-    with pytest.raises(ValueError, match="Invalid accumulation"):
+    with pytest.raises(ValueError, match="Invalid 'accumulated' value"):
         ForecastCovering(period=_hours(6), accumulation="auto")
+
+
+def test_reset_within_one_cycle():
+    """Window [bt+6, bt+12] with 24h reset stays in the first cycle: +a(0,12) - a(0,6)."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(6), accumulation="from-zero-reset-every-24h")
+    cover = sel.cover(bt + _hours(6), bt + _hours(12), basetime=bt)
+    assert cover == [
+        -SignedInterval(start=bt, end=bt + _hours(6), base=bt),
+        SignedInterval(start=bt, end=bt + _hours(12), base=bt),
+    ]
+
+
+def test_reset_second_cycle():
+    """Window [bt+30, bt+36] lives in the second cycle: +a(24,36) - a(24,30)."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(6), accumulation="from-zero-reset-every-24h")
+    cover = sel.cover(bt + _hours(30), bt + _hours(36), basetime=bt)
+    assert cover == [
+        -SignedInterval(start=bt + _hours(24), end=bt + _hours(30), base=bt),
+        SignedInterval(start=bt + _hours(24), end=bt + _hours(36), base=bt),
+    ]
+
+
+def test_reset_straddling_boundary():
+    """Window [bt+20, bt+26] straddles the 24h reset: -a(0,20) +a(0,24) +a(24,26)."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(6), accumulation="from-zero-reset-every-24h")
+    cover = sel.cover(bt + _hours(20), bt + _hours(26), basetime=bt)
+    assert cover == [
+        -SignedInterval(start=bt, end=bt + _hours(20), base=bt),
+        SignedInterval(start=bt, end=bt + _hours(24), base=bt),
+        SignedInterval(start=bt + _hours(24), end=bt + _hours(26), base=bt),
+    ]
+    assert sum(i.length for i in cover) == _hours(6).total_seconds()
+
+
+def test_reset_window_starting_on_boundary():
+    """Window [bt+24, bt+30]: single interval +a(24,30), no subtraction."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(6), accumulation="from-zero-reset-every-24h")
+    cover = sel.cover(bt + _hours(24), bt + _hours(30), basetime=bt)
+    assert cover == [SignedInterval(start=bt + _hours(24), end=bt + _hours(30), base=bt)]
 
 
 def test_non_integer_hours_rejected():

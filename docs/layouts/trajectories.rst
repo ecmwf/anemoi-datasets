@@ -75,7 +75,7 @@ can be used at the leaves of a trajectory recipe. Today this means:
 -  :ref:`mars <sources-mars>` — full forecast and forecast-accumulation
    support.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
-   the ``accumulation: from-zero | from-previous-step`` flag; see below.
+   the ``accumulated:`` scheme key; see below.
 
 ``grib-index``, ``fdb``, ``hindcasts`` and ``recentre`` are not
 trajectory-aware in this release. ``from-trajectories:`` is the reverse
@@ -87,17 +87,24 @@ Forecast accumulations
 
 Inside a trajectory recipe, ``accumulate:`` produces per-step
 accumulation fields anchored on the caller-imposed basetime. The
-``accumulation`` flag is **required** and picks the archive convention:
+``accumulated:`` scheme key is **required** and picks the archive
+convention (the ``accumulation:`` spelling is a deprecated alias):
 
 -  ``from-zero`` — the archive stores accumulations from the basetime
    (``a(0, step)``). The window ``[bt+sA, bt+sE]`` is reconstructed as
    ``+a(0, sE) − a(0, sA)``.
 -  ``from-previous-step`` — the archive stores per-step increments
    (``a(step − period, step)``). The window is a single interval.
+-  ``from-zero-reset-every-<frequency>`` — from-zero accumulations
+   restarting every ``<frequency>`` of lead time (e.g.
+   ``from-zero-reset-every-24h``).
 
-The ``covering:`` key used for archive accumulations is **not** used
-here: the covering is determined entirely by the basetime and the
-``accumulation`` flag.
+The archive description keys used for archive accumulations
+(``from-trajectories:`` etc.) are **not allowed** here: the layout
+imposes the basetime, and the covering is determined entirely by it and
+the ``accumulated:`` scheme. Recipe validation also requires
+``steps.start >= period`` (output windows must not straddle the
+basetime).
 
 .. code:: yaml
 
@@ -111,7 +118,7 @@ here: the covering is determined entirely by the basetime and the
        - pipe:
            - accumulate:
                period: 1h
-               accumulation: from-zero
+               accumulated: from-zero
                source:
                  mars: {type: fc, class: od, param: [tp], levtype: sfc,
                         stream: oper, grid: 20./20., expver: "0001"}

@@ -4,20 +4,6 @@
  accumulate
 ###############
 
-.. note::
-
-   The ``accumulate`` source was previously named ``accumulations``.
-   The API has changed in the following ways:
-
-   - The parameter ``accumulation_period`` has been renamed to ``period``.
-   - The source can be now different from ``mars`` (e.g., ``mars``, ``grib-index``)
-     it must now be explicitly specified as a nested dictionary under the ``source`` key.
-   - The available accumulation intervals used to be specified using an
-     ``availability`` key. That key is now **deprecated** and replaced by
-     the discriminator form ``covering: { auto: <value> }`` (see below).
-     The ``anemoi datasets recipe migrate`` command rewrites old recipes
-     automatically.
-
 Accumulations and flux variables, such as precipitation, are often
 forecast fields, which are archived for a given base date (or reference
 time) and a forecast time (or step). These fields are valid at the
@@ -31,212 +17,251 @@ are accumulated since the beginning of the forecast (e.g. ECMWF
 operational forecast), while others are accumulated since the last time
 step (e.g. ERA5).
 
-The ``accumulate`` source requires the following parameters:
+The ``accumulate`` source takes:
 
-- **period**: The requested accumulation period (e.g., ``6h``, ``12h``, ``24h``, ``1d``).
-  This can be specified as a string with units ``"6h"``.
-  Periods shorter than one hour such as ``"30min"`` are not supported yet.
-- **source**: The data source configuration. Currently only ``mars`` and ``grib-index`` sources are supported.
-- **covering**: Information about how accumulations are stored in the
-  data source, in discriminator form. The current form is
-  ``covering: { auto: <value> }`` where ``<value>`` accepts the four
-  shapes described under `Specifying covering of accumulation intervals`_
-  below. The legacy key name ``availability:`` is accepted for one
-  release with a ``DeprecationWarning``.
-- **accumulation** (trajectory recipes only): one of ``from-zero`` or
-  ``from-previous-step``; see `Forecast accumulations (trajectory recipes)`_.
-- **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
-  Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
+-  **period**: The requested accumulation period (e.g., ``6h``, ``12h``,
+   ``24h``, ``1d``). This can be specified as a string with units
+   (``"6h"``). Periods shorter than one hour such as ``"30min"`` are not
+   supported yet.
 
-  .. warning::
+-  **source**: The data source configuration, as a single-key nested
+   dictionary (e.g. ``source: {mars: {...}}``). Currently ``mars`` and
+   ``grib-index`` sources are supported.
 
-     If the data provided by the source does not match the definition provided
-     in the ``availability`` parameter, the package will attempt to check the
-     metadata of the source dataset and fail if the accumulation periods cannot
-     be reconstructed.
-     Defining the period to use to reconstruct the request accumulation period and
-     checking the validity of the accumulation and relies on the metadata provided by the data source.
-     **If the metadata is incomplete or inconsistent, the package may produce incorrect results.**
+-  exactly **one description key** telling the package how
+   accumulations are stored in the archive:
 
+   -  `from-trajectories`_ — the archive contains forecast runs
+      (MARS-like);
+   -  `from-increments`_ — the archive is base-less and valid-time
+      indexed (``grib-index``);
+   -  `from-lookup-table`_ — an explicit escape hatch for step layouts
+      too irregular for the other two.
 
-Specifying covering of accumulation intervals
-=============================================
+-  **patch** (optional): Patches to apply to fields returned by the
+   source to fix metadata issues; see `Patching wrong metadata`_.
+
+-  **group_by** (optional): Controls which fields are accumulated
+   together; see `Controlling the fields regrouped within accumulation`_.
+
+In a :ref:`trajectory recipe <layouts-trajectories>` there is **no**
+description key — the layout imposes the base time — and the
+``accumulated:`` scheme is declared directly on the accumulate block;
+see `Forecast accumulations (trajectory recipes)`_.
 
 .. note::
 
-   The recipe key has been renamed from ``availability`` to ``covering``
-   and now takes a discriminator form:
+   The pre-redesign spellings — the ``availability:`` and ``covering:``
+   keys, and the ``accumulation:`` flag of trajectory recipes — are
+   accepted for one release with a ``DeprecationWarning``. Run
+   ``anemoi-datasets recipe --migrate <recipe>`` to rewrite old recipes
+   automatically (this also converts the even older ``accumulations``
+   source).
 
-   .. code:: yaml
+.. _from-trajectories:
 
-      accumulate:
-        period: 6h
-        covering: {auto: <value>}
-        source: {mars: {...}}
+*******************
+ from-trajectories
+*******************
 
-   All four value shapes documented below are passed as the ``auto:``
-   discriminator value. Other discriminators (``cycle:``) are reserved
-   for future use; the ``forecast:`` discriminator is explicitly
-   rejected — forecast accumulations are selected implicitly by using
-   ``accumulate:`` inside a trajectory recipe (see
-   `Forecast accumulations (trajectory recipes)`_). The legacy
-   ``availability:`` key is accepted for one release with a
-   ``DeprecationWarning``.
+Most accumulation archives are made of **forecast trajectories**: model
+runs initialised at recurring base dates, archiving fields on a grid of
+forecast steps, with a native accumulation scheme. The
+``from-trajectories:`` key describes exactly these three facts, reusing
+the ``base_dates:`` / ``steps:`` vocabulary of the
+:ref:`trajectories layout <layouts-trajectories>`:
 
-Historical note: the section and examples below still use the word
-"availability" for the value shapes, which is correct — the covering
-layer is the strategy that *uses* the availability description to pick
-intervals.
+-  ``base_dates``: the recurring initialisation times.
 
-Data accumulation methods differ between datasets. Two common methods are to
-accumulate data either from the start of the forecast or from the previous time step.
+   -  ``times`` (required): list of initialisation times (``["06:00",
+      "18:00"]``; bare hours like ``[6, 18]`` are accepted).
+   -  ``day_of_month`` (optional): restrict to given days of the month
+      (e.g. ``1`` for monthly runs).
+   -  ``day_of_week`` (optional): restrict to given days of the week
+      (e.g. ``[mon, thu]``).
+   -  ``start`` / ``end`` (optional): bound a truly bounded archive
+      (e.g. the experiment only ran over 2016–2020).
 
--  For ECMWF operational forecasts, the data is accumulated from the
-   beginning of the forecast. For example, if the accumulation period is
-   6h and the valid date is 2020-01-01 00:00, the source will use the
-   forecast [1]_ of 2019-12-31 18:00 at step 6h.
+   A wildcard string in the ``from-trajectories`` *source* dialect is
+   accepted as sugar and converted to the structured form, e.g.
+   ``base_dates: "????-??-01 00:00"`` is ``{times: ["00:00"],
+   day_of_month: 1}``.
 
--  For ERA5, the data is accumulated since the last time step (hourly
-   accumulations), and forecasts are only available at 06Z and 18Z. For a
-   6h accumulation with valid date 2020-01-01 13:00, the source will sum
-   the fields from the forecast of 2020-01-01 06:00 at steps 1-2h, 2-3h,
-   3-4h, 4-5h, 5-6h, and 6-7h.
+-  ``steps``: the forecast step grid, in the same
+   ``{start, end, frequency}`` shape as the trajectories layout. A
+   *list* of such ranges is accepted for irregular grids, e.g.::
 
-There are multiple ways to specify the ``availability`` parameter:
+      steps:
+        - {start: 1h, end: 6h,  frequency: 1h}
+        - {start: 6h, end: 30h, frequency: 3h}
 
-- `Option 1: Type-based availability`_
-- `Option 2: Availability over fixed periods`_
-- `Option 3: Automatic detection for well-known datasets`_
-- `Option 4: Finer control using explicit list of interval`_
+-  ``accumulated``: the archive's native accumulation scheme. One of:
 
+   -  ``from-zero`` — fields are accumulated from the start of the
+      forecast (``a(0, step)``), e.g. ECMWF operational forecasts;
+   -  ``from-previous-step`` — fields are per-step increments
+      (``a(previous step, step)``), e.g. ERA5;
+   -  ``from-zero-reset-every-<frequency>`` — from-zero accumulations
+      that restart every ``<frequency>`` of *lead time* (e.g.
+      ``from-zero-reset-every-24h`` for research runs that reset daily).
 
-Option 1: Type-based availability
----------------------------------
-
-For more explicit control, use the **type** parameter with ``accumulated-from-start``
-or ``accumulated-from-previous-step``, along with **basetime**, **frequency**, and **last_step**.
+Given the description, the package searches for the combination of
+archived intervals covering each requested window — including summing
+increments, subtracting from-zero accumulations (e.g. ``a(0,12) −
+a(0,6)``), and switching between model runs when a window spans more
+than one trajectory.
 
 .. list-table::
    :widths: 50 50
    :header-rows: 1
 
-   * - ECMWF operational (accumulated from start)
+   * - ECMWF operational (accumulated from zero)
      - ERA5 (accumulated from previous step)
-   * - .. literalinclude:: yaml/accumulations-from-start-mars-ecmwf-operational-forecast-2.yaml
+   * - .. literalinclude:: yaml/accumulate-from-trajectories-od-oper.yaml
           :language: yaml
-     - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-2.yaml
+     - .. literalinclude:: yaml/accumulate-from-trajectories-era5.yaml
           :language: yaml
 
-Option 2: Availability over fixed periods
------------------------------------------
+Automatic description for well-known archives
+=============================================
 
-If the source provides data accumulated over a fixed period, such as
-``availability: "1h"`` for hourly accumulated data, ``"3h"`` for
-3-hourly accumulated data, etc.
-
-This approach should be used when all accumulation intervals for the fixed period are available
-for all base times.
-
-Additionally, the period provided in ``availability`` must be compatible with the requested accumulation period,
-i.e., it must be a divisor of the requested period in ``period``.
-
-.. literalinclude:: yaml/accumulations-grib-index.yaml
-   :language: yaml
-
-Option 3: Automatic detection for well-known datasets
------------------------------------------------------
-
-The simplest approach is to use ``availability: auto``. The package will try to
-infer the availability from the ``mars`` source parameters (class, stream, origin).
+For well-known MARS archives, ``from-trajectories: auto`` infers the
+description from the ``mars`` source parameters (class, stream, origin).
 Supported combinations are:
 
-- ERA5 reanalysis (class ``ea``, stream ``oper``)
-- ERA5 ensemble data assimilation (class ``ea``, stream ``enda``)
-- ECMWF operational forecasts (class ``od``, stream ``oper``)
-- ECMWF operational ensemble data assimilation (class ``od``, stream ``elda``)
-- Regional reanalysis (class ``rr``, stream ``oper``, origin ``se-al-ec``).
-- ERA5-Land (class ``l5``, stream ``oper``)
+-  ERA5 reanalysis (class ``ea``, stream ``oper``)
+-  ERA5 ensemble data assimilation (class ``ea``, stream ``enda``)
+-  ECMWF operational forecasts (class ``od``, stream ``oper``)
+-  ECMWF operational ensemble data assimilation (class ``od``, stream
+   ``elda``)
+-  Regional reanalysis (class ``rr``, origins ``se-al-ec`` and
+   ``fr-ms-ec``)
+-  ERA5-Land (class ``l5``, stream ``oper``)
 
-Automatic detection is not supported for the ``grib-index`` source.
-
-.. list-table::
-   :widths: 50 50
-   :header-rows: 1
-
-   * - ECMWF operational (accumulated from start)
-     - ERA5 (accumulated from previous step)
-   * - .. literalinclude:: yaml/accumulations-from-start-mars-ecmwf-operational-forecast-1.yaml
-          :language: yaml
-     - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-1.yaml
-          :language: yaml
-
-
-Option 4: Finer control using explicit list of interval
--------------------------------------------------------
-
-For full control, provide an explicit list of ``(basetime, steps)`` pairs.
+Automatic detection is only supported for the ``mars`` source.
 
 .. list-table::
    :widths: 50 50
    :header-rows: 1
 
-   * - ECMWF operational (accumulated from start)
-     - ERA5 (accumulated from previous step)
-   * - .. literalinclude:: yaml/accumulations-from-start-mars-ecmwf-operational-forecast-3.yaml
+   * - ECMWF operational
+     - ERA5
+   * - .. literalinclude:: yaml/accumulate-auto-od-oper.yaml
           :language: yaml
-     - .. literalinclude:: yaml/accumulations-from-previous-step-mars-era5-3.yaml
+     - .. literalinclude:: yaml/accumulate-auto-era5.yaml
           :language: yaml
 
-These two examples are equivalent to those shown in Option 1 above.
+Archives with a reset frequency
+===============================
 
-Controlling the fields regrouped within accumulation
-====================================================
+Some archives store from-zero accumulations that restart at fixed
+intervals of lead time. This is part of the (correct) data layout and is
+described by the ``accumulated:`` value; it is *not* the same thing as
+broken metadata (see `Patching wrong metadata`_ — the archive below
+needs both):
 
-It is possible to control the fields accumulated together through their metadata.
-The ``group_by`` keyword allows to ignore some metadata when deciding to group field to accumulate them together.
-Ignored keys mean that fields with different values will be accumulated together.
-Note that ``date,time,step`` should be ignored by default.
-
-.. literalinclude:: yaml/accumulations-mars-groupby.yaml
+.. literalinclude:: yaml/accumulate-reset.yaml
    :language: yaml
 
+.. _from-increments:
 
-Forecast accumulations (trajectory recipes)
-===========================================
+*****************
+ from-increments
+*****************
 
-Inside a :ref:`trajectory recipe <layouts-trajectories>`, ``accumulate:``
-produces per-step accumulation fields anchored on the caller-imposed
-basetime. The ``covering:`` key used in archive accumulations is **not**
-used; the covering is determined by the basetime and a new flag:
+Some archives are **base-less**: fields are indexed by validity time
+only, each field being the accumulation over the fixed-length window
+ending at its validity time. This is the shape of a ``grib-index`` store
+of pre-computed increments. The value is the increment length; it must
+divide the requested ``period`` (the increments are summed), and it is
+rejected with a ``mars`` source (MARS fields are anchored to a model run
+— use ``from-trajectories:``).
 
-- **accumulation**: required; one of ``from-zero`` or
-  ``from-previous-step``.
+.. literalinclude:: yaml/accumulate-from-increments.yaml
+   :language: yaml
 
-  -  ``from-zero`` — the archive stores accumulations from the basetime
-     (``a(0, step)``). A window ``[bt + sA, bt + sE]`` is built as
-     ``+a(0, sE) − a(0, sA)``.
-  -  ``from-previous-step`` — the archive stores per-step increments
-     (``a(step − period, step)``). The window is a single interval.
+When the increment equals the ``period`` there is nothing to sum:
+``accumulate`` still validates the ``startStep``/``endStep`` metadata
+against the request and re-stamps the output uniformly.
 
-If ``accumulation:`` is omitted in a trajectory recipe, the source
-raises an error at build time. Conversely, declaring
-``covering: { forecast: ... }`` explicitly is **not supported** — the
-forecast branch is selected by the pipeline's argument type, not by the
-recipe.
+.. _from-lookup-table:
 
-Example (extracted from ``tests/create/trajectories_accumulation.yaml``):
+*******************
+ from-lookup-table
+*******************
+
+The escape hatch for step layouts that do not factorise into
+``base_dates × steps``. Each requested window is mapped to a fixed
+``(base time, steps)`` entry, keyed by the window's offset (in hours)
+inside a repeating cycle anchored at ``start:``. No search is performed:
+the requested ``period`` must exactly match a table key, and entries are
+positive intervals only.
+
+.. literalinclude:: yaml/accumulate-from-lookup-table.yaml
+   :language: yaml
+
+**********************************************
+ Patching wrong metadata
+**********************************************
+
+The reconstruction relies on the ``startStep``/``endStep`` metadata of
+the fields returned by the source. Some archives encode these
+incorrectly; the ``patch:`` key applies named fixes to each field before
+it is matched to the requested intervals:
+
+-  ``set_start_step_to_zero`` — the archive encodes
+   ``startStep == endStep`` but fields are accumulated from the start of
+   the forecast;
+-  ``reset_24h_accumulations`` — same, for archives whose accumulations
+   reset every 24 h of lead time (see the reset example above).
+
+``patch:`` describes what the fields' metadata *wrongly says*;
+``accumulated:`` describes what the data *actually is*. They are
+orthogonal and an archive may need both.
+
+.. warning::
+
+   If the data provided by the source does not match the archive
+   description, the package checks the metadata of the source dataset
+   and fails if the accumulation periods cannot be reconstructed.
+   **If the metadata is incomplete or inconsistent, the package may
+   produce incorrect results.**
+
+******************************************************
+ Controlling the fields regrouped within accumulation
+******************************************************
+
+It is possible to control the fields accumulated together through their
+metadata. The ``group_by`` keyword allows to ignore some metadata when
+deciding to group fields to accumulate them together. Ignored keys mean
+that fields with different values will be accumulated together. Note
+that ``date``, ``time`` and ``step`` must always be ignored.
+
+.. literalinclude:: yaml/accumulate-groupby.yaml
+   :language: yaml
+
+*********************************************
+ Forecast accumulations (trajectory recipes)
+*********************************************
+
+Inside a :ref:`trajectory recipe <layouts-trajectories>`,
+``accumulate:`` produces per-step accumulation fields anchored on the
+basetime imposed by the layout. An archive description key is **not
+allowed** (the layout already dictates which trajectory serves each
+window — declaring one is an error); the same ``accumulated:`` scheme
+key is declared directly on the accumulate block, and is required:
 
 .. code:: yaml
 
    base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
-   steps:      {start: 6, end: 30, frequency: 3h}
+   steps:      {start: 6h, end: 30h, frequency: 3h}
 
    input:
      join:
        - pipe:
            - accumulate:
                period: 1h
-               accumulation: from-zero
+               accumulated: from-zero
                source:
                  mars:
                    type: fc
@@ -252,8 +277,13 @@ Example (extracted from ``tests/create/trajectories_accumulation.yaml``):
    output:
      layout: trajectories
 
+All three ``accumulated:`` values are supported, including
+``from-zero-reset-every-<frequency>``. Recipe validation additionally
+requires ``steps.start >= period`` — output windows must not straddle
+the basetime.
 
-.. [1]
+.. note::
 
    For ECMWF forecasts, the forecasts at 00Z and 12Z are from the stream
-   ``oper`` while the forecasts at 06Z and 18Z are from the stream ``scda``.
+   ``oper`` while the forecasts at 06Z and 18Z are from the stream
+   ``scda``.

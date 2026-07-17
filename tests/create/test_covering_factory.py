@@ -45,7 +45,10 @@ def test_discriminator_cycle_not_implemented():
 
 
 def test_migrate_rewrites_availability():
-    """Recipe migrator rewrites accumulate.availability to covering.auto."""
+    """Recipe migrator rewrites accumulate.availability to a description key.
+
+    (Full migration coverage lives in test_recipe_migrate.py.)
+    """
     from anemoi.datasets.commands.recipe.migrate import migrate
 
     old = {
@@ -64,26 +67,5 @@ def test_migrate_rewrites_availability():
     new = migrate(old)
     block = new["input"]["join"][0]["accumulate"]
     assert "availability" not in block
-    assert block["covering"] == {"auto": [(0, "0-6/0-12"), (12, "0-6/0-12")]}
-
-
-def test_migrate_leaves_existing_covering_untouched():
-    from anemoi.datasets.commands.recipe.migrate import migrate
-
-    old = {
-        "input": {
-            "join": [
-                {
-                    "accumulate": {
-                        "period": "6h",
-                        "covering": {"auto": "auto"},
-                        "source": {"mars": {"class": "od"}},
-                    }
-                }
-            ]
-        }
-    }
-    new = migrate(old)
-    block = new["input"]["join"][0]["accumulate"]
-    assert block["covering"] == {"auto": "auto"}
-    assert "availability" not in block
+    assert "covering" not in block
+    assert block["from-trajectories"]["accumulated"] == "from-zero"
