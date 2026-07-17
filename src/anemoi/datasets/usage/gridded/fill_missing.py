@@ -133,6 +133,14 @@ class MissingDatesFill(Forwards):
 
         return self._fill_missing(n, a, b)
 
+    def _issue_warning(self, n):
+        return n not in self._warnings and len(self._warnings) < MAX_WARNINGS
+
+    def _register_warning(self, n):
+        self._warnings.add(n)
+        if len(self._warnings) == MAX_WARNINGS:
+            LOG.warning("Reached maximum number of warnings for missing dates. Further warnings will be suppressed.")
+
 
 class MissingDatesClosest(MissingDatesFill):
     """Class to handle filling missing dates using the closest available date."""
@@ -262,14 +270,6 @@ class MissingDatesInterpolate(MissingDatesFill):
 
         alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
-
-    def _issue_warning(self, n):
-        return n not in self._warnings and len(self._warnings) < MAX_WARNINGS
-
-    def _register_warning(self, n):
-        self._warnings.add(n)
-        if len(self._warnings) == MAX_WARNINGS:
-            LOG.warning("Reached maximum number of warnings for missing dates. Further warnings will be suppressed.")
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
