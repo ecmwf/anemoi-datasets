@@ -167,7 +167,14 @@ class Dataset(ABC, Sized):
         # When adding a new option here, please also update `test_classes`
         ############
 
-        # This one must be first
+        # Must be before fill_missing_dates
+        if "extend" in kwargs:
+            Extend = self.usage_factory_load("Extend")
+
+            extend = kwargs.pop("extend")
+            return Extend(self, **extend)._subset(**kwargs).mutate()
+
+        # Must be before the rest
         if "fill_missing_dates" in kwargs:
             fill_missing_dates_factory = self.usage_factory_load("fill_missing_dates_factory")
 
@@ -227,12 +234,6 @@ class Dataset(ABC, Sized):
 
             rescale = kwargs.pop("rescale")
             return Rescale(self, rescale)._subset(**kwargs).mutate()
-
-        if "extend" in kwargs:
-            Extend = self.usage_factory_load("Extend")
-
-            extend = kwargs.pop("extend")
-            return Extend(self, **extend)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs or "statistics_tendencies" in kwargs:
 
