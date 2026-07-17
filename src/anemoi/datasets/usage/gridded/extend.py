@@ -13,7 +13,6 @@ from functools import cached_property
 from typing import Any
 
 import numpy as np
-from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -29,6 +28,8 @@ from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 
@@ -36,48 +37,55 @@ LOG = logging.getLogger(__name__)
 class Extend(Forwards):
     """A class to represent a dataset with interpolated frequency."""
 
-    def __init__(self, dataset: Dataset, start: Any = None, end: Any = None) -> None:
+    def __init__(self, dataset: Dataset, extend_start: Any = None, extend_end: Any = None) -> None:
         """Initialize the Extend class.
 
         Parameters
         ----------
         dataset : Dataset
             The dataset to be extended.
-        start : Any
+        extend_start : Any
             The start of the extension.
-        end : Any
+        extend_end : Any
             The end of the extension.
         """
         super().__init__(dataset)
-        self._start = start
-        self._end = end
+        self._extend_start = extend_start
+        self._extend_end = extend_end
 
         dates = self.forward.dates
         first = dates[0]
         last = dates[-1]
 
-        if start is not None:
-            start = np.datetime64(as_datetime(start))
-            if start > first:
-                raise ValueError(f"Start date {start} is after first date {first}")
-            self._start = start
-
-        if end is not None:
-            end = np.datetime64(as_datetime(end))
-            if end < last:
-                raise ValueError(f"End date {end} is before last date {last}")
-            self._end = end
-
-        if self._start is None:
-            self._start = first
-
-        if self._end is None:
-            self._end = last
-
         frequency = frequency_to_timedelta(self.forward.frequency)
+        frequency64 = np.timedelta64(int(frequency.total_seconds()), "s")
 
-        self._before = (first - self._start) // np.timedelta64(frequency)
-        self._after = (self._end - last) // np.timedelta64(frequency)
+        # Unlike `start`/`end` on a subset, we have no reference grid for the
+        # extended dates. So we expand a partial date (e.g. a year or a month)
+        # to the first / last time step of that period, taking the frequency
+        # into account, by passing an empty reference-dates array.
+        no_reference = np.array([], dtype=dates.dtype)
+
+        if extend_start is not None:
+            extend_start = as_first_date(extend_start, no_reference, frequency=frequency)
+            if extend_start > first:
+                raise ValueError(f"Start date {extend_start} is after first date {first}")
+            self._extend_start = extend_start
+
+        if extend_end is not None:
+            extend_end = as_last_date(extend_end, no_reference, frequency=frequency)
+            if extend_end < last:
+                raise ValueError(f"End date {extend_end} is before last date {last}")
+            self._extend_end = extend_end
+
+        if self._extend_start is None:
+            self._extend_start = first
+
+        if self._extend_end is None:
+            self._extend_end = last
+
+        self._before = (first - self._extend_start) // frequency64
+        self._after = (self._extend_end - last) // frequency64
 
     @debug_indexing
     @expand_list_indexing
@@ -155,7 +163,7 @@ class Extend(Forwards):
         if self._before > 0:
             result.append(
                 np.arange(
-                    self._start,
+                    self._extend_start,
                     self.forward.dates[0],
                     frequency_to_timedelta(self.forward.frequency),
                     dtype="datetime64",
@@ -166,7 +174,7 @@ class Extend(Forwards):
             result.append(
                 np.arange(
                     self.forward.dates[-1] + frequency_to_timedelta(self.forward.frequency),
-                    self._end + frequency_to_timedelta(self.forward.frequency),
+                    self._extend_end + frequency_to_timedelta(self.forward.frequency),
                     frequency_to_timedelta(self.forward.frequency),
                     dtype="datetime64",
                 )
@@ -186,7 +194,7 @@ class Extend(Forwards):
         Node
             The tree representation of the dataset.
         """
-        return Node(self, [self.forward.tree()], start=self._start, end=self._end)
+        return Node(self, [self.forward.tree()], extend_start=self._extend_start, extend_end=self._extend_end)
 
     @cached_property
     def missing(self) -> set[int]:
@@ -203,10 +211,10 @@ class Extend(Forwards):
         """
         result = {}
 
-        if self._start is not None:
-            result["start"] = str(self._start)
+        if self._extend_start is not None:
+            result["extend_start"] = str(self._extend_start)
 
-        if self._end is not None:
-            result["end"] = str(self._end)
+        if self._extend_end is not None:
+            result["extend_end"] = str(self._extend_end)
 
         return result

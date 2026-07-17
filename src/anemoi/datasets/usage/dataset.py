@@ -173,7 +173,7 @@ class Dataset(ABC, Sized):
 
             extend_start = kwargs.pop("extend_start", None)
             extend_end = kwargs.pop("extend_end", None)
-            return Extend(self, start=extend_start, end=extend_end)._subset(**kwargs).mutate()
+            return Extend(self, extend_start=extend_start, extend_end=extend_end)._subset(**kwargs).mutate()
 
         # Must be before the rest
         if "fill_missing_dates" in kwargs:
