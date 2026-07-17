@@ -77,29 +77,27 @@ dates.
 ********
 
 You can extend the date range of a dataset backwards and/or forwards by
-using the ``extend`` option. The new dates are added at the dataset's
-``frequency`` and are marked as :ref:`missing <selecting-missing>`, so
-accessing them will raise a ``MissingDateError`` unless you combine
-``extend`` with a :ref:`fill_missing_dates <selecting-missing>` method.
-
-The option takes a dictionary with the optional keys ``start`` and
-``end``:
+using the ``extend_start`` and ``extend_end`` options. The new dates are
+added at the dataset's ``frequency`` and are marked as :ref:`missing
+<selecting-missing>`, so accessing them will raise a ``MissingDateError``
+unless you combine them with a :ref:`fill_missing_dates
+<selecting-missing>` method.
 
 .. code:: python
 
-   ds = open_dataset(dataset, extend={"start": "2019-01-01", "end": "2021-12-31"})
+   ds = open_dataset(dataset, extend_start="2019-01-01", extend_end="2021-12-31")
 
-The ``start`` date must be before (or equal to) the first date of the
-dataset, and the ``end`` date must be after (or equal to) the last date.
-Either key can be omitted to extend in only one direction:
+The ``extend_start`` date must be before (or equal to) the first date of
+the dataset, and the ``extend_end`` date must be after (or equal to) the
+last date. Either option can be omitted to extend in only one direction:
 
 .. code:: python
 
    # Extend only backwards
-   ds = open_dataset(dataset, extend={"start": "2019-01-01"})
+   ds = open_dataset(dataset, extend_start="2019-01-01")
 
    # Extend only forwards
-   ds = open_dataset(dataset, extend={"end": "2021-12-31"})
+   ds = open_dataset(dataset, extend_end="2021-12-31")
 
 This is typically combined with a fill method so that the added dates
 hold artificial values instead of raising an error:
@@ -108,7 +106,8 @@ hold artificial values instead of raising an error:
 
    ds = open_dataset(
        dataset,
-       extend={"start": "2019-01-01", "end": "2021-12-31"},
+       extend_start="2019-01-01",
+       extend_end="2021-12-31",
        fill_missing_dates="nans",
    )
 

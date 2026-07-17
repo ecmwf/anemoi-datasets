@@ -168,11 +168,12 @@ class Dataset(ABC, Sized):
         ############
 
         # Must be before fill_missing_dates
-        if "extend" in kwargs:
+        if "extend_start" in kwargs or "extend_end" in kwargs:
             Extend = self.usage_factory_load("Extend")
 
-            extend = kwargs.pop("extend")
-            return Extend(self, **extend)._subset(**kwargs).mutate()
+            extend_start = kwargs.pop("extend_start", None)
+            extend_end = kwargs.pop("extend_end", None)
+            return Extend(self, start=extend_start, end=extend_end)._subset(**kwargs).mutate()
 
         # Must be before the rest
         if "fill_missing_dates" in kwargs:

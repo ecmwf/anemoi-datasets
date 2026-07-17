@@ -149,13 +149,19 @@ as follows:
       -  List of datasets forming an ensemble (e.g. ``ensemble=[d1,
          d2]``).
 
-   -  -  extend
+   -  -  extend_start
       -  ✅
       -  ❌
       -  ❌
-      -  Extend the date range backwards and/or forwards with missing
-         dates (dict with optional ``start`` and ``end`` keys). See
-         :ref:`extend`.
+      -  Extend the date range backwards with missing dates up to the
+         given date. See :ref:`extend`.
+
+   -  -  extend_end
+      -  ✅
+      -  ❌
+      -  ❌
+      -  Extend the date range forwards with missing dates up to the
+         given date. See :ref:`extend`.
 
    -  -  fill_missing_dates
       -  ✅
