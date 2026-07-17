@@ -12,10 +12,10 @@
 from unittest.mock import patch
 
 import numpy as np
+from test_data import create_zarr
+from test_data import mockup_open_zarr
 
 from anemoi.datasets import open_dataset
-
-from test_data import create_zarr, mockup_open_zarr
 
 
 @mockup_open_zarr
