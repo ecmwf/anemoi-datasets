@@ -201,7 +201,12 @@ class Extend(Forwards):
         Dict[str, Any]
             The metadata specific to the InterpolateFrequency subclass.
         """
-        return {
-            "start": self._start,
-            "end": self._end,
-        }
+        result = {}
+
+        if self._start is not None:
+            result["start"] = str(self._start)
+
+        if self._end is not None:
+            result["end"] = str(self._end)
+
+        return result
