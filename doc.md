@@ -1,5 +1,0 @@
-I want you to revisit the documentation. Only the "usage" part, when we use existing datasets. Make sure it is up-to-date and consistent. Code example must not be inline, but in their own files (yaml, python). Also, make some suggestion in a local file, so we can discuss them later. I want especially to stress the composability of the things you can do (subset, join, cutout, etc). You can explain at a high-level first, and then explain that the parameters to open_dataset() create a network of object that will interact at  run time to return the proper data to the user (middle level), then say that these objects are created using factories and that the code can be extended (low level).
-
-Exaplain that the reason that we use a single open_dataset() function with a dictionary is that we should be able to descrive a complex network of object in a training config file, that are tipycaly yaml (hydra). Explain the tree() method. Explain that the it is metadata rich and that the metadata will capture all processing done on the data.
-
-We do not have a name for these object, so suggestions are welcome.
