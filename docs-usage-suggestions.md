@@ -10,13 +10,34 @@ pass"; the rest is up for discussion.
 - Added a new concepts page `docs/using/how-it-works.rst` that explains
   composability at three levels (high / middle / low), the `tree()`
   method, the metadata-rich nature of the objects, and why a single
-  `open_dataset()` driven by a dictionary is used.
+  `open_dataset()` driven by a dictionary is used. It now includes two
+  Graphviz diagrams showing the tree of objects (a linear pipeline and a
+  branching `join`).
 - Moved inline code out of `introduction.rst` and `opening.rst` into
   external files under `docs/using/code/` and `docs/using/yaml/`, included
   via `.. literalinclude::` (matching the convention used in
   `docs/howtos/using/`).
 - Fixed a broken example in `introduction.rst` (`ds` was used before being
   defined).
+- Added a `.. _using-methods:` anchor to `methods.rst` and linked the
+  `tree()` / `metadata()` mentions to it.
+- Simple corrections during the full review:
+  - `subsetting.rst`: a bullet list about `frequency`/`end` was collapsed
+    into a single paragraph (broken `-` markers); reformatted as a list.
+  - `missing.rst`: exception name `MissingDatesError` -> `MissingDateError`
+    (the actual class name).
+  - `combining.rst`: fixed six image paths with a double slash
+    (`../_static//...` -> `../_static/...`).
+  - `grids.rst`: `trim_edge=(3, 10, 4, 2)` was described as removing "10 in
+    the east" — corrected to "2 in the east".
+  - `synthetic.rst`: title over/underline was too short (Sphinx warning);
+    lengthened.
+  - `selecting.rst`: removed a dangling, duplicate `.. _number:` target at
+    end of file (the canonical one lives in `ensembles.rst`).
+  - `parameters.rst`: typos `Concatanate` -> `Concatenate`, `continous` ->
+    `continuous`; fixed the `area` ordering to `(north, west, south,
+    east)` to match `grids.rst`.
+  - `methods.rst`: removed a stray colon after `statistics_tendencies(delta)`.
 
 ## Naming the objects (feedback requested)
 
@@ -40,19 +61,9 @@ whole usage section (and ideally in docstrings / class-level docs).
 - `introduction.rst` toctree references `window`, but there is no
   `docs/using/window.rst`. Either add the page or remove the entry (it is
   likely a broken/leftover reference).
-- Several other pages in `docs/using/` still contain inline `.. code::`
-  blocks (e.g. `combining.rst`, `selecting.rst`, `subsetting.rst`,
-  `methods.rst`, `statistics.rst`, `grids.rst`, `ensembles.rst`,
-  `missing.rst`, `zip.rst`, `matching.rst`, `configuration.rst`,
-  `other.rst`, `miscellaneous.rst`). For full consistency these should also
-  be externalised into `code/` and `yaml/`. Suggest doing this
-  page-by-page rather than in one large change.
-- Reference-label naming is inconsistent: statistics/ensembles/grids/zip/
-  other/missing all use `selecting-*` anchors even though they are not
-  about selecting variables. Consider renaming to a consistent scheme.
-- `methods.rst` has no `.. _...:` anchor at the top, so it cannot be
-  cross-referenced with `:ref:`. Suggest adding one (e.g.
-  `.. _using-methods:`) and linking `tree()` / `metadata()` mentions to it.
+- `parameters.rst` still lists `chain` and `concat` behaviour that reads as
+  provisional ("should be skipped for now"). Worth confirming whether these
+  notes are still accurate.
 
 ## Structural suggestions
 

@@ -6,7 +6,7 @@
 
 The operations described in this section of the documentation
 (:ref:`subsetting <subsetting-datasets>`, :ref:`selecting
-<selecting-variables>`, :ref:`combining <combining-datasets>`,
+<using-selecting>`, :ref:`combining <combining-datasets>`,
 :ref:`cutout <combining-datasets>`, etc.) are not independent features
 bolted onto a reader. They are **composable building blocks**: every
 operation takes one or more datasets as input and returns something that
@@ -73,7 +73,8 @@ selection picks columns, a join stacks the arrays of its children, a
 cutout merges grid points, and so on. The data is read from the zarr
 stores only where and when it is actually needed.
 
-You can inspect the network with the ``tree()`` method:
+You can inspect the network with the :ref:`tree() <using-methods>`
+method:
 
 .. literalinclude:: code/compose_tree.py
 
@@ -82,11 +83,62 @@ This prints the operations from the outermost one down to the leaf:
 .. literalinclude:: code/compose_tree.txt
    :language: text
 
+The same information can be drawn as a tree of objects. For the example
+above, the views form a simple chain from the root (the object returned
+to you) down to the leaf (the zarr store, in green):
+
+.. graphviz::
+
+   digraph pipeline {
+      rankdir=TB;
+      node [shape=box, style="rounded,filled", fillcolor="#eef3fb",
+            fontname="monospace"];
+
+      select [label="Select\lselect: 2t, msl\l"];
+      freq   [label="Subset\lfrequency: 12h\l"];
+      period [label="Subset\lstart: 2000\lend: 2020\l"];
+      zarr   [label="GriddedZarr\laifs-…-v8.zarr\l",
+              style="filled", fillcolor="#e8f5e9"];
+
+      select -> freq -> period -> zarr;
+   }
+
+The chain is linear because every operation here wraps a single dataset.
+As soon as datasets are **combined**, the tree branches. For instance,
+the :ref:`join <combining-datasets>` configuration used later on this
+page (two datasets combined, the second one reduced to two variables,
+the whole thing subset in time and frequency) builds this network:
+
+.. graphviz::
+
+   digraph combine {
+      rankdir=TB;
+      node [shape=box, style="rounded,filled", fillcolor="#eef3fb",
+            fontname="monospace"];
+
+      freq   [label="Subset\lfrequency: 12h\l"];
+      period [label="Subset\lstart: 2000\lend: 2020\l"];
+      join   [label="Join"];
+      z1     [label="GriddedZarr\l…-v8.zarr\l",
+              style="filled", fillcolor="#e8f5e9"];
+      sel    [label="Select\lselect: tp, cp\l"];
+      z2     [label="GriddedZarr\lextra-variables-…\l",
+              style="filled", fillcolor="#e8f5e9"];
+
+      freq -> period -> join;
+      join -> z1;
+      join -> sel -> z2;
+   }
+
+The leaves are always the actual zarr stores; everything above them is a
+lazy view. Reading ``ds[i]`` sends the request down through this tree and
+assembles the answer on the way back up.
+
 Because the whole processing chain is captured by the network of views,
-the datasets are **metadata rich**: the ``metadata()`` method records
-every operation that was applied, the sources that were combined, the
-provenance of the run and the supporting arrays (latitudes, longitudes,
-etc.).
+the datasets are **metadata rich**: the :ref:`metadata()
+<using-methods>` method records every operation that was applied, the
+sources that were combined, the provenance of the run and the supporting
+arrays (latitudes, longitudes, etc.).
 
 .. literalinclude:: code/compose_metadata.py
 

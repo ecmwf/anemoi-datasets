@@ -13,7 +13,7 @@ is loaded lazily from the original datasets.
 
    When combining datasets, the statistics of the first dataset are used
    by default. You can change this by setting the
-   :ref:`selecting-statistics` option to a different dataset, even if it
+   :ref:`using-statistics` option to a different dataset, even if it
    is not part of the combination.
 
 When combining datasets, the package will check that the datasets are
@@ -53,19 +53,7 @@ chronological order with no gaps between them. If you want to
 concatenate datasets that have gaps between them, check the
 :ref:`fill_missing_gaps <fill_missing_gaps>` option.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("dataset-1979-2000", "dataset-2001-2022")
-
-   # or
-
-   ds = open_dataset(["dataset-1979-2000", "dataset-2001-2022"])
-
-   # or
-
-   ds = open_dataset(concat=["dataset-1979-2000", "dataset-2001-2022"])
+.. literalinclude:: code/combining_concat.py
 
 .. image:: ../_static/concat.png
    :align: center
@@ -76,7 +64,7 @@ Please note that you can pass more than two datasets to the function.
    **NOTE:** When concatenating datasets, the statistics are not
    recomputed; it is the statistics of the first dataset that are
    returned to the user. You can change this using the
-   :ref:`selecting-statistics` option.
+   :ref:`using-statistics` option.
 
 When concatenating datasets, the package will check that variables are compatible, i.e.,
 that they have the same units, the same time processing (e.g. whether the data is instantaneous or accumulated),
@@ -85,30 +73,12 @@ the same type of level (e.g. whether the data are on pressure levels or model le
 
 You can turn some of the check off:
 
-.. code:: python
-
-   ds = open_dataset(
-       concat=[dataset1, dataset2, ...],
-       check_variables_compatibility={
-           "ignore_units": True, # Don't check units
-           "ignore_time_processing": True, # Don't check time processing (e.g. whether the data are instantaneous or accumulated)
-           "ignore_processing_period": True, # Don't check time processing period (e.g. whether the data are 3-hourly or 6-hourly accumulations)
-           "ignore_type_of_level": True, # Don't check type of level (e.g. whether the data are on pressure levels or model levels)
-       },
-   )
+.. literalinclude:: code/combining_concat_check_.py
 
 
 You can also turn off checks for individual variables by setting:
 
-.. code:: python
-
-   ds = open_dataset(
-       concat=[dataset1, dataset2, ...],
-       check_variables_compatibility={
-           "ignore_type_of_level": "msl", # Don't check type of level for the variable "msl"
-           "ignore_units": ["msl", "t2m"], # Don't check units for the variables "msl" and "t2m"
-       },
-   )
+.. literalinclude:: code/combining_concat_check_vars_.py
 
 
 .. _join:
@@ -120,19 +90,7 @@ You can also turn off checks for individual variables by setting:
 You can join two datasets that have the same dates, combining their
 variables.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset("dataset1-1979-2022", "dataset2-1979-2022")
-
-   # or
-
-   ds = open_dataset(["dataset1-1979-2022", "dataset2-1979-2022"])
-
-   # or
-
-   ds = open_dataset(join=["dataset1-1979-2022", "dataset2-1979-2022"])
+.. literalinclude:: code/combining_join.py
 
 .. image:: ../_static/join.png
    :align: center
@@ -142,7 +100,7 @@ If a variable is present in more than one file, the last occurrence of
 that variable will be used and will be at the position of the first
 occurrence of that name.
 
-.. image:: ../_static//overlay.png
+.. image:: ../_static/overlay.png
    :align: center
    :alt: Overlay
 
@@ -158,11 +116,7 @@ You can combine two or more datasets that have the same dates,
 variables, grids, etc. along the ensemble dimension. The package will
 check that all datasets are compatible.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(ensembles=[dataset1, dataset2, ...])
+.. literalinclude:: code/combining_ensembles_.py
 
 .. _grids:
 
@@ -170,11 +124,7 @@ check that all datasets are compatible.
  grids
 *******
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(grids=[dataset1, dataset2, ...])
+.. literalinclude:: code/combining_grids_.py
 
 All the grid points are concatenated, in the order they are given. The
 `latitudes` and `longitudes` are also concatenated.
@@ -183,11 +133,7 @@ All the grid points are concatenated, in the order they are given. The
  cutout
 ********
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(cutout=[lam_dataset, global_dataset])
+.. literalinclude:: code/combining_cutout_.py
 
 The `cutout` combination only supports two datasets. The first dataset
 is considered to be a limited area model (LAM), while the second one is
@@ -204,7 +150,7 @@ The image below shows the global dataset:
 
 The image below shows the LAM dataset:
 
-.. image:: ../_static//cutout-2.png
+.. image:: ../_static/cutout-2.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -213,7 +159,7 @@ A 'cutout' is performed by removing the grid points from the global
 dataset that are contained in the LAM dataset. The result is shown
 below:
 
-.. image:: ../_static//cutout-3.png
+.. image:: ../_static/cutout-3.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -221,7 +167,7 @@ below:
 The final dataset is the concatenation of the LAM dataset and the
 cutout:
 
-.. image:: ../_static//cutout-4.png
+.. image:: ../_static/cutout-4.png
    :width: 75%
    :align: center
    :alt: Cutout
@@ -239,11 +185,11 @@ The plots below illustrate how the cutout differs if `min_distance_km`
 is not given (top) or if `min_distance_km` is set to `0` (bottom). The
 difference can be seen at the boundary between the two grids:
 
-.. image:: ../_static//cutout-5.png
+.. image:: ../_static/cutout-5.png
    :align: center
    :alt: Cutout
 
-.. image:: ../_static//cutout-6.png
+.. image:: ../_static/cutout-6.png
    :align: center
    :alt: Cutout
 
@@ -261,15 +207,7 @@ That feature will interpolate the variables of `dataset2` that are not
 in `dataset1` to the grid of `dataset1`, add them to the list of
 variables of `dataset1` and return the result.
 
-.. code:: python
-
-   open_dataset(
-       complement=dataset1,
-       source=dataset2,
-       what="variables",
-       interpolation="nearest",
-       k=1,
-   )
+.. literalinclude:: code/combining_complement_.py
 
 Currently ``what`` can only be ``variables`` and can be omitted.
 
@@ -282,23 +220,9 @@ This feature was originally designed to be used in conjunction with
 ``cutout``, where `dataset1` is the lam, and `dataset2` is the global
 dataset.
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(
-       combine=[
-           {"dataset": dataset1, "option1": value1, "option2": ...},
-           {"dataset": dataset2, "option3": value3, "option4": ...},
-       ]
-   )
+.. literalinclude:: code/combining_complement_combine_.py
 
 Another use case is to simply bring all non-overlapping variables of a
 dataset into another:
 
-.. code:: python
-
-   open_dataset(
-       complement=dataset1,
-       source=dataset2,
-   )
+.. literalinclude:: code/combining_complement_simple_.py
