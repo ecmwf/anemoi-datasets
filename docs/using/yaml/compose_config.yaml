@@ -3,8 +3,8 @@
 # framework such as Hydra, without any Python code changes.
 dataset:
   join:
-    - aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v8.zarr
-    - dataset: extra-variables-o96-1979-2022-6h-v1.zarr
+    - aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v8
+    - dataset: extra-variables-o96-1979-2022-6h-v1
       select: [tp, cp]
   start: 2000
   end: 2020

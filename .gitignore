@@ -43,6 +43,7 @@ cover/
 # Documentation
 docs/_build/
 docs/_api/
+docs/using/trees/
 /site
 *.mo
 *.pot

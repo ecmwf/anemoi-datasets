@@ -45,6 +45,11 @@ The same network can be expressed as a single nested call:
 
 .. literalinclude:: code/compose_nested.py
 
+The operations can equally be passed as keyword arguments to a single
+call, without wrapping them in a dictionary:
+
+.. literalinclude:: code/compose_kwargs.py
+
 Subsetting, selecting, joining, concatenating, cutting out, rescaling,
 filling missing dates, ... all follow the same rule, which is why they
 can be combined freely.
@@ -78,30 +83,10 @@ method:
 
 .. literalinclude:: code/compose_tree.py
 
-This prints the operations from the outermost one down to the leaf:
+For the example above, the views form a simple chain from the root (the
+object returned to you) down to the leaf (the store):
 
-.. literalinclude:: code/compose_tree.txt
-   :language: text
-
-The same information can be drawn as a tree of objects. For the example
-above, the views form a simple chain from the root (the object returned
-to you) down to the leaf (the zarr store, in green):
-
-.. graphviz::
-
-   digraph pipeline {
-      rankdir=TB;
-      node [shape=box, style="rounded,filled", fillcolor="#eef3fb",
-            fontname="monospace"];
-
-      select [label="Select\lselect: 2t, msl\l"];
-      freq   [label="Subset\lfrequency: 12h\l"];
-      period [label="Subset\lstart: 2000\lend: 2020\l"];
-      zarr   [label="GriddedZarr\laifs-…-v8.zarr\l",
-              style="filled", fillcolor="#e8f5e9"];
-
-      select -> freq -> period -> zarr;
-   }
+.. literalinclude:: trees/compose_tree.txt
 
 The chain is linear because every operation here wraps a single dataset.
 As soon as datasets are **combined**, the tree branches. For instance,
@@ -109,30 +94,26 @@ the :ref:`join <combining-datasets>` configuration used later on this
 page (two datasets combined, the second one reduced to two variables,
 the whole thing subset in time and frequency) builds this network:
 
-.. graphviz::
+.. literalinclude:: trees/compose_config.txt
 
-   digraph combine {
-      rankdir=TB;
-      node [shape=box, style="rounded,filled", fillcolor="#eef3fb",
-            fontname="monospace"];
-
-      freq   [label="Subset\lfrequency: 12h\l"];
-      period [label="Subset\lstart: 2000\lend: 2020\l"];
-      join   [label="Join"];
-      z1     [label="GriddedZarr\l…-v8.zarr\l",
-              style="filled", fillcolor="#e8f5e9"];
-      sel    [label="Select\lselect: tp, cp\l"];
-      z2     [label="GriddedZarr\lextra-variables-…\l",
-              style="filled", fillcolor="#e8f5e9"];
-
-      freq -> period -> join;
-      join -> z1;
-      join -> sel -> z2;
-   }
-
-The leaves are always the actual zarr stores; everything above them is a
-lazy view. Reading ``ds[i]`` sends the request down through this tree and
+The leaves are always the actual stores; everything above them is a lazy
+view. Reading ``ds[i]`` sends the request down through this tree and
 assembles the answer on the way back up.
+
+Combining two datasets always makes the tree branch, whatever the
+operation. Two datasets covering consecutive periods can be
+concatenated along time:
+
+.. literalinclude:: code/combine_concat.py
+
+.. literalinclude:: trees/combine_concat.txt
+
+and a high-resolution regional dataset can be cut into a global one, so
+that its grid points replace the global ones where the two overlap:
+
+.. literalinclude:: code/combine_cutout.py
+
+.. literalinclude:: trees/combine_cutout.txt
 
 Because the whole processing chain is captured by the network of views,
 the datasets are **metadata rich**: the :ref:`metadata()

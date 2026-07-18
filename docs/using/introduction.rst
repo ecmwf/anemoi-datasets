@@ -46,7 +46,6 @@ of interacting objects.
 
    opening
    how-it-works
-   synthetic
    methods
    subsetting
    combining
@@ -58,6 +57,7 @@ of interacting objects.
    missing
    other
    matching
+   synthetic
    miscellaneous
    configuration
    window

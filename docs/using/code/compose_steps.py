@@ -5,7 +5,7 @@ from anemoi.datasets import open_dataset
 # again: the operations *compose*.
 
 # 1. Open a dataset stored on disk (a leaf).
-ds = open_dataset("aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v8.zarr")
+ds = open_dataset("aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v8")
 
 # 2. Subset it in time (wraps the leaf).
 ds = open_dataset(ds, start=2000, end=2020)
