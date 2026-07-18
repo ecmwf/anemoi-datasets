@@ -62,7 +62,11 @@ def patch_groupby_keys(group_by: dict | None = None):
             raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
         ignore = group_by.get("ignore", [])
         for key in ["date", "time", "step"]:
-            assert key in ignore, f"{key} absent in ignore list {ignore}, at least 'date', 'time', 'step' required"
+            if key not in ignore:
+                raise ValueError(
+                    f"accumulate group_by: '{key}' absent in ignore list {ignore}; "
+                    "at least 'date', 'time', 'step' are required"
+                )
         return group_by
 
 
@@ -102,6 +106,7 @@ class AccumulateSource(Source):
         from_trajectories = _pop_hyphenated("from_trajectories", from_trajectories)
         from_increments = _pop_hyphenated("from_increments", from_increments)
         from_lookup_table = _pop_hyphenated("from_lookup_table", from_lookup_table)
+        group_by = _pop_hyphenated("group_by", group_by)
         if kwargs:
             raise TypeError(f"accumulate: unknown argument(s) {sorted(kwargs)}")
 
@@ -204,7 +209,7 @@ class AccumulateSource(Source):
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
-            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True).encode()
+            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True, default=str).encode()
         ).hexdigest()
         return self.context.create_source(self.source, "data_sources", h)
 
@@ -265,13 +270,16 @@ class AccumulateSource(Source):
         """
         fields = []
         accumulators = {}
+        # Execute the inner source once; the same FieldList feeds the main
+        # loop and, on failure, the diagnostic dump in Logs.
+        input_fields = source_object(self.context, intervals)
         logs = Logs(
             accumulators=accumulators,
             source=self.source,
-            source_object=source_object(self.context, intervals),
+            source_object=input_fields,
             field_to_interval=self._field_to_interval,
         )
-        for field in source_object(self.context, intervals):
+        for field in input_fields:
             # for each field provided by the catalogue, find which accumulators need it and perform accumulation
             values, key, field_interval, log = self._extract_field_info(field)
             logs.append([str(field), log, field_interval, [], []])

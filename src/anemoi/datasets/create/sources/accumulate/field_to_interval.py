@@ -68,9 +68,7 @@ class FieldToInterval:
                 raise ValueError(f"Unknown patch key: {key}")
 
     def __call__(self, field) -> SignedInterval:
-        date_str = str(field.metadata("date")).zfill(8)
-        time_str = str(field.metadata("time")).zfill(4)
-        base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+        base_datetime = self._base_datetime(field)
 
         endStep = field.metadata("endStep")
         startStep = field.metadata("startStep")
@@ -102,3 +100,19 @@ class FieldToInterval:
         assert valid_date == interval.max, (valid_date, interval)
 
         return interval
+
+    @staticmethod
+    def _base_datetime(field) -> datetime.datetime:
+        """The model-run base time of *field*.
+
+        The mars 'date'/'time' metadata keys give the base time for ordinary
+        forecasts, but for hindcast fields (eefh/enfh) 'date' is the reforecast
+        reference date while the run actually starts at hdate (= dataDate); the
+        field's time component resolves the correct base time in both cases.
+        """
+        try:
+            return field.time.base_datetime()
+        except AttributeError:
+            date_str = str(field.metadata("date")).zfill(8)
+            time_str = str(field.metadata("time")).zfill(4)
+            return datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")

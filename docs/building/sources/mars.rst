@@ -77,4 +77,77 @@ required by the :ref:`trajectories <layouts-trajectories>` layout —
 the pipeline. No special recipe key is required; the same MARS block is
 used regardless of layout.
 
+Hindcasts (reforecasts)
+=======================
+
+Reforecast streams (e.g. ``eefh``, ``enfh``) archive each field under
+**two** dates: ``date`` is the *reference date* of the model run (a
+recent date), and ``hdate`` is the start of the hindcast run — the same
+month-day as the reference date in one of the previous years. The valid
+time of a field is ``hdate + step``.
+
+In a trajectory recipe the base dates are the hindcast starts (hdates).
+The ``hindcast:`` option tells the ``mars`` source how to map each base
+date back to its reference date at request time:
+
+.. code:: yaml
+
+   base_dates:
+     start: 2003-06-29
+     end: 2023-11-11
+     frequency: 24h
+     missing:
+       # every day whose month-day matches no reference date
+       - {start: 2003-06-30, end: 2003-07-02}
+       # ...
+
+   steps:
+     start: 12
+     end: 360
+     frequency: 12
+
+   input:
+     mars:
+       class: od
+       expver: "0001"
+       stream: eefh
+       type: cf
+       levtype: sfc
+       grid: o96
+       param: [2t]
+       hindcast:
+         reference_start: 2023-06-29   # reference-date window
+         reference_end: 2024-11-11
+         day_of_week: [monday, thursday]
+         years: 20                     # hindcast years per reference date
+
+   output:
+     layout: trajectories
+
+For each base date the source finds the unique reference date whose
+hindcast calendar (same month-day, up to ``years`` years back) contains
+it, and sends ``date=<refdate>, hdate=<basetime>, time=0000`` with the
+step unchanged (relative to the hdate). The mapping must be
+unambiguous: if a base date is a hindcast date of two reference dates
+(e.g. a window longer than a year without a ``day_of_week``
+restriction), the recipe is rejected.
+
+The option works both for instantaneous fields and inside
+``accumulate:`` blocks (hindcast tp/cp are from-zero accumulations).
+Since the ``hdate`` key is part of the mars metadata of the retrieved
+fields, add it to the accumulate grouping exclusions:
+
+.. code:: yaml
+
+   accumulate:
+     accumulated: from-zero
+     period: 12h
+     group_by:
+       namespace: mars
+       ignore: [date, time, step, hdate]
+     source:
+       mars:
+         # ... as above, with the same hindcast block
+         param: [tp, cp]
+
 .. _mars language specification: https://confluence.ecmwf.int/display/UDOC/MARS+user+documentation

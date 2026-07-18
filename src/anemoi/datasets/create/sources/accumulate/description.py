@@ -142,8 +142,7 @@ def _wildcards_to_selectors(patterns: list[str]) -> dict:
     or concrete day, concrete time); anything else must be written in the
     structured form directly.
     """
-    times: list[datetime.time] = []
-    days: set[int] = set()
+    pairs: set[tuple[int | None, datetime.time]] = set()
     day_wild: bool = False
 
     for pattern in patterns:
@@ -170,15 +169,19 @@ def _wildcards_to_selectors(patterns: list[str]) -> dict:
             )
         if day == "??":
             day_wild = True
+            day_value = None
         elif "?" in day or "*" in day:
             raise ValueError(
                 f"Invalid base_dates pattern {pattern!r}: the day must be '??' or concrete; "
                 "use the structured form ('day_of_month:') otherwise"
             )
         else:
-            days.add(int(day))
+            day_value = int(day)
         t = time_part.split(":")
-        times.append(datetime.time(int(t[0]), int(t[1]) if len(t) > 1 else 0))
+        pairs.add((day_value, datetime.time(int(t[0]), int(t[1]) if len(t) > 1 else 0)))
+
+    days = sorted({d for d, _ in pairs if d is not None})
+    times = sorted({t for _, t in pairs})
 
     if days and day_wild:
         raise ValueError(
@@ -186,9 +189,18 @@ def _wildcards_to_selectors(patterns: list[str]) -> dict:
             "concrete days; use the structured form instead"
         )
 
+    # The structured form means the cross product day_of_month × times; a
+    # pattern set like ['????-??-01 06:00', '????-??-15 18:00'] does not
+    # factorise into it and must not be silently reinterpreted.
+    if days and {(d, t) for d in days for t in times} != pairs:
+        raise ValueError(
+            f"base_dates patterns {patterns!r} do not factorise into "
+            "day_of_month × times; use the structured form instead"
+        )
+
     result: dict[str, Any] = {"times": times}
     if days:
-        result["day_of_month"] = sorted(days)
+        result["day_of_month"] = days
     return result
 
 
