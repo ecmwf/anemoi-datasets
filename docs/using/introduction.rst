@@ -60,5 +60,4 @@ of interacting objects.
    synthetic
    miscellaneous
    configuration
-   window
    parameters
