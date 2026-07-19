@@ -152,3 +152,8 @@ trace.txt
 *.prof
 prof/
 *.gz
+
+# Synthetic-dataset sidecars used to build the documentation view trees
+# (see docs/build_trees.py); these must be tracked despite the *.json rule.
+!docs/using/code/*.json
+!docs/using/yaml/*.json
