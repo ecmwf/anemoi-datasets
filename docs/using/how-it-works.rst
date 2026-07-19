@@ -10,8 +10,7 @@ The operations described in this section of the documentation
 :ref:`cutout <combining-datasets>`, etc.) are not independent features
 bolted onto a reader. They are **composable building blocks**: every
 operation takes one or more datasets as input and returns something that
-is, again, a dataset. This page explains that idea at three levels of
-detail.
+is, again, a dataset. This page explains that idea.
 
 .. note::
 
@@ -21,9 +20,9 @@ detail.
    the data they wrap). Other candidates are *operators*, *adapters*,
    *nodes* or *lenses* — suggestions are welcome.
 
-***********************************
- High level: everything composes
-***********************************
+*********************
+ Everything composes
+*********************
 
 The single most important property of *anemoi-datasets* is that the
 result of an operation behaves exactly like a dataset: it has the same
@@ -54,9 +53,9 @@ Subsetting, selecting, joining, concatenating, cutting out, rescaling,
 filling missing dates, ... all follow the same rule, which is why they
 can be combined freely.
 
-**********************************************
- Middle level: a network of interacting views
-**********************************************
+*******************************
+ A network of interacting views
+*******************************
 
 When you call ``open_dataset``, the keyword arguments are interpreted
 one by one. Each recognised operation wraps its input in a new **dataset
@@ -150,28 +149,3 @@ straight to ``open_dataset``. The same configuration fully and
 reproducibly defines the training data.
 
 .. _Hydra: https://hydra.cc/
-
-********************************************
- Low level: views are created by factories
-********************************************
-
-Internally, each operation is a class that subclasses the base
-``Dataset``. Views that wrap a single dataset derive from ``Forwards``
-(they forward everything they do not override to their child); views
-that combine several datasets derive from ``Combined``.
-
-The classes are not hard-wired into ``open_dataset``. When an operation
-is requested, it is resolved by name through a small factory mechanism
-that is aware of the dataset's *layout* (gridded, tabular, trajectory).
-The factory looks up the class in the layout-specific package first and
-then in a shared ``common`` package. This means:
-
--  the same keyword (for example ``select``) can be implemented
-   differently for different layouts;
-
--  the set of operations can be **extended** by adding a new module that
-   defines the corresponding view class and, where relevant, a factory
-   function — without modifying the dispatch code.
-
-If you request an operation that is not available for a given layout,
-the factory raises an explicit error rather than silently ignoring it.
