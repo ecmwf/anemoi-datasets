@@ -215,7 +215,12 @@ class InterpolateFrequency(Forwards):
 
 
 class InterpolateNearest(Forwards):
-    def __init__(self, dataset: Dataset, interpolate_variables: list[str], max_distance: float | None = None) -> None:
+    def __init__(
+        self,
+        dataset: Dataset,
+        interpolate_variables: list[str],
+        max_distance: float | None = None,
+    ) -> None:
         """Initialize the InterpolateNearest class.
 
         Parameters
@@ -260,7 +265,10 @@ class InterpolateNearest(Forwards):
     @staticmethod
     def slice_len(slice_obj: slice) -> int:
         # Compute the length of the slice
-        return max(0, (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1) // (slice_obj.step or 1))
+        return max(
+            0,
+            (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1) // (slice_obj.step or 1),
+        )
 
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
@@ -278,7 +286,7 @@ class InterpolateNearest(Forwards):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
-    def subclass_metadata_specific(self) -> dict[str, Any]:
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         return {
             "interpolate_variables": self.vars,
         }

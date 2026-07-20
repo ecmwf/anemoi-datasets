@@ -48,15 +48,10 @@ class _EveryNth(_Thinner):
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
         """Create a mask to thin the points by keeping every N-th point in both latitude and longitude."""
 
-        latitudes = latitudes.reshape(self.field_shape)
-        longitudes = longitudes.reshape(self.field_shape)
-        latitudes = latitudes[:: self.thinning, :: self.thinning].flatten()
-        longitudes = longitudes[:: self.thinning, :: self.thinning].flatten()
-
-        # TODO: This is not very efficient
-
-        mask = [lat in latitudes and lon in longitudes for lat, lon in zip(latitudes, longitudes)]
-        mask = np.array(mask, dtype=bool)
+        indices = np.arange(latitudes.size).reshape(self.field_shape)
+        kept = indices[:: self.thinning, :: self.thinning].flatten()
+        mask = np.zeros(latitudes.size, dtype=bool)
+        mask[kept] = True
         return mask
 
 

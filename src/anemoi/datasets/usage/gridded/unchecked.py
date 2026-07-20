@@ -111,6 +111,10 @@ class Unchecked(Combined):
         assert not kwargs
         return self
 
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the forwards subclass."""
+        return {}
+
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Check compatibility between two datasets.
 

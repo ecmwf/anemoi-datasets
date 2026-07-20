@@ -299,7 +299,7 @@ def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]
         An instance of a class to fill missing dates.
     """
     if method == "closest":
-        closest = kwargs.get("closest", "up")
+        closest = kwargs.pop("closest", "up")
         return MissingDatesClosest(dataset, closest=closest)
 
     if method == "interpolate":

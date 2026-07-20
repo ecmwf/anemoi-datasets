@@ -37,7 +37,12 @@ LOG = logging.getLogger(__name__)
 class Merge(Combined):
     """A class to merge multiple datasets along the dates axis, handling gaps in dates if allowed."""
 
-    def __init__(self, datasets: list[Dataset], options: Options, allow_gaps_in_dates: bool = False) -> None:
+    def __init__(
+        self,
+        datasets: list[Dataset],
+        options: Options,
+        allow_gaps_in_dates: bool = False,
+    ) -> None:
         """Initialize the Merge object.
 
         Parameters
@@ -70,7 +75,10 @@ class Merge(Combined):
                     k = dates[date][1]
                     if k in d1.missing:
                         # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
-                        dates[date] = (i, j)  # Replace the missing date with the new one
+                        dates[date] = (
+                            i,
+                            j,
+                        )  # Replace the missing date with the new one
                         continue
 
                     raise ValueError(f"Duplicate date {date} found in datasets {d1} and {d2}")
@@ -104,7 +112,7 @@ class Merge(Combined):
 
         self._dates = np.array(_dates, dtype="datetime64[s]")
         self._indices = np.array(indices)
-        self._frequency = frequency.astype(object)
+        self._frequency = frequency
 
     def __len__(self) -> int:
         """Get the number of dates in the merged dataset.
@@ -189,7 +197,11 @@ class Merge(Combined):
         Node
             Tree representation of the merged dataset.
         """
-        return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
+        return Node(
+            self,
+            [d.tree() for d in self.datasets],
+            allow_gaps_in_dates=self.allow_gaps_in_dates,
+        )
 
     def metadata_specific(self) -> dict[str, Any]:
         """Get the specific metadata for the merged dataset.
@@ -199,6 +211,10 @@ class Merge(Combined):
         Dict[str, Any]
             Specific metadata.
         """
+        return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get the metadata specific to the Merge subclass."""
         return {"allow_gaps_in_dates": self.allow_gaps_in_dates}
 
     @debug_indexing

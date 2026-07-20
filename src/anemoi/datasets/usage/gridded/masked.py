@@ -157,14 +157,13 @@ class Thinning(ThinningMixin, Masked):
         self.grid_shape = forward.field_shape
 
         if thinning is not None:
-
-            shape = forward.field_shape
-            if len(shape) != 2:
-                raise ValueError("Thinning only works latitude/longitude fields")
-
-            mask = np.full(shape, False, dtype=bool)
-            mask[::thinning, ::thinning] = True
-            mask = mask.flatten()
+            mask = np.asarray(self.thinner.mask(forward.latitudes, forward.longitudes))
+            if mask.dtype != bool:
+                # Some thinners (e.g. grid) return the indices to keep rather than a
+                # boolean mask; convert to a boolean mask over the original grid.
+                kept = mask
+                mask = np.zeros(forward.shape[-1], dtype=bool)
+                mask[kept] = True
         else:
             mask = None
 
@@ -207,10 +206,14 @@ class Thinning(ThinningMixin, Masked):
         """Returns the field shape of the dataset."""
         if self.thinning is None:
             return self.forward.field_shape
-        x, y = self.forward.field_shape
-        x = (x + self.thinning - 1) // self.thinning
-        y = (y + self.thinning - 1) // self.thinning
-        return x, y
+        if self.method == "every-nth":
+            # every-nth keeps a regular subgrid, so the 2D field shape is preserved.
+            x, y = self.forward.field_shape
+            x = (x + self.thinning - 1) // self.thinning
+            y = (y + self.thinning - 1) // self.thinning
+            return x, y
+        # Other methods produce an irregular set of points, no longer a 2D grid.
+        return (int(np.count_nonzero(self.mask)),)
 
 
 class Masking(Masked):
