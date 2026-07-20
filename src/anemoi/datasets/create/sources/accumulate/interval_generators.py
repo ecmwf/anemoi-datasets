@@ -151,9 +151,9 @@ class SearchableIntervalGenerator(IntervalGenerator):
         return intervals
 
 
-class CycleIntervalProvider(SearchableIntervalGenerator):
+class LookupTableIntervalGenerator(SearchableIntervalGenerator):
     def __init__(self, **config: dict):
-        LOG.debug(f"CycleIntervalProvider config: {config}")
+        LOG.debug(f"LookupTableIntervalGenerator config: {config}")
         self.reference = config.pop("start", datetime.datetime(1970, 1, 1, 0, 0))
         self.reference = as_datetime(self.reference)
 
@@ -168,9 +168,33 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
         self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
 
     def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+        """Cover ``[start, end]`` using only the intervals its table entry declares.
+
+        The table pins *which* archived intervals may be used (that is the
+        point of the escape hatch: no search over bases).  How they combine
+        is left to the same signed search as every other description, so a
+        combination that does not add up to ``[start, end]`` cannot be
+        produced — including the ``a(0, 12) − a(0, 6)`` difference, which
+        the entry spells as two positive intervals.
+        """
+        declared = self._entry_intervals(start, end)
+
+        def candidates(current_time: datetime.datetime) -> list[SignedInterval]:
+            """Offer each declared interval in whichever orientation starts here."""
+            out: list[SignedInterval] = []
+            for interval in declared:
+                for oriented in (interval, -interval):
+                    if oriented.start == current_time and oriented not in out:
+                        out.append(oriented)
+            return out
+
+        return covering_intervals(start, end, candidates)
+
+    def _entry_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
+        """Return the intervals declared by the table entry covering ``[start, end]``."""
         cycle_length_in_hours = max([k[1] for k in self.config.keys()])
 
-        assert end > start, "CycleIntervalProvider only supports positive intervals (end must be after start)"
+        assert end > start, "LookupTableIntervalGenerator only supports positive intervals (end must be after start)"
 
         i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
         i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
@@ -179,18 +203,20 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
 
         if not (0 <= i_start < cycle_length_in_hours):
             raise ValueError(
-                f"CycleIntervalProvider: i_start={i_start} out of range [0, {cycle_length_in_hours}) (start={start})"
+                f"LookupTableIntervalGenerator: i_start={i_start} out of range [0, {cycle_length_in_hours}) (start={start})"
             )
         if not (0 < i_end <= cycle_length_in_hours):
             raise ValueError(
-                f"CycleIntervalProvider: i_end={i_end} out of range (0, {cycle_length_in_hours}] (end={end})"
+                f"LookupTableIntervalGenerator: i_end={i_end} out of range (0, {cycle_length_in_hours}] (end={end})"
             )
         if i_start >= i_end:
-            raise ValueError(f"CycleIntervalProvider: i_start={i_start} >= i_end={i_end} (start={start}, end={end})")
+            raise ValueError(
+                f"LookupTableIntervalGenerator: i_start={i_start} >= i_end={i_end} (start={start}, end={end})"
+            )
 
         if (i_start, i_end) not in self.config:
             raise ValueError(
-                f"CycleIntervalProvider: no config to find ({i_start}, {i_end}) (start={start}, end={end}, {cycle_length_in_hours=})"
+                f"LookupTableIntervalGenerator: no config to find ({i_start}, {i_end}) (start={start}, end={end}, {cycle_length_in_hours=})"
             )
 
         base_time, steps = self.config[(i_start, i_end)]
@@ -217,15 +243,6 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
                 end=base_datetime + datetime.timedelta(hours=end_step),
             )
             intervals.append(interval)
-
-        if not (any(i.start == start for i in intervals) or any((-i).start == start for i in intervals)):
-            raise ValueError(
-                f"CycleIntervalProvider: no interval starting at {start} (start={start}, end={end}, {cycle_length_in_hours=})"
-            )
-        if not (any(i.end == end for i in intervals) or any((-i).end == end for i in intervals)):
-            raise ValueError(
-                f"CycleIntervalProvider: no interval ending at {end} (start={start}, end={end}, {cycle_length_in_hours=})"
-            )
 
         return intervals
 
@@ -265,21 +282,6 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
         super().__init__(config)
 
 
-def increments_generator(increment: datetime.timedelta) -> SearchableIntervalGenerator:
-    """Build the generator for a ``from-increments:`` description.
-
-    The archive is base-less and valid-time-indexed: it stores one
-    accumulated field per *increment*-long window, aligned to midnight.
-    """
-    hours = increment.total_seconds() / 3600
-    if not (hours.is_integer() and hours > 0):
-        raise ValueError(f"'from-increments' must be a positive whole number of hours, got {increment}")
-    hours = int(hours)
-    if 24 % hours != 0:
-        raise ValueError(f"'from-increments' must divide 24h, got {increment}")
-    return SearchableIntervalGenerator([["*", [f"{i}-{i + hours}" for i in range(0, 24, hours)]]])
-
-
 def _interval_generator_factory(
     config, source_name: str | None = None, source: dict | None = None
 ) -> IntervalGenerator | list | dict:
@@ -293,9 +295,9 @@ def _interval_generator_factory(
             return AccumulatedFromStartIntervalGenerator(**params)
 
         case {"type": "cycle", **params}:
-            return CycleIntervalProvider(**params)
+            return LookupTableIntervalGenerator(**params)
         case {"cycle": params}:
-            return CycleIntervalProvider(**params)
+            return LookupTableIntervalGenerator(**params)
 
         case {"accumulated-from-previous-step": params}:
             return AccumulatedFromPreviousStepIntervalGenerator(**params)

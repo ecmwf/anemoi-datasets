@@ -75,58 +75,22 @@ can be used at the leaves of a trajectory recipe. Today this means:
 -  :ref:`mars <sources-mars>` — full forecast and forecast-accumulation
    support.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
-   the ``accumulated:`` scheme key; see below.
+   the ``from: {accumulation: ...}`` block; see below.
 
 ``grib-index``, ``fdb``, ``hindcasts`` and ``recentre`` are not
-trajectory-aware in this release. ``from-trajectories:`` is the reverse
-bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
+trajectory-aware in this release. The :ref:`from-trajectories
+<sources-from-trajectories>` *source* is the reverse bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
 fields from a forecast archive; see :ref:`sources-from-trajectories`.
 
 Forecast accumulations
 ======================
 
 Inside a trajectory recipe, ``accumulate:`` produces per-step
-accumulation fields anchored on the caller-imposed basetime. The
-``accumulated:`` scheme key is **required** and picks the archive
-convention (the ``accumulation:`` spelling is a deprecated alias):
-
--  ``from-zero`` — the archive stores accumulations from the basetime
-   (``a(0, step)``). The window ``[bt+sA, bt+sE]`` is reconstructed as
-   ``+a(0, sE) − a(0, sA)``.
--  ``from-previous-step`` — the archive stores per-step increments
-   (``a(step − period, step)``). The window is a single interval.
--  ``from-zero-reset-every-<frequency>`` — from-zero accumulations
-   restarting every ``<frequency>`` of lead time (e.g.
-   ``from-zero-reset-every-24h``).
-
-The archive description keys used for archive accumulations
-(``from-trajectories:`` etc.) are **not allowed** here: the layout
-imposes the basetime, and the covering is determined entirely by it and
-the ``accumulated:`` scheme. Recipe validation also requires
-``steps.start >= period`` (output windows must not straddle the
-basetime).
-
-.. code:: yaml
-
-   base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
-   steps:      {start: 6, end: 30, frequency: 3h}
-
-   input:
-     join:
-       - mars: {type: fc, class: od, param: [q, t], levtype: pl,
-                level: [50], stream: oper, grid: 20./20., expver: "0001"}
-       - pipe:
-           - accumulate:
-               period: 1h
-               accumulated: from-zero
-               source:
-                 mars: {type: fc, class: od, param: [tp], levtype: sfc,
-                        stream: oper, grid: 20./20., expver: "0001"}
-           - rename:
-               param: {tp: tp_accum_1h}
-
-   output:
-     layout: trajectories
+accumulation fields anchored on the caller-imposed basetime, declaring
+the archive's native scheme with ``from.accumulation:``. The
+accumulate source is documented in one place, for both trajectory and
+non-trajectory recipes: see :ref:`accumulate-trajectories` for the
+trajectory case.
 
 Chunking
 ========

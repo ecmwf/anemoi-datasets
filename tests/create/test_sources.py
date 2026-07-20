@@ -166,7 +166,8 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                 {
                     "accumulate": {
                         "period": 3,  # requesting 3 hour accumulation
-                        "from-increments": "1h",  # available data is accumulated every 1 hour
+                        # the source data holds 1h accumulations keyed by validity time
+                        "from": {"accumulation": "1h"},
                         "source": {
                             "grib-index": {
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
@@ -197,6 +198,151 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
 
     with pytest.raises(Exception):
         created = create_dataset(recipe=config_grib_index, output=None)
+
+
+def _build_grib_index_tp_db(get_test_data: callable) -> str:
+    """Build a grib-index DB of 1 h tp increments (23h–02h) and return its path."""
+    filelist = [
+        "2021-01-01_23h00/mod_precip.grib",
+        "2021-01-02_00h00/mod_precip.grib",
+        "2021-01-02_01h00/mod_precip.grib",
+        "2021-01-02_02h00/mod_precip.grib",
+    ]
+    keys = [
+        "class",
+        "date",
+        "expver",
+        "level",
+        "levelist",
+        "levtype",
+        "number",
+        "paramId",
+        "shortName",
+        "step",
+        "stream",
+        "time",
+        "type",
+        "valid_datetime",
+    ]
+    data1 = [get_test_data(f"meteo-france/grib/{file}") for file in filelist]
+    path_db = os.path.dirname(data1[-1])
+
+    from anemoi.datasets.create.sources.grib_index import GribIndex
+
+    index = GribIndex(
+        os.path.join(path_db, "grib-index-accumulate-tp.db"),
+        keys=keys,
+        update=True,
+        overwrite=True,
+        flavour=None,
+    )
+    paths = []
+    for path in data1:
+        if os.path.isfile(path):
+            paths.append(path)
+        else:
+            for root, _, files in os.walk(path):
+                paths.extend(os.path.join(root, f) for f in files)
+    for path in paths:
+        index.add_grib_file(path)
+    return os.path.join(path_db, "grib-index-accumulate-tp.db")
+
+
+@skip_if_offline
+def test_accumulate_grib_index_trajectory(get_test_data: callable) -> None:
+    """A base-less grib-index source fills a ``layout: trajectories`` dataset.
+
+    ``from: {accumulation: 1h}`` is a base-less, validity-time subsource; the
+    output layout imposes ``(base_date, step)``. The 3 h window ending at the
+    row's validity time is reconstructed from the 1 h increments and stamped
+    onto the row — the same physical sum as the gridded build.
+    """
+    indexdb = _build_grib_index_tp_db(get_test_data)
+    source = {"grib-index": {"indexdb": indexdb, "levtype": "sfc", "param": ["tp"]}}
+
+    # Gridded reference: the 3 h accumulation valid at 2021-01-02 02:00.
+    gridded = {
+        "dates": {"start": "2021-01-02T02:00:00", "end": "2021-01-02T02:00:00", "frequency": "1h"},
+        "input": {
+            "pipe": [
+                {"accumulate": {"period": 3, "from": {"accumulation": "1h"}, "source": source}},
+                {"remove-nans": {}},
+            ]
+        },
+    }
+    ds_ref = open_dataset(create_dataset(recipe=gridded, output=None))
+
+    # Trajectory build: one run at 2021-01-01 23:00, step 3h → valid 2021-01-02 02:00.
+    trajectory = {
+        "base_dates": {"start": "2021-01-01T23:00:00", "end": "2021-01-01T23:00:00", "frequency": "24h"},
+        "steps": {"start": "3h", "end": "3h", "frequency": "3h"},
+        "input": {
+            "pipe": [
+                {"accumulate": {"period": 3, "from": {"accumulation": "1h"}, "source": source}},
+                {"remove-nans": {}},
+            ]
+        },
+        "output": {"layout": "trajectories"},
+    }
+    ds_traj = open_dataset(create_dataset(recipe=trajectory, output=None))
+
+    # One relabelled row, holding the same physical accumulation as the gridded field.
+    assert ds_traj.shape[0] == 1, ds_traj.shape
+    assert np.max(np.abs(ds_traj[0] - ds_ref[0])) <= 1e-3, (
+        "trajectory row must equal the gridded 3h accumulation",
+        np.max(np.abs(ds_traj[0] - ds_ref[0])),
+    )
+
+
+@skip_if_offline
+def test_accumulate_grib_index_trajectory_overlapping_rows(get_test_data: callable) -> None:
+    """Overlapping trajectory rows share subsource windows — the dedup path.
+
+    Two steps (2 h, 3 h) from one base give rows valid at 01:00 and 02:00. Their
+    2 h windows ([23:00, 01:00] and [00:00, 02:00]) both need the 1 h increment
+    valid at 01:00, so ``_execute_forecast_reconstructed`` must fetch that
+    subsource interval once and remap it onto both rows. Without the dedup it
+    would be fetched twice and the second copy would raise "Field not used".
+    """
+    indexdb = _build_grib_index_tp_db(get_test_data)
+    source = {"grib-index": {"indexdb": indexdb, "levtype": "sfc", "param": ["tp"]}}
+
+    # Gridded reference: 2 h accumulations valid at 01:00 and 02:00.
+    gridded = {
+        "dates": {"start": "2021-01-02T01:00:00", "end": "2021-01-02T02:00:00", "frequency": "1h"},
+        "input": {
+            "pipe": [
+                {"accumulate": {"period": 2, "from": {"accumulation": "1h"}, "source": source}},
+                {"remove-nans": {}},
+            ]
+        },
+    }
+    ds_ref = open_dataset(create_dataset(recipe=gridded, output=None))
+
+    # Trajectory build: one run at 2021-01-01 23:00, steps 2h and 3h → valid 01:00, 02:00.
+    # An explicit statistics window keeps the single short trajectory in the envelope
+    # (the default envelope would be shorter than the 1h trajectory length here).
+    trajectory = {
+        "base_dates": {"start": "2021-01-01T23:00:00", "end": "2021-01-01T23:00:00", "frequency": "24h"},
+        "steps": {"start": "2h", "end": "3h", "frequency": "1h"},
+        "statistics": {"start": "2021-01-01T00:00:00", "end": "2021-01-03T00:00:00"},
+        "input": {
+            "pipe": [
+                {"accumulate": {"period": 2, "from": {"accumulation": "1h"}, "source": source}},
+                {"remove-nans": {}},
+            ]
+        },
+        "output": {"layout": "trajectories"},
+    }
+    ds_traj = open_dataset(create_dataset(recipe=trajectory, output=None))
+
+    # One base date, two steps (2h → vt 01:00, 3h → vt 02:00); each step equals the
+    # gridded 2h accumulation at its validity time — the shared 01:00 increment was
+    # fetched once and remapped onto both.
+    assert ds_traj.shape[0] == 1 and ds_traj.shape[3] == 2, ds_traj.shape  # (time, var, ens, step, cell)
+    row = ds_traj[0]  # (var, ens, step, cell)
+    assert np.max(np.abs(row[:, :, 0, :] - ds_ref[0])) <= 1e-3, np.max(np.abs(row[:, :, 0, :] - ds_ref[0]))
+    assert np.max(np.abs(row[:, :, 1, :] - ds_ref[1])) <= 1e-3, np.max(np.abs(row[:, :, 1, :] - ds_ref[1]))
 
 
 @skip_if_offline

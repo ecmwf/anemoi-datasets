@@ -13,10 +13,40 @@ import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
 from anemoi.datasets.create.sources.accumulate.covering import ForecastCovering
+from anemoi.datasets.create.sources.accumulate.covering import ValidTimeCovering
 
 
 def _hours(n):
     return datetime.timedelta(hours=n)
+
+
+def test_valid_time_single_field_when_period_equals_length():
+    """A base-less 5h source serving a 5h period is one field — 5h need not divide 24h."""
+    d = datetime.datetime(2024, 6, 1, 7)  # 07:00, not on any midnight grid
+    cover = ValidTimeCovering(length=_hours(5)).cover(d - _hours(5), d)
+    assert cover == [SignedInterval(start=d - _hours(5), end=d, base=None)]
+
+
+def test_valid_time_tiles_and_sums_coarser_period():
+    """A 10h period from a 5h base-less source is two summed 5h fields."""
+    d = datetime.datetime(2024, 6, 1, 7)
+    cover = ValidTimeCovering(length=_hours(5)).cover(d - _hours(10), d)
+    assert cover == [
+        SignedInterval(start=d - _hours(10), end=d - _hours(5), base=None),
+        SignedInterval(start=d - _hours(5), end=d, base=None),
+    ]
+
+
+def test_valid_time_rejects_window_not_multiple_of_length():
+    d = datetime.datetime(2024, 6, 1, 7)
+    with pytest.raises(ValueError, match="whole multiple of the source increment"):
+        ValidTimeCovering(length=_hours(5)).cover(d - _hours(6), d)
+
+
+def test_valid_time_rejects_imposed_basetime():
+    d = datetime.datetime(2024, 6, 1, 7)
+    with pytest.raises(NotImplementedError, match="base-less"):
+        ValidTimeCovering(length=_hours(5)).cover(d - _hours(5), d, basetime=d - _hours(5))
 
 
 def test_from_zero_two_intervals():
@@ -43,12 +73,31 @@ def test_from_zero_collapses_when_window_starts_at_basetime():
     assert cover[0] == SignedInterval(start=bt, end=bt + _hours(6), base=bt)
 
 
-def test_from_previous_step_single_interval():
-    """Window [bt+6, bt+12] with from-previous-step is the single a(6,12) interval."""
+def test_increment_single_interval():
+    """Window [bt+6, bt+12] with a matching per-step duration is the single a(6,12) interval."""
     bt = datetime.datetime(2021, 1, 1, 0)
-    sel = ForecastCovering(period=_hours(6), accumulation="from-previous-step")
+    sel = ForecastCovering(period=_hours(6), accumulation="6h")
     cover = sel.cover(bt + _hours(6), bt + _hours(12), basetime=bt)
     assert cover == [SignedInterval(start=bt + _hours(6), end=bt + _hours(12), base=bt)]
+
+
+def test_increment_reaccumulates_coarser_period():
+    """A period coarser than the increment sums increments: 6h window from 3h fields."""
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(6), accumulation="3h")
+    cover = sel.cover(bt + _hours(6), bt + _hours(12), basetime=bt)
+    assert cover == [
+        SignedInterval(start=bt + _hours(6), end=bt + _hours(9), base=bt),
+        SignedInterval(start=bt + _hours(9), end=bt + _hours(12), base=bt),
+    ]
+    assert all(i.sign == 1 for i in cover)
+
+
+def test_increment_rejects_window_not_multiple_of_increment():
+    bt = datetime.datetime(2021, 1, 1, 0)
+    sel = ForecastCovering(period=_hours(7), accumulation="3h")
+    with pytest.raises(ValueError, match="whole multiple of the source increment"):
+        sel.cover(bt + _hours(5), bt + _hours(12), basetime=bt)
 
 
 def test_straddling_basetime_is_rejected():
@@ -66,7 +115,7 @@ def test_missing_basetime_is_rejected():
 
 
 def test_invalid_accumulation_flag_is_rejected():
-    with pytest.raises(ValueError, match="Invalid 'accumulated' value"):
+    with pytest.raises(ValueError, match="Invalid 'accumulation' value"):
         ForecastCovering(period=_hours(6), accumulation="auto")
 
 

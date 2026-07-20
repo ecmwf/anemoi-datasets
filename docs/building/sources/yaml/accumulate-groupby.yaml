@@ -1,6 +1,5 @@
 accumulate:
   period: 6h
-  from-trajectories: auto
   group_by:
     namespace: mars
     ignore: [date, time, step, expver]  # accumulate fields together across expver

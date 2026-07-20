@@ -87,6 +87,7 @@ optional-dependencies.docs = [
   "sphinx",
   "sphinx-argparse",
   "sphinx-rtd-theme",
+  "sphinxcontrib-mermaid",
 ]
 optional-dependencies.remote = [ "anemoi-utils[s3]", "requests" ]
 optional-dependencies.tests = [

@@ -51,7 +51,6 @@ input:
       - z
   - accumulate:
       period: 6h
-      from-trajectories: auto
       source:
         mars:
           use_cdsapi_dataset: "reanalysis-era5-complete"

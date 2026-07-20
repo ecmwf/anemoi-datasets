@@ -1,6 +1,5 @@
 accumulate:
   period: 6h
-  from-trajectories: auto
   source:
     mars:
       expver: "0001"

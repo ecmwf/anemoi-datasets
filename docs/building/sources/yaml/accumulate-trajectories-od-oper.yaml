@@ -1,9 +1,9 @@
 accumulate:
   period: 6h
-  from-trajectories:
+  from:
     base_dates: {times: ["00:00", "12:00"]}
     steps: {start: 1h, end: 90h, frequency: 1h}
-    accumulated: from-zero
+    accumulation: from-zero
   source:
     mars:
       expver: "0001"

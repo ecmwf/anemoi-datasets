@@ -140,8 +140,9 @@ fields, add it to the accumulate grouping exclusions:
 .. code:: yaml
 
    accumulate:
-     accumulated: from-zero
      period: 12h
+     from:
+       accumulation: from-zero
      group_by:
        namespace: mars
        ignore: [date, time, step, hdate]

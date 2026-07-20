@@ -9,7 +9,6 @@ dates:
 input:
   accumulate:
     period: 3h
-    from-trajectories: auto
     source:
       mars:
         class: l5

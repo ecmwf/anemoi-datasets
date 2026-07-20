@@ -21,6 +21,21 @@ from .retrieval import RequestFilter
 from .retrieval import execute_mars_request
 from .retrieval import fire_prebuilt_requests
 
+_WEEKDAY_NAMES = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def _weekday_name(value: Any) -> str:
+    """Coerce a weekday given as a full name or its exact 3-letter abbreviation to the full name.
+
+    Same dialect as the accumulate ``from.base_dates.day_of_week`` selector:
+    ``monday`` and ``mon`` are accepted, misspellings like ``mondi`` are not.
+    """
+    name = str(value).strip().lower()
+    for full in _WEEKDAY_NAMES:
+        if name in (full, full[:3]):
+            return full
+    raise ValueError(f"mars hindcast: invalid day_of_week {value!r} (expected e.g. 'monday' or 'mon')")
+
 
 def _hindcast_refdate_mapping(config: dict[str, Any]) -> dict[datetime.date, datetime.date]:
     """Build the hdate → refdate lookup table for the mars ``hindcast`` option.
@@ -36,8 +51,9 @@ def _hindcast_refdate_mapping(config: dict[str, Any]) -> dict[datetime.date, dat
     config : dict
         The ``hindcast`` option: ``reference_start``/``reference_end``
         (the reference-date window), optional ``day_of_week`` (e.g.
-        ``[monday, thursday]``) restricting the reference dates, and
-        optional ``years`` (number of hindcast years, default 20).
+        ``[monday, thursday]`` or ``[mon, thu]``) restricting the
+        reference dates, and optional ``years`` (number of hindcast
+        years, default 20).
 
     Returns
     -------
@@ -57,9 +73,9 @@ def _hindcast_refdate_mapping(config: dict[str, Any]) -> dict[datetime.date, dat
 
     kwargs = {}
     if day_of_week is not None:
-        if isinstance(day_of_week, str):
+        if not isinstance(day_of_week, (list, tuple)):
             day_of_week = [day_of_week]
-        kwargs["day_of_week"] = [d.lower() if isinstance(d, str) else d for d in day_of_week]
+        kwargs["day_of_week"] = [_weekday_name(d) for d in day_of_week]
 
     reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
     if not reference_dates:
@@ -117,6 +133,11 @@ class MarsSource(Source):
             The request to rewrite (mutated in place).
         basetime : datetime.datetime
             The model-run basetime of the trajectory item.
+
+        Returns
+        -------
+        dict
+            The rewritten request (the same object as ``request``).
         """
         if (basetime.hour, basetime.minute, basetime.second) != (0, 0, 0):
             raise ValueError(f"mars hindcast: basetime must be at 00Z, got {basetime}")
@@ -190,12 +211,15 @@ class MarsSource(Source):
         per_interval_requests: list[dict[str, Any]] = []
         for request in base_requests:
             for interval in dates.intervals:
-                # MARS sources always have a model-run time; only grib_index is
-                # allowed to produce base-less intervals (flat valid-time index).
-                assert interval.base is not None, (
-                    f"MarsSource received an interval without a basetime: {interval!r}. "
-                    "Only grib_index is expected to produce base=None intervals."
-                )
+                # A mars accumulation is addressed by model run (date/time) + step,
+                # so it can only serve intervals that carry a basetime.
+                if interval.base is None:
+                    raise NotImplementedError(
+                        f"The mars source was asked to serve a base-less (valid-time-indexed) "
+                        f"accumulation interval {interval!r}, but a mars accumulation is addressed "
+                        f"by model run (date/time) + step, so it can only serve intervals that "
+                        f"carry a basetime."
+                    )
                 self.context.trace("🌧️", "interval:", interval)
                 _, r, _ = dates.adjust_request(interval, request)
                 self.context.trace("🌧️", "  adjusted request =", r)
@@ -216,12 +240,16 @@ class MarsSource(Source):
         per_interval_requests: list[dict[str, Any]] = []
         for request in base_requests:
             for interval in dates.intervals:
-                # Trajectory accumulations always go through ForecastCovering, which
-                # sets base=basetime; a base-less interval here would be a bug.
-                assert interval.base is not None, (
-                    f"MarsSource received a forecast interval without a basetime: {interval!r}. "
-                    "Only grib_index is expected to produce base=None intervals."
-                )
+                # Trajectory from-layout accumulations go through ForecastCovering,
+                # which sets base=basetime; a mars accumulation is addressed by model
+                # run (date/time) + step, so a base-less interval cannot be served.
+                if interval.base is None:
+                    raise NotImplementedError(
+                        f"The mars source was asked to serve a base-less (valid-time-indexed) "
+                        f"forecast accumulation interval {interval!r}, but a mars accumulation is "
+                        f"addressed by model run (date/time) + step, so it can only serve "
+                        f"run-anchored intervals."
+                    )
                 self.context.trace(
                     "\U0001f327\ufe0f",
                     "forecast interval:",

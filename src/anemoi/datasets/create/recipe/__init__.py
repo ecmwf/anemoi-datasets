@@ -125,44 +125,53 @@ class Recipe(BaseModel):
     def _check_accumulate(self) -> "Recipe":
         """Layout-dependent rules for accumulate blocks.
 
-        The per-block schema cannot know the output layout, so the two
-        cross-cutting rules live here: trajectory-layout recipes must not
-        carry an archive description (the layout imposes the basetime) and
-        must declare ``accumulated:``; other layouts require a description.
+        ``from:`` describes the *subsource* (what the data is); the output
+        layout decides the *output*.  They are orthogonal, so most ``from:``
+        descriptions are accepted in both layouts — but two rules still need
+        the layout the per-block schema cannot see: the ``from-layout``
+        sentinel is meaningful only under a trajectory layout, and a bare
+        ``from:`` (base-less, validity-time source data) must be checked for
+        compatibility with the requested period.
         """
+        from anemoi.utils.dates import frequency_to_string
+
+        from ..sources.accumulate.description import FromBare
+        from ..sources.accumulate.description import FromTrajectories
+        from ..sources.accumulate.description import check_valid_time_source
+
         is_traj = isinstance(self.output, TrajectoriesOutput)
         blocks = list(_iter_accumulate_blocks(self.input))
         blocks += list(_iter_accumulate_blocks(self.data_sources))
 
         for block in blocks:
-            description_key = block.description_key or ("covering" if block.covering is not None else None)
-            if is_traj:
-                if description_key is not None:
-                    raise ValueError(
-                        f"accumulate: '{description_key}' is not allowed in a "
-                        "'layout: trajectories' recipe — the layout imposes the basetime; "
-                        "remove the archive description and declare 'accumulated:' instead"
-                    )
-                if block.accumulated is None:
-                    raise ValueError(
-                        "accumulate: 'accumulated:' is required in a 'layout: trajectories' recipe"
-                    )
-                if self.steps is not None and self.steps.start < block.period:
-                    from anemoi.utils.dates import frequency_to_string
+            from_ = block.from_
 
-                    raise ValueError(
-                        f"accumulate: 'steps.start' ({frequency_to_string(self.steps.start)}) must "
-                        f"be >= the accumulate 'period' ({frequency_to_string(block.period)}) — "
-                        "output windows must not straddle the basetime"
-                    )
-            else:
-                if description_key is None:
-                    raise ValueError(
-                        "accumulate: an archive description ('from-trajectories:', "
-                        "'from-increments:' or 'from-lookup-table:') is required — "
-                        "block-level 'accumulated:' alone is only valid in "
-                        "'layout: trajectories' recipes"
-                    )
+            # `from-layout` inherits the run grid from the output layout, so it
+            # is meaningful only under a trajectory layout — reject it elsewhere.
+            if isinstance(from_, FromTrajectories) and from_.is_layout_grid and not is_traj:
+                raise ValueError(
+                    "accumulate: 'from.base_dates: from-layout' / 'from.steps: from-layout' is only "
+                    "valid in a 'layout: trajectories' recipe — the sentinel inherits the run grid "
+                    "from the output layout, which only that layout imposes"
+                )
+
+            # A bare `from:` (accumulation only) describes base-less,
+            # validity-time-indexed source data in *any* layout: in a
+            # trajectory recipe the field valid at base_date + step is
+            # relabelled onto that row; elsewhere it is summed by validity time.
+            # Either way the accumulation must be a fixed duration (a base-anchored
+            # source rejects the base-less request later, at dispatch).
+            if isinstance(from_, FromBare):
+                check_valid_time_source(from_, period=block.period)
+
+            if is_traj and self.steps is not None and self.steps.start < block.period:
+                # The output layout imposes a base per row; an output window
+                # must not straddle the basetime.
+                raise ValueError(
+                    f"accumulate: 'steps.start' ({frequency_to_string(self.steps.start)}) must "
+                    f"be >= the accumulate 'period' ({frequency_to_string(block.period)}) — "
+                    "output windows must not straddle the basetime"
+                )
         return self
 
     @model_validator(mode="after")

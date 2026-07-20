@@ -11,7 +11,6 @@ import datetime
 import hashlib
 import json
 import logging
-import warnings
 from typing import Any
 
 from anemoi.transform import FieldList
@@ -28,17 +27,18 @@ from .accumulator import Accumulator
 from .accumulator import Logs
 from .covering import AutoCovering
 from .covering import ForecastCovering
+from .covering import ValidTimeCovering
 from .covering import covering_factory
-from .description import ACCUMULATED_VALUES
-from .description import DESCRIPTION_KEYS
-from .description import MIGRATE_HINT
 from .description import AccumulateSchema
+from .description import FromBare
+from .description import FromLookupTable
 from .description import FromTrajectories
 from .description import TrajectoryIntervalGenerator
+from .description import check_valid_time_source
 from .description import infer_from_trajectories
+from .description import normalise_from
 from .field_to_interval import FieldToInterval
-from .interval_generators import CycleIntervalProvider
-from .interval_generators import increments_generator
+from .interval_generators import LookupTableIntervalGenerator
 
 LOG = logging.getLogger(__name__)
 
@@ -83,18 +83,22 @@ class AccumulateSource(Source):
         availability=None,
         covering=None,
         accumulation: str | None = None,
-        accumulated: str | None = None,
-        from_trajectories: Any = None,
-        from_increments: str | int | datetime.timedelta | None = None,
-        from_lookup_table: dict | None = None,
         patch: Any = None,
         group_by: dict | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(context)
 
-        # Raw (non-pydantic-validated) configs spell the description keys with
-        # hyphens; accept both spellings.
+        # `from` is a Python keyword, so it can only arrive through kwargs.
+        # A raw recipe spells it `from:`; a recipe that has been through the
+        # pydantic schema is dumped by field name and spells it `from_`.
+        from_keys = [k for k in ("from", "from_") if k in kwargs]
+        if len(from_keys) > 1:
+            raise ValueError("accumulate: specify 'from' once, not both 'from' and 'from_'")
+        from_ = kwargs.pop(from_keys[0], None) if from_keys else None
+
+        # Raw (non-pydantic-validated) configs may spell keys with hyphens;
+        # accept both spellings.
         def _pop_hyphenated(name: str, value: Any) -> Any:
             alias = name.replace("_", "-")
             if alias in kwargs:
@@ -103,9 +107,6 @@ class AccumulateSource(Source):
                 value = kwargs.pop(alias)
             return value
 
-        from_trajectories = _pop_hyphenated("from_trajectories", from_trajectories)
-        from_increments = _pop_hyphenated("from_increments", from_increments)
-        from_lookup_table = _pop_hyphenated("from_lookup_table", from_lookup_table)
         group_by = _pop_hyphenated("group_by", group_by)
         if kwargs:
             raise TypeError(f"accumulate: unknown argument(s) {sorted(kwargs)}")
@@ -113,80 +114,23 @@ class AccumulateSource(Source):
         if "accumulation_period" in source:
             raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
 
-        # ── deprecated spellings (kept for one release) ──────────────────
-        if accumulation is not None:
-            if accumulated is not None:
-                raise ValueError("Cannot specify both 'accumulated' and its deprecated alias 'accumulation'.")
-            warnings.warn(
-                f"'accumulation:' is deprecated; use 'accumulated:' instead ({MIGRATE_HINT}).",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            accumulated = accumulation
-
-        if availability is not None and covering is not None:
-            raise ValueError(
-                "Cannot specify both 'availability' (deprecated) and 'covering' " "in the same accumulate block."
-            )
-        if availability is not None:
-            covering = {"auto": availability}
-        if covering is not None:
-            warnings.warn(
-                "'covering:'/'availability:' are deprecated; describe the archive with "
-                "'from-trajectories:', 'from-increments:' or 'from-lookup-table:' instead "
-                f"({MIGRATE_HINT}).",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-        # ── exactly one archive description ──────────────────────────────
-        descriptions = {
-            "from-trajectories": from_trajectories,
-            "from-increments": from_increments,
-            "from-lookup-table": from_lookup_table,
-            "covering": covering,
-        }
-        given = [k for k, v in descriptions.items() if v is not None]
-        if len(given) > 1:
-            raise ValueError(f"accumulate: only one archive description is allowed, got {given}")
-        self._description_key = given[0] if given else None
-
-        if accumulated is not None and self._description_key is not None:
-            raise ValueError(
-                f"accumulate: '{self._description_key}' and block-level 'accumulated:' are "
-                "mutually exclusive — in archive recipes 'accumulated:' belongs inside "
-                "'from-trajectories:'; bare 'accumulated:' is for trajectory-layout recipes"
-            )
-
-        if from_trajectories is not None and from_trajectories != "auto":
-            if not isinstance(from_trajectories, FromTrajectories):
-                from_trajectories = FromTrajectories.model_validate(from_trajectories)
-        if from_increments is not None:
-            from_increments = frequency_to_timedelta(from_increments)
+        # ── fold every spelling into `from:` (shared with the schema) ────
+        # warn=False: deprecation warnings are a recipe-validation concern;
+        # by the time the source is built the schema has already warned once.
+        self._from, self.covering = normalise_from(
+            from_=from_,
+            accumulation=accumulation,
+            covering=covering,
+            availability=availability,
+            warn=False,
+        )
 
         self.source = source
         self.period = frequency_to_timedelta(period)
-        self.covering = covering
-        self.accumulated = accumulated
-        self.from_trajectories = from_trajectories
-        self.from_increments = from_increments
-        self.from_lookup_table = from_lookup_table
         self.patch = patch
         self.group_by = patch_groupby_keys(group_by)
         self._field_to_interval = FieldToInterval(patch)
         self._source_name = self._prepare_source()
-
-        if from_increments is not None:
-            if self.period % from_increments != datetime.timedelta(0):
-                raise ValueError(
-                    f"accumulate: 'from-increments' ({from_increments}) must divide 'period' ({self.period})"
-                )
-            if self._source_name in ("mars", "fdb"):
-                raise ValueError(
-                    f"accumulate: 'from-increments' describes a base-less, valid-time-indexed "
-                    f"archive, but '{self._source_name}' fields are anchored to a model run — "
-                    "use 'from-trajectories:' instead"
-                )
 
     # ── shared helpers ───────────────────────────────────────────────
 
@@ -284,9 +228,6 @@ class AccumulateSource(Source):
             values, key, field_interval, log = self._extract_field_info(field)
             logs.append([str(field), log, field_interval, [], []])
 
-            if field_interval.end <= field_interval.start:
-                logs.raise_error("Invalid field interval with end <= start", field=field, field_interval=field_interval)
-
             field_used = False
             for target in targets:
                 # The target defines the accumulation we want to produce,
@@ -323,48 +264,60 @@ class AccumulateSource(Source):
 
     # ── dispatch branches ────────────────────────────────────────────
 
-    def _archive_covering(self):
-        """Build the Covering for the archive (validity-date) path from the description."""
-        if self._description_key == "from-trajectories":
-            description = self.from_trajectories
-            if description == "auto":
-                description = infer_from_trajectories(self._source_name, self.source[self._source_name])
-                LOG.info("from-trajectories: auto resolved to: %s", description.model_dump(mode="json"))
+    def _resolved_from(self):
+        """The ``from:`` description, recognising it from the source when omitted.
+
+        An omitted ``from:`` (``self._from is None``) with no legacy covering means
+        "recognise the source data from the source" — resolved here against the
+        (well-known MARS) source. When a legacy ``covering:`` is present ``from:``
+        is ``None`` too, but the covering owns the description, so it is returned
+        unchanged for the legacy branch.
+        """
+        if self._from is None and self.covering is None:
+            description = infer_from_trajectories(self._source_name, self.source[self._source_name])
+            LOG.info("from: (omitted) recognised as: %s", description.model_dump(mode="json"))
+            return description
+        return self._from
+
+    def _searched_covering(self):
+        """Build the Covering for the validity-date path from the description."""
+        description = self._resolved_from()
+
+        if isinstance(description, FromTrajectories):
             return AutoCovering(TrajectoryIntervalGenerator(description))
 
-        if self._description_key == "from-increments":
-            return AutoCovering(increments_generator(self.from_increments))
+        if isinstance(description, FromBare):
+            # A bare `from:` is base-less, validity-time-indexed source data;
+            # `accumulation` is a duration. The window is tiled directly (no
+            # search, no midnight alignment), so the length need not divide 24h.
+            check_valid_time_source(description, period=self.period)
+            return ValidTimeCovering(description.duration)
 
-        if self._description_key == "from-lookup-table":
-            return AutoCovering(CycleIntervalProvider(**self.from_lookup_table))
+        if isinstance(description, FromLookupTable):
+            return AutoCovering(LookupTableIntervalGenerator(**description.entries()))
 
         # Deprecated 'covering:'/'availability:' — the legacy machinery.
         return covering_factory(self.covering, self._source_name, self.source[self._source_name])
 
     def _description_hash_part(self) -> str:
-        """A stable string identifying the archive description, for the source cache key."""
-        description = {
-            "from-trajectories": self.from_trajectories,
-            "from-increments": self.from_increments,
-            "from-lookup-table": self.from_lookup_table,
-            "covering": self.covering,
-        }.get(self._description_key)
-        if isinstance(description, FromTrajectories):
-            return f"{self._description_key}:{description.model_dump_json()}"
-        return f"{self._description_key}:{json.dumps(description, sort_keys=True, default=str)}"
+        """A stable string identifying the source-data description, for the source cache key."""
+        if self._from is None:
+            if self.covering is not None:
+                return f"covering:{json.dumps(self.covering, sort_keys=True, default=str)}"
+            # Omitted `from:` — recognised from the source at build time.
+            return "from:recognise-from-source"
+        return f"from:{self._from.model_dump_json()}"
 
     def execute_valid_dates(self, dates: ValidDates) -> Any:
-        """Handle archive (validity-date) accumulations."""
-        if self._description_key is None:
-            raise ValueError(
-                "accumulate: describe the archive with exactly one of "
-                f"{', '.join(repr(k) for k in DESCRIPTION_KEYS)}. See "
-                "https://anemoi.readthedocs.io/projects/datasets/en/latest/building/sources/accumulate.html"
-            )
+        """Handle validity-date accumulations.
 
+        An omitted ``from:`` with no legacy covering is not an error — it means
+        the source data is recognised from the source (see :meth:`_resolved_from`);
+        recognition of a non-well-known source fails loudly at that point.
+        """
         LOG.debug("💬 source for accumulations: %s", self.source)
         source_object = self._create_source_object(self._description_hash_part())
-        covering_obj = self._archive_covering()
+        covering_obj = self._searched_covering()
 
         # generate the interval coverage for every date
         coverages = {}
@@ -396,22 +349,40 @@ class AccumulateSource(Source):
         return self._finalise(accumulators, fields)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
-        """Handle forecast (trajectory) accumulations."""
-        if self.accumulated is None:
-            raise ValueError(
-                f"Argument 'accumulated' (one of {ACCUMULATED_VALUES}) "
-                "is mandatory for accumulate sources used in trajectory recipes."
-            )
-        if self._description_key is not None:
-            raise ValueError(
-                f"accumulate: '{self._description_key}' is not allowed in a trajectory-layout "
-                "recipe — the layout imposes the basetime; remove the archive description "
-                "and declare 'accumulated:' on the accumulate block instead."
-            )
+        """Handle forecast (trajectory) accumulations.
 
+        ``from:`` describes the subsource; the trajectory *output* is decided
+        by the layout — the two are orthogonal, so the subsource is resolved
+        exactly as in the validity-date path and only the output stamping
+        differs.  There are two families:
+
+        - ``from-layout`` :class:`FromTrajectories` — the subsource *is* the
+          run the layout imposes, so the covering is the basetime-anchored
+          :class:`ForecastCovering` (no search over the archive).
+        - every other subsource (a bare, base-less valid-time source; an
+          explicit-grid or recognised (omitted ``from:``) trajectory archive;
+          a ``lookup-table``) —
+          reconstructed by the same base-less covering *search* as
+          :meth:`execute_valid_dates`; only the result is stamped as a forecast
+          field at ``(basetime, step)``.
+        """
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
-        source_object = self._create_source_object(self.accumulated)
-        covering = ForecastCovering(period=self.period, accumulation=self.accumulated)
+        description = self._resolved_from()
+
+        if isinstance(description, FromTrajectories) and description.is_layout_grid:
+            return self._execute_forecast_from_layout(dates, description)
+
+        return self._execute_forecast_reconstructed(dates)
+
+    def _execute_forecast_from_layout(self, dates: ForecastDates, description: FromTrajectories) -> Any:
+        """Forecast accumulations for a ``from-layout`` subsource (the layout's own run).
+
+        The layout imposes the basetime per row, so the covering is the trivial
+        signed decomposition of :class:`ForecastCovering` — no search over the
+        source data.
+        """
+        source_object = self._create_source_object(description.accumulation)
+        covering = ForecastCovering(period=self.period, accumulation=description.accumulation)
 
         coverages: dict = {}
         for vt, bt in dates.items:
@@ -427,5 +398,41 @@ class AccumulateSource(Source):
         targets = [(vt, bt) for vt, bt in dates.items]
 
         accumulators, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
+
+        return self._finalise(accumulators, fields)
+
+    def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
+        """Forecast accumulations reconstructed from a searched subsource covering.
+
+        Shares the covering *search* of :meth:`execute_valid_dates` (via
+        :meth:`_searched_covering`): each output window ``[vt − period, vt]`` is
+        covered from the subsource independently of the output basetime.  The
+        covering intervals carry the subsource's own base (``None`` for a
+        base-less valid-time source, the archive run for a trajectory archive),
+        so the inner source fetches them unchanged; the accumulated result is
+        stamped as a forecast field at the layout's ``(basetime, step)`` because
+        the accumulator is given that basetime.
+        """
+        source_object = self._create_source_object(self._description_hash_part())
+        covering_obj = self._searched_covering()
+
+        items = list(dates.items)
+        coverages: dict = {}
+        for vt, bt in items:
+            coverages[(vt, bt)] = covering_obj.cover(vt - self.period, vt)
+            LOG.debug("  Reconstructed covering for (vt=%s, bt=%s):", vt, bt)
+            for c in coverages[(vt, bt)]:
+                LOG.debug("    %s", c)
+
+        # Overlapping trajectory rows can request the same subsource window more
+        # than once; fetch each interval once (matching remaps it to every row).
+        seen: dict = {}
+        for vt, bt in items:
+            for i in coverages[(vt, bt)]:
+                seen.setdefault(i, None)
+        intervals = Intervals(dates=sorted({vt for vt, _ in items}), intervals=list(seen))
+        targets = [(vt, bt) for vt, bt in items]
+
+        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
 
         return self._finalise(accumulators, fields)

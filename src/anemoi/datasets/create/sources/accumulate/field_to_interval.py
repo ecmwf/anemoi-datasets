@@ -70,8 +70,7 @@ class FieldToInterval:
     def __call__(self, field) -> SignedInterval:
         base_datetime = self._base_datetime(field)
 
-        endStep = field.metadata("endStep")
-        startStep = field.metadata("startStep")
+        startStep, endStep, valid_date = self._steps_and_validity(field, base_datetime)
 
         LOG.debug(f" 🌧️:    field before patching: {startStep=}, {endStep=}")
 
@@ -94,12 +93,59 @@ class FieldToInterval:
 
         interval = SignedInterval(start=base_datetime + start_step, end=base_datetime + end_step, base=base_datetime)
 
-        date_str = str(field.metadata("validityDate")).zfill(8)
-        time_str = str(field.metadata("validityTime")).zfill(4)
-        valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
         assert valid_date == interval.max, (valid_date, interval)
 
         return interval
+
+    @staticmethod
+    def _steps_and_validity(field, base_datetime: datetime.datetime) -> tuple[int, int, datetime.datetime]:
+        """The field's ``(startStep, endStep, valid_date)`` in whole hours.
+
+        GRIB-backed source fields carry the ``startStep``/``endStep``/
+        ``validityDate`` keys directly. In-memory fields that carry only the
+        earthkit time/proc *components* (e.g. those built with
+        ``Field.from_numpy``) do not; there the window is derived from
+        ``time.step`` and ``proc.time_value`` (``startStep = step − length``).
+
+        Only the *absence* of the GRIB step keys selects the in-memory path
+        (a missing key raises ``KeyError``/``AttributeError``); any other error
+        — including a malformed ``validityDate`` — is left to propagate rather
+        than being silently rerouted.
+        """
+        end_step = FieldToInterval._optional_metadata(field, "endStep")
+        if end_step is not None:
+            start_step = field.metadata("startStep")
+            date_str = str(field.metadata("validityDate")).zfill(8)
+            time_str = str(field.metadata("validityTime")).zfill(4)
+            valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
+            return start_step, end_step, valid_date
+
+        # In-memory field: derive the window from the earthkit time/proc components.
+        step_hours = int(field.time.step().total_seconds() // 3600)
+        length = field.proc.time_value()
+        if length is None:
+            raise ValueError(
+                "accumulate: cannot determine the accumulation window of an in-memory field — "
+                "it carries no GRIB 'startStep'/'endStep' and its earthkit 'proc.time_value' "
+                "(the accumulation length) is None."
+            )
+        length_hours = int(length.total_seconds() // 3600)
+        valid_date = base_datetime + datetime.timedelta(hours=step_hours)
+        return step_hours - length_hours, step_hours, valid_date
+
+    @staticmethod
+    def _optional_metadata(field, key: str):
+        """Return the GRIB metadata *key*, or ``None`` when the field does not carry it.
+
+        A GRIB-backed field exposes keys such as ``endStep``; an in-memory field
+        does not and raises ``KeyError``/``AttributeError`` — reported here as
+        ``None`` so the caller can take the in-memory path. Any other exception
+        is not caught.
+        """
+        try:
+            return field.metadata(key)
+        except (KeyError, AttributeError):
+            return None
 
     @staticmethod
     def _base_datetime(field) -> datetime.datetime:

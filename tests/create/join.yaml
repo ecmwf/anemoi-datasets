@@ -28,7 +28,6 @@ input:
 
     - accumulate:
         period: 6
-        from-trajectories: auto
         source:
           mars:
             <<: *mars_request

@@ -11,15 +11,15 @@ input:
   accumulate:
     period: 1h
 
-    from-trajectories:
+    from:
       # monthly research runs: one 00Z run on the 1st of each month,
       # hourly steps out to 720h, accumulated from zero but the DATA
       # resets every 24h of lead time
       base_dates:
         times: ["00:00"]
         day_of_month: 1
-      steps: {start: 0h, end: 720h, frequency: 1h}
-      accumulated: from-zero-reset-every-24h
+      steps: {start: 1h, end: 720h, frequency: 1h}
+      accumulation: from-zero-reset-every-24h
 
     patch:
       # because the data wrongly encode start_step as 0 even after 24

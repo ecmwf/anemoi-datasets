@@ -15,9 +15,9 @@ This depends on the data's native format. For an accumulated field (say
 -  the `period` over which to accumulate (e.g 6h).
 -  the desired `validity_time` at which accumulation stops and for which
    the value is valid.
--  how the data is already accumulated in the archive — described by the
-   `from-trajectories` / `from-increments` / `from-lookup-table` keys
-   (see :ref:`sources-accumulate`).
+-  how the data is already accumulated in the archive — described by
+   the `from:` block, whose `type:` is one of `trajectories`,
+   `valid-time` or `lookup-table` (see :ref:`sources-accumulate`).
 
 The resulting field is then "`tp` accumulated over `period`
 hours up to `validity_time`". In a common case, dataset features, e.g.,
@@ -71,8 +71,9 @@ That recipe will generate the following dataset:
    🔋 Dataset ready, last update 26 seconds ago.
    📊 Statistics ready.
 
-The "legacy" way to do is the following (deprecated —
-``anemoi-datasets recipe --migrate`` converts it to the recipe above)
+Older recipes used the ``accumulations:`` source shown below. That
+source is **no longer accepted** by the runtime; run
+``anemoi-datasets recipe --migrate`` to rewrite it to the recipe above.
 
 .. literalinclude:: yaml/recipe-accumulation-era.yaml
 

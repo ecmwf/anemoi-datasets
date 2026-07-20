@@ -116,6 +116,17 @@ def test_mapping_rejects_unknown_options() -> None:
         _hindcast_refdate_mapping({**HINDCAST, "typo_option": 1})
 
 
+def test_day_of_week_accepts_abbreviations() -> None:
+    """Same dialect as the accumulate `from.base_dates.day_of_week` selector."""
+    abbreviated = _hindcast_refdate_mapping({**HINDCAST, "day_of_week": ["mon", "thu"]})
+    assert abbreviated == _hindcast_refdate_mapping(HINDCAST)
+
+    with pytest.raises(ValueError, match="invalid day_of_week"):
+        _hindcast_refdate_mapping({**HINDCAST, "day_of_week": ["m"]})
+    with pytest.raises(ValueError, match="invalid day_of_week"):
+        _hindcast_refdate_mapping({**HINDCAST, "day_of_week": ["mondi"]})
+
+
 # ---------------------------------------------------------------------------
 # Request construction
 # ---------------------------------------------------------------------------
