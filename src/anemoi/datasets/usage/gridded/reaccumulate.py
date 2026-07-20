@@ -65,8 +65,40 @@ class Reaccumulate(Forwards):
         if unknown:
             raise ValueError(f"reaccumulate: unknown variable(s) {unknown}, available: {list(name_to_index)}")
 
+        self._check_accumulation_periods(dataset, variables, step * dataset.frequency)
+
         self.accumulated_variables: list[str] = list(variables)
         self.accumulated_indices: list[int] = [name_to_index[v] for v in variables]
+
+    @staticmethod
+    def _check_accumulation_periods(
+        dataset: Dataset, variables: list[str], frequency: datetime.timedelta
+    ) -> None:
+        """Fail if a variable's own accumulation period (from the dataset's
+        metadata) is not a proper factor of the requested output frequency,
+        since summing raw timesteps whose accumulation window doesn't evenly
+        tile the requested period would silently produce an incorrect total.
+
+        Variables with no recorded accumulation period (missing/empty
+        metadata) are skipped.
+        """
+        from anemoi.transform.variables import Variable
+
+        metadata = dataset.variables_metadata
+        for var in variables:
+            meta = metadata.get(var)
+            if not meta:
+                continue
+
+            period = Variable.from_dict(var, meta).period
+            if not period:
+                continue
+
+            if frequency % period != datetime.timedelta(0):
+                raise ValueError(
+                    f"reaccumulate: variable {var!r} has an accumulation period of {period}, which is not "
+                    f"a proper factor of the requested frequency {frequency}."
+                )
 
     def __len__(self) -> int:
         return len(self.forward) // self.step
