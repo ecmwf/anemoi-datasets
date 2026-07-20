@@ -820,6 +820,43 @@ def test_subset_8() -> None:
 
 
 @mockup_open_zarr
+def test_subset_negative_indexing() -> None:
+    """Test negative indexing on a subset, including tuple indexes."""
+    ds = open_dataset("test-2021-2023-1h-o96-abcd", start=2022, end=2022)
+    assert isinstance(ds, Subset)
+    full = ds[:]
+
+    for index in (
+        -1,
+        -2,
+        -3,
+        slice(-3, None),
+        slice(-5, -2),
+        (-1,),
+        (-1, 0),
+        (-2, -1),
+        (-3, 1, 0),
+        (0, -1),
+        (slice(2, 5), -1),
+        (-1, -1, -1, -1),
+        (-1, slice(-3, None)),
+    ):
+        expected = full[index]
+        result = ds[index]
+        assert result.shape == expected.shape, index
+        assert (result == expected).all(), index
+
+
+@mockup_open_zarr
+def test_interpolate_frequency_negative_indexing() -> None:
+    """Test negative indexing on an interpolated-frequency subset."""
+    ds = open_dataset("test-2021-2023-6h-o96-abcd", start=2022, end=2022, interpolate_frequency="1h")
+    assert (ds[-1] == ds[len(ds) - 1]).all()
+    assert (ds[-2] == ds[len(ds) - 2]).all()
+    assert (ds[-3] == ds[len(ds) - 3]).all()
+
+
+@mockup_open_zarr
 def test_select_1() -> None:
     """Test selecting variables from a dataset (case 1)."""
     test = DatasetTester("test-2021-2021-6h-o96-abcd", select=["b", "d"])
