@@ -225,7 +225,7 @@ class Reaccumulate(Forwards):
 
         # Non-accumulated variables only need the raw timestep matching this
         # row's labelled date, and any variable/grid subsetting is pushed
-        # down into the forward fetch. 
+        # down into the forward fetch.
         result = self.forward[(slice(label_index, label_index + 1), var_index) + other_rest][0]
 
         if not self.accumulated_indices:

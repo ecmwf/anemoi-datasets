@@ -32,7 +32,6 @@ from anemoi.datasets.usage.gridded.ensemble import Ensemble
 from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.masked import Masking
-from anemoi.datasets.usage.gridded.reaccumulate import Reaccumulate
 from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
