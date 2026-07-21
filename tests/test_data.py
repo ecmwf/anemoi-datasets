@@ -32,6 +32,7 @@ from anemoi.datasets.usage.gridded.ensemble import Ensemble
 from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.masked import Masking
+from anemoi.datasets.usage.gridded.reaccumulate import Reaccumulate
 from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
@@ -1526,6 +1527,93 @@ def test_rolling_average() -> None:
 
     diff = test.ds[0] - (initial.ds[0:5].sum(axis=0) / 5)
     assert np.abs(diff).max() < 1e-5
+
+
+# `default_test_indexing` hard-codes a mixed variable-list index `(1, 2)` (i.e. "b",
+# "c" for the "abcd" fixture). Accumulating "b" means that list always mixes an
+# accumulated and a non-accumulated variable, exercising the acc_positions branch of
+# `_get_one` -- the exact shape that triggered the bare-int-plus-list-index axis-order
+# bug found during manual verification.
+
+
+@mockup_open_zarr
+def test_reaccumulate_block() -> None:
+    """reaccumulate= + frequency=: non-overlapping blocks, time axis collapses."""
+    initial = DatasetTester("test-2021-2021-6h-o96-abcd")
+    test = DatasetTester(
+        "test-2021-2021-6h-o96-abcd",
+        reaccumulate=["b"],
+        frequency="12h",
+    )
+
+    n = len(initial.ds) // 2
+    assert test.ds.shape == (n, 4, 1, 10)
+    assert test.ds.frequency == datetime.timedelta(hours=12)
+
+    a_index = initial.ds.name_to_index["a"]
+    b_index = initial.ds.name_to_index["b"]
+
+    raw_b = initial.ds[: n * 2, b_index]
+    expected_b = raw_b.reshape(n, 2, *raw_b.shape[1:]).sum(axis=1)
+    assert np.allclose(test.ds[:, b_index], expected_b)
+
+    # non-accumulated variable is taken from the last raw timestep of each block
+    raw_a = initial.ds[1 : n * 2 : 2, a_index]
+    assert np.allclose(test.ds[:, a_index], raw_a)
+
+    assert (test.ds.dates == initial.ds.dates[1 : n * 2 : 2]).all()
+
+    default_test_indexing(test.ds)
+
+
+@mockup_open_zarr
+def test_reaccumulate_rolling() -> None:
+    """rolling_accumulate= + window=: sliding window, native frequency kept."""
+    initial = DatasetTester("test-2021-2021-6h-o96-abcd")
+    test = DatasetTester(
+        "test-2021-2021-6h-o96-abcd",
+        rolling_accumulate=["b"],
+        window=(-1, 0, "freq"),
+    )
+
+    n = len(initial.ds) - 1
+    assert test.ds.shape == (n, 4, 1, 10)
+    assert test.ds.frequency == datetime.timedelta(hours=6)
+
+    a_index = initial.ds.name_to_index["a"]
+    b_index = initial.ds.name_to_index["b"]
+
+    raw_b = initial.ds[:, b_index]
+    expected_b = raw_b[:n] + raw_b[1 : n + 1]
+    assert np.allclose(test.ds[:, b_index], expected_b)
+
+    # non-accumulated variable is taken from each row's own labelled timestep
+    assert np.allclose(test.ds[:, a_index], initial.ds[1 : n + 1, a_index])
+
+    assert (test.ds.dates == initial.ds.dates[1 : n + 1]).all()
+
+    default_test_indexing(test.ds)
+
+
+@mockup_open_zarr
+def test_reaccumulate_unknown_variable() -> None:
+    with pytest.raises(ValueError):
+        DatasetTester("test-2021-2021-6h-o96-abcd", reaccumulate=["zz"], frequency="12h")
+
+    with pytest.raises(ValueError):
+        DatasetTester("test-2021-2021-6h-o96-abcd", rolling_accumulate=["zz"], window=(-1, 0, "freq"))
+
+
+@mockup_open_zarr
+def test_reaccumulate_requires_frequency() -> None:
+    with pytest.raises(ValueError):
+        DatasetTester("test-2021-2021-6h-o96-abcd", reaccumulate=["a"])
+
+
+@mockup_open_zarr
+def test_reaccumulate_rolling_requires_window() -> None:
+    with pytest.raises(ValueError):
+        DatasetTester("test-2021-2021-6h-o96-abcd", rolling_accumulate=["a"])
 
 
 @mockup_open_zarr
