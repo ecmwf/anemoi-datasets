@@ -197,7 +197,18 @@ class Dataset(ABC, Sized):
             frequency = kwargs.pop("frequency")
             step = self._frequency_to_step(frequency)
 
-            return Reaccumulate(self, step, variables)._subset(**kwargs).mutate()
+            return Reaccumulate.from_step(self, step, variables)._subset(**kwargs).mutate()
+
+        if "rolling_accumulate" in kwargs:
+            Reaccumulate = self.usage_factory_load("Reaccumulate")
+
+            if "window" not in kwargs:
+                raise ValueError("`rolling_accumulate` requires `window` to also be specified")
+
+            variables = kwargs.pop("rolling_accumulate")
+            window = kwargs.pop("window")
+
+            return Reaccumulate.from_window(self, window, variables)._subset(**kwargs).mutate()
 
         if "frequency" in kwargs:
             Subset = self.usage_factory_load("Subset")
