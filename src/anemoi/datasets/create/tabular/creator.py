@@ -94,6 +94,18 @@ class TabularCreator(Creator):
         """
         os.makedirs(self.work_dir, exist_ok=True)
 
+        # Guard against the pipeline producing columns that differ (in identity
+        # or order) from the schema recorded at initialisation. The fragments
+        # are saved as bare arrays, so this is the only place the column names
+        # still exist; checking here also catches a task running mismatched code.
+        expected = dataset.store.attrs["meta_variables"] + dataset.store.attrs["variables"]
+        actual = result.variables
+        assert actual == expected, (
+            f"Column schema mismatch for {result.start_range}..{result.end_range}:\n"
+            f"  pipeline produced: {actual}\n"
+            f"  metadata declares: {expected}"
+        )
+
         # Split large arrays into multiple files so that the finalisation step
         # does not need to load huge files into memory.
 
