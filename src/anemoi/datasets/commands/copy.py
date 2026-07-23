@@ -417,7 +417,7 @@ class ZarrCopier:
         data = source[name][...]
         if name in target:
             del target[name]
-        target.create_dataset(name, data=data, shape=data.shape)
+        target.create_array(name, data=data)
         LOG.info(f"Copied {name}")
 
     def children(self, group):
@@ -500,7 +500,7 @@ class ZarrCopier:
         """
 
         if "_copy" not in target:
-            target.create_dataset(
+            target.create_array(
                 "_copy",
                 shape=(source["data"].shape[0],),
                 dtype=bool,

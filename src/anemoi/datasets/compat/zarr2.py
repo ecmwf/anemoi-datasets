@@ -125,7 +125,39 @@ def _monkey_patch_create_array(
     name: str,
     **kwargs,
 ) -> zarr.core.Array:
+    # Translate the zarr3 ``create_array`` API onto zarr2's ``create_dataset``
+    # so call sites can be written once against the zarr3 signature.
+
+    # zarr3 renamed ``compressor`` to ``compressors``.
+    if "compressors" in kwargs:
+        kwargs["compressor"] = kwargs.pop("compressors")
+
+    # zarr3 forbids passing both ``data`` and ``shape``; drop the redundant
+    # ``shape`` as it is implied by ``data``.
+    if kwargs.get("data") is not None:
+        kwargs.pop("shape", None)
+
     return group.create_dataset(name, **kwargs)
 
 
 Group.create_array = _monkey_patch_create_array
+
+
+def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.Blosc":
+    """Return a Blosc compressor for zarr2.
+
+    Parameters
+    ----------
+    cname : str
+        The Blosc compressor name.
+    clevel : int
+        The compression level.
+    shuffle : int
+        The shuffle mode (0=none, 1=byte, 2=bit).
+
+    Returns
+    -------
+    zarr.Blosc
+        The Blosc compressor.
+    """
+    return zarr.Blosc(cname=cname, clevel=clevel, shuffle=shuffle)
