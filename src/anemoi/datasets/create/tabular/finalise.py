@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import psutil
 import tqdm
-import zarr
 
 from anemoi.datasets.buffering import WriteBehindBuffer
+from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
 from anemoi.datasets.epochs import array_to_epoch
@@ -260,7 +260,6 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
     """
 
     try:
-
         # Not mmapping gives up a 3x speedup here, but may lead to memkills on large files
         extra = dict(mmap_mode="r")
         extra = dict()  # --- IGNORE ---
@@ -419,6 +418,7 @@ def _find_duplicate_and_overlapping_dates(
         Whether to overwrite original files or create deduped copies.
     max_fragment_size : int
         Maximum size of each fragment file in bytes. This is used to estimate memory requirements for parallel
+        processing.
     max_workers : int, optional
         Maximum number of parallel workers to use. If None, uses all available CPUs.
 
@@ -469,7 +469,6 @@ def _find_duplicate_and_overlapping_dates(
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-
         # Read all fragments in parallel
 
         tasks: list[Any] = []
@@ -486,7 +485,7 @@ def _find_duplicate_and_overlapping_dates(
                     fragments[fragment.file_path] = fragment
                 pbar.update(1)
 
-        LOG.info(f"Loaded {len(fragments):,} fragments in {time.time()-now:.2f} seconds")
+        LOG.info(f"Loaded {len(fragments):,} fragments in {time.time() - now:.2f} seconds")
 
         now = time.time()
         LOG.info("Checking overlaps")
@@ -494,7 +493,6 @@ def _find_duplicate_and_overlapping_dates(
         # Iteratively resolve overlaps until none remain
         seen = set()
         while True:
-
             tasks = []
             prev: Fragment | None = None
             for fragment in sorted(fragments.values(), key=lambda x: x.first_date):
@@ -526,7 +524,7 @@ def _find_duplicate_and_overlapping_dates(
         # that the number of workers, so we send dummy tasks to avoid it.
 
         LOG.info("Overlap checking complete")
-        LOG.info(f"Resolved overlaps in {time.time()-now:.2f} seconds")
+        LOG.info(f"Resolved overlaps in {time.time() - now:.2f} seconds")
 
     return _sort_and_chain_fragments(list(fragments.values()))
 
@@ -700,6 +698,15 @@ def finalise_tabular_dataset(
     assert all(fragment.shape[1] == shape[1] for fragment in fragments), "Inconsistent number of columns in fragments"
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
+    # Backstop for the resume path: fragments reused from already-done groups
+    # are never revalidated against the metadata at load time, so confirm the
+    # on-disk width still matches the recorded schema before writing.
+    expected_cols = len(store.attrs["meta_variables"]) + len(variables_names)
+    assert shape[1] == expected_cols, (
+        f"Fragments have {shape[1]} columns but metadata declares {expected_cols} "
+        f"({len(store.attrs['meta_variables'])} meta + {len(variables_names)} variables)"
+    )
+
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
     LOG.info(f"Last fragment : {fragments[-1].first_date} to {fragments[-1].last_date}")
 
@@ -735,22 +742,20 @@ def finalise_tabular_dataset(
         f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
     )
 
-    store.create_dataset(
+    store.create_array(
         "data",
         shape=shape,
         chunks=chunking,
         dtype=np.float32,
-        compressor=zarr.Blosc(cname="zstd", clevel=3, shuffle=2),
+        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
     )
 
     with WriteBehindBuffer(store["data"]) as data:
-
         with (
             ThreadPoolExecutor(max_workers=2) as read_ahead,
             ThreadPoolExecutor(max_workers=1) as compute_statistics,
             ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
         ):
-
             # Double buffering: keep two fragments loaded ahead for performance
             tasks: list[Any] = []
             i: int = 0
@@ -832,11 +837,11 @@ def finalise_tabular_dataset(
             if build is not None:
                 build_time += build.result()
 
-            LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data)/stat_time:.2f} rows/second).")
-            LOG.info(f"Data written in {data_time:.2f} seconds ({len(data)/data_time:.2f} rows/second).")
-            LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data)/date_time:.2f} rows/second).")
+            LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data) / stat_time:.2f} rows/second).")
+            LOG.info(f"Data written in {data_time:.2f} seconds ({len(data) / data_time:.2f} rows/second).")
+            LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data) / date_time:.2f} rows/second).")
             LOG.info(
-                f"Duplicate date ranges built in {build_time:.2f} seconds ({len(data)/build_time:.2f} rows/second)."
+                f"Duplicate date ranges built in {build_time:.2f} seconds ({len(data) / build_time:.2f} rows/second)."
             )
 
     dates_ranges = date_range_builer.array()

@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -361,10 +361,10 @@ def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...], opti
         return a.mutate()
 
     if isinstance(a, zarr.Group):
-        return ZarrStore.from_group(a, options).mutate()
+        return ZarrStore.from_group(a, options=options).mutate()
 
     if isinstance(a, str):
-        return ZarrStore.from_name_or_path(a, options).mutate()
+        return ZarrStore.from_name_or_path(a, options=options).mutate()
 
     if isinstance(a, PurePath):
         return _open(str(a), options).mutate()
@@ -665,11 +665,11 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
-        root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
+        root.create_array("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
 
     if "data" not in root:
         dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
-        root.create_dataset(
+        root.create_array(
             "data",
             shape=dims,
             dtype=np.float64,
@@ -678,16 +678,16 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
 
     for k, v in big_dataset.statistics.items():
         if k not in root:
-            root.create_dataset(
+            root.create_array(
                 k,
                 data=v,
-                compressor=None,
+                compressors=None,
             )
 
     # Create spatial coordinate datasets if missing.
     if "latitudes" not in root or "longitudes" not in root:
-        root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None)
-        root.create_dataset("longitudes", data=big_dataset.longitudes, compressor=None)
+        root.create_array("latitudes", data=big_dataset.latitudes, compressors=None)
+        root.create_array("longitudes", data=big_dataset.longitudes, compressors=None)
     for k, v in big_dataset.metadata().items():
         if k not in root.attrs:
             root.attrs[k] = v
@@ -707,7 +707,7 @@ def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> Non
     Parameters
     ----------
     dataset : Dataset
-        anemoi-dataset opened from python to save to Zarr store
+        anemoi-dataset opened from python to save to Zarr store.
     zarr_path : str
         The path to the Zarr store.
     n_workers : int, optional

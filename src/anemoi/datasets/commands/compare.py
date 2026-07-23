@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -255,11 +255,9 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.total_size",
         "metadata.latest_write_timestamp",
         "metadata.version",
-        # 'order_by' is now hard-coded and no longer read from the recipe;
-        # ignore both the top-level metadata key and the recipe copy so that
-        # references created before this change keep matching.
         "metadata.order_by",
         "metadata.recipe.output.order_by",
+        "metadata.recipe.build.validate_date_ranges",
     ]
 
     IGNORE_MISSINGS = [

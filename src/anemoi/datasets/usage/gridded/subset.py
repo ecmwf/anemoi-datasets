@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -178,12 +178,14 @@ class Subset(Forwards):
         if isinstance(n, slice):
             return self._get_slice(n)
 
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset[n]
 
     def get_aux(self, n: FullIndex) -> NDArray[Any]:
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset.get_aux(n)
 

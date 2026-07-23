@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -30,6 +30,7 @@ def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[i
     Returns:
     Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the modified index and the changes.
     """
+    t = tuple(i + shape[j] if isinstance(i, int) and i < 0 else i for (j, i) in enumerate(t))
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
     result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))

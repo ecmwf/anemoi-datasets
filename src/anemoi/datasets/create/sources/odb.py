@@ -186,9 +186,9 @@ def odb2df(
     Parameters
     ----------
     start : datetime.datetime
-        Start datetime
+        Start datetime.
     end : datetime.datetime
-        End datetime
+        End datetime.
     path_str : str
         Path to the ODB file.
     select : str, optional
@@ -354,8 +354,7 @@ def odb_sql_str(
             missing_columns = [col for col in required_columns if col not in overlapping_columns]
             if missing_columns:
                 LOG.warning(
-                    "Not all required columns are included in the "
-                    f"SELECT statement. Missing columns: {missing_columns}"
+                    f"Not all required columns are included in the SELECT statement. Missing columns: {missing_columns}"
                 )
 
     if required_columns:

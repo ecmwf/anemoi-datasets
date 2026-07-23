@@ -1,3 +1,12 @@
+# (C) Copyright 2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 """Unit tests for window.py"""
 
 import datetime
@@ -145,7 +154,7 @@ def _create_tabular_store(indexing) -> zarr.Group:
 
     store = zarr.storage.MemoryStore()
     root = zarr.group(store=store, overwrite=True)
-    data = root.create_dataset("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
+    data = root.create_array("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
 
     start_stamp = date_to_epoch(START_DATE)
     if False:
