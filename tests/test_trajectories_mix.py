@@ -14,6 +14,18 @@ every gridded dataset onto the trajectory layout by valid-time lookup
 (``result[base=b, step=s] = gridded[b + s]``) and joins them along the variable
 axis, preserving the argument order.  The result behaves like a trajectories
 dataset.
+
+Notes
+-----
+
+TO BE REFACTORED. These tests hand-build in-memory zarr groups
+(``make_trajectories_zarr`` + a local ``_add_statistics`` workaround and a
+local ``make_gridded_zarr``) because synthetic datasets do not yet support
+the trajectories layout. Once synthetic datasets gain a trajectories layout,
+the fixtures here should most likely be rebuilt on top of them, folding the
+statistics/tendencies generation into the shared helpers and reusing the
+canonical indexing sweep (``anemoi.datasets.misc.testing`` /
+``default_test_indexing``) instead of the bespoke helpers below.
 """
 
 import datetime
