@@ -33,7 +33,7 @@ def _mars_archive_description(_class: str, _stream: str | None = None, _origin: 
     Returns
     -------
     dict
-        A ``from: {type: trajectories}`` payload.
+        A ``from:`` trajectories payload (``base_dates`` / ``steps`` / ``accumulation``).
 
     Raises
     ------

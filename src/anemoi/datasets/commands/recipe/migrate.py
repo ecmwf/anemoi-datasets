@@ -255,7 +255,7 @@ def _factorise_pairs(pairs) -> tuple[str, list[int], int | None] | None:
 
 
 def _factorise_entries(entries, day_of_month=None) -> dict | None:
-    """Factorise legacy (base_time, steps) entries into a ``type: trajectories`` payload."""
+    """Factorise legacy (base_time, steps) entries into a ``base_dates`` / ``steps`` payload."""
     from anemoi.datasets.create.sources.accumulate.interval_generators import normalise_steps
 
     groups: dict = {}
@@ -289,7 +289,7 @@ def _factorise_entries(entries, day_of_month=None) -> dict | None:
 
 
 def _convert_legacy_description(value) -> tuple[str, object] | None:
-    """Convert a legacy availability/covering value to a (``from.type``, payload) pair.
+    """Convert a legacy availability/covering value to an internal (``kind``, payload) pair.
 
     Returns None when no faithful conversion exists (the caller keeps the
     old spelling and warns).
@@ -394,7 +394,7 @@ def _convert_sugar(scheme: str, params: dict) -> tuple[str, dict] | None:
 _OMIT = object()
 
 
-def _to_from(type_: str, payload) -> dict | str | object:
+def _to_from(kind: str, payload) -> dict | str | object:
     """Convert an internal ``(kind, payload)`` pair to a structural ``from:`` block.
 
     There is no ``type:`` key: the ``from:`` shape is recognised
@@ -405,9 +405,9 @@ def _to_from(type_: str, payload) -> dict | str | object:
     """
     if payload == "auto":
         return _OMIT
-    if type_ == "valid-time":
+    if kind == "valid-time":
         return {"accumulation": payload}
-    if type_ == "lookup-table":
+    if kind == "lookup-table":
         return {"lookup-table": dict(payload)}
     # trajectories: base_dates / steps / accumulation, no discriminator.
     return dict(payload)
@@ -530,8 +530,8 @@ def _convert_accumulate_block(block: dict, trajectories: bool) -> dict:
                 )
                 result[k] = v
             else:
-                type_, payload = converted
-                as_from = _to_from(type_, payload)
+                kind, payload = converted
+                as_from = _to_from(kind, payload)
                 if as_from is not _OMIT:
                     result["from"] = as_from
             continue

@@ -50,8 +50,8 @@ def normalise_from(
         The ``from:`` block: a mapping or a validated union member (``None``
         when omitted).
     accumulation
-        The deprecated block-level scheme key of trajectory recipes,
-        folded into ``from: {type: trajectories, accumulation: ...}``.
+        The deprecated block-level scheme key, folded into a bare
+        ``from: {accumulation: ...}``.
     covering, availability
         The pre-redesign spellings, which keep running through the legacy
         covering machinery and are returned untouched.

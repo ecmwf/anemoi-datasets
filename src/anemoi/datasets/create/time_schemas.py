@@ -21,6 +21,7 @@ imports every source at import time).
 from __future__ import annotations
 
 import datetime
+import fnmatch
 from functools import cached_property
 from typing import Annotated
 
@@ -31,6 +32,41 @@ from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import PlainSerializer
 from pydantic import model_validator
+
+# The canonical string a date pattern is matched against.
+_DATE_PATTERN_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def matches_date_pattern(dt: datetime.datetime, pattern: str) -> bool:
+    """Return whether *dt* matches an ``fnmatch`` wildcard date pattern.
+
+    The pattern is matched against *dt* formatted as
+    ``"%Y-%m-%d %H:%M:%S"``; ``?`` matches any single character and ``*``
+    any sequence.  A pattern that omits the seconds (``YYYY-MM-DD HH:MM``)
+    or the whole time (``YYYY-MM-DD``) is padded with ``*`` so it matches
+    every second, respectively every time, on the selected day(s).
+
+    Parameters
+    ----------
+    dt : datetime.datetime
+        The date to test.
+    pattern : str
+        A wildcard pattern such as ``????-01-02``, ``????-01-02 00:00`` or
+        ``????-??-?? 00:00:00``.
+
+    Returns
+    -------
+    bool
+        ``True`` if *dt* matches *pattern*, ``False`` otherwise.
+    """
+    if " " not in pattern:
+        # No time part: match every time on the selected day(s).
+        pattern = f"{pattern} *"
+    elif pattern.rsplit(" ", 1)[1].count(":") < 2:
+        # Time given without seconds: match every second within the minute.
+        pattern = f"{pattern}*"
+    return fnmatch.fnmatch(dt.strftime(_DATE_PATTERN_FMT), pattern)
+
 
 # A datetime.timedelta that accepts frequency strings (e.g. "6h") on input
 # and serialises back to the same short form (e.g. "6h") rather than pydantic's

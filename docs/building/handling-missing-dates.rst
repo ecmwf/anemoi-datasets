@@ -32,6 +32,22 @@ Example with mixed missing dates and ranges:
 .. literalinclude:: ../yaml/missing_dates_mixture.yaml
    :language: yaml
 
+Finally, an entry can be a wildcard pattern in the shape
+``YYYY-MM-DD`` or ``YYYY-MM-DD HH:MM``, where any position can be
+replaced by ``?`` to mean "any value".  It flags every generated date
+matching the pattern as missing.  A pattern with no time part matches
+every time step on the selected days.  This is the same wildcard syntax
+as the ``date:`` calendar filter (see below), and is convenient for a
+date that recurs every year.
+
+Example with wildcard patterns:
+
+.. literalinclude:: ../yaml/missing_dates_wildcard.yaml
+   :language: yaml
+
+A pattern that matches no date in the range is ignored (with a warning),
+so patterns that fall outside ``start`` / ``end`` are harmless.
+
 *Anemoi* will ignore the missing dates when computing the
 :ref:`statistics <gathering_statistics>`.
 

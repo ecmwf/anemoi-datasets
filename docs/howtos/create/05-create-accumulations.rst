@@ -16,8 +16,10 @@ This depends on the data's native format. For an accumulated field (say
 -  the desired `validity_time` at which accumulation stops and for which
    the value is valid.
 -  how the data is already accumulated in the archive — described by
-   the `from:` block, whose `type:` is one of `trajectories`,
-   `valid-time` or `lookup-table` (see :ref:`sources-accumulate`).
+   the `from:` block, which is recognised structurally (there is no
+   `type:` key): `base_dates`/`steps` for forecast trajectories, a bare
+   `accumulation` for validity-time-indexed data, or `lookup-table` for
+   an explicit cycle table (see :ref:`sources-accumulate`).
 
 The resulting field is then "`tp` accumulated over `period`
 hours up to `validity_time`". In a common case, dataset features, e.g.,

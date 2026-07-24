@@ -291,7 +291,7 @@ _FROM_ADAPTER: TypeAdapter[From] = TypeAdapter(From)
 
 
 class TrajectoryIntervalGenerator(IntervalGenerator):
-    """Candidate-interval generator for a ``from: {type: trajectories}`` description.
+    """Candidate-interval generator for a :class:`FromTrajectories` ``from:`` description.
 
     Replaces the raw step-pair ``SearchableIntervalGenerator`` for the
     factorised form: candidates are computed *exactly* for a given time

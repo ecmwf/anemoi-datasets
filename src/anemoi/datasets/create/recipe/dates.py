@@ -31,6 +31,7 @@ from pydantic import model_validator
 # existing `recipe.dates` imports keep working.
 from anemoi.datasets.create.time_schemas import Frequency  # noqa: F401
 from anemoi.datasets.create.time_schemas import Steps  # noqa: F401
+from anemoi.datasets.create.time_schemas import matches_date_pattern
 
 LOG = logging.getLogger(__name__)
 
@@ -117,6 +118,7 @@ class StartEndDates(DatesProvider):
     @model_validator(mode="after")
     def _expand_missing_ranges(self) -> "StartEndDates":
         expanded = []
+        patterns = []
         for item in self.missing:
             if isinstance(item, self.MissingRange):
                 current = item.start
@@ -124,12 +126,36 @@ class StartEndDates(DatesProvider):
                 while current <= item.end:
                     expanded.append(current)
                     current += step
+            elif isinstance(item, str) and "?" in item:
+                # A wildcard pattern selects the matching dates from the grid;
+                # it is resolved below, once against the full range.
+                patterns.append(item)
             else:
                 expanded.append(as_datetime(item))
+
+        for pattern in patterns:
+            matched = [d for d in self._date_grid() if matches_date_pattern(d, pattern)]
+            if not matched:
+                LOG.warning("'missing' pattern %r matched no date in the range; ignoring it.", pattern)
+            expanded.extend(matched)
 
         # Keep deterministic ordering for comparisons and filtering.
         self.missing = sorted(set(expanded))
         return self
+
+    def _date_grid(self) -> list[datetime.datetime]:
+        """Every date in ``start``..``end`` at ``frequency``, ignoring ``missing``.
+
+        Used to resolve ``missing`` wildcard patterns; unlike ``values`` it is
+        not cached and does not depend on ``missing`` (which is still being
+        computed when this runs).
+        """
+        dates = []
+        date = self.start
+        while date <= self.end:
+            dates.append(date)
+            date += self.frequency
+        return dates
 
     @cached_property
     def values(self) -> list[datetime.datetime]:

@@ -10,7 +10,7 @@ dates:
 input:
   accumulate:
     period: 6h
-    # same as from: auto for this class/stream
+    # same as the auto-recognised defaults for this class/stream (i.e. omitting from:)
     from:
       base_dates: {times: ["06:00", "18:00"]}
       steps: {start: 1h, end: 18h, frequency: 1h}
