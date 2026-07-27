@@ -29,15 +29,33 @@ def _(t):
 
 
 class _State:
-    def __init__(self, group: int, start: int, end: int, collector: "StatisticsCollector") -> None:
+    def __init__(
+        self,
+        group: int,
+        start: int,
+        end: int,
+        collector: "StatisticsCollector",
+        indices: "NDArray[np.int64] | None" = None,
+    ) -> None:
         self.group = group
         self.start = start
         self.end = end
+        # ``indices`` records the exact rows of axis 0 that this group's
+        # statistics were collected from. It is ``None`` for the gridded layout
+        # (where each group is a contiguous ``[start, end)`` block, so ``start``
+        # and ``end`` are authoritative) and set for the trajectories layout
+        # (where a group's rows can be scattered across the axis -- e.g. missing
+        # base-date slots or a non-contiguous ``group_by`` such as ``MMDD``).
+        self.indices = indices
         self.collector = collector
         self.missing_tendencies_count = collector.missing_tendencies_count()
 
     def __repr__(self):
-        return f"_State(group={self.group}, start={self.start}, end={self.end}, missing_tendencies_count={self.missing_tendencies_count})"
+        indices = "None" if self.indices is None else f"{len(self.indices)} rows"
+        return (
+            f"_State(group={self.group}, start={self.start}, end={self.end}, "
+            f"indices={indices}, missing_tendencies_count={self.missing_tendencies_count})"
+        )
 
 
 class _Base:
@@ -939,8 +957,8 @@ class TrajectoryStatisticsCollector:
         """No-op: each trajectory is self-contained along the step axis."""
         return
 
-    def serialise(self, path, group, start, end) -> None:
-        state = _State(group=group, start=start, end=end, collector=self)
+    def serialise(self, path, group, start, end, indices=None) -> None:
+        state = _State(group=group, start=start, end=end, indices=indices, collector=self)
         with open(path, "wb") as f:
             pickle.dump(state, f)
 
@@ -955,16 +973,47 @@ class TrajectoryStatisticsCollector:
 
         states = sorted(states, key=lambda x: x.group)
 
-        offset = 0
+        # Unlike the gridded layout, a trajectory group is not a contiguous block
+        # of axis 0: with a scattering ``group_by`` (e.g. ``MMDD``) or missing
+        # base-date slots, its rows are spread across the array. Each state
+        # therefore records the exact rows it covered (``state.indices``); the
+        # merge is order-independent and needs no cross-chunk adjustment, so we
+        # only verify that every group is present and that, together, the states
+        # cover each non-missing row exactly once.
         for i, state in enumerate(states):
             if state.group != i:
                 raise ValueError(f"Missing statistics for group {i}")
-            if state.start != offset:
-                raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
-            offset = state.end
+            if state.indices is None:
+                raise ValueError(f"Trajectory statistics for group {i} has no recorded row indices")
 
-        if offset != dataset.data.shape[0]:
-            raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
+        covered = (
+            np.concatenate([np.asarray(s.indices, dtype=np.int64) for s in states])
+            if states
+            else np.array([], dtype=np.int64)
+        )
+        if len(covered) != len(np.unique(covered)):
+            raise ValueError("Trajectory statistics: some rows are covered by more than one group")
+
+        # The covered rows must be *exactly* the non-missing rows of axis 0.
+        # Missing rows are the array positions whose base date is listed in the
+        # ``missing_dates`` metadata; every other row must be covered by exactly
+        # one group.
+        all_base_dates = np.asarray(dataset.base_dates).astype("datetime64[s]").astype(np.int64)
+        missing_dates = dataset.get_metadata("missing_dates", [])
+        missing_base_dates = np.array([np.datetime64(d, "s") for d in missing_dates], dtype="datetime64[s]").astype(
+            np.int64
+        )
+        is_missing = np.isin(all_base_dates, missing_base_dates)
+        expected = np.nonzero(~is_missing)[0].astype(np.int64)
+
+        if not np.array_equal(np.unique(covered), expected):
+            missed = np.setdiff1d(expected, covered)
+            extra = np.setdiff1d(covered, expected)
+            raise ValueError(
+                "Trajectory statistics do not cover exactly the non-missing rows: "
+                f"{len(missed)} non-missing row(s) uncovered (e.g. {missed[:5].tolist()}), "
+                f"{len(extra)} covered row(s) not expected (e.g. {extra[:5].tolist()})"
+            )
 
         # No cross-chunk adjustment needed for trajectories.
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

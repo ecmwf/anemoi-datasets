@@ -358,6 +358,85 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
         return tendencies
 
+    @cached_property
+    def _groups_list(self) -> list[Any]:
+        """Materialise the date groups once so ``load_done`` can index into them.
+
+        The list is small (one entry per group) and the groups are cheap to
+        build, so caching avoids re-iterating the provider for every group.
+        """
+        return list(self.groups)
+
+    def _group_row_indices(self, dataset: Dataset, group: int) -> "np.ndarray":
+        """Return the axis-0 rows that group ``group`` was written to.
+
+        A trajectory group carries every ``(basetime, step)`` pair of a set of
+        base dates. ``load_result`` writes each trajectory at the position of its
+        base date in ``dataset.base_dates``, so the group's rows are the array
+        positions of its (sorted, unique) base dates. These are generally *not*
+        contiguous -- missing base-date slots and non-contiguous groupings such
+        as ``MMDD`` scatter them across the axis -- which is why the statistics
+        must record them explicitly rather than rely on ``group_to_range``.
+        """
+        basetimes = sorted({bt for _, bt in self._groups_list[group]})
+        wanted = np.array([np.datetime64(bt, "s") for bt in basetimes])
+        all_basetimes = np.asarray(dataset.base_dates)
+        return np.searchsorted(all_basetimes, wanted)
+
+    def load_done(self, dataset: Dataset, group: int) -> None:
+        """Compute this group's statistics after it has been loaded.
+
+        Mirrors the gridded creator, but collects over the group's actual
+        (possibly scattered) rows and records their indices in the precomputed
+        file, so finalisation is a plain merge (see
+        :meth:`TrajectoryStatisticsCollector.load_precomputed`).
+        """
+        if self.parts is None:
+            # Statistics for a single full-dataset load are computed once, at the
+            # end, by ``compute_and_store_statistics``.
+            return
+
+        os.makedirs(self.work_dir, exist_ok=True)
+
+        indices = self._group_row_indices(dataset, group)
+
+        LOG.info(f"Computing statistics for group {group} ({len(indices)} rows)")
+
+        collector = self._compute_partial_statistics_indices(dataset, indices)
+
+        start = int(indices.min()) if len(indices) else 0
+        end = int(indices.max()) + 1 if len(indices) else 0
+        collector.serialise(
+            os.path.join(self.work_dir, f"statistics_{group:06d}-{start:09d}-{end:09d}.pkl"),
+            group=group,
+            start=start,
+            end=end,
+            indices=indices,
+        )
+
+    def _compute_partial_statistics_indices(self, dataset: Dataset, indices) -> TrajectoryStatisticsCollector:
+        """Collect statistics over an explicit set of axis-0 rows.
+
+        Rows are read one at a time (the output chunking is ``base_dates: 1``, so
+        each row is a single chunk regardless of ordering), keeping memory bounded
+        while supporting the scattered row layout of trajectory groups.
+        """
+        base_dates = dataset.base_dates
+        steps = dataset.steps
+
+        collector = TrajectoryStatisticsCollector(
+            variables_names=self.variables_names,
+            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            tendencies=self._tendencies_to_compute(dataset),
+        )
+
+        data = dataset.data
+        for i in tqdm.tqdm(indices):
+            i = int(i)
+            collector.collect(data[i : i + 1], base_dates[i : i + 1])
+
+        return collector
+
     def _compute_partial_statistics(self, dataset: Dataset, start, end) -> TrajectoryStatisticsCollector:
         base_dates = dataset.base_dates
         steps = dataset.steps
