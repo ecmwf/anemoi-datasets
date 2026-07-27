@@ -589,6 +589,17 @@ def _open_dataset(*args: Any, options: Options = None, **kwargs: Any) -> "Datase
     assert len(sets) > 0, (args, kwargs)
 
     if len(sets) > 1:
+        from anemoi.datasets.usage.trajectories.join import is_trajectory
+
+        if any(is_trajectory(d) for d in sets):
+            # A mix containing at least one trajectories dataset is overlaid
+            # along the variable axis: gridded members are broadcast onto the
+            # trajectory layout by valid-time lookup. The result behaves like a
+            # trajectories dataset.
+            from anemoi.datasets.usage.trajectories.join import trajectory_join
+
+            return trajectory_join(sets, options)._subset(**kwargs)
+
         dataset, kwargs = _concat_or_join(sets, kwargs, options)
         return dataset._subset(**kwargs)
 
