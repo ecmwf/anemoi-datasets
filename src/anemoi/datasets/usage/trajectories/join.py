@@ -68,7 +68,12 @@ class TrajectoryJoin(Join):
     """
 
     def __init__(self, datasets: list[Dataset], options: Options) -> None:
-        self._template = next(d for d in datasets if not isinstance(d, GriddedAsTrajectory))
+        self._template = next((d for d in datasets if not isinstance(d, GriddedAsTrajectory)), None)
+        if self._template is None:
+            raise ValueError(
+                f"{self.__class__.__name__} requires at least one trajectory member "
+                "(all members are broadcast-gridded)."
+            )
         super().__init__(datasets, options)
 
     # ------------------------------------------------------------------
