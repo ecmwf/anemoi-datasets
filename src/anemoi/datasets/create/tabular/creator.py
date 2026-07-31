@@ -182,7 +182,7 @@ class TabularCreator(Creator):
             date_indexing=self.recipe.output.date_indexing,
             recipe=self.recipe,
             variables_names=self.variables_names,
-            delete_files=False,
+            delete_files=self.recipe.build.delete_files,
             offset=4,
         )
 

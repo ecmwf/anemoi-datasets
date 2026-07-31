@@ -294,15 +294,33 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         if len(first_region) > 0:
             path = _path(dirname, first_region, short_hash)
             np.save(path + ".tmp", first_region)
-            os.rename(path + ".tmp.npy", path + ".deduped.1.npy")
-            result.append(Fragment.from_path(path + ".deduped.1.npy"))
+            if delete_files:
+                os.rename(path + ".tmp.npy", one.file_path)
+                result.append(Fragment.from_path(one.file_path))
+            else:
+                os.rename(path + ".tmp.npy", path + ".deduped.1.npy")
+                result.append(Fragment.from_path(path + ".deduped.1.npy"))
+        else:
+            if delete_files:
+                with LOG_LOCK:
+                    LOG.info(f"Deleting empty fragment {one.file_path}")
+                os.unlink(one.file_path)
 
         second_region = concat[split_point:]
         if len(second_region) > 0:
             path = _path(dirname, second_region, short_hash)
             np.save(path + ".tmp", second_region)
-            os.rename(path + ".tmp.npy", path + ".deduped.2.npy")
-            result.append(Fragment.from_path(path + ".deduped.2.npy"))
+            if delete_files:
+                os.rename(path + ".tmp.npy", two.file_path)
+                result.append(Fragment.from_path(two.file_path))
+            else:
+                os.rename(path + ".tmp.npy", path + ".deduped.2.npy")
+                result.append(Fragment.from_path(path + ".deduped.2.npy"))
+        else:
+            if delete_files:
+                with LOG_LOCK:
+                    LOG.info(f"Deleting empty fragment {two.file_path}")
+                os.unlink(two.file_path)
 
         with LOG_LOCK:
             LOG.info(f"Deoverlapping fragments\n    {one}\n    {two}")
