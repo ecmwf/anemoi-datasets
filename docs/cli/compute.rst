@@ -29,7 +29,7 @@ Synopsis
         [--statistics] [--statistics-tendencies 6h] \
         [--statistics-residual <dataset-2>] \
         [--chunk-size N] [--sample-dates FRACTION] [--compare] \
-        [--output FILE.json] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]
+        [--output FILE.zarr] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]
 
 While the command runs it shows a progress bar and, in an interactive terminal,
 refreshes a statistics table (the same columns as ``inspect``) for all variables
@@ -97,14 +97,23 @@ Options
     stored ``statistics`` / ``statistics_tendencies(delta)`` and print the
     absolute and relative differences. Not applicable to ``--statistics-residual``.
 
-``--output FILE.json``
-    Write the results (and any ``--compare`` differences) to this JSON file. NaNs
-    are written as ``null``. Results are always written: without ``--output`` the
-    default path is ``<dataset-name>.statistics.json`` in the current directory.
+``--output FILE.zarr``
+    Write the results to this zarr store. The store contains the statistics
+    arrays under the keys expected by :func:`open_dataset` (``mean``,
+    ``stdev``, ``maximum``, ``minimum`` for plain statistics;
+    ``statistics_tendencies_{delta}_{key}`` for tendency statistics). It can
+    therefore be passed directly to :func:`open_dataset` as the ``statistics``
+    or ``statistics_tendencies`` keyword argument::
+
+        ds = open_dataset("my-dataset",
+                          statistics_tendencies="residuals.statistics.zarr")
+
+    Results are always written: without ``--output`` the default path is
+    ``<dataset-name>.statistics.zarr`` in the current directory.
 
 ``--overwrite``
-    Replace the output file if it already exists. Without it the command fails
-    immediately (before computing anything) when the output file is present.
+    Replace the output store if it already exists. Without it the command fails
+    immediately (before computing anything) when the output store is present.
 
 ``--parallel N``
     Compute using ``N`` worker processes. The time range is split into segments
@@ -133,11 +142,11 @@ Recompute the statistics of a dataset as opened over a sub-period:
 
     anemoi-datasets compute my-dataset start=2020-01-01 end=2020-12-31 --statistics
 
-Compute 6-hour tendency statistics in parallel and save to JSON:
+Compute 6-hour tendency statistics in parallel and save to a zarr store:
 
 .. code-block:: bash
 
-    anemoi-datasets compute my-dataset --statistics-tendencies 6h --parallel 8 --output tend.json
+    anemoi-datasets compute my-dataset --statistics-tendencies 6h --parallel 8 --output tend.zarr
 
 Estimate statistics quickly from 10% of the dates:
 
@@ -164,6 +173,18 @@ low-resolution grid and the native low-resolution dataset:
 .. code-block:: bash
 
     anemoi-datasets compute hi-res grid=o96 --statistics-residual lo-res
+
+Use the residual statistics as an override when opening a dataset for training:
+
+.. code-block:: bash
+
+    anemoi-datasets compute hi-res grid=o96 --statistics-residual lo-res --statistics-tendencies 6h
+    # → produces hi-res.statistics.zarr
+
+.. code:: python
+
+    ds = open_dataset("hi-res",
+                      statistics_tendencies="hi-res.statistics.zarr")
 
 Resume a long run that was interrupted:
 

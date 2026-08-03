@@ -21,12 +21,14 @@ Usage
     anemoi-datasets compute <dataset> [key=value ...] \\
         [--statistics] [--statistics-tendencies 6h] \\
         [--statistics-residual <dataset-2> [key=value ...]] \\
-        [--chunk-size N] [--compare] [--output FILE.json] [--overwrite] \\
+        [--chunk-size N] [--compare] [--output FILE.zarr] [--overwrite] \\
         [--checkpoint PATH] [--resume] [--parallel N]
 
-Results are always written to a JSON file. Without ``--output`` the default is
-``<dataset-name>.statistics.json`` in the current directory. The command fails if
-the output file already exists unless ``--overwrite`` is given.
+Results are always written to a zarr store. Without ``--output`` the
+default is ``<dataset-name>.statistics.zarr`` in the current directory. The
+command fails if the output store already exists unless ``--overwrite`` is
+given. The store can be passed directly to ``open_dataset`` as the
+``statistics`` or ``statistics_tendencies`` keyword argument.
 
 ``<dataset>`` is either a name/path followed by ``key=value`` ``open_dataset``
 options (e.g. ``start=2020-01-01 end=2020-12-31``), or a single JSON literal that
@@ -43,10 +45,12 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import sys
 from typing import Any
 
 import numpy as np
+import zarr
 
 from .. import Command
 from .engine import Task
@@ -178,7 +182,7 @@ def _short(obj: Any) -> str:
 
 
 def _default_output(parsed: "_Parsed") -> str:
-    """Derive the default output path ``<dataset-name>.statistics.json``.
+    """Derive the default output path ``<dataset-name>.statistics.zarr``.
 
     The name is the basename of the (first) dataset with any ``.zarr``/``.zip``
     extension stripped; for a JSON config the short label is used instead.
@@ -187,7 +191,7 @@ def _default_output(parsed: "_Parsed") -> str:
     for ext in (".zarr", ".zip"):
         if name.endswith(ext):
             name = name[: -len(ext)]
-    return f"{name}.statistics.json"
+    return f"{name}.statistics.zarr"
 
 
 def _parse(tokens: list[str]) -> _Parsed:
@@ -414,19 +418,64 @@ def _compare_block(
     return block
 
 
-def _jsonable(obj: Any) -> Any:
-    """Recursively convert numpy arrays/scalars to plain Python for JSON output."""
-    if isinstance(obj, np.ndarray):
-        return [None if (isinstance(x, float) and np.isnan(x)) else x for x in obj.tolist()]
-    if isinstance(obj, (np.floating, np.integer)):
-        return obj.item()
-    if isinstance(obj, dict):
-        return {k: _jsonable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_jsonable(v) for v in obj]
-    if isinstance(obj, float) and np.isnan(obj):
-        return None
-    return obj
+def _write_zarr(
+    output: str,
+    variables: list[str],
+    results: dict[str, Any],
+    tendency: str | None,
+    overwrite: bool,
+) -> None:
+    """Write statistics results to a minimal zarr store compatible with ``open_dataset``.
+
+    The store contains only the arrays needed for use as a ``statistics`` or
+    ``statistics_tendencies`` override in ``open_dataset``. It has no ``data``
+    array and no ``dates`` array, so it cannot be iterated; it exists only to
+    serve ``statistics`` and ``statistics_tendencies`` look-ups.
+
+    Parameters
+    ----------
+    output : str
+        Path for the zarr store directory.
+    variables : list of str
+        Variable names, in order.
+    results : dict
+        Engine results dict (keys ``statistics`` and ``tendency``).
+    tendency : str or None
+        The tendency delta string (e.g. ``"6h"``), used to derive the zarr key
+        names expected by ``GriddedZarr.statistics_tendencies``.
+    overwrite : bool
+        If ``True``, remove an existing store before writing.
+    """
+    from anemoi.utils.dates import frequency_to_string
+    from anemoi.utils.dates import frequency_to_timedelta
+
+    if overwrite and os.path.exists(output):
+        shutil.rmtree(output)
+
+    store = zarr.open_group(store=zarr.DirectoryStore(output), mode="w")
+    n = len(variables)
+
+    # Minimal attrs so that open_dataset recognises this as a gridded store.
+    store.attrs["layout"] = "gridded"
+    store.attrs["variables"] = list(variables)
+    store.attrs["missing_dates"] = []
+
+    # Dummy data array: zero time steps, correct variable count, 1 ensemble member,
+    # 1 grid point.  open_dataset needs this to exist but never reads values from it
+    # when the store is used solely as a statistics source.
+    store.create_dataset("data", shape=(0, n, 1, 1), dtype="float32")
+
+    if results["statistics"] is not None:
+        for key in STATISTICS:
+            store.create_dataset(key, data=results["statistics"][key].astype(np.float64))
+
+    if results["tendency"] is not None and tendency is not None:
+        delta_str = frequency_to_string(frequency_to_timedelta(tendency))
+        for key in STATISTICS:
+            zarr_key = f"statistics_tendencies_{delta_str}_{key}"
+            store.create_dataset(zarr_key, data=results["tendency"][key].astype(np.float64))
+        # Store the frequency so that statistics_tendencies(delta=None) works.
+        store.attrs["frequency"] = delta_str
 
 
 class Compute(Command):
@@ -453,11 +502,11 @@ class Compute(Command):
                 "<dataset> [key=value ...] [--statistics] [--statistics-tendencies 6h] "
                 "[--statistics-residual <dataset-2> [key=value ...]] [--chunk-size N] "
                 "[--sample-dates FRACTION] "
-                "[--compare] [--output FILE.json] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]. "
+                "[--compare] [--output FILE.zarr] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]. "
                 "<dataset> may be a name/path with key=value open_dataset options, or a single "
                 "JSON literal that is a complete open_dataset config (compute options stay as flags). "
-                "Results are written to <dataset-name>.statistics.json by default (use --output to change, "
-                "--overwrite to replace an existing file). NaNs are ignored by default."
+                "Results are written to <dataset-name>.statistics.zarr by default (use --output to change, "
+                "--overwrite to replace an existing store). NaNs are ignored by default."
             ),
         )
 
@@ -474,8 +523,10 @@ class Compute(Command):
         # Resolve the output path and fail fast (before any computation) if it
         # already exists and --overwrite was not given.
         output = parsed.output or _default_output(parsed)
+        if not output.endswith(".zarr"):
+            output += ".zarr"
         if os.path.exists(output) and not parsed.overwrite:
-            raise ValueError(f"Output file already exists: {output} (use --overwrite to replace it)")
+            raise ValueError(f"Output store already exists: {output} (use --overwrite to replace it)")
 
         sha = _args_sha(parsed)
         checkpoint = parsed.checkpoint or os.path.join(os.getcwd(), f"compute-checkpoint-{sha}.pkl")
@@ -502,17 +553,6 @@ class Compute(Command):
 
         variables, results = run_engine(task)
 
-        # Build a JSON-serialisable document while printing the tables.
-        document: dict[str, Any] = {
-            "dataset": parsed.label,
-            "residual": parsed.residual_label if parsed.has_residual else None,
-            "variables": variables,
-            "tendency": parsed.tendency,
-            "statistics": None,
-            "tendency_statistics": None,
-            "compare": {},
-        }
-
         stats_title = (
             f"Residual statistics ({parsed.label} - {parsed.residual_label})"
             if parsed.has_residual
@@ -521,7 +561,6 @@ class Compute(Command):
 
         if results["statistics"] is not None:
             _print_statistics(stats_title, variables, results["statistics"])
-            document["statistics"] = results["statistics"]
 
         if results["tendency"] is not None:
             t_title = (
@@ -530,18 +569,14 @@ class Compute(Command):
                 else f"Tendency statistics (delta={parsed.tendency})"
             )
             _print_statistics(t_title, variables, results["tendency"])
-            document["tendency_statistics"] = results["tendency"]
 
         if parsed.compare:
-            self._compare(parsed, variables, results, document)
+            self._compare(parsed, variables, results)
 
-        with open(output, "w") as f:
-            json.dump(_jsonable(document), f, indent=2)
+        _write_zarr(output, variables, results, parsed.tendency, parsed.overwrite)
         LOG.info("Results written to %s", output)
 
-    def _compare(
-        self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]
-    ) -> None:
+    def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any]) -> None:
         """Compare recomputed statistics with the dataset's stored statistics.
 
         Parameters
@@ -552,8 +587,6 @@ class Compute(Command):
             Variable names.
         results : dict
             The recomputed results from the engine.
-        document : dict
-            The output document to augment with the comparison.
         """
         if parsed.has_residual:
             LOG.warning("--compare is not meaningful for residuals (no stored stats); skipping.")
@@ -564,7 +597,7 @@ class Compute(Command):
         ds = open_dataset(*parsed.open_args, **parsed.open_kwargs)
 
         if results["statistics"] is not None:
-            document["compare"]["statistics"] = _compare_block(
+            _compare_block(
                 f"Compare statistics vs stored ({parsed.label})",
                 variables,
                 results["statistics"],
@@ -578,7 +611,7 @@ class Compute(Command):
             except Exception as e:  # noqa: BLE001 - dataset may not store this delta
                 LOG.warning("Could not read stored tendencies for delta=%s: %s", label, e)
                 return
-            document["compare"]["tendency"] = _compare_block(
+            _compare_block(
                 f"Compare tendency statistics vs stored (delta={label})",
                 variables,
                 results["tendency"],

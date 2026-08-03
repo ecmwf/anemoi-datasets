@@ -92,19 +92,19 @@ def test_parse_json_rejects_keyvalue() -> None:
 
 
 def test_parse_residual_with_trailing_flags() -> None:
-    p = _parse([DS0, "--statistics-residual", DS1, "thinning=4", "--output", "x.json", "--parallel", "2"])
+    p = _parse([DS0, "--statistics-residual", DS1, "thinning=4", "--output", "x.zarr", "--parallel", "2"])
     assert p.has_residual is True
     assert p.residual_open_args == [DS1]
     assert p.residual_open_kwargs == {"thinning": 4}
-    assert p.output == "x.json"
+    assert p.output == "x.zarr"
     assert p.parallel == 2
 
 
 def test_parse_residual_json() -> None:
     cfg = json.dumps({"dataset": DS1, "grid": "o96"})
-    p = _parse([DS0, "--statistics-residual", cfg, "--output", "y.json"])
+    p = _parse([DS0, "--statistics-residual", cfg, "--output", "y.zarr"])
     assert p.residual_open_args == [{"dataset": DS1, "grid": "o96"}]
-    assert p.output == "y.json"
+    assert p.output == "y.zarr"
 
 
 def test_parse_old_flags_rejected() -> None:
@@ -281,34 +281,38 @@ def test_run_with_live_enabled_smoke() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Full command (CLI entry) with JSON output
+# Full command (CLI entry) with zarr output
 # --------------------------------------------------------------------------- #
 
 
 @mockup_open_zarr
-def test_command_writes_json(tmp_path, monkeypatch) -> None:
+def test_command_writes_zarr(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)  # keep the default checkpoint out of the repo
-    out = tmp_path / "out.json"
+    out = tmp_path / "out.zarr"
     Compute().run(argparse.Namespace(rest=[DS0, "--statistics", "--output", str(out)]))
-    doc = json.loads(out.read_text())
-    assert doc["dataset"] == DS0
-    assert doc["statistics"] is not None
-    assert len(doc["statistics"]["mean"]) == len(open_dataset(DS0).variables)
+    import zarr as _zarr
+
+    store = _zarr.open(str(out), mode="r")
+    assert list(store.attrs["variables"]) == list(open_dataset(DS0).variables)
+    assert "mean" in store
+    assert len(store["mean"]) == len(open_dataset(DS0).variables)
 
 
 def test_default_output_name() -> None:
-    assert _default_output(_parse(["/data/foo.zarr", "--statistics"])) == "foo.statistics.json"
-    assert _default_output(_parse(["bar", "--statistics"])) == "bar.statistics.json"
+    assert _default_output(_parse(["/data/foo.zarr", "--statistics"])) == "foo.statistics.zarr"
+    assert _default_output(_parse(["bar", "--statistics"])) == "bar.statistics.zarr"
 
 
 @mockup_open_zarr
 def test_default_output_and_overwrite(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    default = tmp_path / f"{DS0}.statistics.json"
+    default = tmp_path / f"{DS0}.statistics.zarr"
 
     Compute().run(argparse.Namespace(rest=[DS0, "--statistics"]))
     assert default.exists()
-    assert json.loads(default.read_text())["dataset"] == DS0
+    import zarr as _zarr
+
+    assert list(_zarr.open(str(default), mode="r").attrs["variables"]) == list(open_dataset(DS0).variables)
 
     # Re-running without --overwrite must fail before recomputing.
     with pytest.raises(ValueError, match="already exists"):
@@ -320,15 +324,17 @@ def test_default_output_and_overwrite(tmp_path, monkeypatch) -> None:
 
 
 @mockup_open_zarr
-def test_command_json_equals_name_form(tmp_path, monkeypatch) -> None:
+def test_command_npz_equals_name_form(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    name_out = tmp_path / "name.json"
-    json_out = tmp_path / "json.json"
+    name_out = tmp_path / "name.zarr"
+    json_out = tmp_path / "json.zarr"
     Compute().run(argparse.Namespace(rest=[DS0, "--statistics", "--output", str(name_out)]))
     cfg = json.dumps({"dataset": DS0})
     Compute().run(argparse.Namespace(rest=[cfg, "--statistics", "--output", str(json_out)]))
-    a = json.loads(name_out.read_text())["statistics"]["mean"]
-    b = json.loads(json_out.read_text())["statistics"]["mean"]
+    import zarr as _zarr
+
+    a = _zarr.open(str(name_out), mode="r")["mean"][:]
+    b = _zarr.open(str(json_out), mode="r")["mean"][:]
     np.testing.assert_allclose(a, b)
 
 
