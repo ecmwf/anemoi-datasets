@@ -13,8 +13,7 @@ import logging
 from abc import abstractmethod
 from collections.abc import Iterable
 
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import as_datetime, frequency_to_timedelta
 
 from anemoi.datasets.create.intervals import SignedInterval
 
@@ -335,7 +334,7 @@ def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | N
 
         case ("l5", "oper", _):
             # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
-            return [[0, [(int(i), int(i) + 1) for i in range(0, 24)]]]
+            return [[0, [(int(i), int(i) + 1) for i in range(24)]]]
 
         case _:
             raise ValueError(f"Unknown MARS configuration: class={_class}, stream={_stream}, origin={_origin}")
@@ -404,7 +403,7 @@ def _interval_generator_factory(
             if not (hours.is_integer() and hours > 0):
                 raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
 
-            return [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
+            return [["*", [f"{i}-{i+1}" for i in range(24)]]]
 
         case _:
             raise ValueError(f"Unknown interval generator config: {config}")

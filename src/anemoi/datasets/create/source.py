@@ -14,10 +14,7 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 if TYPE_CHECKING:
-    from anemoi.datasets.create.arguments import ForecastDates
-    from anemoi.datasets.create.arguments import ForecastIntervals
-    from anemoi.datasets.create.arguments import Intervals
-    from anemoi.datasets.create.arguments import ValidDates
+    from anemoi.datasets.create.arguments import ForecastDates, ForecastIntervals, Intervals, ValidDates
 
 
 class Source:
@@ -55,10 +52,7 @@ class Source:
         ekd.FieldList
             The output data.
         """
-        from anemoi.datasets.create.arguments import ForecastDates
-        from anemoi.datasets.create.arguments import ForecastIntervals
-        from anemoi.datasets.create.arguments import Intervals
-        from anemoi.datasets.create.arguments import ValidDates
+        from anemoi.datasets.create.arguments import ForecastDates, ForecastIntervals, Intervals, ValidDates
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if isinstance(argument, list):
@@ -194,4 +188,3 @@ class FieldSource(Source):
 class ObservationsSource(Source):
     """A source that retrieves observational data."""
 
-    pass

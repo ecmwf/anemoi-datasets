@@ -17,8 +17,7 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
 import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
 
@@ -49,8 +48,7 @@ class Dataset:
 
     def __init__(self, path: str, overwrite: bool = False, update: bool = False, create: bool = False) -> None:
 
-        if path.endswith("/"):
-            path = path[:-1]
+        path = path.removesuffix("/")
 
         self.path = path
 

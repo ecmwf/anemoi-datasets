@@ -13,8 +13,7 @@ import json
 import logging
 import pprint
 import warnings
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 
 try:
@@ -22,20 +21,14 @@ try:
 except ImportError:
     # Python 3.9
     EllipsisType = type(Ellipsis)
-from collections.abc import Sequence
-from collections.abc import Sized
-from typing import TYPE_CHECKING
-from typing import Any
-from typing import Union
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
-from anemoi.utils.dates import frequency_to_seconds
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_seconds, frequency_to_string, frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.debug import Node, Source
 
 if TYPE_CHECKING:
     import matplotlib
@@ -44,7 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 Shape = tuple[int, ...]
-TupleIndex = tuple[Union[int, slice, EllipsisType], ...]
+TupleIndex = tuple[int | slice | EllipsisType, ...]
 FullIndex = Union[int, slice, TupleIndex]
 
 
@@ -427,8 +420,7 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         # TODO: optimize
 
@@ -505,8 +497,7 @@ class Dataset(ABC, Sized):
         base_end: None | str | datetime.datetime,
     ) -> list[int]:
         """Convert base_start/base_end to base-date indices (direct, no envelope logic)."""
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         base_dates = self.base_dates
 
@@ -840,7 +831,6 @@ class Dataset(ABC, Sized):
             The path components.
         """
         # Override this method to add more arrays
-        pass
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return specific metadata of the dataset.
@@ -1096,67 +1086,56 @@ class Dataset(ABC, Sized):
     @abstractmethod
     def variables(self) -> list[str]:
         """Return the list of variables in the dataset."""
-        pass
 
     @property
     @abstractmethod
     def frequency(self) -> datetime.timedelta:
         """Return the frequency of the dataset."""
-        pass
 
     @property
     @abstractmethod
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates in the dataset."""
-        pass
 
     @property
     @abstractmethod
     def resolution(self) -> str:
         """Return the resolution of the dataset."""
-        pass
 
     @property
     @abstractmethod
     def name_to_index(self) -> dict[str, int]:
         """Return the mapping of variable names to indices."""
-        pass
 
     @property
     @abstractmethod
     def shape(self) -> Shape:
         """Return the shape of the dataset."""
-        pass
 
     @property
     @abstractmethod
     def field_shape(self) -> Shape:
         """Return the shape of the fields in the dataset."""
-        pass
 
     @property
     @abstractmethod
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        pass
 
     @property
     @abstractmethod
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes in the dataset."""
-        pass
 
     @property
     @abstractmethod
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes in the dataset."""
-        pass
 
     @property
     @abstractmethod
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
-        pass
 
     def origins(self) -> Any:
         for p in self.components().ensure_list():
@@ -1177,19 +1156,16 @@ class Dataset(ABC, Sized):
     @cached_property
     def missing(self) -> set[int]:
         """Return the set of missing indices in the dataset."""
-        pass
 
     @abstractmethod
     @cached_property
     def constant_fields(self) -> list[str]:
         """Return the list of constant fields in the dataset."""
-        pass
 
     @abstractmethod
     @cached_property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
-        pass
 
     @abstractmethod
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
@@ -1205,7 +1181,6 @@ class Dataset(ABC, Sized):
         dict
             The tendencies.
         """
-        pass
 
     @abstractmethod
     def source(self, index: int) -> Source:
@@ -1221,7 +1196,6 @@ class Dataset(ABC, Sized):
         Source
             The source.
         """
-        pass
 
     @abstractmethod
     def tree(self) -> Node:
@@ -1232,7 +1206,6 @@ class Dataset(ABC, Sized):
         Node
             The tree representation.
         """
-        pass
 
     @abstractmethod
     def collect_input_sources(self, sources: list[Any]) -> None:
@@ -1243,7 +1216,6 @@ class Dataset(ABC, Sized):
         sources : list
             The input sources.
         """
-        pass
 
     @abstractmethod
     def get_dataset_names(self, names: set[str]) -> None:
@@ -1254,12 +1226,10 @@ class Dataset(ABC, Sized):
         names : set of str
             The dataset names.
         """
-        pass
 
     @abstractmethod
     def usage_factory_load(self, name: str) -> Any:
         """Load a usage factory by name."""
-        pass
 
     def get_latitudes(self, i):
         return self.get_aux(i)[0]

@@ -17,8 +17,7 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .writers import write_accumulated_field_with_valid_time
-from .writers import write_accumulated_forecast_field
+from .writers import write_accumulated_field_with_valid_time, write_accumulated_forecast_field
 
 LOG = logging.getLogger(__name__)
 

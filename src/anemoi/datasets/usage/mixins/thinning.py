@@ -8,8 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -34,7 +33,7 @@ class _Thinner(ABC):
 
 
 class _EveryNth(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None):
 
         if field_shape is None:
             raise ValueError("Field shape must be provided for every-nth thinning method")
@@ -61,7 +60,7 @@ class _EveryNth(_Thinner):
 
 
 class _DistanceBased(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.min_distance = thinning / 6371.0  # Convert from km
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
@@ -84,7 +83,7 @@ class _DistanceBased(_Thinner):
 
 
 class _GridThinning(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.grid_size = thinning / 6371.0  # Convert km
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
@@ -100,7 +99,7 @@ class _GridThinning(_Thinner):
 
 
 class _RandomThinning(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.fraction = thinning
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:

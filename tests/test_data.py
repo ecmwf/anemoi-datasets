@@ -11,8 +11,7 @@
 import datetime
 import os
 from collections.abc import Callable
-from functools import cache
-from functools import wraps
+from functools import cache, wraps
 from typing import Any
 from unittest.mock import patch
 
@@ -20,12 +19,10 @@ import numpy as np
 import pytest
 import rich
 import zarr
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.misc.testing import FastGroup
-from anemoi.datasets.misc.testing import default_test_indexing
+from anemoi.datasets.misc.testing import FastGroup, default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
@@ -36,8 +33,7 @@ from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.gridded.subset import Subset
-from anemoi.datasets.usage.misc import as_first_date
-from anemoi.datasets.usage.misc import as_last_date
+from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
 VALUES = 10
 
@@ -1150,7 +1146,7 @@ def test_dates_using_list() -> None:
 @mockup_open_zarr
 def test_dates_using_list_2() -> None:
     """Test date handling functions using a list of dates (case 2)."""
-    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h") for i in range(0, 10)]
+    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h") for i in range(10)]
     assert len(dates) == 10
 
     assert dates[0] == as_first_date("0%", dates)
@@ -1560,7 +1556,6 @@ def test_masking() -> None:
             statistics_reference_dataset="test-2021-2022-6h-o96-abcd",
             statistics_reference_variables="abcd",
         )
-    return
 
 
 @mockup_open_zarr
@@ -1569,11 +1564,9 @@ def test_masking_wrong_mask_dims() -> None:
     test_mask = np.array([True, False, True, True, True, True, False, False, True])
     with (
         patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),pytest.raises(ValueError)
     ):
-        with pytest.raises(ValueError):
-            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
-    return
+        _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
 
 
 @mockup_open_zarr
@@ -1583,7 +1576,6 @@ def test_masking_mask_file_not_found() -> None:
     with patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask):
         with pytest.raises(FileNotFoundError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
-    return
 
 
 @mockup_open_zarr
@@ -1592,11 +1584,9 @@ def test_masking_wrong_dtype() -> None:
     test_mask = np.array([1, 0, 1, 1, 1, 1, 0, 0, 1, 0])
     with (
         patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
-        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
+        patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),pytest.raises(ValueError)
     ):
-        with pytest.raises(ValueError):
-            _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
-    return
+        _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
 
 
 @mockup_open_zarr

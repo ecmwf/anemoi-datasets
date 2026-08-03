@@ -13,8 +13,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 import zarr
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestData, skip_if_offline
 
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource

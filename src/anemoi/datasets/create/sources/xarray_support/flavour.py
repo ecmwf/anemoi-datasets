@@ -9,33 +9,29 @@
 
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Hashable
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemoi.utils.config import DotDict
 
-from .coordinates import Coordinate
-from .coordinates import DateCoordinate
-from .coordinates import EnsembleCoordinate
-from .coordinates import LatitudeCoordinate
-from .coordinates import LevelCoordinate
-from .coordinates import LongitudeCoordinate
-from .coordinates import PointCoordinate
-from .coordinates import ScalarCoordinate
-from .coordinates import StepCoordinate
-from .coordinates import TimeCoordinate
-from .coordinates import UnsupportedCoordinate
-from .coordinates import XCoordinate
-from .coordinates import YCoordinate
-from .coordinates import is_scalar
-from .grid import Grid
-from .grid import MeshedGrid
-from .grid import MeshProjectionGrid
-from .grid import UnstructuredGrid
-from .grid import UnstructuredProjectionGrid
+from .coordinates import (
+    Coordinate,
+    DateCoordinate,
+    EnsembleCoordinate,
+    LatitudeCoordinate,
+    LevelCoordinate,
+    LongitudeCoordinate,
+    PointCoordinate,
+    ScalarCoordinate,
+    StepCoordinate,
+    TimeCoordinate,
+    UnsupportedCoordinate,
+    XCoordinate,
+    YCoordinate,
+    is_scalar,
+)
+from .grid import Grid, MeshedGrid, MeshProjectionGrid, UnstructuredGrid, UnstructuredProjectionGrid
 
 if TYPE_CHECKING:
     # xarray is very slow to import, so we only import it for type checking
@@ -397,7 +393,6 @@ class CoordinateGuesser(ABC):
         Optional[LongitudeCoordinate]
             The LongitudeCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_point(self, c: "XrDataArray", attributes: CoordinateAttributes) -> PointCoordinate | None:
@@ -419,7 +414,6 @@ class CoordinateGuesser(ABC):
         Optional[LatitudeCoordinate]
             The LatitudeCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_x(self, c: "XrDataArray", attributes: CoordinateAttributes) -> XCoordinate | None:
@@ -437,7 +431,6 @@ class CoordinateGuesser(ABC):
         Optional[XCoordinate]
             The XCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_y(self, c: "XrDataArray", attributes: CoordinateAttributes) -> YCoordinate | None:
@@ -455,7 +448,6 @@ class CoordinateGuesser(ABC):
         Optional[YCoordinate]
             The YCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_time(self, c: "XrDataArray", attributes: CoordinateAttributes) -> TimeCoordinate | None:
@@ -473,7 +465,6 @@ class CoordinateGuesser(ABC):
         Optional[TimeCoordinate]
             The TimeCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_date(self, c: "XrDataArray", attributes: CoordinateAttributes) -> DateCoordinate | None:
@@ -491,7 +482,6 @@ class CoordinateGuesser(ABC):
         Optional[DateCoordinate]
             The DateCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_step(self, c: "XrDataArray", attributes: CoordinateAttributes) -> StepCoordinate | None:
@@ -509,7 +499,6 @@ class CoordinateGuesser(ABC):
         Optional[StepCoordinate]
             The StepCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_level(self, c: "XrDataArray", attributes: CoordinateAttributes) -> LevelCoordinate | None:
@@ -527,7 +516,6 @@ class CoordinateGuesser(ABC):
         Optional[LevelCoordinate]
             The LevelCoordinate if matched, else None.
         """
-        pass
 
     @abstractmethod
     def _is_number(self, c: "XrDataArray", attributes: CoordinateAttributes) -> EnsembleCoordinate | None:
@@ -545,7 +533,6 @@ class CoordinateGuesser(ABC):
         Optional[EnsembleCoordinate]
             The EnsembleCoordinate if matched, else None.
         """
-        pass
 
 
 class DefaultCoordinateGuesser(CoordinateGuesser):

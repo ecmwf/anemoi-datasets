@@ -14,8 +14,7 @@ from urllib.parse import urlparse
 import planetary_computer
 import pystac
 import pystac_client
-from earthkit.data.core.fieldlist import FieldList
-from earthkit.data.core.fieldlist import MultiFieldList
+from earthkit.data.core.fieldlist import FieldList, MultiFieldList
 
 from anemoi.datasets.create.types import DateList
 

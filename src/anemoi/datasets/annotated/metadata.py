@@ -11,9 +11,7 @@ import logging
 
 import numpy as np
 
-from anemoi.datasets.epochs import array_to_epoch
-from anemoi.datasets.epochs import epoch_to_date
-from anemoi.datasets.epochs import epochs_to_datetime64
+from anemoi.datasets.epochs import array_to_epoch, epoch_to_date, epochs_to_datetime64
 
 from .base import WindowMetaDataBase
 

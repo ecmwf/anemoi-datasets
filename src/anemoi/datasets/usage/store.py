@@ -21,17 +21,10 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.compat import DebugStore
-from anemoi.datasets.compat import HTTPStore
-from anemoi.datasets.compat import S3Store
-from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import DebugStore, HTTPStore, S3Store, ZarrFileNotFoundError
 from anemoi.datasets.usage.analytics import collect_analytics
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.dataset import Dataset, Shape, TupleIndex
+from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING, Node, Source
 from anemoi.datasets.usage.misc import load_config
 from anemoi.datasets.usage.options import Options
 
@@ -318,11 +311,9 @@ class ZarrStore(Dataset):
 
     def collect_supporting_arrays(self, collected: set, *path: str) -> None:
         """Collect supporting arrays."""
-        pass
 
     def collect_input_sources(self, collected: set) -> None:
         """Collect input sources."""
-        pass
 
     @cached_property
     def origins(self):

@@ -16,9 +16,7 @@ import pytest
 import yaml
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
-from anemoi.utils.testing import GetTestArchive
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestArchive, GetTestData, skip_if_offline
 
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource

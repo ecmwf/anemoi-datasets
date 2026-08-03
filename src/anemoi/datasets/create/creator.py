@@ -12,8 +12,7 @@ import logging
 import os
 import shutil
 import uuid
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -25,8 +24,7 @@ from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
-from anemoi.datasets.create.recipe import loader_recipe_from_yaml
-from anemoi.datasets.create.recipe import loader_recipe_from_zarr
+from anemoi.datasets.create.recipe import loader_recipe_from_yaml, loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
 from .parts import PartFilter
@@ -319,7 +317,6 @@ class Creator(ABC):
     ########################
     def task_verify(self) -> None:
         LOG.info("BACK: Verifying dataset.")
-        return
 
     ########################
     def task_statistics(self) -> None:
@@ -342,15 +339,12 @@ class Creator(ABC):
 
     def task_init_additions(self) -> None:
         LOG.info("BACK: Initialising additions.")
-        return
 
     def task_load_additions(self) -> None:
         LOG.info("BACK: Loading additions.")
-        return
 
     def task_finalise_additions(self) -> None:
         LOG.info("BACK: Finalising additions.")
-        return
 
     @cached_property
     def groups(self) -> Groups:

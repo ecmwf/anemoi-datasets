@@ -14,8 +14,7 @@ from functools import cached_property
 import numpy as np
 import pytest
 import xarray as xr
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestData, skip_if_offline
 
 from anemoi.datasets.misc.validate import validate_dataset
 

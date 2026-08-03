@@ -10,17 +10,14 @@
 
 import datetime
 import itertools
-from abc import ABC
-from abc import abstractmethod
-from collections.abc import Callable
-from collections.abc import Iterator
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from functools import cached_property
 from typing import Any
 
 from anemoi.utils.dates import as_datetime
 
-from anemoi.datasets.create.recipe.dates import DatesProvider
-from anemoi.datasets.create.recipe.dates import TrajectoryDates
+from anemoi.datasets.create.recipe.dates import DatesProvider, TrajectoryDates
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -273,7 +270,6 @@ class Grouper(ABC):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
-        pass
 
 
 class ReferenceDateGroup(Grouper):

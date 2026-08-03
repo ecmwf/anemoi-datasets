@@ -7,18 +7,15 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_grid, new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
-from anemoi.datasets.create.arguments import Intervals
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import Intervals, ValidDates
 
 from ..source import Source
 from . import source_registry

@@ -10,8 +10,7 @@
 
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np

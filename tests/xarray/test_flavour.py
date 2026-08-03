@@ -11,17 +11,19 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import EnsembleCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import ScalarCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import UnsupportedCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import XCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import YCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import (
+    DateCoordinate,
+    EnsembleCoordinate,
+    LatitudeCoordinate,
+    LevelCoordinate,
+    LongitudeCoordinate,
+    ScalarCoordinate,
+    StepCoordinate,
+    TimeCoordinate,
+    UnsupportedCoordinate,
+    XCoordinate,
+    YCoordinate,
+)
 from anemoi.datasets.create.sources.xarray_support.flavour import DefaultCoordinateGuesser
 
 
