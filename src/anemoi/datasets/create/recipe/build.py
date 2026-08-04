@@ -73,10 +73,14 @@ class Build(BaseModel):
     group_by: str | int = "monthly"
     additions: bool | None = None
     env: dict[str, str] = {}
-    max_fragment_size: int = 268435456  # 256 MiB
+
+    # Below is for tabular datasete
+    max_fragment_size: int = 1024 * 1024 * 1024  # 1 GiB
     validate_date_ranges: bool = False
     max_workers: int | None = None
     delete_files: bool = True  # Whether to delete temporary files as we go.
+    write_zarr_buffer_size: int = 512 * 1024 * 1024
+
     """Environment variables to set when creating the dataset."""
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""

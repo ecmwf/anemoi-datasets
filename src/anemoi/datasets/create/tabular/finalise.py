@@ -473,7 +473,7 @@ def _find_duplicate_and_overlapping_dates(
     estimated_needed_memory = 6 * max_fragment_size + my_memory
     estimated_needed_memory *= 1.2  # Safety margin
 
-    estimated_max_workers = int(memory / estimated_needed_memory)
+    estimated_max_workers = max(1, int(memory / estimated_needed_memory))
 
     LOG.info(f"Estimated max workers based on memory: {estimated_max_workers}")
 
@@ -661,6 +661,7 @@ def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice
 
 def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
     try:
+        now = time.time()
         # Remove deduped files after loading to save disk space
         array: np.ndarray = np.load(fragment.file_path)
         if "deduped" in fragment.file_path:
@@ -676,7 +677,7 @@ def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
             last == fragment.last_date
         ), f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
 
-        return (fragment, array)
+        return (fragment, array, time.time() - now)
     except Exception:
         LOG.exception("Error loading fragment")
         raise
@@ -749,12 +750,13 @@ def finalise_tabular_dataset(
     if "data" in store:
         del store["data"]
 
-    # Choose fragment size to target ~64MB per fragment for efficient I/O
     row_size: int = shape[1] * np.dtype(np.float32).itemsize
-    target_size: int = 64 * 1024 * 1024
-    fragment_size: int = max(1, round(target_size / row_size))
+    rows_per_chunk: int = max(1, round(recipe.output.bytes_per_chunk / row_size))
 
-    chunking: tuple[int, int] = (min(fragment_size, shape[0]), shape[1])
+    if recipe.output.rows_per_chunk is not None:
+        rows_per_chunk = recipe.output.rows_per_chunk
+
+    chunking: tuple[int, int] = (min(rows_per_chunk, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
     LOG.info(
         f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
@@ -768,7 +770,7 @@ def finalise_tabular_dataset(
         compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
     )
 
-    with WriteBehindBuffer(store["data"]) as data:
+    with WriteBehindBuffer(store["data"], no_reload=True, max_cached_chunks=50) as data:
         with (
             ThreadPoolExecutor(max_workers=2) as read_ahead,
             ThreadPoolExecutor(max_workers=1) as compute_statistics,
@@ -787,6 +789,7 @@ def finalise_tabular_dataset(
             stat_time = 0
             data_time = 0
             date_time = 0
+            read_time = 0
 
             build = None
             build_time = 0
@@ -795,7 +798,10 @@ def finalise_tabular_dataset(
 
             with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
                 while tasks:
-                    fragment, array = tasks.pop(0).result()
+                    start = now = time.time()
+                    fragment, array, _ = tasks.pop(0).result()
+                    read_elapsed = time.time() - now
+                    read_time += read_elapsed
 
                     if previous_date is not None and fragment.first_date <= previous_date:
                         raise ValueError(
@@ -809,16 +815,22 @@ def finalise_tabular_dataset(
 
                     now = time.time()
                     data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
-                    data_time += time.time() - now
+                    data_elapsed = time.time() - now
+                    data_time += data_elapsed
 
                     # Dates are encoded as (days, seconds) in columns 0 and 1
                     now = time.time()
                     epochs = array_to_epoch(array)
-                    date_time += time.time() - now
+                    date_elapsed = time.time() - now
+                    date_time += date_elapsed
 
+                    now = time.time()
                     # Wait for previous statistics computation to complete
                     if stats is not None:
-                        stat_time += stats.result()
+                        _ = stats.result()
+                        stat_elapsed = time.time() - now
+                    else:
+                        stat_elapsed = 0
 
                     stats = compute_statistics.submit(
                         _statistics_collector_worker, collector, array[:, offset:], epochs
@@ -826,7 +838,11 @@ def finalise_tabular_dataset(
 
                     # Wait for previous duplicate range building to complete
                     if build is not None:
-                        build_time += build.result()
+                        now = time.time()
+                        _ = build.result()
+                        build_elapsed = time.time() - now
+                    else:
+                        build_elapsed = 0
 
                     build = build_duplicate_ranges.submit(
                         _build_duplicate_ranges_worker,
@@ -847,6 +863,11 @@ def finalise_tabular_dataset(
                         i += 1
 
                     expected_offset += fragment.shape[0]
+
+                    elapsed = time.time() - start
+                    LOG.info(
+                        f"\n   {elapsed=:.2f}\n   {read_elapsed=:.2f}\n   {data_elapsed=:.2f}\n   {date_elapsed=:.2f}\n   {stat_elapsed=:.2f}\n   {build_elapsed=:.2f}"
+                    )
 
             # Ensure last statistics computation is complete
             if stats is not None:

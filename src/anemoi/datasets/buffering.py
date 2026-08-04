@@ -154,14 +154,23 @@ class _Buffer:
             case _:
                 raise TypeError(f"Unsupported key type: {type(key)}")
 
-    def flush(self) -> None:
-        """Flush cached changes to Zarr array."""
+    def _flush(self) -> None:
+        """Flush the cached chunk to the underlying Zarr array."""
+        if self.dirty:
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.debug(f"Flushing chunk {self.chunk_index} {self}")
+            LOG.info(f"Flushing chunk {self.chunk_index} {self}")
+            self.array[self.offset : self.offset + len(self.cache)] = self.cache
+            self.dirty = False
+
+    def _flush_locked(self) -> None:
+        """Acquire the buffer lock and flush.
+
+        Both the acquire and the release happen in the calling thread, so this
+        is safe to run either inline or as a task submitted to a worker thread.
+        """
         with self.lock:
-            if self.dirty:
-                if LOG.isEnabledFor(logging.DEBUG):
-                    LOG.debug(f"Flushing chunk {self.chunk_index} {self}")
-                self.array[self.offset : self.offset + len(self.cache)] = self.cache
-                self.dirty = False
+            self._flush()
 
     def _remove(self, lru: LRU, why: str) -> None:
         """Remove this chunk from the LRU cache, flushing if necessary.
@@ -175,7 +184,7 @@ class _Buffer:
         """
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Removing chunk {self.chunk_index} {self} because {why}")
-        self.flush()
+        self._flush_locked()
         del lru[self.chunk_index]
 
     def resize(self, lru: LRU, new_array_shape: tuple[int, ...]) -> None:
@@ -219,6 +228,7 @@ class ReadAheadWriteBehindBuffer:
         buffer_size: int = 512 * 1024 * 1024,
         max_cached_chunks: int = None,
         no_reload: bool = False,
+        max_sync_threads: int = 1,
     ):
         """Initialise the chunk cache for a Zarr array.
 
@@ -230,6 +240,10 @@ class ReadAheadWriteBehindBuffer:
             The cache size in bytes (default is 512 * 1024 * 1024).
         read_ahead : bool, optional
             Whether to enable read-ahead (default is False).
+        max_sync_threads : int, optional
+            The maximum number of buffer flushes that may be in flight at once
+            (default is 1). When this limit is reached, further evictions flush
+            synchronously in the calling thread, applying backpressure.
         """
         self._arr = array
         self._nrows_in_chunks = array.chunks[0]
@@ -250,18 +264,34 @@ class ReadAheadWriteBehindBuffer:
             f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
         )
 
-        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_buffer)
         self._lock = threading.RLock()
         self.chunks_in_cache = chunks_in_cache
+
+        # Background flushes run in a pool of `max_sync_threads` workers.
+        # `_flush_slots` bounds the number of *outstanding* flushes to the same
+        # value: when it is exhausted the eviction flushes synchronously instead
+        # of queuing, so the backlog (and thread count) can never grow past N.
+        # `_pending_flushes` maps a chunk index to the Future of its in-flight
+        # flush, so a reload of the same chunk can wait for the write to finish
+        # before re-reading zarr.
+        self._flush_pool = ThreadPoolExecutor(max_workers=max_sync_threads)
+        self._flush_slots = threading.BoundedSemaphore(max_sync_threads)
+        self._pending_flushes: dict[int, Any] = {}
+
+        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_buffer)
 
     @property
     def max_cached_chunks(self) -> int:
         """The maximum number of cached chunks."""
         return self.chunks_in_cache
 
-    @staticmethod
-    def _evict_buffer(key: int, buffer: _Buffer) -> None:
+    def _evict_buffer(self, key: int, buffer: _Buffer) -> None:
         """Callback called when a buffer is evicted from the cache.
+
+        The flush runs in the background pool. We record the Future so a reload
+        of the same chunk can wait for the write to complete (see
+        ``_ensure_chunk_in_cache``). The done-callback runs in the worker thread
+        and must not take ``self._lock`` to avoid deadlocking ``flush()``.
 
         Parameters
         ----------
@@ -273,7 +303,23 @@ class ReadAheadWriteBehindBuffer:
         if LOG.isEnabledFor(logging.DEBUG):
             LOG.debug(f"Evicting buffer {key} {buffer}")
 
-        buffer.flush()
+        if not self._flush_slots.acquire(blocking=False):
+            # All flush slots are busy; flush synchronously to apply backpressure
+            # rather than letting the backlog grow.
+            buffer._flush_locked()
+            return
+
+        future = self._flush_pool.submit(buffer._flush_locked)
+        self._pending_flushes[key] = future
+        future.add_done_callback(lambda f, k=key: self._flush_done(k))
+
+    def _flush_done(self, key: int) -> None:
+        """Release the flush slot and forget the pending flush for ``key``.
+
+        Runs in the worker thread; must not take ``self._lock``.
+        """
+        self._pending_flushes.pop(key, None)
+        self._flush_slots.release()
 
     def __setitem__(self, key: Any, value: Any) -> None:
         """Set a value in the cached array.
@@ -310,10 +356,16 @@ class ReadAheadWriteBehindBuffer:
             return chunk[key]
 
     def flush(self) -> None:
-        """Flush all cached buffers to the underlying Zarr array."""
+        """Flush all cached buffers, and wait for any background flushes."""
         with self._lock:
             for buffer in self._lru_chunks_cache.values():
-                buffer.flush()
+                buffer._flush_locked()
+            pending = list(self._pending_flushes.values())
+
+        # Wait outside the lock: the done-callbacks pop from _pending_flushes
+        # without taking the lock, so this cannot deadlock.
+        for future in pending:
+            future.result()
 
     @property
     def _max_chunk_index(self) -> int:
@@ -337,6 +389,13 @@ class ReadAheadWriteBehindBuffer:
         with self._lock:
             if chunk_index in self._lru_chunks_cache:
                 return self._lru_chunks_cache[chunk_index]
+            pending = self._pending_flushes.get(chunk_index)
+
+        # If this chunk was just evicted and its flush is still in flight, wait
+        # for the write to finish before re-reading the same region from zarr.
+        # Wait outside the lock so we don't block other cache operations.
+        if pending is not None:
+            pending.result()
 
         # Create the chunk outside the lock so we don't block other operations while loading from disk
         # In the unlikely event of multiple threads loading the same chunk, the LRU cache will handle duplicates
@@ -512,6 +571,7 @@ class ReadAheadWriteBehindBuffer:
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         self.flush()
+        self._flush_pool.shutdown(wait=True)
 
 
 class _MultiBufferSpan:

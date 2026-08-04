@@ -138,6 +138,12 @@ class TabularOutput(OutputBase):
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
 
+    rows_per_chunk: int | None = None
+    """The number of rows per chunk for tabular datasets. If None, the chunk size will be determined automatically based on the target fragment size and the row size."""
+
+    bytes_per_chunk: int = 64 * 1024 * 1024  # 64 MiB
+    """The target size of each chunk in bytes for tabular datasets. This is used to determine the number of rows per chunk if rows_per_chunk is None."""
+
 
 class TrajectoriesOutput(OutputBase):
     """Output configuration for trajectory datasets.

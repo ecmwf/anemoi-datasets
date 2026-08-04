@@ -183,12 +183,13 @@ class Creator(ABC):
         # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
 
         model_dump = self.recipe.model_dump_json()
+        model_dump = json.loads(model_dump)
+
         metadata["_recipe"] = model_dump
 
         # Store a sanitised (no path, no urls,...) version of the recipe for the catalogue
         # This one will be kept in the finalised dataset metadata
 
-        model_dump = json.loads(model_dump)
         # model_dump = self.recipe.only_non_defaults(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
         if self.recipe.output.sanitise:
