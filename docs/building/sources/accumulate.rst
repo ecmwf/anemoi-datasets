@@ -45,6 +45,9 @@ The ``accumulate`` source requires the following parameters:
   release with a ``DeprecationWarning``.
 - **accumulation** (trajectory recipes only): one of ``from-zero`` or
   ``from-previous-step``; see `Forecast accumulations (trajectory recipes)`_.
+- **reduction** (optional, default ``sum``): how the fields covering the window
+  are combined — ``sum``, ``max`` or ``min``. Use ``max`` for windowed extrema
+  such as wind gusts; see `Reductions: sum, max and min`_.
 - **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
   Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
 
@@ -188,6 +191,91 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
           :language: yaml
 
 These two examples are equivalent to those shown in Option 1 above.
+
+Reductions: sum, max and min
+============================
+
+By default the fields covering a window are **added** together — the classic
+accumulation for precipitation or radiation. Some parameters are instead
+*windowed extrema*: a wind gust field holds the largest gust observed since the
+last output, not a quantity accumulated over it. Adding six hourly gust fields
+would be meaningless; you want their maximum.
+
+Set ``reduction`` to choose:
+
+.. list-table::
+   :widths: 15 85
+   :header-rows: 1
+
+   * - Value
+     - Meaning
+   * - ``sum``
+     - Default. Adds the covering fields, subtracting where the covering uses a
+       reversed interval.
+   * - ``max``
+     - Largest value over the window, element by element (e.g. maximum wind gust).
+   * - ``min``
+     - Smallest value over the window.
+
+For example, a 6-hourly dataset built from hourly gust fields:
+
+.. code:: yaml
+
+   input:
+     accumulate:
+       period: 6h
+       reduction: max
+       covering:
+         auto:
+           - [0,  "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12"]
+           - [12, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12"]
+       source:
+         mars:
+           class: od
+           stream: oper
+           type: fc
+           levtype: sfc
+           param: [10fg]
+
+For a valid date of 12:00 this takes the maximum of the six hourly fields
+covering 06:00 → 12:00.
+
+What ``max`` and ``min`` require
+--------------------------------
+
+Addition is invertible, so a window can be reconstructed by *subtracting*
+archived fields: ``a(6,12) = +a(0,12) - a(0,6)``. This is what makes
+``accumulated-from-start`` archives usable, and what ``accumulation: from-zero``
+relies on in trajectory recipes.
+
+Extrema are **not** invertible. The maximum over ``[6,12]`` cannot be recovered
+from the maxima over ``[0,12]`` and ``[0,6]``. Consequently ``max`` and ``min``
+only work when the archive provides intervals that **tile the window exactly**,
+which in practice means per-step values:
+
+- An archive storing per-step values (ERA5-style, ``accumulated-from-previous-step``,
+  or an explicit ``0-1/1-2/...`` interval list) works.
+- An archive storing values from the start of the forecast
+  (``accumulated-from-start``) does **not**, and the source raises rather than
+  producing a wrong answer.
+- In trajectory recipes, ``accumulation: from-previous-step`` works and
+  ``accumulation: from-zero`` is rejected.
+
+.. warning::
+
+   The ``covering: {auto: ...}`` presets describe how **precipitation** is laid
+   out for a given class/stream. A parameter such as wind gust may be archived
+   with completely different step ranges in the very same stream, so give an
+   explicit interval list rather than relying on ``auto``. If no forward-only
+   covering can be found, the source fails with an error naming the window.
+
+.. note::
+
+   GRIB edition 1 has no way to encode a minimum: it shares
+   ``timeRangeIndicator=2`` with maximum, so the field would be read back as a
+   maximum. ``reduction: min`` therefore raises an error when the source
+   delivers GRIB1; ``max`` is encoded correctly in both editions. NaNs
+   propagate, as they do for ``sum``.
 
 Controlling the fields regrouped within accumulation
 ====================================================
