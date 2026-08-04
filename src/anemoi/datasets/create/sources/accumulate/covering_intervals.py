@@ -45,6 +45,7 @@ def covering_intervals(
     switch_penalty: int = 24 * 3600 * 7,
     max_delta: timedelta = timedelta(hours=24 * 2),
     error_on_fail: bool = True,
+    positive_only: bool = False,
 ) -> list[SignedInterval] | None:
     """Find a path of intervals covering [start, end] with minimal base switches, then minimal total absolute length.
     Uses a Dijkstra-like algorithm to find the optimal path.
@@ -62,6 +63,13 @@ def covering_intervals(
         max_delta: Maximum allowed deviation from start/end for search.
 
         error_on_fail: Whether to raise an error if coverage cannot be found.
+
+        positive_only: Discard candidates that run backwards in time, so the
+            result is a gapless tiling of [start, end] rather than a signed
+            decomposition.  Required by non-invertible reductions (max/min),
+            which cannot subtract one archived field from another.  With only
+            positive candidates the walk advances monotonically, so reaching the
+            target coverage is equivalent to reaching `end`.
 
     Returns:
         A list of SignedInterval objects covering [start, end], or None if no coverage found and error_on_fail is False.
@@ -98,6 +106,9 @@ def covering_intervals(
             return None
 
         for interval in candidates(state.current_time):
+            if positive_only and interval.length <= 0:
+                continue
+
             if interval.start != state.current_time:
                 raise ValueError(
                     f"Candidate interval {interval} does not start or end at current_time {state.current_time}"

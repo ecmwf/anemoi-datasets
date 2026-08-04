@@ -30,7 +30,9 @@ from .accumulator import Accumulator
 from .accumulator import Logs
 from .covering import ForecastCovering
 from .covering import covering_factory
+from .covering import validate_tiling
 from .field_to_interval import FieldToInterval
+from .reductions import reduction_factory
 
 LOG = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ class AccumulateSource(Source):
         accumulation: str | None = None,
         patch: Any = None,
         group_by: dict | None = None,
+        reduction: str = "sum",
     ) -> None:
         super().__init__(context)
 
@@ -93,6 +96,7 @@ class AccumulateSource(Source):
         self.period = frequency_to_timedelta(period)
         self.covering = covering
         self.accumulation = accumulation
+        self.reduction = reduction_factory(reduction)
         self.patch = patch
         self.group_by = patch_groupby_keys(group_by)
         self._field_to_interval = FieldToInterval(patch)
@@ -119,7 +123,9 @@ class AccumulateSource(Source):
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
-            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True).encode()
+            json.dumps(
+                (str(self.period), self.source, self.reduction.name, *extra_hash_parts), sort_keys=True
+            ).encode()
         ).hexdigest()
         return self.context.create_source(self.source, "data_sources", h)
 
@@ -216,6 +222,7 @@ class AccumulateSource(Source):
                         key=key,
                         coverage=coverages[target],
                         basetime=basetime,
+                        reduction=self.reduction,
                     )
 
                 acc = accumulators[accumulator_key]
@@ -247,7 +254,12 @@ class AccumulateSource(Source):
 
         LOG.debug("💬 source for accumulations: %s", self.source)
         source_object = self._create_source_object()
-        covering_obj = covering_factory(self.covering, self._source_name, self.source[self._source_name])
+        covering_obj = covering_factory(
+            self.covering,
+            self._source_name,
+            self.source[self._source_name],
+            positive_only=not self.reduction.invertible,
+        )
 
         # generate the interval coverage for every date
         coverages = {}
@@ -255,6 +267,8 @@ class AccumulateSource(Source):
             if not isinstance(d, datetime.datetime):
                 raise TypeError("valid_date must be a datetime.datetime instance")
             coverages[(d, None)] = covering_obj.cover(d - self.period, d)
+            if not self.reduction.invertible:
+                validate_tiling(coverages[(d, None)], d - self.period, d)
             LOG.debug(f"  Found covering intervals: for {d - self.period} to {d}:")
             for c in coverages[(d, None)]:
                 LOG.debug(f"    {c}")
@@ -290,11 +304,17 @@ class AccumulateSource(Source):
 
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         source_object = self._create_source_object(self.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=self.accumulation)
+        covering = ForecastCovering(
+            period=self.period,
+            accumulation=self.accumulation,
+            positive_only=not self.reduction.invertible,
+        )
 
         coverages: dict = {}
         for vt, bt in dates.items:
             coverages[(vt, bt)] = covering.cover(vt - self.period, vt, basetime=bt)
+            if not self.reduction.invertible:
+                validate_tiling(coverages[(vt, bt)], vt - self.period, vt)
             LOG.debug("  Forecast covering for (vt=%s, bt=%s):", vt, bt)
             for c in coverages[(vt, bt)]:
                 LOG.debug("    %s", c)

@@ -49,7 +49,9 @@ class IntervalGenerator:
     """
 
     @abstractmethod
-    def covering_intervals(self, start: datetime, end: datetime) -> Iterable[SignedInterval]:
+    def covering_intervals(
+        self, start: datetime, end: datetime, positive_only: bool = False
+    ) -> Iterable[SignedInterval]:
         pass
 
     @abstractmethod
@@ -107,12 +109,15 @@ class SearchableIntervalGenerator(IntervalGenerator):
 
         self.patterns: list[Pattern] = patterns
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+    def covering_intervals(
+        self, start: datetime.datetime, end: datetime.datetime, positive_only: bool = False
+    ) -> Iterable[SignedInterval]:
         """Perform interval search among candidates with minimal base switches and length.
         Candidates are given by self call
         Return available SignedIntervals covering the period start->end (where start>end is possible)
+        With positive_only, reversed candidates are discarded and the result is a plain tiling.
         """
-        return covering_intervals(start, end, self)
+        return covering_intervals(start, end, self, positive_only=positive_only)
 
     def __call__(
         self,
@@ -167,7 +172,11 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
 
         self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+    def covering_intervals(
+        self, start: datetime.datetime, end: datetime.datetime, positive_only: bool = False
+    ) -> Iterable[SignedInterval]:
+        # positive_only needs no handling here: every interval built below is checked
+        # to have end_step > start_step, so this generator never emits a reversed one.
         cycle_length_in_hours = max([k[1] for k in self.config.keys()])
 
         assert end > start, "CycleIntervalProvider only supports positive intervals (end must be after start)"
