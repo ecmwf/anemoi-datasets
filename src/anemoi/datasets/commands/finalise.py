@@ -37,6 +37,37 @@ class Finalise(Command):
         command_parser.add_argument("path", help="Path to store the created data.")
         command_parser.add_argument("--trace", action="store_true")
 
+        # Run a single finalise stage so the zarr can be populated incrementally from
+        # several processes. With no flag, all stages run in one process (backward
+        # compatible). `--load` selects fragments with `--parts` (1-based, like `load`).
+        stage = command_parser.add_mutually_exclusive_group()
+        stage.add_argument(
+            "--prepare",
+            dest="finalise_stage",
+            action="store_const",
+            const="prepare",
+            help="Deduplicate, compute the shape, create the zarr array and write the manifest.",
+        )
+        stage.add_argument(
+            "--load",
+            dest="finalise_stage",
+            action="store_const",
+            const="load",
+            help="Write the fragments of the given --parts into the zarr array.",
+        )
+        stage.add_argument(
+            "--tidy",
+            dest="finalise_stage",
+            action="store_const",
+            const="tidy",
+            help="Merge statistics and date ranges, build the index and clean up.",
+        )
+        command_parser.add_argument(
+            "--parts",
+            nargs="+",
+            help="Only load the specified parts of the dataset (1-based, e.g. '2/5'). Used with --load.",
+        )
+
     def run(self, args: Any) -> None:
         """Execute the finalise command.
 

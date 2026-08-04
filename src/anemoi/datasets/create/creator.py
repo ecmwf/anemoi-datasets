@@ -64,6 +64,7 @@ class Creator(ABC):
         self.recipe = recipe
 
         self.parts = kwargs.pop("parts", None)
+        self.finalise_stage = kwargs.pop("finalise_stage", None)
 
         self.kwargs = kwargs
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
@@ -263,8 +264,38 @@ class Creator(ABC):
         self.final_metadata(dataset)
         dataset.touch()
 
+    def task_finalise_prepare(self) -> None:
+        LOG.info("Finalising dataset (prepare stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_prepare(dataset)
+        self.final_metadata(dataset)
+        dataset.touch()
+
+    def task_finalise_load(self) -> None:
+        LOG.info("Finalising dataset (load stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_load(dataset)
+        dataset.touch()
+
+    def task_finalise_tidy(self) -> None:
+        LOG.info("Finalising dataset (tidy stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_tidy(dataset)
+        self.final_metadata(dataset)
+        dataset.touch()
+
     @abstractmethod
     def finalise_dataset(self, dataset: Dataset) -> None:
+        pass
+
+    def finalise_prepare(self, dataset: Dataset) -> None:
+        # Layouts that do not support staged finalisation run the whole thing here.
+        self.finalise_dataset(dataset)
+
+    def finalise_load(self, dataset: Dataset) -> None:
+        pass
+
+    def finalise_tidy(self, dataset: Dataset) -> None:
         pass
 
     def final_metadata(self, dataset: Dataset) -> None:

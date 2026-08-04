@@ -34,10 +34,27 @@ class TaskDispatcher:
         return self.creator.task_statistics()
 
     def task_finalise(self):
-        self.creator.task_finalise()
-        self.creator.task_statistics()
-        self.creator.task_size()
-        self.creator.task_cleanup()
+        # The finalise step can be split across independent processes so the zarr can be
+        # populated incrementally and in random order. `finalise --prepare/--load/--tidy`
+        # run one stage each; no stage flag runs the whole thing in one process. Cleanup
+        # (which removes the work_dir tmp files) only runs on the final stage.
+        match self.creator.finalise_stage:
+            case None:
+                self.creator.task_finalise()
+                self.creator.task_statistics()
+                self.creator.task_size()
+                self.creator.task_cleanup()
+            case "prepare":
+                self.creator.task_finalise_prepare()
+            case "load":
+                self.creator.task_finalise_load()
+            case "tidy":
+                self.creator.task_finalise_tidy()
+                self.creator.task_statistics()
+                self.creator.task_size()
+                self.creator.task_cleanup()
+            case other:
+                raise ValueError(f"Unknown finalise stage: {other!r}")
 
     def task_cleanup(self):
         self.creator.task_cleanup()

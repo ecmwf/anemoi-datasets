@@ -8,9 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
+import glob
 import hashlib
 import logging
 import os
+import pickle
 import socket
 import threading
 import time
@@ -27,7 +29,6 @@ import pandas as pd
 import psutil
 import tqdm
 
-from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
@@ -235,14 +236,47 @@ def _path(dirname: str, array: np.ndarray, short_hash: str) -> str:
     return os.path.join(dirname, f"{first_date.isoformat()}-{last_date.isoformat()}-{short_hash}")
 
 
-def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[Fragment]:
+_DEDUP_JOURNAL = "dedup_journal.log"
+
+
+def _fsync(path: str) -> None:
+    """Flush a file (or directory) to stable storage so a rename/write survives a power loss."""
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _dedup_journal_path(work_dir: str) -> str:
+    return os.path.join(work_dir, _DEDUP_JOURNAL)
+
+
+def _replay_dedup_journal(work_dir: str) -> None:
+    """Reclaim the superseded input files recorded by a previous (crashed) dedup run.
+
+    Each line is the path of a fragment whose de-overlapped outputs were durably written before
+    the crash (that is guaranteed by the write ordering in the dedup loop), so it is dead weight
+    and safe to delete. Idempotent: inputs already gone are skipped.
+    """
+    path = _dedup_journal_path(work_dir)
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            victim = line.strip()
+            if victim:
+                _unlink_if_exists(victim)
+
+
+def _deoverlap_worker(one: Fragment, two: Fragment) -> list[Fragment]:
     """Worker function to resolve overlapping date ranges between two fragments.
 
-    This function is used to merge two fragments that have overlapping date ranges. It finds the point where the overlap ends,
-    removes any duplicate row at the boundary, and then splits the data into two non-overlapping arrays. The function
-    saves the new arrays to disk, either overwriting the originals or creating deduped versions, and returns the number
-    of duplicates removed along with a list of new Fragment instances. This is essential for ensuring that the final dataset
-    has strictly increasing, non-overlapping date ranges across all fragments.
+    This function merges two fragments that have overlapping date ranges. It finds the point where the overlap ends,
+    removes any duplicate rows, and splits the data into two non-overlapping arrays, written as **new** ``.deduped``
+    files. The outputs are ``fsync``-ed (and the directory too) before returning, so that once the caller sees the
+    result the outputs are durable. The worker does **not** delete the two inputs: the caller does that, after
+    journalling, so that an input is only ever removed once its data is safely captured in the durable outputs.
 
     Parameters
     ----------
@@ -250,13 +284,11 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         The first fragment.
     two : Fragment
         The second fragment.
-    delete_files : bool
-        Whether to overwrite the original files or create deduped copies.
 
     Returns
     -------
     list of Fragment
-        The resulting list of updated Fragment instances.
+        The resulting list of new Fragment instances.
     """
 
     try:
@@ -290,37 +322,24 @@ def _deoverlap_worker(one: Fragment, two: Fragment, delete_files: bool) -> list[
         dirname = os.path.dirname(one.file_path)
         short_hash = hashlib.sha1(hash_input).hexdigest()[:7]
 
-        first_region = concat[:split_point]
-        if len(first_region) > 0:
-            path = _path(dirname, first_region, short_hash)
-            np.save(path + ".tmp", first_region)
-            if delete_files:
-                os.rename(path + ".tmp.npy", one.file_path)
-                result.append(Fragment.from_path(one.file_path))
-            else:
-                os.rename(path + ".tmp.npy", path + ".deduped.1.npy")
-                result.append(Fragment.from_path(path + ".deduped.1.npy"))
-        else:
-            if delete_files:
-                with LOG_LOCK:
-                    LOG.info(f"Deleting empty fragment {one.file_path}")
-                os.unlink(one.file_path)
+        # Write each half as a new `.deduped` file; the originals `one`/`two` are left for the
+        # caller to delete once these outputs are durable. Empty halves simply drop out.
+        outputs: list[str] = []
+        for region, suffix in ((concat[:split_point], "deduped.1"), (concat[split_point:], "deduped.2")):
+            if len(region) == 0:
+                continue
+            path = _path(dirname, region, short_hash)
+            np.save(path + ".tmp", region)
+            out = f"{path}.{suffix}.npy"
+            os.rename(path + ".tmp.npy", out)
+            outputs.append(out)
+            result.append(Fragment.from_path(out))
 
-        second_region = concat[split_point:]
-        if len(second_region) > 0:
-            path = _path(dirname, second_region, short_hash)
-            np.save(path + ".tmp", second_region)
-            if delete_files:
-                os.rename(path + ".tmp.npy", two.file_path)
-                result.append(Fragment.from_path(two.file_path))
-            else:
-                os.rename(path + ".tmp.npy", path + ".deduped.2.npy")
-                result.append(Fragment.from_path(path + ".deduped.2.npy"))
-        else:
-            if delete_files:
-                with LOG_LOCK:
-                    LOG.info(f"Deleting empty fragment {two.file_path}")
-                os.unlink(two.file_path)
+        # Make the outputs durable (data + directory entry) before the caller deletes the inputs,
+        # so a power loss in that window can never lose data.
+        for out in outputs:
+            _fsync(out)
+        _fsync(dirname)
 
         with LOG_LOCK:
             LOG.info(f"Deoverlapping fragments\n    {one}\n    {two}")
@@ -369,11 +388,12 @@ def _sort_and_chain_fragments(fragments: list[Fragment]) -> list[Fragment]:
 
 
 def _list_files(work_dir: str) -> Generator[str, None, None]:
-    """Yield file paths for .npy files in a working directory, excluding temporary and special files.
+    """Yield the live fragment ``.npy`` files in a working directory.
 
-    This function scans the specified working directory and returns a list of all .npy files that are not temporary
-    or special files (such as those used for date indices or intermediate deduplication). This is used to identify all
-    candidate fragment files for further processing in the finalisation pipeline.
+    Returns every ``.npy`` file that is a candidate fragment, excluding only special files and the ``.tmp`` files of
+    an in-flight write. ``.deduped`` files **are** included: because the dedup loop deletes each input as soon as its
+    de-overlapped outputs are durable, on a re-run the surviving ``.deduped`` files are the live representation of the
+    data and must be picked up. (Partially written ``.tmp`` files are excluded because they may be truncated.)
 
     Parameters
     ----------
@@ -393,7 +413,7 @@ def _list_files(work_dir: str) -> Generator[str, None, None]:
         if not file.endswith(".npy"):
             continue
 
-        if ".tmp" in file or ".deduped" in file:
+        if ".tmp" in file:
             continue
 
         yield os.path.join(work_dir, file)
@@ -416,7 +436,6 @@ def _read_fragment_worker(file_path: str) -> Fragment:
 
 def _find_duplicate_and_overlapping_dates(
     work_dir: str,
-    delete_files: bool,
     max_fragment_size: int = 256 * 1024 * 1024,  # 256 MB
     max_workers: int | None = None,
 ) -> list[Fragment]:
@@ -428,12 +447,16 @@ def _find_duplicate_and_overlapping_dates(
     Fragment objects that can be safely concatenated to form the final dataset. This is the main data cleaning step
     in the finalisation pipeline, ensuring data integrity and temporal consistency.
 
+    Overlap resolution never modifies a fragment in place: each pair is written to new ``.deduped`` files and its two
+    inputs are deleted only once those outputs are durable, so disk is reclaimed as the work proceeds (a fragment may
+    be de-overlapped repeatedly, so keeping every generation could blow up disk use). A journal of deleted inputs
+    (fsync'd before each delete) lets an interrupted run reclaim stragglers on restart, and because an input is only
+    ever removed after its data is safely in the durable outputs, an interruption never loses data.
+
     Parameters
     ----------
     work_dir : str
         Directory containing fragment files.
-    delete_files : bool
-        Whether to overwrite original files or create deduped copies.
     max_fragment_size : int
         Maximum size of each fragment file in bytes. This is used to estimate memory requirements for parallel
         processing.
@@ -486,6 +509,10 @@ def _find_duplicate_and_overlapping_dates(
 
     LOG.info(f"Using {max_workers} workers for deduplication and deoverlapping")
 
+    # A previous run may have been killed after a pair's outputs were made durable but before its
+    # inputs were deleted; reclaim those stragglers before we scan, so we don't carry duplicates.
+    _replay_dedup_journal(work_dir)
+
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Read all fragments in parallel
 
@@ -508,35 +535,63 @@ def _find_duplicate_and_overlapping_dates(
         now = time.time()
         LOG.info("Checking overlaps")
 
-        # Iteratively resolve overlaps until none remain
-        seen = set()
-        while True:
-            tasks = []
-            prev: Fragment | None = None
-            for fragment in sorted(fragments.values(), key=lambda x: x.first_date):
-                if prev is None:
-                    prev = fragment
-                    continue
+        # Reclaim disk as we go: once a pair's de-overlapped outputs are durable, its two inputs are
+        # dead weight. A fragment may be re-deduplicated many times (the outputs of one pair can
+        # overlap another and be split again), so keeping every generation could blow disk up by
+        # orders of magnitude on a large build. We record each resolved pair's inputs in a journal
+        # (fsync'd) and delete them immediately; a crashed run reclaims any stragglers on restart via
+        # _replay_dedup_journal. Deleting an input is safe because the worker fsync'd the outputs
+        # that contain its data before returning.
+        journal = open(_dedup_journal_path(work_dir), "w")
+        try:
+            # Iteratively resolve overlaps until none remain
+            seen = set()
+            while True:
+                tasks = []
+                task_inputs: dict[Any, tuple[str, str]] = {}
+                prev: Fragment | None = None
+                for fragment in sorted(fragments.values(), key=lambda x: x.first_date):
+                    if prev is None:
+                        prev = fragment
+                        continue
 
-                if fragment.first_date <= prev.last_date and (prev.file_path, fragment.file_path) not in seen:
-                    # Overlap detected, resolve in parallel
-                    tasks.append(executor.submit(_deoverlap_worker, prev, fragment, delete_files))
-                    seen.add((prev.file_path, fragment.file_path))
-                    del fragments[prev.file_path]
-                    del fragments[fragment.file_path]
-                    prev = None
-                else:
-                    prev = fragment
+                    if fragment.first_date <= prev.last_date and (prev.file_path, fragment.file_path) not in seen:
+                        # Overlap detected, resolve in parallel
+                        future = executor.submit(_deoverlap_worker, prev, fragment)
+                        task_inputs[future] = (prev.file_path, fragment.file_path)
+                        tasks.append(future)
+                        seen.add((prev.file_path, fragment.file_path))
+                        del fragments[prev.file_path]
+                        del fragments[fragment.file_path]
+                        prev = None
+                    else:
+                        prev = fragment
 
-            if not tasks:
-                LOG.info("No more overlaps detected")
-                break
+                if not tasks:
+                    LOG.info("No more overlaps detected")
+                    break
 
-            with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
-                for future in as_completed(tasks):
-                    updates = future.result()
-                    fragments.update({update.file_path: update for update in updates})
-                    pbar.update(1)
+                with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
+                    for future in as_completed(tasks):
+                        updates = future.result()
+                        fragments.update({update.file_path: update for update in updates})
+
+                        # The pair's data is now held entirely by the durable outputs, so journal the
+                        # two inputs (fsync) and delete them to free their disk right away.
+                        if updates:
+                            inputs = task_inputs[future]
+                            journal.write("".join(f"{p}\n" for p in inputs))
+                            journal.flush()
+                            os.fsync(journal.fileno())
+                            for p in inputs:
+                                _unlink_if_exists(p)
+                        pbar.update(1)
+        finally:
+            journal.close()
+
+        # Dedup finished: every surviving fragment is a live `.deduped` file, so the journal is
+        # obsolete and can be removed.
+        _unlink_if_exists(_dedup_journal_path(work_dir))
 
         # There is a bug in ProcessPoolExecutor that hangs if the number of tasks sent is smaller
         # that the number of workers, so we send dummy tasks to avoid it.
@@ -662,10 +717,9 @@ def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice
 def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
     try:
         now = time.time()
-        # Remove deduped files after loading to save disk space
+        # Fragment files are only deleted once the whole part is committed (see
+        # load_tabular_dataset), never here, so that a re-run can reload them.
         array: np.ndarray = np.load(fragment.file_path)
-        if "deduped" in fragment.file_path:
-            os.unlink(fragment.file_path)
 
         first = _date(array, 0)
         last = _date(array, -1)
@@ -683,33 +737,245 @@ def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
         raise
 
 
-def finalise_tabular_dataset(
+_MANIFEST_NAME = "finalise_manifest.pkl"
+
+
+def _manifest_path(work_dir: str) -> str:
+    return os.path.join(work_dir, _MANIFEST_NAME)
+
+
+def _write_manifest(work_dir: str, manifest: dict) -> None:
+    # Write then rename so the manifest only ever appears complete: its presence is
+    # the marker that the `prepare` stage finished.
+    path = _manifest_path(work_dir)
+    with open(path + ".tmp", "wb") as f:
+        pickle.dump(manifest, f)
+    os.replace(path + ".tmp", path)
+
+
+def _read_manifest(work_dir: str) -> dict:
+    with open(_manifest_path(work_dir), "rb") as f:
+        return pickle.load(f)
+
+
+# Every finalise stage can be killed at any point (e.g. by SLURM) and re-run. A small
+# journal of ``<name>.done`` marker files in the work dir records which units of work have
+# been committed, so a re-run skips them. Markers are written last, after the work they
+# guard is safely on disk, and always via write-then-rename so they never appear partial.
+# The overall "finalise finished" signal lives in the store (`_FINALISE_COMPLETE_ATTR`), so
+# that re-running any stage after the work dir has been cleaned up is a no-op.
+
+_FINALISE_COMPLETE_ATTR = "_tabular_finalise_complete"
+
+
+def _finalise_complete(store: Any) -> bool:
+    return bool(store.attrs.get(_FINALISE_COMPLETE_ATTR, False))
+
+
+def _marker_path(work_dir: str, name: str) -> str:
+    return os.path.join(work_dir, f"{name}.done")
+
+
+def _is_marked_done(work_dir: str, name: str) -> bool:
+    return os.path.exists(_marker_path(work_dir, name))
+
+
+def _mark_done(work_dir: str, name: str) -> None:
+    path = _marker_path(work_dir, name)
+    with open(path + ".tmp", "w") as f:
+        f.write("done\n")
+    os.replace(path + ".tmp", path)
+
+
+def _unlink_if_exists(path: str) -> None:
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
+def _delete_fragment_files(fragments: list["Fragment"]) -> None:
+    for fragment in fragments:
+        _unlink_if_exists(fragment.file_path)
+
+
+def _reclaim_unreferenced_fragments(work_dir: str, manifest: dict) -> None:
+    """Delete fragment files that the committed manifest no longer references.
+
+    Overlap resolution is non-destructive, so once ``prepare`` has written the manifest the work
+    dir holds both the surviving fragments (untouched originals and the final ``.deduped`` files,
+    all listed in the manifest) *and* the superseded ones (originals that were de-overlapped and
+    intermediate ``.deduped`` / ``.tmp`` files). The superseded files are pure dead weight — their
+    data is fully contained in the manifest's fragments — so they are removed here to reclaim disk
+    before the load stage, which matters when a de-overlap can transiently double disk usage on a
+    multi-terabyte build. Idempotent: it only ever deletes ``.npy`` files absent from the manifest,
+    so a re-run (e.g. after an interrupted sweep) simply finishes the job.
+    """
+    referenced = {os.path.realpath(fragment[0]) for fragment in manifest["fragments"]}
+    for name in os.listdir(work_dir):
+        if not name.endswith(".npy") or name in ("dates.npy", "dates_ranges.npy"):
+            continue
+        path = os.path.join(work_dir, name)
+        if os.path.realpath(path) in referenced:
+            continue
+        _unlink_if_exists(path)
+
+
+def _daily_epochs(first_date: datetime.datetime, last_date: datetime.datetime) -> np.ndarray:
+    """Rebuild the daily date axis used to derive the statistics date range."""
+    epochs = []
+    date = first_date
+    while date <= last_date:
+        epochs.append(date)
+        date += datetime.timedelta(days=1)
+    return np.array(epochs, dtype="datetime64[s]")
+
+
+def _fragment_part_bounds(parts: str | list | None, total: int) -> tuple[int, int, int]:
+    """Return ``(part_index, lo, hi)`` for the fragment slice ``[lo, hi)`` of a part.
+
+    Mirrors :class:`~anemoi.datasets.create.parts.PartFilter`'s 1-based ``i/n``
+    contiguous split. The bounds are derived from the global fragment count so
+    that empty parts (``n`` larger than the number of fragments) still yield
+    ``lo == hi`` at the correct boundary, keeping the per-part statistics
+    contiguous for ``tidy``.
+    """
+    if isinstance(parts, list):
+        if len(parts) != 1:
+            raise ValueError(f"Invalid parts format: {parts}. Must be a single 'i/n'.")
+        parts = parts[0]
+
+    if not parts or parts in ("all", "*"):
+        return 0, 0, total
+
+    i, n = (int(x) for x in parts.split("/"))
+    chunk_size = total / n
+    lo = sum(1 for x in range(total) if x < (i - 1) * chunk_size)
+    hi = sum(1 for x in range(total) if x < i * chunk_size)
+    return i - 1, lo, hi
+
+
+def _stream_fragments_into_zarr(
+    dataset: Any,
+    fragments: list[Fragment],
+    collector: StatisticsCollector,
+    date_range_builder: "_DuplicateRangeBuilder",
+    offset: int,
+) -> None:
+    """Write a list of fragments into ``store["data"]`` at their offsets.
+
+    Statistics collection and duplicate-date-range building run on background
+    threads while the next fragment is read ahead, mirroring the original
+    single-pass pipeline. Writes go straight to the zarr array (zarr handles the
+    read-modify-write of partial boundary chunks). Fragment files are not deleted
+    here; the caller removes them only once the whole part is committed, so that a
+    re-run of an interrupted part still finds every fragment on disk.
+    """
+    data = dataset.store["data"]
+
+    with (
+        ThreadPoolExecutor(max_workers=2) as read_ahead,
+        ThreadPoolExecutor(max_workers=1) as compute_statistics,
+        ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
+    ):
+        # Double buffering: keep two fragments loaded ahead for performance
+        tasks: list[Any] = []
+        for i in range(len(fragments)):
+            tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
+            if i >= 1:  # Keep two fragments max : i=0 and i=1, then stop
+                break
+
+        i = len(tasks)
+        stats = None
+        build = None
+        previous_date = None
+
+        total_rows = sum(f.shape[0] for f in fragments)
+        with tqdm.tqdm(total=total_rows, desc="Writing to Zarr", unit="row") as pbar:
+            while tasks:
+                fragment, array, _ = tasks.pop(0).result()
+
+                if previous_date is not None and fragment.first_date <= previous_date:
+                    raise ValueError(
+                        f"Fragment {fragment.file_path} has first date {fragment.first_date} which is before "
+                        f"last date {previous_date} of previous fragment. This may indicate an unresolved overlap."
+                    )
+                previous_date = fragment.last_date
+
+                data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
+
+                # Dates are encoded as (days, seconds) in columns 0 and 1
+                epochs = array_to_epoch(array)
+
+                # Wait for previous statistics computation to complete
+                if stats is not None:
+                    stats.result()
+                stats = compute_statistics.submit(_statistics_collector_worker, collector, array[:, offset:], epochs)
+
+                # Wait for previous duplicate range building to complete
+                if build is not None:
+                    build.result()
+                build = build_duplicate_ranges.submit(
+                    _build_duplicate_ranges_worker,
+                    date_range_builder,
+                    epochs,
+                    slice(fragment.offset, fragment.offset + fragment.shape[0]),
+                    fragment,
+                )
+
+                pbar.update(fragment.shape[0])
+
+                # Pre-load next fragment
+                if i < len(fragments):
+                    tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
+                    i += 1
+
+            # Ensure the last statistics/range computations are complete
+            if stats is not None:
+                stats.result()
+            if build is not None:
+                build.result()
+
+
+def prepare_tabular_dataset(
     *,
-    store: Any,
+    dataset: Any,
     work_dir: str,
     recipe: Any,
     variables_names: list[str],
-    date_indexing: dict | str,
     delete_files: bool,
     offset: int = 4,
-) -> StatisticsCollector:
-    """Finalise a tabular dataset by deduplicating, deoverlapping, and writing to a Zarr store.
+) -> None:
+    """Prepare stage: deduplicate, compute the shape, create the empty zarr array, write the manifest.
 
-    This is the main entry point for the tabular dataset finalisation process. It orchestrates the entire pipeline:
-    - Deduplicates and deoverlaps all fragment files in the working directory.
-    - Computes the final shape and fragmenting for the output dataset.
-    - Writes the cleaned data to a Zarr store, using efficient fragmented I/O.
-    - Extracts and records all duplicate date ranges for fast lookup.
-    - Optionally deletes all intermediate files to save disk space.
+    Deduplicates and deoverlaps all fragment files, computes and validates the final shape and
+    chunking, creates the (empty) ``data`` array in the store, and writes a manifest to ``work_dir``
+    listing every fragment and its offset in the final zarr. Once the manifest is committed, the
+    superseded fragment files are removed (when ``delete_files``) to reclaim disk before the load
+    stage. The surviving fragment files are left on disk for the load stage. This step must run
+    exactly once before any ``load`` stage.
 
-    The result is a single, clean, and efficiently indexed tabular dataset ready for downstream analysis or distribution.
-
+    Re-runnable: if the manifest already exists the stage only finishes reclaiming disk (it never
+    re-deduplicates or wipes the partially loaded ``data`` array); an interrupted de-overlap loses
+    no data because it never modifies the original fragments.
     """
+    store = dataset.store
+
+    if _finalise_complete(store):
+        LOG.info("Tabular finalise already complete; prepare is a no-op.")
+        return
+
+    if os.path.exists(_manifest_path(work_dir)):
+        LOG.info("Manifest already present; prepare has already run.")
+        if delete_files:
+            # A previous run may have been killed mid-reclaim; finish it (idempotent).
+            _reclaim_unreferenced_fragments(work_dir, _read_manifest(work_dir))
+        return
+
     fragments: list[Fragment] = _find_duplicate_and_overlapping_dates(
         work_dir,
         max_fragment_size=recipe.build.max_fragment_size,
         max_workers=recipe.build.max_workers,
-        delete_files=delete_files,
     )
 
     assert fragments, "No data found to finalise"
@@ -729,38 +995,20 @@ def finalise_tabular_dataset(
     LOG.info(f"First fragment: {fragments[0].first_date} to {fragments[0].last_date}")
     LOG.info(f"Last fragment : {fragments[-1].first_date} to {fragments[-1].last_date}")
 
-    epochs = []
-    date = fragments[0].first_date
-    last = fragments[-1].last_date
-    while date <= last:
-        epochs.append(date)
-        date += datetime.timedelta(days=1)
-
-    epochs = np.array(epochs, dtype="datetime64[s]")
-
-    collector = StatisticsCollector(
-        variables_names=variables_names,
-        filter=recipe.statistics.statistics_filter(epochs),
-    )
-
-    dates_ranges_path = os.path.join(work_dir, "dates_ranges.npy")
-
-    date_range_builer = _DuplicateRangeBuilder(length=shape[0], path=dates_ranges_path)
-
-    if "data" in store:
-        del store["data"]
-
     row_size: int = shape[1] * np.dtype(np.float32).itemsize
     rows_per_chunk: int = max(1, round(recipe.output.bytes_per_chunk / row_size))
-
     if recipe.output.rows_per_chunk is not None:
         rows_per_chunk = recipe.output.rows_per_chunk
 
     chunking: tuple[int, int] = (min(rows_per_chunk, shape[0]), shape[1])
     LOG.info(f"Final dataset shape: {shape}, chunking: {chunking}")
     LOG.info(
-        f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
+        f"Number of rows: {shape[0]:,}, rows per chunk: {chunking[0]:,}, "
+        f"total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
     )
+
+    if "data" in store:
+        del store["data"]
 
     store.create_array(
         "data",
@@ -770,122 +1018,169 @@ def finalise_tabular_dataset(
         compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
     )
 
-    with WriteBehindBuffer(store["data"], no_reload=True, max_cached_chunks=50) as data:
-        with (
-            ThreadPoolExecutor(max_workers=2) as read_ahead,
-            ThreadPoolExecutor(max_workers=1) as compute_statistics,
-            ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
-        ):
-            # Double buffering: keep two fragments loaded ahead for performance
-            tasks: list[Any] = []
-            i: int = 0
-            for i in range(len(fragments)):
-                tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
-                if i >= 1:  # Keep two fragments max : i=0 and i=1, then stop
-                    break
+    manifest = {
+        "shape": shape,
+        "chunking": chunking,
+        "offset": offset,
+        "first_date": fragments[0].first_date,
+        "last_date": fragments[-1].last_date,
+        "fragments": [(f.file_path, f.first_date, f.last_date, tuple(f.shape), f.offset) for f in fragments],
+    }
+    _write_manifest(work_dir, manifest)
 
-            i = len(tasks)
-            stats = None
-            stat_time = 0
-            data_time = 0
-            date_time = 0
-            read_time = 0
+    # The manifest now durably references every surviving fragment, so the superseded originals
+    # and de-overlap intermediates can be reclaimed to avoid carrying ~2x the data through load.
+    if delete_files:
+        _reclaim_unreferenced_fragments(work_dir, manifest)
 
-            build = None
-            build_time = 0
-            previous_date = None
-            expected_offset = 0
+    LOG.info(f"Prepared {len(fragments):,} fragments for a final shape of {shape}.")
 
-            with tqdm.tqdm(total=len(data), desc="Writing to Zarr", unit="row") as pbar:
-                while tasks:
-                    start = now = time.time()
-                    fragment, array, _ = tasks.pop(0).result()
-                    read_elapsed = time.time() - now
-                    read_time += read_elapsed
 
-                    if previous_date is not None and fragment.first_date <= previous_date:
-                        raise ValueError(
-                            f"Fragment {fragment.file_path} has first date {fragment.first_date} which is before last date {previous_date} of previous fragment. This may indicate an overlap that was not resolved."
-                        )
-                    previous_date = fragment.last_date
+def _part_ranges_path(work_dir: str, part_index: int) -> str:
+    return os.path.join(work_dir, f"dates_ranges_{part_index:06d}.bin")
 
-                    assert (
-                        expected_offset == fragment.offset
-                    ), f"Fragment {fragment.file_path} has offset {fragment.offset} which does not match expected offset {expected_offset}"
 
-                    now = time.time()
-                    data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
-                    data_elapsed = time.time() - now
-                    data_time += data_elapsed
+def load_tabular_dataset(
+    *,
+    dataset: Any,
+    work_dir: str,
+    recipe: Any,
+    variables_names: list[str],
+    parts: str | list | None,
+    delete_files: bool,
+) -> None:
+    """Load stage: write one part of the fragments into the zarr array.
 
-                    # Dates are encoded as (days, seconds) in columns 0 and 1
-                    now = time.time()
-                    epochs = array_to_epoch(array)
-                    date_elapsed = time.time() - now
-                    date_time += date_elapsed
+    Reads the manifest, selects this part's contiguous slice of fragments, writes them into the
+    already-created ``data`` array, and emits a per-part partial :class:`StatisticsCollector`
+    (pickled, mirroring the gridded creator) and a per-part duplicate-date-ranges file. Both are
+    combined in the ``tidy`` stage. ``parts`` is ``None`` (all fragments) or ``"i/n"`` (1-based).
 
-                    now = time.time()
-                    # Wait for previous statistics computation to complete
-                    if stats is not None:
-                        _ = stats.result()
-                        stat_elapsed = time.time() - now
-                    else:
-                        stat_elapsed = 0
+    Re-runnable: a ``load_<part>.done`` marker is written last, once the part's data,
+    statistics and date ranges are all committed. A re-run of a completed part only finishes
+    deleting its fragment files; a re-run of an interrupted part recomputes it from scratch
+    (the fragment files are only deleted after the marker, so they are still present).
+    """
+    store = dataset.store
 
-                    stats = compute_statistics.submit(
-                        _statistics_collector_worker, collector, array[:, offset:], epochs
-                    )
+    if _finalise_complete(store):
+        LOG.info("Tabular finalise already complete; load is a no-op.")
+        return
 
-                    # Wait for previous duplicate range building to complete
-                    if build is not None:
-                        now = time.time()
-                        _ = build.result()
-                        build_elapsed = time.time() - now
-                    else:
-                        build_elapsed = 0
+    if not os.path.exists(_manifest_path(work_dir)):
+        raise RuntimeError(f"No manifest in {work_dir!r}: run `anemoi-datasets finalise --prepare` before `--load`.")
 
-                    build = build_duplicate_ranges.submit(
-                        _build_duplicate_ranges_worker,
-                        date_range_builer,
-                        epochs,
-                        slice(fragment.offset, fragment.offset + fragment.shape[0]),
-                        fragment,
-                    )
+    manifest = _read_manifest(work_dir)
 
-                    pbar.update(fragment.shape[0])
+    fragments: list[Fragment] = []
+    for file_path, first_date, last_date, shape, off in manifest["fragments"]:
+        fragment = Fragment(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
+        fragment.offset = off
+        fragments.append(fragment)
 
-                    if delete_files:
-                        os.unlink(fragment.file_path)
+    total = len(fragments)
+    part_index, lo, hi = _fragment_part_bounds(parts, total)
+    part_fragments = fragments[lo:hi]
 
-                    # Pre-load next fragment
-                    if i < len(fragments):
-                        tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
-                        i += 1
+    final_rows = manifest["shape"][0]
+    start = fragments[lo].offset if lo < total else final_rows
+    end = fragments[hi].offset if hi < total else final_rows
 
-                    expected_offset += fragment.shape[0]
+    marker = f"load_{part_index:06d}"
+    if _is_marked_done(work_dir, marker):
+        LOG.info(f"Part {part_index} already loaded; ensuring its fragment files are removed.")
+        if delete_files:
+            _delete_fragment_files(part_fragments)
+        return
 
-                    elapsed = time.time() - start
-                    LOG.info(
-                        f"\n   {elapsed=:.2f}\n   {read_elapsed=:.2f}\n   {data_elapsed=:.2f}\n   {date_elapsed=:.2f}\n   {stat_elapsed=:.2f}\n   {build_elapsed=:.2f}"
-                    )
+    LOG.info(f"Loading part {part_index} ({parts}): fragments [{lo}:{hi}] of {total}, rows [{start}:{end}).")
 
-            # Ensure last statistics computation is complete
-            if stats is not None:
-                stat_time += stats.result()
+    offset = manifest["offset"]
+    epochs = _daily_epochs(manifest["first_date"], manifest["last_date"])
+    collector = StatisticsCollector(
+        variables_names=variables_names,
+        filter=recipe.statistics.statistics_filter(epochs),
+    )
 
-            if build is not None:
-                build_time += build.result()
+    ranges_path = _part_ranges_path(work_dir, part_index)
+    if part_fragments:
+        date_range_builder = _DuplicateRangeBuilder(length=end - start, path=ranges_path)
+        _stream_fragments_into_zarr(dataset, part_fragments, collector, date_range_builder, offset)
+        date_range_builder.array()  # close and truncate the ranges file to its used size
+    else:
+        # Empty part: still emit an (empty) ranges file so tidy sees every part.
+        open(ranges_path, "wb").close()
 
-            LOG.info(f"Statistics computed in {stat_time:.2f} seconds ({len(data) / stat_time:.2f} rows/second).")
-            LOG.info(f"Data written in {data_time:.2f} seconds ({len(data) / data_time:.2f} rows/second).")
-            LOG.info(f"Dates written in {date_time:.2f} seconds ({len(data) / date_time:.2f} rows/second).")
-            LOG.info(
-                f"Duplicate date ranges built in {build_time:.2f} seconds ({len(data) / build_time:.2f} rows/second)."
-            )
+    stats_path = os.path.join(work_dir, f"statistics_{part_index:06d}-{start:09d}-{end:09d}.pkl")
+    collector.serialise(stats_path + ".tmp", group=part_index, start=start, end=end)
+    os.replace(stats_path + ".tmp", stats_path)
 
-    dates_ranges = date_range_builer.array()
+    # Marker last: once it exists, the part's data, statistics and ranges are all committed.
+    _mark_done(work_dir, marker)
 
-    LOG.info(f"Duplicate date ranges written to {dates_ranges_path} with {len(dates_ranges):,} ranges")
+    # Only now is it safe to free the fragment files. If we are killed mid-deletion and
+    # re-run, the marker short-circuits to the deletion branch above.
+    if delete_files:
+        _delete_fragment_files(part_fragments)
+
+    LOG.info(f"Loaded part {part_index}: wrote rows [{start}:{end}) and saved partial statistics.")
+
+
+def tidy_tabular_dataset(
+    *,
+    dataset: Any,
+    work_dir: str,
+    recipe: Any,
+    variables_names: list[str],
+    date_indexing: dict | str,
+    delete_files: bool,
+) -> None:
+    """Tidy stage: merge the partial statistics and date ranges, build the index, set attrs.
+
+    Only the parts that carry a ``load_<part>.done`` marker are combined, so an incomplete
+    load can never contribute a half-written statistics or ranges file. Merges every part's
+    statistics pickle (via :meth:`StatisticsCollector.load_precomputed`), concatenates the
+    per-part date-ranges files in part order, validates them, builds the date index, writes
+    the statistics and metadata into the dataset, and finally marks the finalise complete in
+    the store before removing the manifest and all temporary files.
+
+    Re-runnable: if the store already carries the completion flag the stage is a no-op, so a
+    re-run after (or during) the clean-up does nothing.
+    """
+    store = dataset.store
+
+    if _finalise_complete(store):
+        LOG.info("Tabular finalise already complete; tidy is a no-op.")
+        return
+
+    # Only consider parts whose load committed (marker present), in part order.
+    done_markers = sorted(glob.glob(_marker_path(work_dir, "load_*")))
+    part_indices = [int(os.path.basename(p)[len("load_") : -len(".done")]) for p in done_markers]
+    assert part_indices, "No completed load parts found; run the load stage before tidy."
+
+    stats_files: list[str] = []
+    range_files: list[str] = []
+    for idx in part_indices:
+        matches = glob.glob(os.path.join(work_dir, f"statistics_{idx:06d}-*.pkl"))
+        assert len(matches) == 1, f"Expected exactly one statistics file for part {idx}, found {matches}"
+        stats_files.append(matches[0])
+        range_files.append(_part_ranges_path(work_dir, idx))
+
+    # Merge the per-part partial statistics (mirrors the gridded creator).
+    collector = StatisticsCollector.load_precomputed(dataset, stats_files)
+
+    # Concatenate the per-part duplicate-date-range files in part order.
+    row_size = 3 * np.dtype(np.int64).itemsize
+    part_arrays = []
+    for path in range_files:
+        n_rows = os.path.getsize(path) // row_size
+        if n_rows:
+            part_arrays.append(np.memmap(path, dtype=np.int64, mode="r", shape=(n_rows, 3)))
+
+    assert part_arrays, "No date ranges found; run the load stage before tidy."
+    dates_ranges = part_arrays[0] if len(part_arrays) == 1 else np.concatenate(part_arrays)
+
+    LOG.info(f"Duplicate date ranges: {len(dates_ranges):,} ranges from {len(part_arrays)} part(s)")
 
     if recipe.build.validate_date_ranges:
         from .validate import validate_date_ranges
@@ -894,21 +1189,37 @@ def finalise_tabular_dataset(
 
     index = create_date_indexing(date_indexing, store)
 
-    start = time.time()
+    now = time.time()
     LOG.info("Bulking load duplicate date ranges into index")
     index.bulk_load(dates_ranges)
-    LOG.info(f"Duplicate date ranges written to index in {time.time() - start:.2f} seconds")
+    LOG.info(f"Duplicate date ranges written to index in {time.time() - now:.2f} seconds")
 
     del dates_ranges
+    del part_arrays
 
-    if delete_files:
-        os.unlink(dates_ranges_path)
+    # Write the statistics into the dataset.
+    collector.add_to_dataset(dataset)
 
-    # Set the format attribute to indicate this is a tabular dataset
+    # Set the format attributes and the date-indexing metadata for the catalogue.
     store.attrs.update({"layout": "tabular"})
     store.attrs.update({"date_indexing": index.name})
 
-    return collector
+    LOG.info("Computing date indexing metadata for the dataset.")
+    first, last = index.start_end_dates()
+    dataset.update_metadata(
+        index_start_date=first.isoformat(),
+        index_end_date=last.isoformat(),
+        index_length=index.length(),
+    )
+
+    # Mark complete *before* removing anything: after this point a re-run is a no-op, so
+    # there is no window in which the temporary files are gone but the flag is unset.
+    store.attrs.update({_FINALISE_COMPLETE_ATTR: True})
+
+    if delete_files:
+        for path in stats_files + range_files + done_markers:
+            _unlink_if_exists(path)
+        _unlink_if_exists(_manifest_path(work_dir))
 
 
 if __name__ == "__main__":
@@ -916,4 +1227,4 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    _find_duplicate_and_overlapping_dates(sys.argv[1], delete_files=False, max_workers=None)
+    _find_duplicate_and_overlapping_dates(sys.argv[1], max_workers=None)

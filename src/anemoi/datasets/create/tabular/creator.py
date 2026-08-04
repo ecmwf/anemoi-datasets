@@ -14,8 +14,6 @@ from typing import Any
 
 import numpy as np
 
-from anemoi.datasets.date_indexing import create_date_indexing
-
 from ..creator import Creator
 from ..dataset import Dataset
 from .context import TabularContext
@@ -167,35 +165,61 @@ class TabularCreator(Creator):
             )
 
     def finalise_dataset(self, dataset: Dataset) -> None:
-        """Finalise the dataset after all data has been loaded.
+        """Finalise the dataset in a single process (backward-compatible full path).
+
+        Runs the prepare, load (all fragments) and tidy stages in sequence. Splitting these
+        stages across processes is done via ``finalise_prepare`` / ``finalise_load`` /
+        ``finalise_tidy`` (see the ``anemoi-datasets finalise --prepare/--load/--tidy`` flags).
 
         Parameters
         ----------
         dataset : Dataset
             The dataset object to be finalised.
         """
-        from .finalise import finalise_tabular_dataset
+        self.finalise_prepare(dataset)
+        self._finalise_load(dataset, parts=None)
+        self.finalise_tidy(dataset)
 
-        collector = finalise_tabular_dataset(
-            store=dataset.store,
+    def finalise_prepare(self, dataset: Dataset) -> None:
+        """Prepare stage: dedup, compute shape, create the zarr array and write the manifest."""
+        from .finalise import prepare_tabular_dataset
+
+        prepare_tabular_dataset(
+            dataset=dataset,
             work_dir=self.work_dir,
-            date_indexing=self.recipe.output.date_indexing,
             recipe=self.recipe,
             variables_names=self.variables_names,
             delete_files=self.recipe.build.delete_files,
             offset=4,
         )
 
-        collector.add_to_dataset(dataset)
+    def finalise_load(self, dataset: Dataset) -> None:
+        """Load stage: write this process's ``--parts`` slice of fragments into the zarr array."""
+        self._finalise_load(dataset, parts=self.parts)
 
-        LOG.info("Computing date indexing for the dataset.")
+    def _finalise_load(self, dataset: Dataset, parts: Any) -> None:
+        from .finalise import load_tabular_dataset
 
-        date_indexing = create_date_indexing(dataset.store.attrs["date_indexing"], dataset.store)
-        start, end = date_indexing.start_end_dates()
-        dataset.update_metadata(
-            index_start_date=start.isoformat(),
-            index_end_date=end.isoformat(),
-            index_length=date_indexing.length(),
+        load_tabular_dataset(
+            dataset=dataset,
+            work_dir=self.work_dir,
+            recipe=self.recipe,
+            variables_names=self.variables_names,
+            parts=parts,
+            delete_files=self.recipe.build.delete_files,
+        )
+
+    def finalise_tidy(self, dataset: Dataset) -> None:
+        """Tidy stage: merge partial statistics/date-ranges, build the index, set attrs and metadata."""
+        from .finalise import tidy_tabular_dataset
+
+        tidy_tabular_dataset(
+            dataset=dataset,
+            work_dir=self.work_dir,
+            date_indexing=self.recipe.output.date_indexing,
+            recipe=self.recipe,
+            variables_names=self.variables_names,
+            delete_files=self.recipe.build.delete_files,
         )
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
