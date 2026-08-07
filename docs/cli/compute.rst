@@ -174,18 +174,6 @@ low-resolution grid and the native low-resolution dataset:
 
     anemoi-datasets compute hi-res grid=o96 --statistics-residual lo-res
 
-Use the residual statistics as an override when opening a dataset for training:
-
-.. code-block:: bash
-
-    anemoi-datasets compute hi-res grid=o96 --statistics-residual lo-res --statistics-tendencies 6h
-    # → produces hi-res.statistics.zarr
-
-.. code:: python
-
-    ds = open_dataset("hi-res",
-                      statistics_tendencies="hi-res.statistics.zarr")
-
 Resume a long run that was interrupted:
 
 .. code-block:: bash
