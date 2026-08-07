@@ -290,8 +290,8 @@ def zarr_from_str(name: str, mode: str) -> zarr.Group:
         Zarr dataset.
     """
     # Format: test-2021-2021-6h-o96-abcd-0
-    if "/" in name:
-        return true_zarr_open(name)
+    if "/" in name or mode == "w":
+        return true_zarr_open(name, mode)
 
     name, _ = os.path.splitext(name)
 

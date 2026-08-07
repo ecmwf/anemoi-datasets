@@ -452,7 +452,7 @@ def _write_zarr(
     if overwrite and os.path.exists(output):
         shutil.rmtree(output)
 
-    store = zarr.open_group(store=zarr.DirectoryStore(output), mode="w")
+    store = zarr.open(output, mode="w")
     n = len(variables)
 
     # Minimal attrs so that open_dataset recognises this as a gridded store.
