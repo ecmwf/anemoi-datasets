@@ -10,11 +10,14 @@
 from __future__ import annotations
 
 import logging
+from math import prod
 from typing import Annotated
 from typing import Any
+from typing import ClassVar
 from typing import Literal
 from typing import Union
 
+import numpy as np
 from pydantic import BaseModel
 from pydantic import Discriminator
 from pydantic import Field
@@ -40,6 +43,10 @@ class OutputBase(BaseModel):
 
 class GriddedOutput(OutputBase):
     """Output configuration for gridded datasets."""
+
+    _DEFAULT_GRID_SPLITS: ClassVar[int] = 4
+    # Blosc and several other codecs use signed 32-bit buffer sizes.
+    _MAX_CHUNK_BYTES: ClassVar[int] = 2**31 - 1
 
     format: Literal["gridded"] = "gridded"
     """The format of the dataset."""
@@ -101,6 +108,11 @@ class GriddedOutput(OutputBase):
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
 
+        Unless an explicit ``values`` chunk size is configured, split the
+        grid into at least four chunks. If a chunk would exceed the codec
+        buffer limit, keep doubling the number of grid splits. This keeps all
+        variables together and confines automatic subdivision to the grid.
+
         Parameters
         ----------
         coords : dict
@@ -122,6 +134,24 @@ class GriddedOutput(OutputBase):
             raise ValueError(
                 f"Unused chunking keys from config: {list(user.keys())}, not in known keys : {list(coords.keys())}"
             )
+
+        if "values" in coords and "values" not in self.chunking:
+            grid_axis = list(coords).index("values")
+            grid_size = len(coords["values"])
+            splits = self._DEFAULT_GRID_SPLITS
+
+            while True:
+                chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
+                chunk_bytes = prod(chunks) * np.dtype(self.dtype).itemsize
+                if chunk_bytes <= self._MAX_CHUNK_BYTES:
+                    break
+                if chunks[grid_axis] == 1:
+                    raise ValueError(
+                        f"A single-grid-point chunk requires {chunk_bytes:,} bytes, "
+                        f"exceeding the {self._MAX_CHUNK_BYTES:,}-byte codec limit."
+                    )
+                splits *= 2
+
         return tuple(chunks)
 
 
