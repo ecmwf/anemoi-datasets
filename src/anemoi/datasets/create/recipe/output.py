@@ -47,6 +47,7 @@ class GriddedOutput(OutputBase):
     _DEFAULT_GRID_SPLITS: ClassVar[int] = 4
     # Blosc and several other codecs use signed 32-bit buffer sizes.
     _MAX_CHUNK_BYTES: ClassVar[int] = 2**31 - 1
+    _MIN_CHUNK_BYTES: ClassVar[int] = 2**25  # 32 MiB
 
     format: Literal["gridded"] = "gridded"
     """The format of the dataset."""
@@ -108,10 +109,11 @@ class GriddedOutput(OutputBase):
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
 
-        Unless an explicit ``values`` chunk size is configured, split the
-        grid into at least four chunks. If a chunk would exceed the codec
-        buffer limit, keep doubling the number of grid splits. This keeps all
-        variables together and confines automatic subdivision to the grid.
+        Unless an explicit ``values`` chunk size is configured and the date
+        is larger than :attr:`_MIN_CHUNK_BYTES`, split the grid into four 
+        chunks. If the date is smaller than :attr:`_MIN_CHUNK_BYTES`, the grid
+        is not split. If a chunk would exceed the codec buffer limit, the
+        grid chunking is doubled until it fits. 
 
         Parameters
         ----------
@@ -140,9 +142,16 @@ class GriddedOutput(OutputBase):
             grid_size = len(coords["values"])
             splits = self._DEFAULT_GRID_SPLITS
 
-            while True:
+            def set_grid_chunk_size() -> int:
                 chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
-                chunk_bytes = prod(chunks) * np.dtype(self.dtype).itemsize
+                return prod(chunks) * np.dtype(self.dtype).itemsize
+
+            chunk_bytes = set_grid_chunk_size()
+            while splits > 1 and chunk_bytes < self._MIN_CHUNK_BYTES:
+                splits //= 2
+                chunk_bytes = set_grid_chunk_size()
+
+            while True:
                 if chunk_bytes <= self._MAX_CHUNK_BYTES:
                     break
                 if chunks[grid_axis] == 1:
@@ -151,6 +160,7 @@ class GriddedOutput(OutputBase):
                         f"exceeding the {self._MAX_CHUNK_BYTES:,}-byte codec limit."
                     )
                 splits *= 2
+                chunk_bytes = set_grid_chunk_size()
 
         return tuple(chunks)
 
