@@ -66,7 +66,11 @@ split into four chunks along the grid dimension. All variables remain
 together in each grid chunk. If one of those chunks would exceed the codec's
 maximum buffer size, the grid is split further into 8, 16, 32, and so on
 until each chunk fits. An explicit ``output.chunking.values`` setting
-overrides this automatic grid chunk size.
+overrides this automatic grid chunk size. If the total size of a date
+would be larger then some minimum (currently 25MB), it is not chunked
+and each date is kept as a single file. This is to reduce the inode
+count for low-res datasets, and because synthetic benchmarking showed
+a performance degradation from chunking date files ~10MB large.
 
 .. figure:: _static/schemas/matrix.png
    :alt: Data chunking
