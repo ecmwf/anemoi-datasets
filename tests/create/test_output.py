@@ -21,12 +21,12 @@ def _coords(*, variables=101, ensembles=1, grid_points=100):
     }
 
 
-def test_gridded_default_splits_grid_four_ways():
-    assert GriddedOutput().get_chunking(_coords(grid_points=100)) == (1, 4, 1, 25)
+def test_default_chunking_splits_grid_four_ways():
+    assert GriddedOutput().get_chunking(_coords(grid_points=100)) == (1, 101, 1, 25)
 
 
-def test_gridded_default_handles_non_divisible_grid():
-    assert GriddedOutput().get_chunking(_coords(grid_points=101)) == (1, 4, 1, 26)
+def test_default_chunking_handles_non_divisible_grid():
+    assert GriddedOutput().get_chunking(_coords(grid_points=101)) == (1, 101, 1, 26)
 
 
 @pytest.mark.parametrize(
@@ -49,19 +49,19 @@ def test_default_grid_chunking(name, grid_points, expected_chunks):
     assert grid_points // chunks[-1] == expected_chunks
 
 
-def test_gridded_default_uses_power_of_two_grid_splits_for_large_chunks():
+def test_default_chunking_uses_power_of_two_grid_splits_for_large_chunks():
     output = GriddedOutput()
     # Four grid cells per chunk would exceed the signed 32-bit codec limit;
     # eight grid splits produce chunks containing two cells instead.
     assert output.get_chunking(_coords(variables=200_000_000, grid_points=16)) == (1, 200_000_000, 1, 2)
 
 
-def test_gridded_explicit_grid_chunking_is_preserved():
+def test_default_chunking_explicit_grid_chunking_works():
     output = GriddedOutput(chunking={"dates": 1, "ensembles": 1, "values": 7})
-    assert output.get_chunking(_coords(grid_points=100)) == (1, 4, 1, 7)
+    assert output.get_chunking(_coords(grid_points=100)) == (1, 101, 1, 7)
 
 
-def test_gridded_raises_when_one_grid_point_exceeds_codec_limit():
+def test_default_chunking_errors_when_one_grid_point_exceeds_codec_limit():
     output = GriddedOutput()
     with pytest.raises(ValueError, match="single-grid-point chunk"):
         output.get_chunking(_coords(variables=600_000_000, grid_points=4))
