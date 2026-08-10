@@ -41,10 +41,7 @@ def test_default_chunking_handles_non_divisible_grid():
 def test_default_grid_chunking(name, grid_points, expected_chunks):
     chunks = GriddedOutput().get_chunking(_coords(grid_points=grid_points))
 
-    print(
-        f"{name}: {grid_points:,} grid points -> "
-        f"{expected_chunks} chunks of {chunks[-1]:,} grid points"
-    )
+    print(f"{name}: {grid_points:,} grid points -> " f"{expected_chunks} chunks of {chunks[-1]:,} grid points")
 
     assert grid_points // chunks[-1] == expected_chunks
 

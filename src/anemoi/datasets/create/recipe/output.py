@@ -110,10 +110,10 @@ class GriddedOutput(OutputBase):
         """Returns the chunking configuration based on coordinates.
 
         Unless an explicit ``values`` chunk size is configured and the date
-        is larger than :attr:`_MIN_CHUNK_BYTES`, split the grid into four 
+        is larger than :attr:`_MIN_CHUNK_BYTES`, split the grid into four
         chunks. If the date is smaller than :attr:`_MIN_CHUNK_BYTES`, the grid
         is not split. If a chunk would exceed the codec buffer limit, the
-        grid chunking is doubled until it fits. 
+        grid chunking is doubled until it fits.
 
         Parameters
         ----------
