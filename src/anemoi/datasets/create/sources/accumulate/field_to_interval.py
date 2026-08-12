@@ -94,7 +94,12 @@ class FieldToInterval:
         elif start_step == end_step:
             start_step = datetime.timedelta(0)
 
-        assert start_step >= datetime.timedelta(0), ("After patching, startStep must be >= 0", field, startStep, endStep)
+        assert start_step >= datetime.timedelta(0), (
+            "After patching, startStep must be >= 0",
+            field,
+            startStep,
+            endStep,
+        )
         assert start_step < end_step, ("After patching, startStep must be < endStep", field, startStep, endStep)
 
         interval = SignedInterval(start=base_datetime + start_step, end=base_datetime + end_step, base=base_datetime)
