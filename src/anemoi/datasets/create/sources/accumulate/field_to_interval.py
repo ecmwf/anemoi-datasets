@@ -12,6 +12,7 @@ import datetime
 import logging
 
 from anemoi.datasets.create.intervals import SignedInterval
+from anemoi.datasets.create.intervals import parse_mars_step
 
 LOG = logging.getLogger(__name__)
 
@@ -83,16 +84,18 @@ class FieldToInterval:
 
         LOG.debug(f" 🌧️:    field after user patches: {startStep=}, {endStep=}")
 
-        if startStep > endStep:
-            startStep, endStep = endStep, startStep
-        elif startStep == endStep:
-            startStep, endStep = 0, endStep
+        # Sub-hourly fields report their steps in minutes ("0m", "10m"), so parse
+        # before comparing.
+        start_step = parse_mars_step(startStep)
+        end_step = parse_mars_step(endStep)
 
-        start_step = datetime.timedelta(hours=startStep)
-        end_step = datetime.timedelta(hours=endStep)
+        if start_step > end_step:
+            start_step, end_step = end_step, start_step
+        elif start_step == end_step:
+            start_step = datetime.timedelta(0)
 
-        assert startStep >= 0, ("After patching, startStep must be >= 0", field, startStep, endStep)
-        assert startStep < endStep, ("After patching, startStep must be < endStep", field, startStep, endStep)
+        assert start_step >= datetime.timedelta(0), ("After patching, startStep must be >= 0", field, startStep, endStep)
+        assert start_step < end_step, ("After patching, startStep must be < endStep", field, startStep, endStep)
 
         interval = SignedInterval(start=base_datetime + start_step, end=base_datetime + end_step, base=base_datetime)
 
