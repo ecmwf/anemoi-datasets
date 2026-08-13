@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.42](https://github.com/ecmwf/anemoi-datasets/compare/0.5.41...0.5.42) (2026-08-13)
+
+
+### Features
+
+* Clarify-timezone-datetime ([#723](https://github.com/ecmwf/anemoi-datasets/issues/723)) ([05262c2](https://github.com/ecmwf/anemoi-datasets/commit/05262c2a87adc4d4f3d7c97c5d6508ccc317b4d6))
+* Cut dependency of anemoi-registy on anemoi-datasets ([#696](https://github.com/ecmwf/anemoi-datasets/issues/696)) ([be8b64b](https://github.com/ecmwf/anemoi-datasets/commit/be8b64b8ac853564e5d390835f8eaaf3c8ea3609))
+* **cutout:** User-provided pre-computed cutout masks ([#627](https://github.com/ecmwf/anemoi-datasets/issues/627)) ([448a96c](https://github.com/ecmwf/anemoi-datasets/commit/448a96c80d3b0e332d7e37812746d80c0ad48144))
+* Fix timezone corner case ([#720](https://github.com/ecmwf/anemoi-datasets/issues/720)) ([87771c9](https://github.com/ecmwf/anemoi-datasets/commit/87771c9d7775e0b0124bcdc04b465e3525d6b848))
+
+
+### Bug Fixes
+
+* Fix issue 718 ([#724](https://github.com/ecmwf/anemoi-datasets/issues/724)) ([cffbe79](https://github.com/ecmwf/anemoi-datasets/commit/cffbe79f92fdda0bb7d9a96bbe3fd292036c6cd3))
+* Repair tendency statistics across group boundaries ([#727](https://github.com/ecmwf/anemoi-datasets/issues/727)) ([6751b19](https://github.com/ecmwf/anemoi-datasets/commit/6751b19d64567307fa062cf7c7a950b3809d8551))
+
+
+### Documentation
+
+* Update usage doc ([#712](https://github.com/ecmwf/anemoi-datasets/issues/712)) ([e127d7f](https://github.com/ecmwf/anemoi-datasets/commit/e127d7f342a05ada2795666e9af3ae16c7fccac0))
+
 ## [0.5.41](https://github.com/ecmwf/anemoi-datasets/compare/0.5.40...0.5.41) (2026-07-27)
 
 
