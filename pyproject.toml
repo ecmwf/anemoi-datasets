@@ -42,12 +42,12 @@ dynamic = [
 ]
 dependencies = [
   "anemoi-transform>=0.4",
-  "anemoi-utils[s3]>=0.5",
+  "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",        # Until we move to zarr3
+  "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
