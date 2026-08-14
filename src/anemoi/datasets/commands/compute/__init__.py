@@ -424,13 +424,14 @@ def _write_zarr(
     results: dict[str, Any],
     tendency: str | None,
     overwrite: bool,
+    dates: "np.ndarray | None" = None,
 ) -> None:
     """Write statistics results to a minimal zarr store compatible with ``open_dataset``.
 
-    The store contains only the arrays needed for use as a ``statistics`` or
-    ``statistics_tendencies`` override in ``open_dataset``. It has no ``data``
-    array and no ``dates`` array, so it cannot be iterated; it exists only to
-    serve ``statistics`` and ``statistics_tendencies`` look-ups.
+    The store contains the arrays needed for use as a ``statistics`` or
+    ``statistics_tendencies`` override in ``open_dataset``. A ``dates`` array
+    is required by ``metadata_specific()`` when the store is used as an override;
+    pass the source dataset's dates so that metadata round-trips correctly.
 
     Parameters
     ----------
@@ -445,6 +446,10 @@ def _write_zarr(
         names expected by ``GriddedZarr.statistics_tendencies``.
     overwrite : bool
         If ``True``, remove an existing store before writing.
+    dates : np.ndarray or None
+        Dates from the source dataset. Written into the store so that
+        ``metadata_specific()`` (called during training) can read ``start_date``
+        and ``end_date`` without raising ``KeyError: 'dates'``.
     """
     from anemoi.utils.dates import frequency_to_string
     from anemoi.utils.dates import frequency_to_timedelta
@@ -464,6 +469,17 @@ def _write_zarr(
     # 1 grid point.  open_dataset needs this to exist but never reads values from it
     # when the store is used solely as a statistics source.
     store.create_dataset("data", shape=(0, n, 1, 1), dtype="float32")
+
+    # dates is required by metadata_specific() → start_date / end_date.
+    if dates is not None:
+        store.create_dataset("dates", data=dates)
+        # frequency is derived from dates in GriddedZarr if not set explicitly,
+        # but storing it avoids a potentially expensive inference on a 1-date store.
+        if len(dates) >= 2:
+            from anemoi.utils.dates import frequency_to_string
+
+            delta = dates[1].astype(object) - dates[0].astype(object)
+            store.attrs["frequency"] = frequency_to_string(delta)
 
     if results["statistics"] is not None:
         for key in STATISTICS:
@@ -573,7 +589,10 @@ class Compute(Command):
         if parsed.compare:
             self._compare(parsed, variables, results)
 
-        _write_zarr(output, variables, results, parsed.tendency, parsed.overwrite)
+        from anemoi.datasets import open_dataset as _open_dataset
+
+        _ds = _open_dataset(*parsed.open_args, **parsed.open_kwargs)
+        _write_zarr(output, variables, results, parsed.tendency, parsed.overwrite, dates=_ds.dates)
         LOG.info("Results written to %s", output)
 
     def _compare(self, parsed: "_Parsed", variables: list[str], results: dict[str, Any]) -> None:
