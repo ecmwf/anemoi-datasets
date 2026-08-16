@@ -1762,6 +1762,54 @@ def test_cutout_masks_version_mismatch_warns(tmp_path, caplog):
     assert any("0.0.0-bogus" in r.message for r in caplog.records)
 
 
+def test_cutout_get_tuple_pushes_grid_index_down():
+    class _ArrayDataset:
+        def __init__(self, data):
+            self.data = data
+            self.shape = data.shape
+            self.grid_requests = []
+
+        def __getitem__(self, index):
+            self.grid_requests.append(index[3])
+            return self.data[index]
+
+    rng = np.random.default_rng(0)
+    lams = [_ArrayDataset(rng.random((5, 3, 1, n), dtype="float32")) for n in (10, 8)]
+    globe = _ArrayDataset(rng.random((5, 3, 1, 12), dtype="float32"))
+
+    obj = object.__new__(Cutout)
+    obj.axis = 3
+    obj.lams = lams
+    obj.globe = globe
+    obj.datasets = [*lams, globe]
+    obj.masks = [np.tile([True, False], 5), np.tile([True, True, False, True], 2)]
+    obj.global_mask = np.tile([False, True, True], 4)
+
+    # Reference semantics: mask each dataset, concatenate, then index.
+    masks = [*obj.masks, obj.global_mask]
+    reference = np.concatenate([d.data[..., m] for d, m in zip(obj.datasets, masks)], axis=3)
+    assert obj.shape == reference.shape  # kept points: 5 + 6 + 8
+
+    indices = [
+        (slice(None), slice(None), slice(None), slice(None)),
+        (slice(1, 3), slice(0, 2), slice(None), slice(2, 14)),  # straddles all three datasets
+        (slice(None), slice(None), slice(None), slice(0, 17, 3)),
+        ([0, 2], slice(None), slice(None), slice(4, 9)),
+        (slice(2, 3), slice(None), slice(None), slice(18, 19)),
+    ]
+    for index in indices:
+        np.testing.assert_array_equal(obj[index], reference[index])
+
+    # The grid index reaches the sources: a request inside the first LAM asks it
+    # for the bounding window of the kept points only, and never touches the rest.
+    for d in obj.datasets:
+        d.grid_requests.clear()
+    obj[slice(None), slice(None), slice(None), slice(1, 4)]
+    assert lams[0].grid_requests == [slice(2, 7)]
+    assert lams[1].grid_requests == []
+    assert globe.grid_requests == []
+
+
 def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
     masks_path = tmp_path / "masks.npz"
     obj = _make_cutout()
