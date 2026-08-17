@@ -621,6 +621,15 @@ class Cutout(GridsBase):
             Concatenated data array from all datasets based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
+
+        reverse = index[self.axis].step < 0
+        if reverse:
+            # length_to_slices only handles ascending selections: read the
+            # same points in ascending order and flip the result back below
+            positions = range(*index[self.axis].indices(self.shape[self.axis]))
+            ascending = slice(positions[-1], positions[0] + 1, -positions.step) if positions else slice(0, 0)
+            index, _ = update_tuple(index, self.axis, ascending)
+
         # resolve the requested grid index for each dataset
         # relative to each dataset's own masked points
         requested_per_dataset = length_to_slices(
@@ -644,7 +653,15 @@ class Cutout(GridsBase):
                 part = part[..., selected_source_indices - window.start]
             parts.append(part)
 
-        result = np.concatenate(parts, axis=self.axis)
+        if parts:
+            result = np.concatenate(parts, axis=self.axis)
+        else:
+            # empty grid selection: no dataset was read, build the empty block directly
+            shape = tuple(len(range(*s.indices(n))) for s, n in zip(index, self.shape))
+            result = np.empty(shape, dtype=self.dtype)
+
+        if reverse:
+            result = np.flip(result, axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:

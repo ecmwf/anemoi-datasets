@@ -1770,6 +1770,7 @@ def pushdown_cutout():
         def __init__(self, data):
             self.data = data
             self.shape = data.shape
+            self.dtype = data.dtype
             self.grid_requests = []
 
         def __getitem__(self, index):
@@ -1785,6 +1786,7 @@ def pushdown_cutout():
     obj.lams = lams
     obj.globe = globe
     obj.datasets = [*lams, globe]
+    obj.forward = lams[0]  # Combined forwards dtype & co to the first dataset
     obj.masks = [np.tile([True, False], 5), np.tile([True, True, False, True], 2)]
     obj.global_mask = np.tile([False, True, True], 4)
 
@@ -1823,8 +1825,32 @@ def pushdown_cutout():
             (slice(None), slice(None), slice(None), slice(1, 4)),
             [[slice(2, 7)], [], []],
         ),
+        (
+            # descending selections are read ascending and flipped back
+            (slice(None), slice(None), slice(None), slice(14, 2, -1)),
+            [[slice(6, 9)], [slice(0, 8)], [slice(1, 6)]],
+        ),
+        (
+            (slice(None), slice(None), slice(None), slice(16, 4, -3)),
+            [[], [slice(3, 8)], [slice(4, 9)]],
+        ),
+        (
+            # empty selections read nothing and return an empty block
+            (slice(None), slice(None), slice(None), slice(5, 5)),
+            [[], [], []],
+        ),
     ],
-    ids=["full", "straddles-all-three", "stepped", "list-dates", "global-only", "inside-first-lam"],
+    ids=[
+        "full",
+        "straddles-all-three",
+        "stepped",
+        "list-dates",
+        "global-only",
+        "inside-first-lam",
+        "descending",
+        "descending-stepped",
+        "empty",
+    ],
 )
 def test_cutout_get_tuple_pushes_grid_index_down(pushdown_cutout, index, expected_grid_requests):
     obj, reference = pushdown_cutout
