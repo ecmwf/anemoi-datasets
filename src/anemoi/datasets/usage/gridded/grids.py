@@ -621,18 +621,27 @@ class Cutout(GridsBase):
             Concatenated data array from all datasets based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
-        slices = length_to_slices(index[self.axis], [len(kept) for kept in self._mask_indices])
+        # resolve the requested grid index for each dataset
+        # relative to each dataset's own masked points
+        requested_per_dataset = length_to_slices(
+            index[self.axis], [len(source_indices) for source_indices in self._mask_indices]
+        )
 
         parts = []
-        for dataset, kept, local in zip(self.datasets, self._mask_indices, slices):
-            if local is None:
+        for dataset, source_indices, requested in zip(self.datasets, self._mask_indices, requested_per_dataset):
+            if requested is None:
+                # this dataset contributes no columns to the requested grid range
                 continue
-            sel = kept[local]
-            window = slice(int(sel[0]), int(sel[-1]) + 1)
+            # translate the requested positions from "retained points within a mask"
+            # back to native grid-point indices
+            selected_source_indices = source_indices[requested]
+            # read only the contiguous native-grid range spanning the selected points,
+            # instead of loading the whole grid and slicing in memory
+            window = slice(int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1)
             part = dataset[index[:3] + (window,)]
-            if len(sel) != window.stop - window.start:
-                # the mask has holes (or the slice a step) inside the window
-                part = part[..., sel - window.start]
+            if len(selected_source_indices) != window.stop - window.start:
+                # the mask has gaps (or the index has a step) inside the window: drop the extra points
+                part = part[..., selected_source_indices - window.start]
             parts.append(part)
 
         result = np.concatenate(parts, axis=self.axis)

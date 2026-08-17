@@ -1762,8 +1762,11 @@ def test_cutout_masks_version_mismatch_warns(tmp_path, caplog):
     assert any("0.0.0-bogus" in r.message for r in caplog.records)
 
 
-def test_cutout_get_tuple_pushes_grid_index_down():
+@pytest.fixture(scope="module")
+def pushdown_cutout():
     class _ArrayDataset:
+        # Records the grid index of every access, so the test can check which
+        # dataset was asked for which grid window (and which were never read).
         def __init__(self, data):
             self.data = data
             self.shape = data.shape
@@ -1789,25 +1792,51 @@ def test_cutout_get_tuple_pushes_grid_index_down():
     masks = [*obj.masks, obj.global_mask]
     reference = np.concatenate([d.data[..., m] for d, m in zip(obj.datasets, masks)], axis=3)
     assert obj.shape == reference.shape  # kept points: 5 + 6 + 8
+    return obj, reference
 
-    indices = [
-        (slice(None), slice(None), slice(None), slice(None)),
-        (slice(1, 3), slice(0, 2), slice(None), slice(2, 14)),  # straddles all three datasets
-        (slice(None), slice(None), slice(None), slice(0, 17, 3)),
-        ([0, 2], slice(None), slice(None), slice(4, 9)),
-        (slice(2, 3), slice(None), slice(None), slice(18, 19)),
-    ]
-    for index in indices:
-        np.testing.assert_array_equal(obj[index], reference[index])
 
-    # The grid index reaches the sources: a request inside the first LAM asks it
-    # for the bounding window of the kept points only, and never touches the rest.
+@pytest.mark.parametrize(
+    "index,expected_grid_requests",
+    [
+        (
+            (slice(None), slice(None), slice(None), slice(None)),
+            [[slice(0, 9)], [slice(0, 8)], [slice(1, 12)]],
+        ),
+        (
+            (slice(1, 3), slice(0, 2), slice(None), slice(2, 14)),
+            [[slice(4, 9)], [slice(0, 8)], [slice(1, 5)]],
+        ),
+        (
+            (slice(None), slice(None), slice(None), slice(0, 17, 3)),
+            [[slice(0, 7)], [slice(1, 6)], [slice(2, 8)]],
+        ),
+        (
+            # the list index expands to one read per date
+            ([0, 2], slice(None), slice(None), slice(4, 9)),
+            [[slice(8, 9)] * 2, [slice(0, 5)] * 2, []],
+        ),
+        (
+            (slice(2, 3), slice(None), slice(None), slice(18, 19)),
+            [[], [], [slice(11, 12)]],
+        ),
+        (
+            (slice(None), slice(None), slice(None), slice(1, 4)),
+            [[slice(2, 7)], [], []],
+        ),
+    ],
+    ids=["full", "straddles-all-three", "stepped", "list-dates", "global-only", "inside-first-lam"],
+)
+def test_cutout_get_tuple_pushes_grid_index_down(pushdown_cutout, index, expected_grid_requests):
+    obj, reference = pushdown_cutout
     for d in obj.datasets:
         d.grid_requests.clear()
-    obj[slice(None), slice(None), slice(None), slice(1, 4)]
-    assert lams[0].grid_requests == [slice(2, 7)]
-    assert lams[1].grid_requests == []
-    assert globe.grid_requests == []
+
+    np.testing.assert_array_equal(obj[index], reference[index])
+
+    # The grid index reaches the sources: each dataset is asked only for the
+    # bounding window of its kept points inside the requested range, and
+    # datasets outside that range are never touched.
+    assert [d.grid_requests for d in obj.datasets] == expected_grid_requests
 
 
 def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
