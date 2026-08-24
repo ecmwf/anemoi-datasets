@@ -45,16 +45,16 @@ def _make_zarr_group(
     rng = np.random.default_rng(seed)
     data = rng.standard_normal((n_dates, n_vars, n_ens, n_grid)).astype(np.float32)
     root = zarr.group()
-    root.create_array("data", data=data, compressor=None)
+    root.create_array("data", data=data, compressors=None)
     freq = datetime.timedelta(hours=6)
     dates = np.array([start_date + i * freq for i in range(n_dates)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
-    root.create_array("latitudes", data=np.linspace(-90, 90, n_grid), compressor=None)
-    root.create_array("longitudes", data=np.linspace(0, 360, n_grid, endpoint=False), compressor=None)
-    root.create_array("mean", data=np.zeros(n_vars), compressor=None)
-    root.create_array("stdev", data=np.ones(n_vars), compressor=None)
-    root.create_array("maximum", data=np.ones(n_vars), compressor=None)
-    root.create_array("minimum", data=np.zeros(n_vars), compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
+    root.create_array("latitudes", data=np.linspace(-90, 90, n_grid), compressors=None)
+    root.create_array("longitudes", data=np.linspace(0, 360, n_grid, endpoint=False), compressors=None)
+    root.create_array("mean", data=np.zeros(n_vars), compressors=None)
+    root.create_array("stdev", data=np.ones(n_vars), compressors=None)
+    root.create_array("maximum", data=np.ones(n_vars), compressors=None)
+    root.create_array("minimum", data=np.zeros(n_vars), compressors=None)
     var_list = list(vars[:n_vars])
     attrs = {
         "frequency": frequency_to_string(freq),
@@ -307,3 +307,57 @@ def test_eager_only_wrapper_produces_transformed_data_via_fallback():
     # RollingAverage.__getitem__ were deleted, it would inherit a pass-through and
     # this would equal store[i].
     assert not np.array_equal(eager, store[i])
+
+
+def test_every_getitem_override_declares_two_step_support():
+    """Exhaustive guard: every ``__getitem__`` override in ``usage/`` must be paired
+    with a ``collect_read_parts`` in the *same* class.
+
+    ``Forwards.collect_read_parts`` delegates to ``self.forward``, so a wrapper that
+    overrides ``__getitem__`` to transform the data but inherits that delegation
+    silently serves the child's **untransformed** array (or crashes on a shape
+    mismatch).  "Do nothing" is therefore not a safe default here: a new wrapper
+    must either implement the two-step protocol or declare
+    ``collect_read_parts`` returning ``None``.
+
+    See ``docs/adr/adr-3-two-step-read.md`` — "Why the eager ``__getitem__`` path
+    is permanent", rule 4.
+    """
+    import importlib
+    import pkgutil
+
+    import anemoi.datasets.usage as usage_pkg
+    from anemoi.datasets.usage.dataset import Dataset
+
+    # Classes that deliberately inherit the *leaf store* implementation from
+    # ``ZarrStore``: their ``__getitem__`` is a plain ``self.data[n]``, exactly what
+    # ``ZarrStore.collect_read_parts`` / ``read_from_buffer`` already express.
+    INHERITS_LEAF_IMPL = {"GriddedZarr", "TrajectoriesZarr"}
+
+    for info in pkgutil.walk_packages(usage_pkg.__path__, usage_pkg.__name__ + "."):
+        try:
+            importlib.import_module(info.name)
+        except ImportError:  # optional extras (e.g. scipy-backed modules)
+            continue
+
+    offenders = []
+    seen = set()
+    stack = [Dataset]
+    while stack:
+        cls = stack.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
+        stack.extend(cls.__subclasses__())
+        if not cls.__module__.startswith("anemoi.datasets.usage"):
+            continue
+        if "__getitem__" not in cls.__dict__ or cls.__name__ in INHERITS_LEAF_IMPL:
+            continue
+        if "collect_read_parts" not in cls.__dict__:
+            offenders.append(f"{cls.__module__}.{cls.__name__}")
+
+    assert not offenders, (
+        "these classes override __getitem__ but do not declare collect_read_parts, "
+        "so they inherit Forwards' delegation and would serve untransformed data: "
+        + ", ".join(sorted(offenders))
+    )

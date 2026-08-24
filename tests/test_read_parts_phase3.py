@@ -22,6 +22,7 @@ import pytest
 import zarr
 from anemoi.utils.dates import frequency_to_string
 
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.gridded.concat import Concat as GriddedConcat
 from anemoi.datasets.usage.gridded.grids import Grids
 from anemoi.datasets.usage.gridded.join import Join
@@ -62,16 +63,16 @@ def _make_zarr_group(
     rng = np.random.default_rng(seed)
     data = rng.standard_normal((n_dates, n_vars, n_ens, n_grid)).astype(np.float32)
     root = zarr.group()
-    root.create_array("data", data=data, compressor=None)
+    root.create_array("data", data=data, compressors=None)
     freq = datetime.timedelta(hours=freq_hours)
     dates = np.array([start_date + i * freq for i in range(n_dates)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
-    root.create_array("latitudes", data=np.linspace(-90, 90, n_grid), compressor=None)
-    root.create_array("longitudes", data=np.linspace(0, 360, n_grid, endpoint=False), compressor=None)
-    root.create_array("mean", data=np.zeros(n_vars), compressor=None)
-    root.create_array("stdev", data=np.ones(n_vars), compressor=None)
-    root.create_array("maximum", data=np.ones(n_vars), compressor=None)
-    root.create_array("minimum", data=np.zeros(n_vars), compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
+    root.create_array("latitudes", data=np.linspace(-90, 90, n_grid), compressors=None)
+    root.create_array("longitudes", data=np.linspace(0, 360, n_grid, endpoint=False), compressors=None)
+    root.create_array("mean", data=np.zeros(n_vars), compressors=None)
+    root.create_array("stdev", data=np.ones(n_vars), compressors=None)
+    root.create_array("maximum", data=np.ones(n_vars), compressors=None)
+    root.create_array("minimum", data=np.zeros(n_vars), compressors=None)
     var_list = list(vars[:n_vars])
     root.attrs.update({
         "frequency": frequency_to_string(freq),
@@ -202,7 +203,7 @@ class TestGateConcat:
     def _ds(self):
         d1 = _make_store("c1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         d2 = _make_store("c2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2))
-        return GriddedConcat([d1, d2])
+        return GriddedConcat([d1, d2], options=Options())
 
     def test_int(self):
         _compare_paths(self._ds(), [0, 3, 5, 7])
@@ -226,7 +227,7 @@ class TestGateJoin:
     def _ds(self):
         d1 = _make_store("j1.zarr", n_vars=2, vars="ab", seed=0)
         d2 = _make_store("j2.zarr", n_vars=2, vars="cd", seed=1)
-        return Join([d1, d2])
+        return Join([d1, d2], options=Options())
 
     def test_int(self):
         _compare_paths(self._ds(), [0, 3, 7])
@@ -250,7 +251,7 @@ class TestGateMerge:
     def _ds(self):
         d1 = _make_store("m1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         d2 = _make_store("m2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2))
-        return Merge([d1, d2])
+        return Merge([d1, d2], options=Options())
 
     def test_int(self):
         _compare_paths(self._ds(), list(range(8)))
@@ -274,7 +275,7 @@ class TestGateGivenAxis:
     def _ds(self):
         d1 = _make_store("g1.zarr", n_grid=3, seed=0)
         d2 = _make_store("g2.zarr", n_grid=3, seed=1)
-        return Grids([d1, d2], axis=3)
+        return Grids([d1, d2], axis=3, options=Options())
 
     def test_int(self):
         _compare_paths(self._ds(), [0, 3, 7])

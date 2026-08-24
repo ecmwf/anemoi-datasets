@@ -25,6 +25,7 @@ import numpy as np
 import pytest
 import zarr
 
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.gridded.multi import Multi
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.read_parts import factorize
@@ -37,14 +38,14 @@ DATES = np.array([datetime.datetime(2021, 1, 1) + i * FREQ for i in range(N_DATE
 
 def _build_group(root, data, lats, lons):
     n_vars = data.shape[1]
-    root.create_array("data", data=data, compressor=None)
-    root.create_array("dates", data=DATES, compressor=None)
-    root.create_array("latitudes", data=lats, compressor=None)
-    root.create_array("longitudes", data=lons, compressor=None)
-    root.create_array("mean", data=np.zeros(n_vars), compressor=None)
-    root.create_array("stdev", data=np.ones(n_vars), compressor=None)
-    root.create_array("maximum", data=np.ones(n_vars), compressor=None)
-    root.create_array("minimum", data=np.zeros(n_vars), compressor=None)
+    root.create_array("data", data=data, compressors=None)
+    root.create_array("dates", data=DATES, compressors=None)
+    root.create_array("latitudes", data=lats, compressors=None)
+    root.create_array("longitudes", data=lons, compressors=None)
+    root.create_array("mean", data=np.zeros(n_vars), compressors=None)
+    root.create_array("stdev", data=np.ones(n_vars), compressors=None)
+    root.create_array("maximum", data=np.ones(n_vars), compressors=None)
+    root.create_array("minimum", data=np.zeros(n_vars), compressors=None)
     root.attrs.update({
         "frequency": "6h", "resolution": "o96",
         "name_to_index": {"a": 0, "b": 1},
@@ -71,7 +72,7 @@ def _globe_group(seed=20, n=20):
 def _make_cutout(lam_store, globe_store):
     from anemoi.datasets.usage.gridded.grids import Cutout
 
-    return Cutout([lam_store, globe_store], axis=3, cropping_distance=500.0)
+    return Cutout([lam_store, globe_store], axis=3, cropping_distance=500.0, options=Options())
 
 
 @pytest.fixture()

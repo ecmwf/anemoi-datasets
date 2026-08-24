@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -17,6 +17,7 @@ from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
 from numpy.typing import NDArray
 
+from .coordinates import LevelCoordinate
 from .coordinates import extract_single_value
 from .coordinates import is_scalar
 from .metadata import XArrayMetadata
@@ -92,6 +93,19 @@ class XArrayField(Field):
         for alias, value in aliases.items():
             if alias not in self._md:
                 self._md[alias] = value
+
+        # Extract levtype from LevelCoordinate if present.
+        # LevelCoordinate stores levtype as a property but its mars_names
+        # only includes ("level", "levelist"), so levtype is never propagated
+        # to field metadata through the alias mechanism above.
+        if "levtype" not in self._md:
+            for coord in self.owner.coordinates:
+                if isinstance(coord, LevelCoordinate):
+                    self._md["levtype"] = coord.levtype
+                    break
+            else:
+                # Variables without a level coordinate are surface variables
+                self._md["levtype"] = "sfc"
 
         # By now, the only dimensions should be latitude and longitude
         self._shape = tuple(list(self.selection.shape)[-2:])

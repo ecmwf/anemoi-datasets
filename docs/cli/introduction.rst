@@ -23,6 +23,7 @@ The commands are:
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
+- :ref:`Extract Command <extract_command>`
 - :ref:`Schema Command <schema_command>`
 - :ref:`Rename Command <rename_command>`
 
@@ -34,15 +35,16 @@ The commands are:
    :hidden:
    :caption: CLI
 
-   cli/create
-    cli/create-test-recipe
-   cli/inspect
-   cli/grib-index
-   cli/compare
-   cli/copy
-   cli/scan
-   cli/patch
-   cli/compare-lam
-   cli/validate
-   cli/schema
-   cli/rename
+   create
+   create-test-recipe
+   inspect
+   grib-index
+   compare
+   copy
+   scan
+   patch
+   compare-lam
+   validate
+   extract
+   schema
+   rename

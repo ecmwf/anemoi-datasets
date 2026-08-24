@@ -121,7 +121,13 @@ class ReadPart:
         # Orthogonal selection: slices on every axis but the last, an index
         # array on the last (grid) axis.  Only the needed grid points are read.
         selection: tuple = self.to_zarr_index()[:-1] + (np.asarray(self.grid_index),)
-        return self.data.oindex[selection]
+        oindex = getattr(self.data, "oindex", None)
+        if oindex is not None:
+            return oindex[selection]
+        # Array-likes without zarr's ``oindex`` (numpy arrays, the synthetic
+        # lazy store): basic slices plus a *single* advanced index already have
+        # orthogonal semantics in numpy, so index directly.
+        return self.data[selection]
 
     def _identity(self) -> tuple:
         return (id(self.data), self.slices, self.grid_index)

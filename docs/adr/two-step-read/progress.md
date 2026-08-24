@@ -471,3 +471,52 @@ Workstreams A–D functionally complete; benchmark committed. Remaining polish:
 - Public docs for `multi=` + grid-subset (only in the ADR today; both experimental).
 - Optional: a byte-saving win needs the grid axis chunked at dataset creation
   (`values` chunk in the recipe) — data-eng change, out of scope for the reader.
+
+### Merged `main` @ 0.5.42 (2026-08-24)
+
+Brought the branch up to date with `main` (50 commits behind at merge base
+`2ae6c899`). Five textual conflicts; the interesting work was the *semantic*
+integration with the features `main` landed in the meantime.
+
+Conflicts resolved:
+- `gridded/indexing.py` — both sides added negative-index normalisation in
+  `_tuple_with_slices`. Kept `main`'s (`i + shape[j] if i < 0`) over the branch's
+  `i % shape[j]`: equivalent for in-range negatives, but it does not silently
+  wrap out-of-range values. `check_int_bounds` is still needed (the clamp turns
+  an out-of-range int into an *empty* selection) and its docstring was corrected.
+- `store.py` — combined `main`'s `options=` threading with the branch's
+  `shared_zarr_opens` cache. The cache key is now `(name, repr(options))` so two
+  opens with different options are never shared; a spurious miss only costs the
+  factorization win.
+- `trajectories/store.py`, `trajectories/subset.py`, `tests/test_trajectories.py`
+  — mechanical (`self.data` vs `self.store["data"]`; keeping `main`'s
+  `@debug_indexing`/`@expand_list_indexing` decorators and new step properties
+  alongside the branch's opt-outs; `main`'s zarr-3-style `compressors=`).
+
+Two-step integration with `main`'s new features:
+- **`GriddedAsTrajectory`** (`trajectories/broadcast.py`, the new trajectory-mix
+  broadcast) overrides `__getitem__` but inherited `Forwards.collect_read_parts`,
+  which delegates to the child — so the fast path bypassed the broadcast
+  entirely. Added the `return None` opt-out; verified that removing it again
+  makes `open_dataset(traj, gridded)[0]` raise.
+- **`Subset` negative indices** — `main` taught `Subset.__getitem__` to accept
+  `n < 0` (#703); `collect_read_parts` / `read_from_buffer` still asserted
+  `n >= 0`, so `ds[-1]` on any date-subset crashed on the fast path. Mirrored the
+  normalisation in both.
+- **Synthetic gridded datasets** — `SyntheticGriddedDataset` subclasses
+  `GriddedZarr` over a lazy `_SyntheticArray`, which has no zarr `oindex`.
+  `ReadPart.execute` now falls back to plain numpy indexing for array-likes
+  without it (basic slices + one advanced index already have orthogonal
+  semantics), so grid-subset pushdown works on synthetic data too.
+- **Cutout mask cache** (`cache=<path>.npz`) — the masks are unchanged in
+  meaning, so the pushdown is unaffected; verified fresh vs cached masks are
+  identical and both read byte-identically through fast and eager paths.
+- `Multi` now carries `options` (it bypasses `Combined.__init__`) and
+  `multi_factory` threads them into `_open`.
+- Tabular `Cropping` / `Thinning` mask their result but had no opt-out — safe
+  only by accident (the tabular store beneath returns `None`). Made it explicit.
+
+New guard: `test_every_getitem_override_declares_two_step_support` walks every
+`Dataset` subclass in `usage/` and fails if a class overrides `__getitem__`
+without declaring `collect_read_parts` in the same class. This is the invariant
+`main` broke, and it is the check that will catch the next such merge.

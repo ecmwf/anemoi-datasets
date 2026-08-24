@@ -51,20 +51,20 @@ def _make_zarr_group(
     data = rng.standard_normal((n_dates, n_vars, n_ens, n_grid)).astype(np.float32)
 
     root = zarr.group()
-    root.create_array("data", data=data, compressor=None)
+    root.create_array("data", data=data, compressors=None)
 
     start = datetime.datetime(2021, 1, 1)
     freq = datetime.timedelta(hours=6)
     dates = np.array([start + i * freq for i in range(n_dates)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
-    root.create_array("latitudes", data=np.arange(n_grid, dtype=float), compressor=None)
-    root.create_array("longitudes", data=np.arange(n_grid, dtype=float), compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
+    root.create_array("latitudes", data=np.arange(n_grid, dtype=float), compressors=None)
+    root.create_array("longitudes", data=np.arange(n_grid, dtype=float), compressors=None)
 
     # Statistics (required by ZarrStore.statistics)
-    root.create_array("mean", data=np.mean(data, axis=(0, 2, 3)), compressor=None)
-    root.create_array("stdev", data=np.std(data, axis=(0, 2, 3)), compressor=None)
-    root.create_array("maximum", data=np.max(data, axis=(0, 2, 3)), compressor=None)
-    root.create_array("minimum", data=np.min(data, axis=(0, 2, 3)), compressor=None)
+    root.create_array("mean", data=np.mean(data, axis=(0, 2, 3)), compressors=None)
+    root.create_array("stdev", data=np.std(data, axis=(0, 2, 3)), compressors=None)
+    root.create_array("maximum", data=np.max(data, axis=(0, 2, 3)), compressors=None)
+    root.create_array("minimum", data=np.min(data, axis=(0, 2, 3)), compressors=None)
 
     var_list = list(vars[:n_vars])
     root.attrs["frequency"] = frequency_to_string(freq)

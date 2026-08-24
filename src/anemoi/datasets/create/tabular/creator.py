@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -37,7 +37,20 @@ class TabularCreator(Creator):
         path : str
             The path to the dataset to be checked.
         """
-        pass
+        from pathlib import Path
+
+        from ..naming import check_dataset_name
+
+        name = Path(path).stem
+
+        for message in check_dataset_name(
+            name,
+            resolution=None,
+            start_date=self.groups.first_date(),
+            end_date=self.groups.last_date(),
+            layout="tabular",
+        ):
+            LOG.warning("Dataset name warning: %s", message)
 
     def collect_metadata(self, metadata: dict) -> None:
         super().collect_metadata(metadata)
@@ -47,6 +60,8 @@ class TabularCreator(Creator):
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
         metadata["variables"] = [v for v in variables if not v.startswith("__")]
         metadata["meta_variables"] = [v for v in variables if v.startswith("__")]
+
+        metadata["dimensions"] = ["dates", "variables"]
 
         assert (
             variables == metadata["meta_variables"] + metadata["variables"]
@@ -78,6 +93,18 @@ class TabularCreator(Creator):
             The dataset object into which the result will be loaded.
         """
         os.makedirs(self.work_dir, exist_ok=True)
+
+        # Guard against the pipeline producing columns that differ (in identity
+        # or order) from the schema recorded at initialisation. The fragments
+        # are saved as bare arrays, so this is the only place the column names
+        # still exist; checking here also catches a task running mismatched code.
+        expected = dataset.store.attrs["meta_variables"] + dataset.store.attrs["variables"]
+        actual = result.variables
+        assert actual == expected, (
+            f"Column schema mismatch for {result.start_range}..{result.end_range}:\n"
+            f"  pipeline produced: {actual}\n"
+            f"  metadata declares: {expected}"
+        )
 
         # Split large arrays into multiple files so that the finalisation step
         # does not need to load huge files into memory.

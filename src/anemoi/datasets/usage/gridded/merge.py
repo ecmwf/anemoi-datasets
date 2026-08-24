@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -29,6 +29,7 @@ from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -36,17 +37,19 @@ LOG = logging.getLogger(__name__)
 class Merge(Combined):
     """A class to merge multiple datasets along the dates axis, handling gaps in dates if allowed."""
 
-    def __init__(self, datasets: list[Dataset], allow_gaps_in_dates: bool = False) -> None:
+    def __init__(self, datasets: list[Dataset], options: Options, allow_gaps_in_dates: bool = False) -> None:
         """Initialize the Merge object.
 
         Parameters
         ----------
         datasets : List[Dataset]
             List of datasets to merge.
+        options : Options
+            Options for the combined dataset.
         allow_gaps_in_dates : bool, optional
             Whether to allow gaps in dates. Defaults to False.
         """
-        super().__init__(datasets)
+        super().__init__(datasets, options)
 
         self.allow_gaps_in_dates = allow_gaps_in_dates
 
@@ -298,7 +301,7 @@ class Merge(Combined):
         return self.datasets[dataset].read_from_buffer(int(row), buffer)
 
 
-def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
+def merge_factory(args: tuple, kwargs: dict[str, Any], options: Options) -> Dataset:
     """Factory function to create a merged dataset.
 
     Parameters
@@ -307,6 +310,8 @@ def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
         Positional arguments.
     kwargs : Dict[str, Any]
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -318,7 +323,7 @@ def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
     assert isinstance(datasets, (list, tuple))
     assert len(args) == 0
 
-    datasets = [_open(e) for e in datasets]
+    datasets = [_open(e, options) for e in datasets]
 
     if len(datasets) == 1:
         return datasets[0]._subset(**kwargs)
@@ -327,4 +332,4 @@ def merge_factory(args: tuple, kwargs: dict[str, Any]) -> Dataset:
 
     allow_gaps_in_dates = kwargs.pop("allow_gaps_in_dates", False)
 
-    return Merge(datasets, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)
+    return Merge(datasets, options, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)

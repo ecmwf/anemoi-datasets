@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -417,7 +417,11 @@ class ZarrCopier:
         data = source[name][...]
         if name in target:
             del target[name]
-        target.create_dataset(name, data=data, shape=data.shape)
+        # These are small coordinate/dimension arrays (e.g. latitudes, longitudes,
+        # dates). Store each as a single chunk so the chunking does not depend on
+        # zarr's automatic guess, which can produce a partial final chunk for large
+        # arrays and later trip the divisibility check in check_zarr (see #718).
+        target.create_array(name, data=data, chunks=data.shape)
         LOG.info(f"Copied {name}")
 
     def children(self, group):
@@ -500,7 +504,7 @@ class ZarrCopier:
         """
 
         if "_copy" not in target:
-            target.create_dataset(
+            target.create_array(
                 "_copy",
                 shape=(source["data"].shape[0],),
                 dtype=bool,

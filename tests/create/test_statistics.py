@@ -33,14 +33,21 @@ class DatasetMock:
 def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """Generate random data with known statistics.
 
-    Args:
-        N: Number of rows
-        C: Number of columns
-        nan_fraction: Fraction of values to set as NaN (0.0 to 1.0)
+    Parameters
+    ----------
+    N : int
+        Number of rows.
+    C : int, optional
+        Number of columns.
+    nan_fraction : float, optional
+        Fraction of values to set as NaN (0.0 to 1.0).
 
-    Returns:
-        data: The generated data array
-        target_stats: Dictionary with expected statistics
+    Returns
+    -------
+    data : np.ndarray
+        The generated data array.
+    target_stats : dict[str, np.ndarray]
+        Dictionary with expected statistics.
     """
     print("Generating random data...")
 
@@ -70,7 +77,7 @@ def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str
         nan_mask[:, constants_without_nan] = False  # Do not introduce NaNs in constant columns
         data[nan_mask] = np.nan
         nan_count = np.sum(nan_mask)
-        print(f"Introduced {nan_count} NaN values ({100*nan_count/(N*C):.1f}%)")
+        print(f"Introduced {nan_count} NaN values ({100 * nan_count / (N * C):.1f}%)")
 
     # Capture the actual stats of the modified data
     target_stats = _compute_statistics(data, nan=(nan_fraction > 0))
@@ -417,6 +424,39 @@ def test_serialisation():
 
     compare_statistics(c_stats, c2.statistics())
     compare_constants(c_constants, c2.constant_variables())
+
+
+def test_merge_tendencies_with_batches_smaller_than_delta():
+    """Check that no tendencies are missed when the data is split into parts."""
+    n_dates = 30
+    partition = 15
+    delta = 6
+    dates = np.arange(n_dates).astype(float)
+    data = np.square(dates)[:, None]
+    filter = StatisticsFilter(dates[0], dates[-1])
+    tendencies = {"delta_6": delta}
+
+    c0 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+    for i in range(n_dates):
+        c0.collect(data[i : i + 1], dates[i : i + 1])
+    c0_stats = deepcopy(c0.statistics())
+
+    c1 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+    c2 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+
+    for i in range(partition):
+        c1.collect(data[i : i + 1], dates[i : i + 1])
+    for i in range(partition, n_dates):
+        c2.collect(data[i : i + 1], dates[i : i + 1])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path1 = f"{tmpdir}/collector1.pkl"
+        path2 = f"{tmpdir}/collector2.pkl"
+        c1.serialise(path1, group=0, start=0, end=partition)
+        c2.serialise(path2, group=1, start=partition, end=n_dates)
+        reloaded = StatisticsCollector.load_precomputed(DatasetMock(data, dates), [path1, path2])
+
+    compare_statistics(reloaded.statistics(), c0_stats)
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -46,9 +46,7 @@ class GroupOfDates:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
-        # Trajectory providers yield ``(basetime, step)`` pairs; they are
-        # opaque to ``GroupOfDates`` and stored as-is.
-        self.dates = [d if isinstance(d, tuple) else as_datetime(d) for d in dates]
+        self.dates = [as_datetime(d) for d in dates]
         self.provider = provider
         self.partial_ok = partial_ok
 
@@ -239,19 +237,6 @@ class Filter:
         return [d for d in dates if d not in self.missing]
 
 
-class TrajectoryFilter(Filter):
-    """Filter out ``(basetime, step)`` pairs whose basetime is missing.
-
-    Used by :class:`TrajectoryGroups` because the items yielded by the grouper
-    are pairs, not plain datetimes.  The plain :class:`Filter` would compare a
-    pair to a set of datetimes and find no match — silently leaving missing
-    base dates in the iteration.
-    """
-
-    def __call__(self, pairs):
-        return [(bt, st) for (bt, st) in pairs if bt not in self.missing]
-
-
 class Grouper(ABC):
     """Abstract base class for grouping dates."""
 
@@ -337,13 +322,6 @@ class GrouperByKey(Grouper):
     def __init__(self, key: Callable[[datetime.datetime], Any]) -> None:
         self.key = key
 
-    def _key(self, d: Any) -> Any:
-        # Trajectory providers yield ``(basetime, step)`` pairs; apply the key
-        # to the basetime so monthly/daily/yearly grouping still makes sense.
-        if isinstance(d, tuple):
-            return self.key(d[0])
-        return self.key(d)
-
     def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
         """Group dates based on the provided key.
 
@@ -353,7 +331,7 @@ class GrouperByKey(Grouper):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
-        for _, g in itertools.groupby(sorted(dates, key=self._key), key=self._key):
+        for _, g in itertools.groupby(sorted(dates, key=self.key), key=self.key):
             yield GroupOfDates(list(g), dates)
 
 
@@ -392,13 +370,20 @@ class TrajectoryGroups(Groups):
     :meth:`TrajectoryDates.factorise` (basetimes only) to keep metadata
     meaningful.
 
+    ``group_by`` applies to the **base dates**, so each group carries whole
+    trajectories: every ``(basetime, step)`` pair of the selected basetimes.
+    ``group_by: 1`` therefore means one trajectory per group, and the requests
+    for all the steps of a trajectory reach the sources together (where e.g.
+    MARS factorises them into a single call).
+
     Parameters
     ----------
     steps : Steps
         Forecast lead times (``start``, ``end``, ``frequency``) describing the
         list of steps.
     group_by : Any
-        Grouping configuration forwarded to :meth:`Grouper.from_config`.
+        Grouping configuration forwarded to :meth:`Grouper.from_config`,
+        applied to the base dates.
     base_dates : BaseDates
         The basetimes provider (``start``, ``end``, ``frequency``,
         ``missing``, …) used to build the ``(basetime, step)`` pairs.
@@ -407,23 +392,32 @@ class TrajectoryGroups(Groups):
     def __init__(self, steps: Any, group_by: Any, base_dates: Any) -> None:
         self._dates = TrajectoryDates(base_dates=base_dates, steps=steps)
         self._grouper = Grouper.from_config(group_by)
-        self._filter = TrajectoryFilter(self._dates.missing)
+        self._filter = Filter(self._dates.missing)
+
+    def _base_date_batches(self) -> Iterator[list[datetime.datetime]]:
+        """Yield the non-empty batches of basetimes, missing dates removed."""
+        for go in self._grouper(self._dates.base_dates):
+            basetimes = self._filter(go.dates)
+            if basetimes:
+                yield basetimes
 
     def __iter__(self):
         import numpy as np
 
         from anemoi.datasets.create.arguments import ForecastDates
 
-        for go in self._grouper(self._dates):
-            pairs = self._filter(go.dates)
-            if not pairs:
-                continue
+        for basetimes in self._base_date_batches():
             items = []
-            for basetime, step_td in pairs:
-                step_seconds = int(step_td / np.timedelta64(1, "s"))
-                step = datetime.timedelta(seconds=step_seconds)
-                items.append((basetime + step, basetime))
+            for basetime in basetimes:
+                for step_td in self._dates.steps.values:
+                    step_seconds = int(step_td / np.timedelta64(1, "s"))
+                    step = datetime.timedelta(seconds=step_seconds)
+                    items.append((basetime + step, basetime))
             yield ForecastDates(items)
+
+    @cached_property
+    def _len(self) -> int:
+        return sum(1 for _ in self._base_date_batches())
 
     def one_date(self):
         """Return a single-item ForecastDates for minimal input probing."""

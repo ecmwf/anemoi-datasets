@@ -28,6 +28,7 @@ import pytest
 import zarr
 
 import anemoi.datasets.usage.read_parts as rp
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.read_parts import factorize
 from anemoi.datasets.usage.read_parts import two_step_read
@@ -51,18 +52,18 @@ def _group(seed, lats, lons, n_vars=2, grid_chunk=None):
     data = np.random.default_rng(seed).standard_normal((N_DATES, n_vars, 1, n)).astype(np.float32)
     root = zarr.group()
     if grid_chunk is None:
-        root.create_array("data", data=data, compressor=None)
+        root.create_array("data", data=data, compressors=None)
     else:
-        root.create_dataset("data", data=data, chunks=(1, n_vars, 1, grid_chunk), compressor=None)
+        root.create_array("data", data=data, chunks=(1, n_vars, 1, grid_chunk), compressors=None)
     freq = datetime.timedelta(hours=6)
     dates = np.array([datetime.datetime(2021, 1, 1) + i * freq for i in range(N_DATES)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
-    root.create_array("latitudes", data=lats, compressor=None)
-    root.create_array("longitudes", data=lons, compressor=None)
-    root.create_array("mean", data=np.zeros(n_vars), compressor=None)
-    root.create_array("stdev", data=np.ones(n_vars), compressor=None)
-    root.create_array("maximum", data=np.ones(n_vars), compressor=None)
-    root.create_array("minimum", data=np.zeros(n_vars), compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
+    root.create_array("latitudes", data=lats, compressors=None)
+    root.create_array("longitudes", data=lons, compressors=None)
+    root.create_array("mean", data=np.zeros(n_vars), compressors=None)
+    root.create_array("stdev", data=np.ones(n_vars), compressors=None)
+    root.create_array("maximum", data=np.ones(n_vars), compressors=None)
+    root.create_array("minimum", data=np.zeros(n_vars), compressors=None)
     root.attrs.update({
         "frequency": "6h", "resolution": "o96",
         "name_to_index": {"a": 0, "b": 1},
@@ -98,7 +99,7 @@ def cutout():
         _group(20, np.linspace(-80, 80, 20), np.linspace(0, 350, 20)),
         path="globe.zarr",
     )
-    return Cutout([lam, globe], axis=3, cropping_distance=500.0)
+    return Cutout([lam, globe], axis=3, cropping_distance=500.0, options=Options())
 
 
 class TestChunkedGridGuard:
@@ -113,7 +114,7 @@ class TestChunkedGridGuard:
                                  np.array([5.0, 5.0, 5.0, 10.0, 10.0]), grid_chunk=2), path="lam.zarr")
         globe = GriddedZarr(_group(20, np.linspace(-80, 80, 20), np.linspace(0, 350, 20),
                                    grid_chunk=4), path="globe.zarr")
-        return Cutout([lam, globe], axis=3, cropping_distance=500.0)
+        return Cutout([lam, globe], axis=3, cropping_distance=500.0, options=Options())
 
     def test_spanning_shard_pushes_down_when_grid_chunked(self):
         ds = self._chunked_cutout()
@@ -144,7 +145,7 @@ class TestPushdownThroughWrappers:
                                       np.array([5.0, 5.0, 5.0, 10.0, 10.0])), path="lam.zarr"))
         globe = wrap(GriddedZarr(_group(20, np.linspace(-80, 80, 20), np.linspace(0, 350, 20)),
                                  path="globe.zarr"))
-        return Cutout([lam, globe], axis=3, cropping_distance=500.0)
+        return Cutout([lam, globe], axis=3, cropping_distance=500.0, options=Options())
 
     def _check(self, ds):
         assert ds._pushdown_supported, "wrapper not grid-transparent"
@@ -237,8 +238,8 @@ class TestMultiCutoutGridUnion:
             _group(11, np.array([-5.0, -10.0, -15.0, -5.0, -10.0]), np.array([200.0, 200.0, 200.0, 205.0, 205.0])),
             path="lam_b.zarr",
         )
-        ca = Cutout([lam_a, globe], axis=3, cropping_distance=500.0)
-        cb = Cutout([lam_b, globe], axis=3, cropping_distance=500.0)
+        ca = Cutout([lam_a, globe], axis=3, cropping_distance=500.0, options=Options())
+        cb = Cutout([lam_b, globe], axis=3, cropping_distance=500.0, options=Options())
         return ca, cb, globe
 
     def test_shared_globe_unioned_to_one_read(self):

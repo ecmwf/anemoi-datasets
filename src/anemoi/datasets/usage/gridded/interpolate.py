@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -143,7 +143,8 @@ class InterpolateFrequency(Forwards):
         alpha = self.alphas[x]
 
         assert 0 < alpha < 1, alpha
-        return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
+        result = self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
+        return result.astype(self.dtype, copy=False)
 
     def __len__(self) -> int:
         """Get the length of the interpolated dataset.

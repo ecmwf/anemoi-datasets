@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -10,6 +10,7 @@
 import json
 import logging
 from typing import TYPE_CHECKING
+from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -24,6 +25,7 @@ from .dates import Dates
 from .dates import Steps
 from .output import GriddedOutput
 from .output import Output
+from .output import TabularOutput
 from .output import TrajectoriesOutput
 from .statistics import Statistics
 
@@ -37,6 +39,34 @@ LOG = logging.getLogger(__name__)
 class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_dates_group_by(cls, data: Any) -> Any:
+        """Move the legacy ``dates.group_by`` key to ``build.group_by``.
+
+        ``group_by`` controls how dates are grouped into build parts and belongs
+        to the ``build`` section.  Older recipes placed it under ``dates``, where
+        the ``Dates`` model silently ignores it (so it would fall back to the
+        ``build.group_by`` default).  Honour it here instead, mirroring
+        :func:`anemoi.datasets.commands.recipe.migrate.migrate_group_by`, so
+        every recipe-loading path (analyse, init, load) behaves consistently.
+        """
+        if not isinstance(data, dict):
+            return data
+        dates = data.get("dates")
+        if isinstance(dates, dict) and "group_by" in dates:
+            # Copy rather than mutate the caller's dicts in place.
+            dates = dict(dates)
+            group_by = dates.pop("group_by")
+            build = dict(data.get("build") or {})
+            build.setdefault("group_by", group_by)
+            data = {**data, "dates": dates, "build": build}
+            LOG.warning(
+                "'dates.group_by' is deprecated; use 'build.group_by'. " "Moved group_by=%r to build.group_by.",
+                group_by,
+            )
+        return data
 
     @model_validator(mode="after")
     def _check_steps(self) -> "Recipe":
@@ -66,6 +96,10 @@ class Recipe(BaseModel):
         for member in self.__dict__.values():
             if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
                 member._post_init(self)
+
+        if isinstance(self.output, TrajectoriesOutput) and "group_by" not in self.build.model_fields_set:
+            self.build.group_by = 1
+
         return self
 
     description: str = "No description provided."
@@ -122,13 +156,43 @@ class Recipe(BaseModel):
         """
 
         defaults = Recipe(dates={"values": []}).model_dump()
+        output_defaults = {
+            "gridded": GriddedOutput().model_dump(),
+            "tabular": TabularOutput().model_dump(),
+            "trajectories": TrajectoriesOutput().model_dump(),
+        }
 
-        def _only_non_defaults(d, default_d):
+        def _dates_variant(config: dict) -> str:
+            if config.get("hindcasts", False):
+                return "hindcasts"
+            if "values" in config:
+                return "values"
+            return "start_end"
+
+        def _output_variant(config: dict) -> str:
+            return config.get("layout", config.get("format", "gridded"))
+
+        def _only_non_defaults(d, default_d, path: tuple[str, ...] = ()):
 
             if type(d) is not type(default_d):
                 return d
 
             if isinstance(d, dict):
+                # Output is a discriminated union. Compare against defaults of
+                # the active variant so we keep its discriminator naturally,
+                # without dropping then re-injecting it later.
+                if path == ("output",):
+                    variant = _output_variant(d)
+                    if variant not in output_defaults:
+                        return d
+                    default_d = output_defaults[variant]
+
+                # Dates is a discriminated union. If the recipe uses a
+                # different variant than the synthetic default (values), keep
+                # the whole section so variant-specific keys are preserved.
+                if path == ("dates",) and _dates_variant(d) != _dates_variant(default_d):
+                    return d
+
                 res = d.copy()
                 for k, v in list(d.items()):
                     if k not in default_d:
@@ -139,7 +203,7 @@ class Recipe(BaseModel):
                         del res[k]
                         continue
 
-                    res[k] = _only_non_defaults(v, default_d[k])
+                    res[k] = _only_non_defaults(v, default_d[k], path + (k,))
                 return res
 
             return d
@@ -149,7 +213,7 @@ class Recipe(BaseModel):
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
         defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
-        result = {key: data[key] for key in defaults.keys()}
+        result = {key: data[key] for key in defaults.keys() if key in data}
         # Trajectory-only keys are omitted when unused, so gridded/tabular
         # recipes keep the same metadata shape they had before these fields
         # existed.

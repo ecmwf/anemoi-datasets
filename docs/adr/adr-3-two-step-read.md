@@ -443,6 +443,7 @@ are not unfinished migrations — they are structurally outside the model:
 | `MissingDates` / `SkipMissingDates` | Synthesises NaN arrays (no read) or re-maps around gaps with complex semantics. (The plain "raise on missing" `ZarrWithMissingDates` *is* supported — it only validates then delegates.) |
 | `ZipBase` (`xy`) / `Chain` (`unchecked`) | Return a **tuple of arrays**, not a single array — different return contract. |
 | `Complement` | Multi-source fill where each output variable may come from a different store with its own regridding. |
+| `GriddedAsTrajectory` (`trajectories/broadcast.py`) | Broadcasts a *gridded* dataset onto a trajectory layout by valid-time lookup: it remaps the date axis through an index map **and inserts a step axis**, so one output element gathers scattered source dates. |
 | Tabular (`TabularZarr`, `WindowView`, …) | Row/window access pattern, explicitly out of scope (see below). |
 
 The happy path most users hit — open zarr → `select` → `subset`/`start`/`end` →
@@ -465,6 +466,15 @@ Practical rules that follow from this decision:
    default.) Do **not** raise to signal this — fallback is normal, not an error.
 3. Any change to a supported wrapper's `__getitem__` must be mirrored in its
    `read_from_buffer`, and vice-versa, or the oracle test will (rightly) fail.
+4. **A new `Forwards` subclass that transforms the data must opt out explicitly.**
+   The base `Dataset.collect_read_parts` returns ``None``, but `Forwards`
+   *overrides* it to delegate to `self.forward` — so a wrapper that overrides
+   `__getitem__` to transform the result, without also overriding
+   `collect_read_parts`, silently hands out the **untransformed** child data (or
+   crashes on a shape mismatch). This is the one place where "do nothing" is not
+   safe: add ``return None`` (or a real two-step implementation).
+   `tests/test_read_parts_verify.py` asserts every `__getitem__` override in
+   `usage/` is accounted for.
 
 ## Motivating use cases: cutout grid-subset pushdown and `multi=`
 

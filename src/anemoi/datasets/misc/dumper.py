@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -19,10 +19,14 @@ LOG = logging.getLogger(__name__)
 def represent_date(dumper, data):
 
     if isinstance(data, datetime.datetime):
-        if data.tzinfo is None:
-            data = data.replace(tzinfo=datetime.UTC)
-        data = data.astimezone(datetime.UTC)
-        iso_str = data.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
+        if data.tzinfo is not None:
+            # Only an explicitly-offset datetime may be converted: the shift
+            # is a pure function of its own offset, not of the local clock.
+            # A naive datetime already means UTC by convention and is left
+            # exactly as written, so the dump stays reproducible across
+            # machines and no timezone is invented.
+            data = data.astimezone(datetime.UTC).replace(tzinfo=None)
+        iso_str = data.isoformat(timespec="seconds")
     else:
         iso_str = data.isoformat()
 

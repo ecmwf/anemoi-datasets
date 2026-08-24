@@ -241,6 +241,26 @@ class BUFRToDataFrame:
             elif per_datum_format == "wide":
                 self.per_datum_processing = self._get_msg_wide_df
 
+    def empty_frame(self) -> DataFrame:
+        """Build a row-less DataFrame carrying the correctly-typed output columns.
+
+        The column names and dtypes are known from configuration alone (no data
+        needed): ``per_report`` columns (including ``latitude``/``longitude``)
+        and any ``per_datum`` ``long``-format columns are ``float32`` (matching
+        ``extract_per_report_df``), and ``date`` is ``datetime64[ns]``. This lets
+        a data-less slot keep a valid schema so downstream filters and metadata
+        collection do not crash. ``per_datum`` in ``wide`` format is omitted
+        because its column count depends on the number of levels in the BUFR
+        message, which is unknown for an empty slot.
+        """
+        columns = {col: np.float32 for col in self.per_report}
+        if self.per_datum and self.per_datum_processing == self._get_msg_long_df:
+            for item_config in self.per_datum.values():
+                columns[item_config["name"]] = np.float32
+        frame = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in columns.items()})
+        frame["date"] = pd.Series(dtype="datetime64[ns]")
+        return frame
+
     @staticmethod
     def _build_selectors(conditions: dict[str, Any] | None) -> list[BUFRMessageSelector]:
         if conditions is None:

@@ -217,22 +217,27 @@ class BUFRSource(Source):
     def _create_source(self, source_config: dict):
         if len(source_config) != 1:
             raise ValueError("Exactly one source must be specified")
-        name, config = source_config.popitem()
+        name, config = next(iter(source_config.items()))
         if name != "mars":
             raise ValueError(f"Invalid source name: {name}, must be 'mars'")
         return create_source(self.context, {name: config})
 
     def execute(self, dates) -> pd.DataFrame:
+        # Return an empty frame that still carries the declared output columns
+        # (known from config alone) so a data-less slot keeps a valid schema and
+        # downstream filters / metadata collection do not crash on missing columns.
+        empty = self.bufr_to_df.empty_frame()
+
         ekd_ds = self.source.execute(dates)
         if ekd_ds is None:
             LOG.debug(f"No BUFR data returned for date range {dates.start_range} - {dates.end_range}")
-            return pd.DataFrame()
+            return empty
 
         bufr_reader = BUFRReader(ekd_ds.path)
         df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
         LOG.debug(f"Extracted {len(df)} BUFR rows for date range {dates.start_range} - {dates.end_range}")
 
         if len(df) == 0:
-            return pd.DataFrame()
+            return empty
 
         return df

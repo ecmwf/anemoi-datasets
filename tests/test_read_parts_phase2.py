@@ -23,6 +23,7 @@ import pytest
 import zarr
 from anemoi.utils.dates import frequency_to_string
 
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.gridded.concat import Concat as GriddedConcat
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.merge import Merge
@@ -63,20 +64,20 @@ def _make_zarr_group(
     data = rng.standard_normal((n_dates, n_vars, n_ens, n_grid)).astype(np.float32)
 
     root = zarr.group()
-    root.create_array("data", data=data, compressor=None)
+    root.create_array("data", data=data, compressors=None)
 
     freq = datetime.timedelta(hours=freq_hours)
     dates = np.array([start_date + i * freq for i in range(n_dates)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
     lats = np.linspace(-90, 90, n_grid)
     lons = np.linspace(0, 360, n_grid, endpoint=False)
-    root.create_array("latitudes", data=lats, compressor=None)
-    root.create_array("longitudes", data=lons, compressor=None)
+    root.create_array("latitudes", data=lats, compressors=None)
+    root.create_array("longitudes", data=lons, compressors=None)
 
-    root.create_array("mean", data=np.mean(data, axis=(0, 2, 3)), compressor=None)
-    root.create_array("stdev", data=np.std(data, axis=(0, 2, 3)) + 1e-8, compressor=None)
-    root.create_array("maximum", data=np.max(data, axis=(0, 2, 3)), compressor=None)
-    root.create_array("minimum", data=np.min(data, axis=(0, 2, 3)), compressor=None)
+    root.create_array("mean", data=np.mean(data, axis=(0, 2, 3)), compressors=None)
+    root.create_array("stdev", data=np.std(data, axis=(0, 2, 3)) + 1e-8, compressors=None)
+    root.create_array("maximum", data=np.max(data, axis=(0, 2, 3)), compressors=None)
+    root.create_array("minimum", data=np.min(data, axis=(0, 2, 3)), compressors=None)
 
     var_list = list(vars[:n_vars])
     root.attrs["frequency"] = frequency_to_string(freq)
@@ -114,7 +115,7 @@ class TestGriddedConcat:
     def _make_concat(self):
         d1 = _make_store("d1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         d2 = _make_store("d2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2))
-        return GriddedConcat([d1, d2])
+        return GriddedConcat([d1, d2], options=Options())
 
     def test_int_index(self):
         ds = self._make_concat()
@@ -153,7 +154,7 @@ class TestJoin:
     def _make_join(self):
         d1 = _make_store("j1.zarr", n_vars=2, vars="ab", seed=0)
         d2 = _make_store("j2.zarr", n_vars=2, vars="cd", seed=1)
-        return Join([d1, d2])
+        return Join([d1, d2], options=Options())
 
     def test_int_index(self):
         ds = self._make_join()
@@ -191,7 +192,7 @@ class TestMerge:
         """Two datasets covering non-overlapping date ranges."""
         d1 = _make_store("m1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         d2 = _make_store("m2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2))
-        return Merge([d1, d2])
+        return Merge([d1, d2], options=Options())
 
     def test_int_index_first_dataset(self):
         ds = self._make_merge()
@@ -230,7 +231,7 @@ class TestMergeWithGaps:
         d1 = _make_store("mg1.zarr", n_dates=4, seed=0, start_date=datetime.datetime(2021, 1, 1))
         # d2: 4 dates at 6h starting 2021-01-02 06:00 (skips 2021-01-02 00:00)
         d2 = _make_store("mg2.zarr", n_dates=4, seed=1, start_date=datetime.datetime(2021, 1, 2, 6))
-        return Merge([d1, d2], allow_gaps_in_dates=True)
+        return Merge([d1, d2], options=Options(), allow_gaps_in_dates=True)
 
     def test_non_missing_dates(self):
         from anemoi.datasets import MissingDateError
@@ -263,7 +264,7 @@ class TestGivenAxis:
         from anemoi.datasets.usage.gridded.grids import Grids
         d1 = _make_store("gc1.zarr", n_grid=3, seed=0)
         d2 = _make_store("gc2.zarr", n_grid=3, seed=1)
-        return Grids([d1, d2], axis=3)
+        return Grids([d1, d2], axis=3, options=Options())
 
     def test_int_index(self):
         ds = self._make_grids()
@@ -310,18 +311,18 @@ def cutout_datasets():
     lam_root = zarr.group()
     n_lam = 5
     lam_data = np.random.default_rng(10).standard_normal((n_dates, 2, 1, n_lam)).astype(np.float32)
-    lam_root.create_array("data", data=lam_data, compressor=None)
+    lam_root.create_array("data", data=lam_data, compressors=None)
     freq = datetime.timedelta(hours=6)
     dates = np.array([datetime.datetime(2021, 1, 1) + i * freq for i in range(n_dates)], dtype="datetime64")
-    lam_root.create_array("dates", data=dates, compressor=None)
+    lam_root.create_array("dates", data=dates, compressors=None)
     lam_lats = np.array([5.0, 10.0, 15.0, 5.0, 10.0])
     lam_lons = np.array([5.0, 5.0, 5.0, 10.0, 10.0])
-    lam_root.create_array("latitudes", data=lam_lats, compressor=None)
-    lam_root.create_array("longitudes", data=lam_lons, compressor=None)
-    lam_root.create_array("mean", data=np.zeros(2), compressor=None)
-    lam_root.create_array("stdev", data=np.ones(2), compressor=None)
-    lam_root.create_array("maximum", data=np.ones(2), compressor=None)
-    lam_root.create_array("minimum", data=np.zeros(2), compressor=None)
+    lam_root.create_array("latitudes", data=lam_lats, compressors=None)
+    lam_root.create_array("longitudes", data=lam_lons, compressors=None)
+    lam_root.create_array("mean", data=np.zeros(2), compressors=None)
+    lam_root.create_array("stdev", data=np.ones(2), compressors=None)
+    lam_root.create_array("maximum", data=np.ones(2), compressors=None)
+    lam_root.create_array("minimum", data=np.zeros(2), compressors=None)
     lam_root.attrs.update({
         "frequency": "6h", "resolution": "o96",
         "name_to_index": {"a": 0, "b": 1},
@@ -334,16 +335,16 @@ def cutout_datasets():
     glob_root = zarr.group()
     n_glob = 20
     glob_data = np.random.default_rng(20).standard_normal((n_dates, 2, 1, n_glob)).astype(np.float32)
-    glob_root.create_array("data", data=glob_data, compressor=None)
-    glob_root.create_array("dates", data=dates, compressor=None)
+    glob_root.create_array("data", data=glob_data, compressors=None)
+    glob_root.create_array("dates", data=dates, compressors=None)
     glob_lats = np.linspace(-80, 80, n_glob)
     glob_lons = np.linspace(0, 350, n_glob)
-    glob_root.create_array("latitudes", data=glob_lats, compressor=None)
-    glob_root.create_array("longitudes", data=glob_lons, compressor=None)
-    glob_root.create_array("mean", data=np.zeros(2), compressor=None)
-    glob_root.create_array("stdev", data=np.ones(2), compressor=None)
-    glob_root.create_array("maximum", data=np.ones(2), compressor=None)
-    glob_root.create_array("minimum", data=np.zeros(2), compressor=None)
+    glob_root.create_array("latitudes", data=glob_lats, compressors=None)
+    glob_root.create_array("longitudes", data=glob_lons, compressors=None)
+    glob_root.create_array("mean", data=np.zeros(2), compressors=None)
+    glob_root.create_array("stdev", data=np.ones(2), compressors=None)
+    glob_root.create_array("maximum", data=np.ones(2), compressors=None)
+    glob_root.create_array("minimum", data=np.zeros(2), compressors=None)
     glob_root.attrs.update({
         "frequency": "6h", "resolution": "o96",
         "name_to_index": {"a": 0, "b": 1},
@@ -354,7 +355,7 @@ def cutout_datasets():
 
     lam = GriddedZarr(lam_root, path="lam.zarr")
     globe = GriddedZarr(glob_root, path="globe.zarr")
-    ds = Cutout([lam, globe], axis=3, cropping_distance=500.0)
+    ds = Cutout([lam, globe], axis=3, cropping_distance=500.0, options=Options())
     return ds
 
 

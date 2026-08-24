@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,6 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 
+# Import the compatibility layer for its import side effect: under zarr2 it
+# monkey-patches ``zarr.Group.create_array`` so the zarr3 API is available.
+from anemoi.datasets import compat  # noqa: F401
 from anemoi.datasets.create.naming import check_dataset_name
 from anemoi.datasets.usage.gridded import MissingDateError
 from anemoi.datasets.usage.gridded import add_dataset_path

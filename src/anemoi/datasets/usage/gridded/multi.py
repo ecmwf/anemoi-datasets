@@ -33,6 +33,7 @@ from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Combined
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.store import shared_zarr_opens
 
 LOG = logging.getLogger(__name__)
@@ -63,6 +64,9 @@ class Multi(Combined):
     ----------
     datasets : dict of str to Dataset
         The named members.
+    options : Options, optional
+        Options for the combined dataset.  Defaults to an empty
+        :class:`~anemoi.datasets.usage.options.Options`.
     check_compatibility : bool, optional
         Whether to run the :class:`~anemoi.datasets.usage.forwards.Combined`
         compatibility checks across members.  Defaults to ``False`` because
@@ -70,10 +74,18 @@ class Multi(Combined):
         several different cutouts).
     """
 
-    def __init__(self, datasets: dict[str, Dataset], check_compatibility: bool = False) -> None:
+    def __init__(
+        self,
+        datasets: dict[str, Dataset],
+        options: Options = None,
+        check_compatibility: bool = False,
+    ) -> None:
         assert isinstance(datasets, dict), datasets
         assert len(datasets) >= 1, "multi needs at least one member"
 
+        # Combined.__init__ is bypassed below (it requires len > 1), so set the
+        # options it would normally set.
+        self.options = Options() if options is None else options
         self._check_compatibility = check_compatibility
         self.names = list(datasets.keys())
         self.datasets = [datasets[name].mutate() for name in self.names]
@@ -229,7 +241,7 @@ class Multi(Combined):
         return Node(self, [d.tree() for d in self.datasets], names=self.names)
 
 
-def multi_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
+def multi_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options = None) -> Dataset:
     """Build a :class:`Multi` from ``multi=dict(name=spec, ...)``.
 
     All members are opened inside a single :func:`shared_zarr_opens` block, so a
@@ -244,6 +256,8 @@ def multi_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         Keyword arguments.  ``multi`` is required; ``check_compatibility`` is
         optional.  No other options are accepted at the container level — put
         per-dataset options (``select``, ``start``, …) inside each member spec.
+    options : Options, optional
+        The options to use when opening the members.
     """
     multi = kwargs.pop("multi")
     check_compatibility = kwargs.pop("check_compatibility", False)
@@ -256,6 +270,6 @@ def multi_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     )
 
     with shared_zarr_opens():
-        members = {name: _open(spec) for name, spec in multi.items()}
+        members = {name: _open(spec, options) for name, spec in multi.items()}
 
-    return Multi(members, check_compatibility=check_compatibility)
+    return Multi(members, options=options, check_compatibility=check_compatibility)

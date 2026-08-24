@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -8,14 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 
+import hashlib
+import json
 import logging
+import os
+import tempfile
 from functools import cached_property
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
+from anemoi.datasets import __version__
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -31,6 +37,7 @@ from anemoi.datasets.usage.gridded.indexing import length_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -239,7 +246,7 @@ class Concat(Combined):
 class GridsBase(GivenAxis):
     """A base class for handling grids in datasets."""
 
-    def __init__(self, datasets: list[Any], axis: int) -> None:
+    def __init__(self, datasets: list[Any], axis: int, options: Options) -> None:
         """Initializes a GridsBase object.
 
         Parameters
@@ -248,8 +255,10 @@ class GridsBase(GivenAxis):
             List of datasets.
         axis : int
             Axis along which to combine the datasets.
+        options : Options
+            Options for the combined dataset.
         """
-        super().__init__(datasets, axis)
+        super().__init__(datasets, axis, options)
         # Shape: (dates, variables, ensemble, 1d-values)
         assert len(datasets[0].shape) == 4, "Grids must be 1D for now"
 
@@ -357,12 +366,14 @@ class Cutout(GridsBase):
     def __init__(
         self,
         datasets: list[Any],
+        options: Options,
         axis: int = 3,
         cropping_distance: float = 2.0,
         neighbours: int = 5,
         min_distance_km: float | None = None,
         max_distance_km: float | None = None,
         plot: bool | None = None,
+        cache: bool | str | Path = False,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
         Models (LAMs) and a global dataset, handling overlapping regions.
@@ -371,6 +382,8 @@ class Cutout(GridsBase):
         ----------
         datasets : list
             List of LAM and global datasets.
+        options : Options
+            Options for the combined dataset.
         axis : int
             Concatenation axis, must be set to 3.
         cropping_distance : float
@@ -383,8 +396,14 @@ class Cutout(GridsBase):
             Maximum distance threshold in km between grid points.
         plot : bool, optional
             Flag to enable or disable visualization plots.
+        cache : bool or str or Path, optional
+            Cache control for the cutout masks. ``False`` (default) recomputes the
+            masks without persisting them. A path to a ``.npz`` file reads pre-computed
+            masks if the file exists, otherwise computes them and saves them at that
+            location. ``True`` is reserved for a future default cache location and
+            currently raises ``NotImplementedError``.
         """
-        super().__init__(datasets, axis)
+        super().__init__(datasets, axis, options)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
         assert axis == 3, "CutoutGrids requires axis=3"
         assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
@@ -401,11 +420,123 @@ class Cutout(GridsBase):
         self.min_distance_km = min_distance_km
         self.max_distance_km = max_distance_km
         self._plot = plot
+
         self.masks = []  # To store the masks for each LAM dataset
         self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
 
-        # Initialize cumulative masks
-        self._initialize_masks()
+        self._setup_masks(cache)
+
+    def _setup_masks(self, cache: bool | str | Path) -> None:
+        """Initialize ``self.masks`` and ``self.global_mask`` based on the cache argument."""
+        if cache is True:
+            raise NotImplementedError(
+                "cache=True is reserved for a future default cache location; " "pass a .npz path or leave cache=False."
+            )
+        if cache is False or cache is None:
+            self._initialize_masks()
+            return
+        cache_path = Path(cache)
+        if cache_path.suffix != ".npz":
+            raise ValueError(f"Cutout cache file must end with '.npz', got '{cache_path.name}'.")
+        if cache_path.exists():
+            LOG.info("Using provided cutout cache file '%s'.", cache_path)
+            self._load_cutout_masks(cache_path)
+        else:
+            LOG.warning(
+                "Cutout cache file '%s' does not exist. Will compute new masks and save to this location.",
+                cache_path,
+            )
+            self._initialize_masks()
+            self._save_cutout_masks(cache_path)
+
+    @staticmethod
+    def _hash_coordinates(latitudes: NDArray, longitudes: NDArray) -> str:
+        """Return a stable hash fingerprinting a dataset's coordinate arrays.
+
+        The cache is keyed on the actual latitude/longitude arrays the masks were
+        computed from, not on dataset paths. A path does not identify the grid: a
+        wrapper such as thinning or masking changes the coordinates while leaving
+        the path unchanged, combined datasets have no single path, and some
+        datasets (e.g. synthetic) have no path at all.
+        """
+        h = hashlib.sha256()
+        for array in (latitudes, longitudes):
+            array = np.ascontiguousarray(array)
+            h.update(str(array.dtype).encode())
+            h.update(str(array.shape).encode())
+            h.update(array.tobytes())
+        return h.hexdigest()
+
+    def _cutout_masks_params(self) -> dict[str, Any]:
+        """Return the cutout parameters that influence mask generation."""
+        datasets = self.lams + [self.globe]
+        return {
+            "axis": self.axis,
+            "cropping_distance": self.cropping_distance,
+            "neighbours": self.neighbours,
+            "min_distance_km": self.min_distance_km,
+            "max_distance_km": self.max_distance_km,
+            "datasets": [self._hash_coordinates(ds.latitudes, ds.longitudes) for ds in datasets],
+        }
+
+    def _cutout_masks_metadata(self) -> dict[str, Any]:
+        """Return the metadata payload persisted alongside cached cutout masks."""
+        return {
+            "version": __version__,
+            "type": "cutout_mask",
+            "params": self._cutout_masks_params(),
+        }
+
+    def _save_cutout_masks(self, path: str | Path) -> None:
+        """Save the masks to a .npz file.
+
+        The file is written to a temporary file in the same directory and then
+        atomically moved into place, so an interrupted save never leaves a
+        corrupt cache file behind.
+        """
+        path = Path(path)
+        masks = {f"lam_{i}": self.masks[i] for i in range(len(self.lams))}
+        masks["global"] = self.global_mask
+        # we can avoid pickling with json.dumps
+        metadata = np.array(json.dumps(self._cutout_masks_metadata()))
+        fd, tmp_name = tempfile.mkstemp(suffix=".npz", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                np.savez(f, **masks, metadata=metadata)
+            os.replace(tmp_name, path)
+        except BaseException:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
+
+    def _load_cutout_masks(self, path: str | Path) -> None:
+        """Load the masks from a .npz file."""
+        data = np.load(path)
+        if "metadata" not in data.files:
+            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; " "regenerate the cache.")
+        # we can avoid pickling with json.loads
+        metadata = json.loads(str(data["metadata"]))
+        if metadata.get("type") != "cutout_mask":
+            raise ValueError(
+                f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
+            )
+        cached_version = metadata.get("version")
+        if cached_version != __version__:
+            LOG.warning(
+                "Cutout cache file '%s' was written by anemoi-datasets %s, but the current version is %s.",
+                path,
+                cached_version,
+                __version__,
+            )
+        params = metadata.get("params", {})
+        current_params = self._cutout_masks_params()
+        if params != current_params:
+            raise ValueError(
+                "Mismatch between user-provided masks and current cutout parameters. "
+                f"Cutout class initialized with {current_params}, but provided masks "
+                f"file contains masks generated with {params}."
+            )
+        self.masks = [data[f"lam_{i}"] for i in range(len(self.lams))]
+        self.global_mask = data["global"]
 
     def _initialize_masks(self) -> None:
         """Generate hierarchical masks for each LAM dataset by excluding overlapping regions with previous LAMs and creating a global mask for the global dataset.
@@ -789,7 +920,7 @@ class Cutout(GridsBase):
         return {}
 
 
-def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
+def grids_factory(args: tuple[Any, ...], kwargs: dict, options: Options) -> Dataset:
     """Factory function to create a Grids object.
 
     Parameters
@@ -798,6 +929,8 @@ def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -813,13 +946,13 @@ def grids_factory(args: tuple[Any, ...], kwargs: dict) -> Dataset:
     assert len(args) == 0
     assert isinstance(grids, (list, tuple))
 
-    datasets = [_open(e) for e in grids]
+    datasets = [_open(e, options) for e in grids]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Grids(datasets, axis=axis)._subset(**kwargs)
+    return Grids(datasets, axis=axis, options=options)._subset(**kwargs)
 
 
-def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
+def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Dataset:
     """Factory function to create a Cutout object.
 
     Parameters
@@ -828,6 +961,8 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
         Positional arguments.
     kwargs : Dict[str, Any]
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -848,15 +983,17 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Dataset:
     assert len(args) == 0
     assert isinstance(cutout, (list, tuple)), "cutout must be a list or tuple"
 
-    datasets = [_open(e) for e in cutout]
+    datasets = [_open(e, options) for e in cutout]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
     return Cutout(
         datasets,
+        options=options,
         axis=axis,
         neighbours=neighbours,
         min_distance_km=min_distance_km,
         max_distance_km=max_distance_km,
         cropping_distance=cropping_distance,
         plot=plot,
+        cache=kwargs.pop("cache", False),
     )._subset(**kwargs)

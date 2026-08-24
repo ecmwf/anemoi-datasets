@@ -27,6 +27,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 
 import anemoi.datasets.usage.read_parts as rp
+from anemoi.datasets.usage.options import Options
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.grids import Grids
 from anemoi.datasets.usage.gridded.join import Join
@@ -43,14 +44,18 @@ def _group(n_dates=8, n_vars=4, n_grid=6, vars="abcd", seed=0,
     rng = np.random.default_rng(seed)
     data = rng.standard_normal((n_dates, n_vars, 1, n_grid)).astype(np.float32)
     root = zarr.group()
-    root.create_array("data", data=data, compressor=None)
+    root.create_array("data", data=data, compressors=None)
     freq = datetime.timedelta(hours=6)
     dates = np.array([start + i * freq for i in range(n_dates)], dtype="datetime64")
-    root.create_array("dates", data=dates, compressor=None)
-    root.create_array("latitudes", data=lats if lats is not None else np.linspace(-90, 90, n_grid), compressor=None)
-    root.create_array("longitudes", data=lons if lons is not None else np.linspace(0, 360, n_grid, endpoint=False), compressor=None)
+    root.create_array("dates", data=dates, compressors=None)
+    root.create_array("latitudes", data=lats if lats is not None else np.linspace(-90, 90, n_grid), compressors=None)
+    root.create_array(
+        "longitudes",
+        data=lons if lons is not None else np.linspace(0, 360, n_grid, endpoint=False),
+        compressors=None,
+    )
     for nm, v in (("mean", 0.0), ("stdev", 1.0), ("maximum", 1.0), ("minimum", 0.0)):
-        root.create_array(nm, data=np.full(n_vars, v), compressor=None)
+        root.create_array(nm, data=np.full(n_vars, v), compressors=None)
     var_list = list(vars[:n_vars])
     root.attrs.update({
         "frequency": frequency_to_string(freq), "resolution": "o96",
@@ -127,13 +132,13 @@ def test_concat():
     ds = Concat([
         _store(n_dates=4, seed=0, start=datetime.datetime(2021, 1, 1)),
         _store(n_dates=4, seed=1, start=datetime.datetime(2021, 1, 2)),
-    ])
+    ], options=Options())
     _assert_no_divergence(ds, _EDGES)
 
 
 def test_join():
     with patch("anemoi.datasets.usage.forwards.Combined.check_variables_compatibility", return_value=None):
-        ds = Join([_store(n_vars=2, vars="ab", seed=0), _store(n_vars=2, vars="cd", seed=1)])
+        ds = Join([_store(n_vars=2, vars="ab", seed=0), _store(n_vars=2, vars="cd", seed=1)], options=Options())
     _assert_no_divergence(ds, [0, -1, 7, 8, 99, S(0, 4), S(None), (0, S(None), S(None), S(None))])
 
 
@@ -142,13 +147,13 @@ def test_merge():
         ds = Merge([
             _store(n_dates=4, seed=0, start=datetime.datetime(2021, 1, 1)),
             _store(n_dates=4, seed=1, start=datetime.datetime(2021, 1, 2)),
-        ])
+        ], options=Options())
     _assert_no_divergence(ds, [0, 3, 7, -1, 8, 99, S(0, 8), S(2, 6)])
 
 
 def test_grids_given_axis():
     with patch("anemoi.datasets.usage.forwards.Combined.check_variables_compatibility", return_value=None):
-        ds = Grids([_store(n_grid=3, seed=0), _store(n_grid=3, seed=1)], axis=3)
+        ds = Grids([_store(n_grid=3, seed=0), _store(n_grid=3, seed=1)], axis=3, options=Options())
     _assert_no_divergence(ds, _EDGES)
 
 
@@ -161,7 +166,7 @@ def test_cutout_grid_edges():
                              lons=np.array([5.0, 5.0, 5.0, 10.0, 10.0])), path="lam")
     globe = GriddedZarr(_group(n_vars=2, vars="ab", n_grid=20, seed=20,
                                lats=np.linspace(-80, 80, 20), lons=np.linspace(0, 350, 20)), path="globe")
-    ds = Cutout([lam, globe], axis=3, cropping_distance=500.0)
+    ds = Cutout([lam, globe], axis=3, cropping_distance=500.0, options=Options())
     total = ds.shape[-1]
     lam_len = ds.lams[0].shape[-1]
     idxs = [

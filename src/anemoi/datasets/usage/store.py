@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -35,6 +35,7 @@ from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.misc import load_config
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ LOG = logging.getLogger(__name__)
 # This is what lets the two-step read factorize a store shared by several
 # members of a ``multi=`` container into a single physical read (factorization
 # groups parts by ``id(ReadPart.data)`` — see ``usage/read_parts.py``).
-_SHARED_OPEN_CACHE: contextvars.ContextVar[dict[str, "ZarrStore"] | None] = contextvars.ContextVar(
+_SHARED_OPEN_CACHE: contextvars.ContextVar[dict[tuple[str, str], "ZarrStore"] | None] = contextvars.ContextVar(
     "anemoi_shared_zarr_opens", default=None
 )
 
@@ -60,7 +61,7 @@ def shared_zarr_opens() -> Any:
     example the common global store of several cutouts) into one physical read.
 
     The cache lives only for the duration of the block and is keyed by the exact
-    ``name`` string passed to :meth:`ZarrStore.from_name_or_path`.
+    ``name`` string (and options) passed to :meth:`ZarrStore.from_name_or_path`.
     """
     token = _SHARED_OPEN_CACHE.set({})
     try:
@@ -222,27 +223,28 @@ def open_zarr_store(
 class ZarrStore(Dataset):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.Group, path: str = None) -> None:
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
         self.store = group
         self.path = path if path is not None else "<zarr>"
+        self.options = options
 
         # This seems to speed up the reading of the data a lot
         self.data = self.store["data"]
 
     @classmethod
-    def from_group(cls, group: zarr.Group, path: str = None) -> "ZarrStore":
+    def from_group(cls, group: zarr.Group, path: str = None, options: Options = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
 
         match layout:
             case "gridded":
                 from anemoi.datasets.usage.gridded.store import GriddedZarr
 
-                return GriddedZarr(group, path).mutate()
+                return GriddedZarr(group, path, options=options).mutate()
 
             case "tabular":
                 from anemoi.datasets.usage.tabular.store import TabularZarr
 
-                return TabularZarr(group, path).mutate()
+                return TabularZarr(group, path, options=options).mutate()
 
             case "trajectories":
                 from anemoi.datasets.usage.trajectories.store import TrajectoriesZarr
@@ -253,16 +255,21 @@ class ZarrStore(Dataset):
                 raise ValueError(f"Unsupported ZarrStore layout: {layout}")
 
     @classmethod
-    def from_name_or_path(cls, name: str) -> "ZarrStore":
+    def from_name_or_path(cls, name: str, options: Options = None) -> "ZarrStore":
+        # Only opens made with the same options may be shared, so the cache key
+        # carries them.  repr() is used rather than the Options object itself
+        # because it is not hashable; a spurious miss only costs the
+        # factorization optimisation, it never shares mismatched options.
         cache = _SHARED_OPEN_CACHE.get()
-        if cache is not None and name in cache:
-            return cache[name]
+        key = (name, repr(options))
+        if cache is not None and key in cache:
+            return cache[key]
 
         store, path = open_zarr_store(name, return_path=True)
-        result = cls.from_group(store, path=path)
+        result = cls.from_group(store, path=path, options=options)
 
         if cache is not None:
-            cache[name] = result
+            cache[key] = result
 
         return result
 
@@ -372,6 +379,7 @@ class ZarrStore(Dataset):
             chunks=self.chunks,
             dtype=str(self.dtype),
             path=self.path,
+            **kwargs,
         )
 
     def source(self, index: int) -> Source:

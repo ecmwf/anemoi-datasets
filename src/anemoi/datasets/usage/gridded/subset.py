@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -179,7 +179,8 @@ class Subset(Forwards):
         if isinstance(n, slice):
             return self._get_slice(n)
 
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset[n]
 
@@ -218,7 +219,9 @@ class Subset(Forwards):
                 return gather_parts(self.dataset.collect_read_parts(idx) for idx in inner)
             return self.dataset.collect_read_parts(inner)
 
-        assert n >= 0, n
+        # Mirror __getitem__: negative indices count from the end.
+        if n < 0:
+            n += len(self.indices)
         return self.dataset.collect_read_parts(self.indices[n])
 
     def read_from_buffer(self, n: FullIndex, buffer) -> NDArray[Any]:
@@ -252,11 +255,13 @@ class Subset(Forwards):
                 return self.dataset.read_from_buffer(inner, buffer)
             return np.stack([self.dataset.read_from_buffer(i, buffer) for i in inner])
 
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         return self.dataset.read_from_buffer(self.indices[n], buffer)
 
     def get_aux(self, n: FullIndex) -> NDArray[Any]:
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset.get_aux(n)
 

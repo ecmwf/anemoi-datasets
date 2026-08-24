@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -30,7 +30,8 @@ def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[i
     Returns:
     Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the modified index and the changes.
     """
-    result = tuple(slice(i % shape[j], i % shape[j] + 1) if isinstance(i, int) else i for j, i in enumerate(t))
+    t = tuple(i + shape[j] if isinstance(i, int) and i < 0 else i for (j, i) in enumerate(t))
+    result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
     result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
 
@@ -241,10 +242,11 @@ def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., N
 def check_int_bounds(n: Any, shape: Shape) -> None:
     """Raise ``IndexError`` for out-of-range integer indices (bare or in a tuple).
 
-    :func:`index_to_slices` normalises ints with ``i % size``, which silently
-    *wraps* out-of-range values (e.g. ``ds[n_dates]`` → date 0).  Call this first
-    so the two-step path matches zarr/eager and raises instead of returning the
-    wrong data.
+    :func:`index_to_slices` turns an int into ``slice(i, i + 1)`` and clamps it with
+    ``slice.indices(size)``, so an out-of-range value silently becomes an *empty*
+    selection instead of an error (e.g. ``ds[n_dates]`` → shape ``0``).  Call this
+    first so the two-step path matches zarr/numpy and raises instead of returning
+    an array of the wrong shape.
 
     Parameters
     ----------

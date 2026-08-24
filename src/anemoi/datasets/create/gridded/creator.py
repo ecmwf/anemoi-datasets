@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -71,7 +71,7 @@ class GriddedCreator(Creator):
         # ``order_by`` without exposing it in the recipe schema.
         metadata["order_by"] = self.context().order_by
 
-        metadata["ensemble_dimension"] = len(self.minimal_input.ensembles)
+        metadata["dimensions"] = ["dates", "variables", "ensembles", "values"]
 
         metadata["resolution"] = self.minimal_input.resolution
 
@@ -198,7 +198,12 @@ class GriddedCreator(Creator):
         frequency = self.groups.provider.frequency
 
         for message in check_dataset_name(
-            name, resolution=self.minimal_input.resolution, start_date=dates[0], end_date=dates[-1], frequency=frequency
+            name,
+            resolution=self.minimal_input.resolution,
+            start_date=dates[0],
+            end_date=dates[-1],
+            frequency=frequency,
+            layout="gridded",
         ):
             LOG.warning("Dataset name warning: %s", message)
 
@@ -283,17 +288,16 @@ class GriddedCreator(Creator):
         """Return the tendencies to compute for the dataset, based on the recipe configuration."""
         frequency = dataset.frequency
 
-        additions = self.recipe.build.additions
-        tendencies_list = []
-
-        if additions:
-            tendencies_config = self.recipe.statistics.tendencies
-            if tendencies_config is True:
-                tendencies_list = [1, 3, 6, 12, 24]
-            elif tendencies_config is False or tendencies_config is None:
-                tendencies_list = []
-            else:
-                tendencies_list = list(tendencies_config)
+        tendencies_config = self.recipe.statistics.tendencies
+        if tendencies_config is None:
+            # Tendencies are disabled by default.
+            tendencies_config = False
+        if tendencies_config is True:
+            tendencies_list = [1, 3, 6, 12, 24]
+        elif tendencies_config is False:
+            tendencies_list = []
+        else:
+            tendencies_list = list(tendencies_config)
 
         tendencies = {}
         for delta in tendencies_list:
