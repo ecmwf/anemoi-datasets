@@ -1,3 +1,5 @@
+default_language_version:
+  python: python3.12
 repos:
 # Empty notebookds
 - repo: local
