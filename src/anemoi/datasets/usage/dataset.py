@@ -185,6 +185,31 @@ class Dataset(ABC, Sized):
                 Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
             )
 
+        if "reaccumulate" in kwargs:
+            Reaccumulate = self.usage_factory_load("Reaccumulate")
+
+            if "interpolate_frequency" in kwargs:
+                raise ValueError("Cannot use both `reaccumulate` and `interpolate_frequency`")
+            if "frequency" not in kwargs:
+                raise ValueError("`reaccumulate` requires `frequency` to also be specified")
+
+            variables = kwargs.pop("reaccumulate")
+            frequency = kwargs.pop("frequency")
+            step = self._frequency_to_step(frequency)
+
+            return Reaccumulate.from_step(self, step, variables)._subset(**kwargs).mutate()
+
+        if "rolling_accumulate" in kwargs:
+            Reaccumulate = self.usage_factory_load("Reaccumulate")
+
+            if "window" not in kwargs:
+                raise ValueError("`rolling_accumulate` requires `window` to also be specified")
+
+            variables = kwargs.pop("rolling_accumulate")
+            window = kwargs.pop("window")
+
+            return Reaccumulate.from_window(self, window, variables)._subset(**kwargs).mutate()
+
         if "frequency" in kwargs:
             Subset = self.usage_factory_load("Subset")
 
@@ -372,6 +397,30 @@ class Dataset(ABC, Sized):
 
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
+    def _frequency_to_step(self, frequency: str) -> int:
+        """Convert a frequency string to a step, i.e. the number of dataset
+        timesteps per requested timestep.
+
+        Parameters
+        ----------
+        frequency : str
+            The frequency string.
+
+        Returns
+        -------
+        int
+            The step.
+        """
+        requested_frequency = frequency_to_seconds(frequency)
+        dataset_frequency = frequency_to_seconds(self.frequency)
+
+        if requested_frequency % dataset_frequency != 0:
+            raise ValueError(
+                f"Requested frequency {frequency} is not a multiple of the dataset frequency {self.frequency}. Did you mean to use `interpolate_frequency`?"
+            )
+
+        return requested_frequency // dataset_frequency
+
     def _frequency_to_indices(self, frequency: str) -> list[int]:
         """Convert a frequency string to a list of indices.
 
@@ -385,16 +434,8 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        requested_frequency = frequency_to_seconds(frequency)
-        dataset_frequency = frequency_to_seconds(self.frequency)
-
-        if requested_frequency % dataset_frequency != 0:
-            raise ValueError(
-                f"Requested frequency {frequency} is not a multiple of the dataset frequency {self.frequency}. Did you mean to use `interpolate_frequency`?"
-            )
-
         # Question: where do we start? first date, or first date that is a multiple of the frequency?
-        step = requested_frequency // dataset_frequency
+        step = self._frequency_to_step(frequency)
 
         return range(0, len(self), step)
 
