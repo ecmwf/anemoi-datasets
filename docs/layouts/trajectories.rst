@@ -76,9 +76,18 @@ can be used at the leaves of a trajectory recipe. Today this means:
    support.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
    the ``from: {accumulation: ...}`` block; see below.
+-  :ref:`grib <grib_source>` — local forecast archives, addressed by file
+   path. The file name usually encodes the model run and the lead time
+   rather than the validity time, so the path template takes ``base_date``
+   and ``step`` alongside ``date``; see :ref:`grib-path-keywords`.
+-  :ref:`grib-index <grib-index_source>` — the same local archives,
+   addressed through an index instead of a path template.
 
-``grib-index``, ``fdb``, ``hindcasts`` and ``recentre`` are not
-trajectory-aware in this release. The :ref:`from-trajectories
+For local GRIB the two routes are compared, including how each behaves
+under ``accumulate:``, in :ref:`grib-or-grib-index`.
+
+``fdb``, ``hindcasts`` and ``recentre`` are not trajectory-aware in this
+release. The :ref:`from-trajectories
 <sources-from-trajectories>` *source* is the reverse bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
 fields from a forecast archive; see :ref:`sources-from-trajectories`.
 

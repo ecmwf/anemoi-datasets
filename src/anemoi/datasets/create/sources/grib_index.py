@@ -23,6 +23,8 @@ from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
 
@@ -627,25 +629,100 @@ class GribIndexSource(Source):
         full_requests = [(list(dates), self.request)]
         return self._run_requests(full_requests)
 
-    def execute_intervals(self, dates: Intervals) -> FieldList:
-        """Retrieve grib-indexed fields covering accumulation windows.
+    def execute_forecast_dates(self, dates: ForecastDates) -> FieldList:
+        """Retrieve grib-indexed fields for ``(valid_time, basetime)`` pairs.
 
-        grib-index is valid-time indexed: each interval is resolved to its
-        validity time (``interval.max``) plus a ``step`` equal to the
-        accumulation period length. No basetime is involved — the
-        ``SignedInterval.base`` attribute is ignored here, which is why this
-        path does not go through ``Intervals.adjust_request``.
+        The index stores the model run as MARS-style ``date`` and ``time``, so a
+        trajectory row is addressed by constraining the run and letting the
+        inherited ``valid_datetime`` criterion pin the lead time. No path
+        template is involved, so the recipe needs to know nothing about how the
+        archive names or groups its files.
+
+        ``step`` is deliberately *not* part of the query even though it is
+        indexed. Within one run a validity time already determines the step, so
+        the column is redundant here — and its encoding is not dependable:
+        eccodes reports a step whose GRIB unit is minutes as ``"0m"`` rather
+        than ``"0"``, and a single archive can mix the two (KNMI CY46 stores
+        ``"0m"``, ``"3"``, ``"6"``). Since :meth:`GribIndex.retrieve` stringifies
+        its criteria, querying ``step=0`` against a stored ``"0m"`` would match
+        nothing *silently*. Omitting it also lets sub-hourly steps work.
+
+        ``time`` follows the MARS integer convention (``0``, ``300``, ``1200``),
+        which is what the indexer recorded, so it is built with the same
+        convention rather than as a zero-padded string.
         """
         full_requests = []
-        for interval in dates.intervals:
-            # grib-index is valid-time indexed; intervals must not carry a basetime.
-            assert interval.base is None, (
-                f"GribIndexSource received an interval with a basetime: {interval!r}. "
-                "grib-index resolves intervals by valid time only."
-            )
+        for valid_time, basetime in dates.items:
+            request = self._run_anchored_request(basetime)
+            self.context.trace(self.emoji, "forecast:", f"bt={basetime} vt={valid_time}")
+            self.context.trace(self.emoji, "  request =", request)
+            full_requests.append(([valid_time], request))
+        return self._run_requests(full_requests)
+
+    def _run_anchored_request(self, basetime: Any) -> dict[str, Any]:
+        """Address a field by its model run, letting ``valid_datetime`` pin the step.
+
+        See :meth:`execute_forecast_dates` for why ``step`` is left out.
+        """
+        request = self.request.copy()
+        # The run addresses the field, so it takes precedence over anything the
+        # recipe pinned (as the mars source does).
+        request["date"] = int(basetime.strftime("%Y%m%d"))
+        request["time"] = int(basetime.strftime("%H%M"))
+        request.pop("step", None)
+        return request
+
+    def _duration_request(self, interval: Any) -> dict[str, Any]:
+        """Address a field of a base-less archive by its accumulation length.
+
+        Where the archived fields carry no model run, the only thing that
+        distinguishes two accumulations valid at the same time is how long a
+        window each covers, so ``step`` is read as that length. ``max - min``
+        rather than ``end - start`` so that a reversed (subtracted) interval
+        yields a positive length.
+        """
+        request = self.request.copy()
+        request["step"] = int((interval.max - interval.min).total_seconds() / 3600)
+        return request
+
+    def execute_intervals(self, dates: Intervals) -> FieldList:
+        """Retrieve grib-indexed fields covering accumulation windows."""
+        return self._run_interval_requests(dates.intervals)
+
+    def execute_forecast_intervals(self, dates: ForecastIntervals) -> FieldList:
+        """Retrieve grib-indexed fields covering forecast accumulation windows.
+
+        Defined explicitly rather than inherited: ``ForecastIntervals`` is a
+        subclass of ``ForecastDates`` but its ``items`` are ``(valid_time,
+        basetime, period)`` triples, so falling through to
+        :meth:`execute_forecast_dates` would fail to unpack them.
+        """
+        return self._run_interval_requests(dates.intervals)
+
+    def _run_interval_requests(self, intervals: list) -> FieldList:
+        """Resolve accumulation intervals, run-anchored or base-less.
+
+        Which of the two an interval is depends on the archive the covering
+        searched, not on the layout:
+
+        - ``base`` set — the archived field belongs to a model run, either the
+          run a trajectory layout imposed (``ForecastCovering``) or the one a
+          search found in a forecast archive. It is addressed by that run, so
+          an archive that accumulates from the start of its run works here.
+        - ``base`` unset — a validity-time-indexed archive with no run at all;
+          the accumulation length identifies the field instead.
+
+        Identical requests are merged downstream by :func:`factorise`, so a
+        covering that both adds and subtracts the same archive field (as
+        ``from-zero`` does) still queries it once.
+        """
+        full_requests = []
+        for interval in intervals:
             self.context.trace(self.emoji, "interval:", interval)
-            request = self.request.copy()
-            request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            if interval.base is None:
+                request = self._duration_request(interval)
+            else:
+                request = self._run_anchored_request(interval.base)
             self.context.trace(self.emoji, "  request =", request)
             full_requests.append(([interval.max], request))
         return self._run_requests(full_requests)
