@@ -596,10 +596,19 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
+    @cached_property
+    def _mask_indices(self) -> list[NDArray[Any]]:
+        """Source-space indices retained by each mask (LAMs first, then the global dataset)."""
+        return [np.flatnonzero(mask) for mask in self.masks] + [np.flatnonzero(self.global_mask)]
+
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Helper method that applies masks and retrieves data from each dataset according to the specified index.
+
+        The grid index is pushed down to the underlying datasets, so only the
+        requested region is read (e.g. only the zarr chunks it intersects),
+        instead of loading full fields and slicing in memory.
 
         Parameters
         ----------
@@ -612,16 +621,47 @@ class Cutout(GridsBase):
             Concatenated data array from all datasets based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
-        # Select data from each LAM
-        lam_data = [lam[index[:3]] for lam in self.lams]
 
-        # First apply spatial indexing on `self.globe` and then apply the mask
-        globe_data_sliced = self.globe[index[:3]]
-        globe_data = globe_data_sliced[..., self.global_mask]
+        reverse = index[self.axis].step < 0
+        if reverse:
+            # length_to_slices only handles ascending selections: read the
+            # same points in ascending order and flip the result back below
+            positions = range(*index[self.axis].indices(self.shape[self.axis]))
+            ascending = slice(positions[-1], positions[0] + 1, -positions.step) if positions else slice(0, 0)
+            index, _ = update_tuple(index, self.axis, ascending)
 
-        # Concatenate LAM data with global data, apply the grid slicing
-        result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
+        # resolve the requested grid index for each dataset
+        # relative to each dataset's own masked points
+        requested_per_dataset = length_to_slices(
+            index[self.axis], [len(source_indices) for source_indices in self._mask_indices]
+        )
 
+        parts = []
+        for dataset, source_indices, requested in zip(self.datasets, self._mask_indices, requested_per_dataset):
+            if requested is None:
+                # this dataset contributes no columns to the requested grid range
+                continue
+            # translate the requested positions from "retained points within a mask"
+            # back to native grid-point indices
+            selected_source_indices = source_indices[requested]
+            # read only the contiguous native-grid range spanning the selected points,
+            # instead of loading the whole grid and slicing in memory
+            window = slice(int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1)
+            part = dataset[index[:3] + (window,)]
+            if len(selected_source_indices) != window.stop - window.start:
+                # the mask has gaps (or the index has a step) inside the window: drop the extra points
+                part = part[..., selected_source_indices - window.start]
+            parts.append(part)
+
+        if parts:
+            result = np.concatenate(parts, axis=self.axis)
+        else:
+            # empty grid selection: no dataset was read, build the empty block directly
+            shape = tuple(len(range(*s.indices(n))) for s, n in zip(index, self.shape))
+            result = np.empty(shape, dtype=self.dtype)
+
+        if reverse:
+            result = np.flip(result, axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
