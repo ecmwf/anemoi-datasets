@@ -561,25 +561,13 @@ def _statistics_collector_worker(
 
 class _DuplicateRangeBuilder:  # (value, start_index, length)
     def __init__(self, length: int, path: str) -> None:
-        # Length of the input array to process, used for pre-allocating the output file
-        # Resulting array will be smaller but we don't know the exact size until we process it, so we use the input length as an upper bound
-        self.total_size = length
         self.path = path
 
-        # Create an empty file (sparse if supported) to hold the output ranges
-        # We don't uss np.memmap(mode='w')  because that may trigger an OOM if the file is large,
-        # even if it's sparse.Becaue Numpy will access all pages to initialize them,
-        # which can cause the OS to allocate physical memory for the entire file.
-        # By using open() and truncate(), we create a sparse file without triggering OOM.
-
-        self.row_size = 3 * np.dtype(np.int64).itemsize  # Each row has 3 int64 values: (value, start_index, length)
-        bytes_needed = self.total_size * self.row_size
-
+        # The number of date ranges is not known until all fragments are processed.
+        # Append each small result block instead of mapping an upper-bound array with
+        # one row per observation, which can exceed the process virtual-memory limit.
         with open(self.path, "wb") as f:
-            f.truncate(bytes_needed)
-
-        # Mmap the file for writing the output ranges
-        self.dates_ranges = np.memmap(self.path, dtype=np.int64, mode="r+", shape=(length, 3))
+            f.truncate(0)
         self.last_date = None
         self.range_idx = 0
 
@@ -618,18 +606,14 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         result = np.column_stack((unique_dates, offsets, counts))
         size = len(result)
 
-        self.dates_ranges[self.range_idx : self.range_idx + size, :] = result
+        with open(self.path, "ab") as f:
+            result.astype(np.int64, copy=False).tofile(f)
 
         self.range_idx += size
 
         return time.time() - now
 
     def array(self) -> np.ndarray:
-
-        del self.dates_ranges  # Close the mapping to allow truncation
-        with open(self.path, "ab") as f:
-            f.truncate(self.range_idx * self.row_size)
-
         return np.memmap(self.path, dtype=np.int64, mode="r", shape=(self.range_idx, 3))
 
 
