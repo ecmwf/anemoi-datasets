@@ -184,9 +184,9 @@ The JSON document always starts with a header that identifies it:
     The format version.
 
 ``datasets``
-    The dataset labels the statistics were computed from: the two datasets of
-    the residual, in the order ``[minuend, subtrahend]``, or the single dataset
-    otherwise.
+    The dataset labels the statistics were computed from. For a residual, the
+    two datasets in the order they were subtracted, so that the residual is
+    ``datasets[0] - datasets[1]``; otherwise the single dataset.
 
 Then come ``variables`` and the ``statistics`` / ``tendency_statistics`` blocks,
 each mapping ``mean``, ``stdev``, ``minimum`` and ``maximum`` to one value per

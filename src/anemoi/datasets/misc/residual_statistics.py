@@ -36,8 +36,8 @@ JSON object; the keys that identify and describe it are:
     Format version, see :data:`VERSION`. A reader refuses a version it does not
     know about.
 ``datasets``
-    The two dataset labels the residual was computed from, in the order
-    ``[minuend, subtrahend]``: the residual is ``datasets[0] - datasets[1]``.
+    The two dataset labels the residual was computed from, in the order they
+    were subtracted: the residual is ``datasets[0] - datasets[1]``.
 ``variables``
     The variable names, indexing the statistics arrays.
 ``statistics``
@@ -87,8 +87,9 @@ def header(kind: str, datasets: list[str]) -> dict[str, Any]:
     kind : str
         Either :data:`RESIDUAL_KIND` or :data:`STATISTICS_KIND`.
     datasets : list of str
-        The dataset labels the statistics were computed from: two of them for a
-        residual (``[minuend, subtrahend]``), one otherwise.
+        The dataset labels the statistics were computed from: for a residual,
+        the two datasets in the order they were subtracted (the residual is
+        ``datasets[0] - datasets[1]``); otherwise the single dataset.
 
     Returns
     -------
