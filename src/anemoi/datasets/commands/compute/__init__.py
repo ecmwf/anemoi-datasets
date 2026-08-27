@@ -26,7 +26,11 @@ Usage
 
 Results are always written to a JSON file. Without ``--output`` the default is
 ``<dataset-name>.statistics.json`` in the current directory. The command fails if
-the output file already exists unless ``--overwrite`` is given.
+the output file already exists unless ``--overwrite`` is given. The document
+carries a ``kind``/``version``/``datasets`` header (see
+:mod:`anemoi.datasets.misc.residual_statistics`), so a residual document can be
+fed back to ``open_dataset(..., residual_statistics=...)`` -- an experimental
+option that may be removed or renamed in a future release.
 
 ``<dataset>`` is either a name/path followed by ``key=value`` ``open_dataset``
 options (e.g. ``start=2020-01-01 end=2020-12-31``), or a single JSON literal that
@@ -47,6 +51,10 @@ import sys
 from typing import Any
 
 import numpy as np
+
+from anemoi.datasets.misc.residual_statistics import RESIDUAL_KIND
+from anemoi.datasets.misc.residual_statistics import STATISTICS_KIND
+from anemoi.datasets.misc.residual_statistics import header
 
 from .. import Command
 from .engine import Task
@@ -503,7 +511,14 @@ class Compute(Command):
         variables, results = run_engine(task)
 
         # Build a JSON-serialisable document while printing the tables.
+        # The `kind`/`version`/`datasets` header identifies the file: a residual
+        # document can be fed back to `open_dataset(..., residual_statistics=...)`,
+        # which refuses anything that is not marked as a residual.
         document: dict[str, Any] = {
+            **header(
+                RESIDUAL_KIND if parsed.has_residual else STATISTICS_KIND,
+                [parsed.label, parsed.residual_label] if parsed.has_residual else [parsed.label],
+            ),
             "dataset": parsed.label,
             "residual": parsed.residual_label if parsed.has_residual else None,
             "variables": variables,

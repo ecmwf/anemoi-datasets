@@ -34,6 +34,7 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
+from anemoi.datasets.misc.residual_statistics import ResidualStatisticsNotAvailable
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.debug import Source
 
@@ -236,6 +237,14 @@ class Dataset(ABC, Sized):
             statistics_tendencies = kwargs.pop("statistics_tendencies", None)
 
             return Statistics(self, statistics, statistic_tendencies=statistics_tendencies)._subset(**kwargs).mutate()
+
+        if "residual_statistics" in kwargs:
+
+            ResidualStatistics = self.usage_factory_load("ResidualStatistics")
+
+            residual_statistics = kwargs.pop("residual_statistics")
+
+            return ResidualStatistics(self, residual_statistics)._subset(**kwargs).mutate()
 
         if "mask" in kwargs:
             Masking = self.usage_factory_load("Masking")
@@ -1206,6 +1215,26 @@ class Dataset(ABC, Sized):
             The tendencies.
         """
         pass
+
+    @property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Return the residual statistics of the dataset.
+
+        Residual statistics describe the difference between two datasets. They
+        are not stored in a dataset; they are attached with
+        ``open_dataset(..., residual_statistics="residual.json")``, from a file
+        written by ``anemoi-datasets compute <a> --statistics-residual <b>``.
+
+        Warnings
+        --------
+
+        Experimental: this attribute may be removed or renamed in a future
+        release.
+        """
+        raise ResidualStatisticsNotAvailable(
+            f"No residual statistics attached to {self.__class__.__name__}. "
+            'Use open_dataset(..., residual_statistics="/path/to/residual.json").'
+        )
 
     @abstractmethod
     def source(self, index: int) -> Source:

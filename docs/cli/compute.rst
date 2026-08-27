@@ -171,6 +171,44 @@ Resume a long run that was interrupted:
 
     anemoi-datasets compute my-dataset --statistics --parallel 16 --resume
 
+The output file
+---------------
+
+The JSON document always starts with a header that identifies it:
+
+``kind``
+    ``"residual-statistics"`` when ``--statistics-residual`` was used,
+    ``"statistics"`` otherwise.
+
+``version``
+    The format version.
+
+``datasets``
+    The dataset labels the statistics were computed from: the two datasets of
+    the residual, in the order ``[minuend, subtrahend]``, or the single dataset
+    otherwise.
+
+Then come ``variables`` and the ``statistics`` / ``tendency_statistics`` blocks,
+each mapping ``mean``, ``stdev``, ``minimum`` and ``maximum`` to one value per
+variable, in the order given by ``variables``. NaNs are written as ``null``.
+
+A residual document can be fed straight back into ``open_dataset``:
+
+.. code-block:: python
+
+    ds = open_dataset("lo-res", residual_statistics="residual.json")
+    print(ds.residual_statistics)
+
+.. warning::
+
+   Experimental: the ``residual_statistics`` option and the
+   ``residual_statistics`` attribute may be removed or renamed in a
+   future release.
+
+The ``kind`` marker is checked when the file is read, so a plain statistics file
+passed as ``residual_statistics`` is rejected instead of being used by mistake.
+See :ref:`using-statistics`.
+
 Notes
 -----
 
