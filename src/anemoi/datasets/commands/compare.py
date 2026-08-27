@@ -146,7 +146,7 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
     # Divide by two because both arrays need to be in memory
     half_memory = max_memory // 2
     itemsize = a.dtype.itemsize
-    chunk_size = math.prod(a.chunks) * itemsize  # Prefered buffer size if fits in memory
+    chunk_size = math.prod(a.chunks) * itemsize  # Preferred buffer size if fits in memory
     buffer_size = chunk_size if chunk_size < half_memory else half_memory
 
     # The first (chunk) axis is often 1, so subdivide also other dimensions as needed
