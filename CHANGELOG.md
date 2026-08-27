@@ -8,6 +8,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.42](https://github.com/ecmwf/anemoi-datasets/compare/0.5.41...0.5.42) (2026-08-13)
+
+
+### Features
+
+* Clarify-timezone-datetime ([#723](https://github.com/ecmwf/anemoi-datasets/issues/723)) ([05262c2](https://github.com/ecmwf/anemoi-datasets/commit/05262c2a87adc4d4f3d7c97c5d6508ccc317b4d6))
+* Cut dependency of anemoi-registy on anemoi-datasets ([#696](https://github.com/ecmwf/anemoi-datasets/issues/696)) ([be8b64b](https://github.com/ecmwf/anemoi-datasets/commit/be8b64b8ac853564e5d390835f8eaaf3c8ea3609))
+* **cutout:** User-provided pre-computed cutout masks ([#627](https://github.com/ecmwf/anemoi-datasets/issues/627)) ([448a96c](https://github.com/ecmwf/anemoi-datasets/commit/448a96c80d3b0e332d7e37812746d80c0ad48144))
+* Fix timezone corner case ([#720](https://github.com/ecmwf/anemoi-datasets/issues/720)) ([87771c9](https://github.com/ecmwf/anemoi-datasets/commit/87771c9d7775e0b0124bcdc04b465e3525d6b848))
+
+
+### Bug Fixes
+
+* Fix issue 718 ([#724](https://github.com/ecmwf/anemoi-datasets/issues/724)) ([cffbe79](https://github.com/ecmwf/anemoi-datasets/commit/cffbe79f92fdda0bb7d9a96bbe3fd292036c6cd3))
+* Repair tendency statistics across group boundaries ([#727](https://github.com/ecmwf/anemoi-datasets/issues/727)) ([6751b19](https://github.com/ecmwf/anemoi-datasets/commit/6751b19d64567307fa062cf7c7a950b3809d8551))
+
+
+### Documentation
+
+* Update usage doc ([#712](https://github.com/ecmwf/anemoi-datasets/issues/712)) ([e127d7f](https://github.com/ecmwf/anemoi-datasets/commit/e127d7f342a05ada2795666e9af3ae16c7fccac0))
+
+## [0.5.41](https://github.com/ecmwf/anemoi-datasets/compare/0.5.40...0.5.41) (2026-07-27)
+
+
+### Features
+
+* Add consistency check for tabular ([#687](https://github.com/ecmwf/anemoi-datasets/issues/687)) ([2b4db63](https://github.com/ecmwf/anemoi-datasets/commit/2b4db63dc239972c456a2b876de01f6e804296d1))
+* Broadcast-to-trajectories-in-open-dataset ([#717](https://github.com/ecmwf/anemoi-datasets/issues/717)) ([3a14296](https://github.com/ecmwf/anemoi-datasets/commit/3a14296cfdd26344453155ccecd24b16068b1eba))
+* Create and ship py.typed ([#714](https://github.com/ecmwf/anemoi-datasets/issues/714)) ([63dba5f](https://github.com/ecmwf/anemoi-datasets/commit/63dba5f19e27ac53f9cc5d31cbda35baef8070aa))
+* Deprecation warning for group by instead of silent ignore ([#682](https://github.com/ecmwf/anemoi-datasets/issues/682)) ([f997ea3](https://github.com/ecmwf/anemoi-datasets/commit/f997ea3ffa07d05064b35c49f1feee071b701adf))
+* Do not mutate source_config in bufr ([#683](https://github.com/ecmwf/anemoi-datasets/issues/683)) ([9815ca5](https://github.com/ecmwf/anemoi-datasets/commit/9815ca5c2dc4d280405a73a179f35c2b176d6bd1))
+* Improve memory for trajectories dataset building ([#693](https://github.com/ecmwf/anemoi-datasets/issues/693)) ([5ecabf0](https://github.com/ecmwf/anemoi-datasets/commit/5ecabf0aeb46b811c257e80e594b60aeab4ea341))
+* Keep compatibility with zarr 3 ([#694](https://github.com/ecmwf/anemoi-datasets/issues/694)) ([e2f5f68](https://github.com/ecmwf/anemoi-datasets/commit/e2f5f6809c01694c46e0d9a8fff684902722f0bf))
+* Remove validation of dates by default ([#691](https://github.com/ecmwf/anemoi-datasets/issues/691)) ([09d1903](https://github.com/ecmwf/anemoi-datasets/commit/09d19033e9a67cd8bbb1c64122909f6d0288e0ec))
+* Use group_by 1 for trajectories by default ([#676](https://github.com/ecmwf/anemoi-datasets/issues/676)) ([6f6e964](https://github.com/ecmwf/anemoi-datasets/commit/6f6e964c14c78caa062726d670e1f3ab2b8aee0e))
+
+
+### Bug Fixes
+
+* **create:** Height coord standard name ([#707](https://github.com/ecmwf/anemoi-datasets/issues/707)) ([943672d](https://github.com/ecmwf/anemoi-datasets/commit/943672d7bdc21341bf42d99dee6dc6437931c403))
+* Interpolate_frequency now preserves dtype ([#710](https://github.com/ecmwf/anemoi-datasets/issues/710)) ([9e5218a](https://github.com/ecmwf/anemoi-datasets/commit/9e5218ae80e44b54abac19d91c446b995913cb8f))
+* Negative index support ([#703](https://github.com/ecmwf/anemoi-datasets/issues/703)) ([c1bbaa1](https://github.com/ecmwf/anemoi-datasets/commit/c1bbaa1a1a1448967e9af7c0626701a36906e1dd))
+* Pass options as kwarg in usage/_open ([#690](https://github.com/ecmwf/anemoi-datasets/issues/690)) ([eff502e](https://github.com/ecmwf/anemoi-datasets/commit/eff502e46fd81f210e958866cc58e620894e19eb))
+* Release rolling average assumption. ([#678](https://github.com/ecmwf/anemoi-datasets/issues/678)) ([a86df41](https://github.com/ecmwf/anemoi-datasets/commit/a86df41f5c0db5b1d2376743e9da1a2635e6495e))
+
+
+### Documentation
+
+* Replace "Coming soon" placeholders in CF data howto with actual content ([#702](https://github.com/ecmwf/anemoi-datasets/issues/702)) ([3091241](https://github.com/ecmwf/anemoi-datasets/commit/309124160d6f4b3e3c2e25d7961aa7b63e3ababa))
+
+## [0.5.40](https://github.com/ecmwf/anemoi-datasets/compare/0.5.39...0.5.40) (2026-06-22)
+
+
+### Features
+
+* Add missing dependency, psutil ([#670](https://github.com/ecmwf/anemoi-datasets/issues/670)) ([e913047](https://github.com/ecmwf/anemoi-datasets/commit/e9130473a857ff45895bdd93959862b11201283a))
+* Add window and cycle date column option to ODB source ([#662](https://github.com/ecmwf/anemoi-datasets/issues/662)) ([d388399](https://github.com/ecmwf/anemoi-datasets/commit/d388399d4a4531c2f47d0e3d0505e9e9ba577d3f))
+* Extract constants and climatologies from a dataset for use in inference ([#628](https://github.com/ecmwf/anemoi-datasets/issues/628)) ([55af3ce](https://github.com/ecmwf/anemoi-datasets/commit/55af3ce31d8036a263992768053fdd3a0bf7f44f))
+* **metadata:** Store GRIB paramId in `variables_metadata` ([#664](https://github.com/ecmwf/anemoi-datasets/issues/664)) ([f283884](https://github.com/ecmwf/anemoi-datasets/commit/f283884efa65318e2efeea6fb5e0159ff965d12d))
+* Not resolution check for tabular ([#672](https://github.com/ecmwf/anemoi-datasets/issues/672)) ([8956a2a](https://github.com/ecmwf/anemoi-datasets/commit/8956a2a00e7c620ee1bc8404039796e93bc95b57))
+* Option when checking variables compatibility ([#669](https://github.com/ecmwf/anemoi-datasets/issues/669)) ([1345ba9](https://github.com/ecmwf/anemoi-datasets/commit/1345ba992936f39f7b2a31304a655cb1e2d649fd))
+* Support empty data for bufr ([#673](https://github.com/ecmwf/anemoi-datasets/issues/673)) ([ca78ec0](https://github.com/ecmwf/anemoi-datasets/commit/ca78ec0e02d3c835c393195d64d123e5f3faca17))
+* Synthetic gridded dataset ([#637](https://github.com/ecmwf/anemoi-datasets/issues/637)) ([8cbfc01](https://github.com/ecmwf/anemoi-datasets/commit/8cbfc015d6f441113f2bd2dc213c9c2b95d0f187))
+
+
+### Bug Fixes
+
+* Netcdf level and unit metadata handling ([#663](https://github.com/ecmwf/anemoi-datasets/issues/663)) ([c636598](https://github.com/ecmwf/anemoi-datasets/commit/c6365988f513af9c1c49861577e20ab5cfe4a892))
+* Update metadata specific ([#671](https://github.com/ecmwf/anemoi-datasets/issues/671)) ([ace93c6](https://github.com/ecmwf/anemoi-datasets/commit/ace93c6b4fd13f3a80985d0f2006eefac95b3c15))
+
 ## [0.5.39](https://github.com/ecmwf/anemoi-datasets/compare/0.5.38...0.5.39) (2026-06-11)
 
 

@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -18,6 +18,7 @@ if zarr_version < 3:
     from .zarr2 import HTTPStore
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
+    from .zarr2 import blosc_compressor
     from .zarr2 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
@@ -26,6 +27,7 @@ else:
     from .zarr3 import HTTPStore
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
+    from .zarr3 import blosc_compressor
     from .zarr3 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
@@ -36,6 +38,7 @@ __all__ = [
     "S3Store",
     "DebugStore",
     "MemoryStore",
+    "blosc_compressor",
     "zarr_append_mode",
     "zarr_version",
     "zarr_private_files",

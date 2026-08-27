@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -94,11 +94,11 @@ def make_trajectories_zarr(
         rng = np.random.default_rng(0)
         data = rng.random(shape).astype("float32")
 
-    root.create_dataset("data", data=data, chunks=data.shape, compressor=None)
-    root.create_dataset("base_dates", data=dates, compressor=None)
-    root.create_dataset("steps", data=steps, compressor=None)
-    root.create_dataset("latitudes", data=np.linspace(-90, 90, n_cells), compressor=None)
-    root.create_dataset("longitudes", data=np.linspace(0, 360, n_cells), compressor=None)
+    root.create_array("data", data=data, chunks=data.shape, compressors=None)
+    root.create_array("base_dates", data=dates, compressors=None)
+    root.create_array("steps", data=steps, compressors=None)
+    root.create_array("latitudes", data=np.linspace(-90, 90, n_cells), compressors=None)
+    root.create_array("longitudes", data=np.linspace(0, 360, n_cells), compressors=None)
 
     root.attrs["layout"] = "trajectories"
     root.attrs["frequency"] = f"{frequency_h}h"
@@ -203,6 +203,20 @@ class TestRecipeStepsValidator:
         assert r.steps is not None
         assert r.base_dates is not None
         assert r.dates is None
+
+    def test_trajectories_default_group_by_is_one(self):
+        from anemoi.datasets.create.recipe import Recipe
+
+        r = Recipe(**self._trajectories_recipe())
+        assert r.build.group_by == 1
+
+    def test_trajectories_respect_explicit_group_by(self):
+        from anemoi.datasets.create.recipe import Recipe
+
+        recipe_dict = self._trajectories_recipe()
+        recipe_dict["build"] = {"group_by": 3}
+        r = Recipe(**recipe_dict)
+        assert r.build.group_by == 3
 
     def test_gridded_without_steps_ok(self):
         from anemoi.datasets.create.recipe import Recipe
@@ -317,30 +331,38 @@ class TestTrajectoriesZarr:
     # ------------------------------------------------------------------
 
     def test_frequency_raises(self):
-        """Accessing .frequency must raise AttributeError (by design)."""
-        with pytest.raises(AttributeError, match="two frequencies"):
-            _ = self.ds.frequency
+        """Accessing .frequency on a trajectories dataset returns None (no single frequency)."""
+        assert self.ds.frequency is None
 
     def test_metadata_specific_does_not_call_frequency(self):
-        """metadata_specific() must succeed and not touch .frequency."""
+        """metadata_specific() must succeed; trajectory-specific keys flow through ZarrStore super()."""
         md = self.ds.metadata_specific()
+        assert md["action"] == "trajectorieszarr"
+        # frequency=None comes from Dataset.metadata_specific() which calls self.frequency.
+        assert "frequency" in md
+        assert md["frequency"] is None
+        # ZarrStore now forwards **kwargs, so the trajectory-specific keys are present.
         assert "base_frequency" in md
         assert "step_frequency" in md
-        assert "frequency" not in md  # the broken single-frequency key must be absent
-        assert md["action"] == "trajectorieszarr"
 
     def test_dataset_metadata_does_not_call_frequency(self):
-        """dataset_metadata() must succeed without raising AttributeError."""
+        """dataset_metadata() must succeed; trajectory keys appear at top level and in 'specific'."""
         md = self.ds.dataset_metadata()
-        assert "base_frequency" in md
+        assert md["frequency"] is None
+        # Top level
+        assert md["base_frequency"] is not None
         assert "step_frequency" in md
-        assert "specific" in md
+        assert "base_start_date" in md
+        assert "base_end_date" in md
+        # And inside specific
+        assert md["specific"]["base_frequency"] is not None
+        assert "step_frequency" in md["specific"]
 
     def test_metadata_does_not_call_frequency(self):
-        """The top-level metadata() call must succeed end-to-end."""
+        """metadata() must succeed and carry trajectory keys in specific."""
         md = self.ds.metadata()
-        assert "base_frequency" in md
-        assert "step_frequency" in md
+        assert md["specific"]["action"] == "trajectorieszarr"
+        assert "base_frequency" in md["specific"]
 
 
 # ---------------------------------------------------------------------------
@@ -791,7 +813,7 @@ class TestTrajectoriesSelect:
         rng = np.random.default_rng(1)
         stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
         for k, v in stats.items():
-            self.group.create_dataset(k, data=v, compressor=None)
+            self.group.create_array(k, data=v, compressors=None)
 
         ds = self._open(select=["a", "c"])
         for k, v in stats.items():
@@ -801,7 +823,7 @@ class TestTrajectoriesSelect:
         rng = np.random.default_rng(2)
         stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
         for k, v in stats.items():
-            self.group.create_dataset(f"statistics_tendencies_6h_{k}", data=v, compressor=None)
+            self.group.create_array(f"statistics_tendencies_6h_{k}", data=v, compressors=None)
 
         # step_frequency is 6h, so delta=None must resolve to 6h, not crash on .frequency
         ds = self._open(select=["a", "c"])

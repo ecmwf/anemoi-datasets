@@ -35,16 +35,16 @@ The commands are:
    :hidden:
    :caption: CLI
 
-   cli/create
-    cli/create-test-recipe
-   cli/inspect
-   cli/grib-index
-   cli/compare
-   cli/copy
-   cli/scan
-   cli/patch
-   cli/compare-lam
-   cli/validate
-   cli/extract
-   cli/schema
-   cli/rename
+   create
+   create-test-recipe
+   inspect
+   grib-index
+   compare
+   copy
+   scan
+   patch
+   compare-lam
+   validate
+   extract
+   schema
+   rename

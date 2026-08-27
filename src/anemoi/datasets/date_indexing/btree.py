@@ -1,4 +1,4 @@
-# (C) Copyright 2025 Anemoi contributors.
+# (C) Copyright 2025-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -136,13 +136,13 @@ class ZarrBTree:
             LOG.info(f"Zarr array chunk size: {chunk} rows x {cols_per_page} cols")
 
             # Initialize with root page
-            self.store.create_dataset(
+            self.store.create_array(
                 name,
                 shape=(chunk, cols_per_page),
                 chunks=(chunk, cols_per_page),
                 dtype="int64",
                 fill_value=0,
-                # compressor=compressor,
+                # compressors=compressor,
             )
             # Initialize root page (page_id=1, is_node=0/leaf, count=0)
             self.pages = self.store[name]

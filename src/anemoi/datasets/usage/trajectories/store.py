@@ -15,7 +15,6 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
@@ -28,6 +27,7 @@ from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..store import ZarrStore
+from .metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def base_dates(self) -> NDArray[np.datetime64]:
         """Return the base dates (forecast initialisation times) of the dataset."""
-        return self.store.base_dates[:]
+        return self.store["base_dates"][:]
 
     def base_date(self, index: int) -> np.datetime64:
         """Return the base date at ``index``.
@@ -148,7 +148,7 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def steps(self) -> NDArray[np.timedelta64]:
         """Return the forecast step values stored in the dataset."""
-        return self.store.steps[:]
+        return self.store["steps"][:]
 
     @property
     def step_start(self) -> datetime.timedelta:
@@ -188,19 +188,19 @@ class TrajectoriesZarr(ZarrStore):
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes of the grid."""
         try:
-            return self.store.latitudes[:]
-        except AttributeError:
+            return self.store["latitudes"][:]
+        except KeyError:
             LOG.warning("No 'latitudes' in %r, trying 'latitude'", self)
-            return self.store.latitude[:]
+            return self.store["latitude"][:]
 
     @property
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes of the grid."""
         try:
-            return self.store.longitudes[:]
-        except AttributeError:
+            return self.store["longitudes"][:]
+        except KeyError:
             LOG.warning("No 'longitudes' in %r, trying 'longitude'", self)
-            return self.store.longitude[:]
+            return self.store["longitude"][:]
 
     # ------------------------------------------------------------------
     # Shape and type
@@ -214,12 +214,12 @@ class TrajectoriesZarr(ZarrStore):
     @cached_property
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
-        return self.store.data.dtype
+        return self.store["data"].dtype
 
     @cached_property
     def chunks(self):
         """Return the chunk sizes of the data array."""
-        return self.store.data.chunks
+        return self.store["data"].chunks
 
     @property
     def field_shape(self) -> tuple:
@@ -251,15 +251,13 @@ class TrajectoriesZarr(ZarrStore):
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """Trajectories datasets have two frequencies.
+        """Trajectories datasets have two frequencies so frequency is not defined.
 
         Use ``base_frequency`` for the base-date interval and
         ``step_frequency`` for the step interval.
         """
-        raise AttributeError(
-            "Trajectories datasets have two frequencies. "
-            "Use 'base_frequency' for the base-date interval and 'step_frequency' for the step interval."
-        )
+
+        return None
 
     @property
     def resolution(self) -> str | None:
@@ -273,37 +271,20 @@ class TrajectoriesZarr(ZarrStore):
         ``self.frequency``, which raises for trajectory datasets because
         they have two frequencies (``base_frequency`` and ``step_frequency``).
         """
-        action = self.__class__.__name__.lower()
-        step_freq = self.step_frequency
-        return dict(
-            action=action,
-            variables=self.variables,
-            shape=self.shape,
-            base_frequency=frequency_to_string(self.base_frequency),
-            step_frequency=frequency_to_string(step_freq),
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            **kwargs,
-        )
+        return super().metadata_specific(**trajectory_metadata(self), **kwargs)
 
     def dataset_metadata(self) -> dict[str, Any]:
-        """Return dataset metadata using trajectory-compatible properties."""
-        return dict(
-            specific=self.metadata_specific(),
-            base_frequency=self.base_frequency,
-            step_frequency=self.step_frequency,
-            variables=self.variables,
-            variables_metadata=self.variables_metadata,
-            shape=self.shape,
-            dtype=str(self.dtype),
-            start_date=str(self.start_date),
-            end_date=str(self.end_date),
-            base_start_date=str(self.base_start_date),
-            base_end_date=str(self.base_end_date),
-            name=self.name,
-        )
+        """Return dataset metadata using trajectory-compatible properties.
+
+        The trajectory-specific keys are emitted both at the top level (for
+        consumers that read them directly) and, via ``metadata_specific``,
+        inside the ``specific`` sub-dict. They must not be passed as kwargs to
+        ``super().dataset_metadata`` because that forwards them into
+        ``metadata_specific``, which already sets them explicitly.
+        """
+        md = super().dataset_metadata()
+        md.update(trajectory_metadata(self))
+        return md
 
     @property
     def variables_metadata(self) -> dict[str, Any]:

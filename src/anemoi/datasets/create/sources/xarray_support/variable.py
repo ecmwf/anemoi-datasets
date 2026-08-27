@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -76,6 +76,11 @@ class Variable:
 
         self._metadata = metadata.copy()
         self._metadata.update({"variable": variable.name, "param": variable.name})
+
+        # Carry units from the xarray variable attributes if available
+        units = variable.attrs.get("units")
+        if units is not None:
+            self._metadata["units"] = units
 
         self.time = time
 

@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -26,6 +26,7 @@ from anemoi.datasets.usage.forwards import Combined
 from anemoi.datasets.usage.gridded.concat import ConcatMixin
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ class Chain(ConcatMixin, Unchecked):
         return {"multiple": [d.dataset_metadata() for d in self.datasets]}
 
 
-def chain_factory(args: tuple, kwargs: dict) -> Dataset:
+def chain_factory(args: tuple, kwargs: dict, options: Options) -> Dataset:
     """Factory function to create a Chain dataset.
 
     Parameters
@@ -270,6 +271,8 @@ def chain_factory(args: tuple, kwargs: dict) -> Dataset:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options to use when opening the datasets.
 
     Returns
     -------
@@ -280,7 +283,7 @@ def chain_factory(args: tuple, kwargs: dict) -> Dataset:
     assert len(args) == 0
     assert isinstance(chain, (list, tuple))
 
-    datasets = [_open(e) for e in chain]
+    datasets = [_open(e, options) for e in chain]
     datasets, kwargs = _auto_adjust(datasets, kwargs)
 
-    return Chain(datasets)._subset(**kwargs)
+    return Chain(datasets, options)._subset(**kwargs)

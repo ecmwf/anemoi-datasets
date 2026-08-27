@@ -1,4 +1,4 @@
-# (C) Copyright 2024 Anemoi contributors.
+# (C) Copyright 2024-2026 Anemoi contributors.
 #
 # This software is licensed under the terms of the Apache Licence Version 2.0
 # which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
@@ -30,6 +30,7 @@ from anemoi.datasets.usage.gridded.indexing import length_to_slices
 from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.misc import _auto_adjust
 from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
 
@@ -265,7 +266,7 @@ class Concat(ConcatMixin, Combined):
         return projection.list_or_single(result)
 
 
-def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
+def concat_factory(args: tuple[Any, ...], kwargs: dict, options: Options) -> Concat:
     """Factory function to create a Concat object.
 
     Parameters
@@ -274,6 +275,8 @@ def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
         Positional arguments.
     kwargs : dict
         Keyword arguments.
+    options : Options
+        The options for the concatenation.
 
     Returns
     -------
@@ -288,7 +291,7 @@ def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
 
     assert isinstance(datasets, (list, tuple))
 
-    datasets = [_open(e) for e in datasets]
+    datasets = [_open(e, options) for e in datasets]
 
     if len(datasets) == 1:
         return datasets[0]._subset(**kwargs)
@@ -297,4 +300,4 @@ def concat_factory(args: tuple[Any, ...], kwargs: dict) -> Concat:
 
     datasets = Concat.check_dataset_compatibility(datasets, fill_missing_gaps)
 
-    return Concat(datasets)._subset(**kwargs)
+    return Concat(datasets, options)._subset(**kwargs)
