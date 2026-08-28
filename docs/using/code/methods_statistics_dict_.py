@@ -1,0 +1,6 @@
+{
+    "mean": ...,
+    "stdev": ...,
+    "minimum": ...,
+    "maximum": ...,
+}

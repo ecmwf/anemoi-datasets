@@ -70,7 +70,7 @@ layout.  The list contains the base (initialisation) dates whose
 ``(basetime, step)`` pairs should be skipped at build time.  The
 corresponding axis-0 slot is still allocated on disk and filled with
 ``np.nan``; reading it raises ``MissingDateError`` (see
-:ref:`selecting-missing`).
+:ref:`using-missing`).
 
 .. literalinclude:: ../yaml/missing_base_dates.yaml
    :language: yaml

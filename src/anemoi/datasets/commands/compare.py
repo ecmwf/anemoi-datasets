@@ -266,9 +266,6 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.total_size",
         "metadata.latest_write_timestamp",
         "metadata.version",
-        # 'order_by' is now hard-coded and no longer read from the recipe;
-        # ignore both the top-level metadata key and the recipe copy so that
-        # references created before this change keep matching.
         "metadata.order_by",
         "metadata.recipe.output.order_by",
         # remapping templates changed from bare {key} to {metadata.key} form
@@ -292,6 +289,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         # This ignores only the mars provenance sub-dict; units and the new grib
         # sub-dict (paramId, shortName) are left intact for regression checking.
         "metadata.variables_metadata.*.mars",
+        "metadata.recipe.build.validate_date_ranges",
     ]
 
     IGNORE_MISSINGS = [

@@ -8,14 +8,20 @@
 # nor does it submit to any jurisdiction.
 
 
+import hashlib
+import json
 import logging
+import os
+import tempfile
 from functools import cached_property
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
+from anemoi.datasets import __version__
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -313,6 +319,7 @@ class Cutout(GridsBase):
         min_distance_km: float | None = None,
         max_distance_km: float | None = None,
         plot: bool | None = None,
+        cache: bool | str | Path = False,
     ) -> None:
         """Initializes a Cutout object for hierarchical management of Limited Area
         Models (LAMs) and a global dataset, handling overlapping regions.
@@ -335,6 +342,12 @@ class Cutout(GridsBase):
             Maximum distance threshold in km between grid points.
         plot : bool, optional
             Flag to enable or disable visualization plots.
+        cache : bool or str or Path, optional
+            Cache control for the cutout masks. ``False`` (default) recomputes the
+            masks without persisting them. A path to a ``.npz`` file reads pre-computed
+            masks if the file exists, otherwise computes them and saves them at that
+            location. ``True`` is reserved for a future default cache location and
+            currently raises ``NotImplementedError``.
         """
         super().__init__(datasets, axis, options)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
@@ -353,11 +366,123 @@ class Cutout(GridsBase):
         self.min_distance_km = min_distance_km
         self.max_distance_km = max_distance_km
         self._plot = plot
+
         self.masks = []  # To store the masks for each LAM dataset
         self.global_mask = np.ones(self.globe.shape[-1], dtype=bool)
 
-        # Initialize cumulative masks
-        self._initialize_masks()
+        self._setup_masks(cache)
+
+    def _setup_masks(self, cache: bool | str | Path) -> None:
+        """Initialize ``self.masks`` and ``self.global_mask`` based on the cache argument."""
+        if cache is True:
+            raise NotImplementedError(
+                "cache=True is reserved for a future default cache location; " "pass a .npz path or leave cache=False."
+            )
+        if cache is False or cache is None:
+            self._initialize_masks()
+            return
+        cache_path = Path(cache)
+        if cache_path.suffix != ".npz":
+            raise ValueError(f"Cutout cache file must end with '.npz', got '{cache_path.name}'.")
+        if cache_path.exists():
+            LOG.info("Using provided cutout cache file '%s'.", cache_path)
+            self._load_cutout_masks(cache_path)
+        else:
+            LOG.warning(
+                "Cutout cache file '%s' does not exist. Will compute new masks and save to this location.",
+                cache_path,
+            )
+            self._initialize_masks()
+            self._save_cutout_masks(cache_path)
+
+    @staticmethod
+    def _hash_coordinates(latitudes: NDArray, longitudes: NDArray) -> str:
+        """Return a stable hash fingerprinting a dataset's coordinate arrays.
+
+        The cache is keyed on the actual latitude/longitude arrays the masks were
+        computed from, not on dataset paths. A path does not identify the grid: a
+        wrapper such as thinning or masking changes the coordinates while leaving
+        the path unchanged, combined datasets have no single path, and some
+        datasets (e.g. synthetic) have no path at all.
+        """
+        h = hashlib.sha256()
+        for array in (latitudes, longitudes):
+            array = np.ascontiguousarray(array)
+            h.update(str(array.dtype).encode())
+            h.update(str(array.shape).encode())
+            h.update(array.tobytes())
+        return h.hexdigest()
+
+    def _cutout_masks_params(self) -> dict[str, Any]:
+        """Return the cutout parameters that influence mask generation."""
+        datasets = self.lams + [self.globe]
+        return {
+            "axis": self.axis,
+            "cropping_distance": self.cropping_distance,
+            "neighbours": self.neighbours,
+            "min_distance_km": self.min_distance_km,
+            "max_distance_km": self.max_distance_km,
+            "datasets": [self._hash_coordinates(ds.latitudes, ds.longitudes) for ds in datasets],
+        }
+
+    def _cutout_masks_metadata(self) -> dict[str, Any]:
+        """Return the metadata payload persisted alongside cached cutout masks."""
+        return {
+            "version": __version__,
+            "type": "cutout_mask",
+            "params": self._cutout_masks_params(),
+        }
+
+    def _save_cutout_masks(self, path: str | Path) -> None:
+        """Save the masks to a .npz file.
+
+        The file is written to a temporary file in the same directory and then
+        atomically moved into place, so an interrupted save never leaves a
+        corrupt cache file behind.
+        """
+        path = Path(path)
+        masks = {f"lam_{i}": self.masks[i] for i in range(len(self.lams))}
+        masks["global"] = self.global_mask
+        # we can avoid pickling with json.dumps
+        metadata = np.array(json.dumps(self._cutout_masks_metadata()))
+        fd, tmp_name = tempfile.mkstemp(suffix=".npz", dir=path.parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                np.savez(f, **masks, metadata=metadata)
+            os.replace(tmp_name, path)
+        except BaseException:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
+
+    def _load_cutout_masks(self, path: str | Path) -> None:
+        """Load the masks from a .npz file."""
+        data = np.load(path)
+        if "metadata" not in data.files:
+            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; " "regenerate the cache.")
+        # we can avoid pickling with json.loads
+        metadata = json.loads(str(data["metadata"]))
+        if metadata.get("type") != "cutout_mask":
+            raise ValueError(
+                f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
+            )
+        cached_version = metadata.get("version")
+        if cached_version != __version__:
+            LOG.warning(
+                "Cutout cache file '%s' was written by anemoi-datasets %s, but the current version is %s.",
+                path,
+                cached_version,
+                __version__,
+            )
+        params = metadata.get("params", {})
+        current_params = self._cutout_masks_params()
+        if params != current_params:
+            raise ValueError(
+                "Mismatch between user-provided masks and current cutout parameters. "
+                f"Cutout class initialized with {current_params}, but provided masks "
+                f"file contains masks generated with {params}."
+            )
+        self.masks = [data[f"lam_{i}"] for i in range(len(self.lams))]
+        self.global_mask = data["global"]
 
     def _initialize_masks(self) -> None:
         """Generate hierarchical masks for each LAM dataset by excluding overlapping regions with previous LAMs and creating a global mask for the global dataset.
@@ -471,10 +596,19 @@ class Cutout(GridsBase):
             index = (index, slice(None), slice(None), slice(None))
         return self._get_tuple(index)
 
+    @cached_property
+    def _mask_indices(self) -> list[NDArray[Any]]:
+        """Source-space indices retained by each mask (LAMs first, then the global dataset)."""
+        return [np.flatnonzero(mask) for mask in self.masks] + [np.flatnonzero(self.global_mask)]
+
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
         """Helper method that applies masks and retrieves data from each dataset according to the specified index.
+
+        The grid index is pushed down to the underlying datasets, so only the
+        requested region is read (e.g. only the zarr chunks it intersects),
+        instead of loading full fields and slicing in memory.
 
         Parameters
         ----------
@@ -487,16 +621,47 @@ class Cutout(GridsBase):
             Concatenated data array from all datasets based on the index.
         """
         index, changes = index_to_slices(index, self.shape)
-        # Select data from each LAM
-        lam_data = [lam[index[:3]] for lam in self.lams]
 
-        # First apply spatial indexing on `self.globe` and then apply the mask
-        globe_data_sliced = self.globe[index[:3]]
-        globe_data = globe_data_sliced[..., self.global_mask]
+        reverse = index[self.axis].step < 0
+        if reverse:
+            # length_to_slices only handles ascending selections: read the
+            # same points in ascending order and flip the result back below
+            positions = range(*index[self.axis].indices(self.shape[self.axis]))
+            ascending = slice(positions[-1], positions[0] + 1, -positions.step) if positions else slice(0, 0)
+            index, _ = update_tuple(index, self.axis, ascending)
 
-        # Concatenate LAM data with global data, apply the grid slicing
-        result = np.concatenate(lam_data + [globe_data], axis=self.axis)[..., index[3]]
+        # resolve the requested grid index for each dataset
+        # relative to each dataset's own masked points
+        requested_per_dataset = length_to_slices(
+            index[self.axis], [len(source_indices) for source_indices in self._mask_indices]
+        )
 
+        parts = []
+        for dataset, source_indices, requested in zip(self.datasets, self._mask_indices, requested_per_dataset):
+            if requested is None:
+                # this dataset contributes no columns to the requested grid range
+                continue
+            # translate the requested positions from "retained points within a mask"
+            # back to native grid-point indices
+            selected_source_indices = source_indices[requested]
+            # read only the contiguous native-grid range spanning the selected points,
+            # instead of loading the whole grid and slicing in memory
+            window = slice(int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1)
+            part = dataset[index[:3] + (window,)]
+            if len(selected_source_indices) != window.stop - window.start:
+                # the mask has gaps (or the index has a step) inside the window: drop the extra points
+                part = part[..., selected_source_indices - window.start]
+            parts.append(part)
+
+        if parts:
+            result = np.concatenate(parts, axis=self.axis)
+        else:
+            # empty grid selection: no dataset was read, build the empty block directly
+            shape = tuple(len(range(*s.indices(n))) for s, n in zip(index, self.shape))
+            result = np.empty(shape, dtype=self.dtype)
+
+        if reverse:
+            result = np.flip(result, axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
 
     def collect_supporting_arrays(self, collected: list[Any], *path: Any) -> None:
@@ -675,4 +840,5 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Optio
         max_distance_km=max_distance_km,
         cropping_distance=cropping_distance,
         plot=plot,
+        cache=kwargs.pop("cache", False),
     )._subset(**kwargs)

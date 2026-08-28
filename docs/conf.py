@@ -21,6 +21,7 @@ import sys
 read_the_docs_build = os.environ.get("READTHEDOCS", None) == "True"
 
 sys.path.insert(0, os.path.join(os.path.abspath(".."), "src"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 source_suffix = ".rst"
@@ -62,7 +63,6 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx_rtd_theme",
     "nbsphinx",
-    "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
@@ -164,3 +164,9 @@ html_context = {
     "github_repo": "anemoi-datasets",
     "github_version": "main/docs/",
 }
+
+
+def setup(app):
+    import build_trees
+
+    app.connect("builder-inited", build_trees.generate)
