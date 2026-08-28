@@ -29,6 +29,30 @@ __all__ = ["load_many", "load_one", "XArrayFieldList", "XarrayFieldList"]
 
 LOG = logging.getLogger(__name__)
 
+
+def _patch_height_level_coordinate() -> None:
+    # earthkit-data's DefaultCoordinateGuesser only recognises height vertical
+    # coordinates by ``long_name``; anemoi-datasets' own (now removed) guesser
+    # also matched ``standard_name: height`` (#707).  Insert that rule here so
+    # the migration to earthkit.data.readers.xarray does not regress #706.
+    # Idempotent; remove once earthkit-data handles it upstream.
+    from earthkit.data.readers.xarray import flavour
+
+    guesser = flavour.DefaultCoordinateGuesser
+    if getattr(guesser, "_height_standard_name_patched", False):
+        return
+
+    original_is_level = guesser._is_level
+
+    def _is_level(self, c, attributes):  # noqa: ANN001, ANN202
+        if attributes.standard_name == "height" and attributes.units == "m":
+            return flavour.LevelCoordinate(c, "height")
+        return original_is_level(self, c, attributes)
+
+    guesser._is_level = _is_level
+    guesser._height_standard_name_patched = True
+
+
 # Mapping from legacy earthkit 0.x sel keys to earthkit 1.0 component paths.
 # Used to translate recipe kwargs into component-path keys for sel().
 # Unlike grib.py which passes remapping= to sel(), xarray sources convert
@@ -149,6 +173,7 @@ def load_one(
         except KeyError:
             pass  # requested dates not in dataset — FieldList sel will handle
 
+    _patch_height_level_coordinate()
     fs = XArrayFieldList.from_xarray(data, flavour=flavour, patch=patch)
 
     # Translate any remaining kwargs to component-path keys for sel().

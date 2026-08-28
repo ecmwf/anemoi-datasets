@@ -43,7 +43,7 @@ dynamic = [
 dependencies = [
   # TODO: replace with anemoi-transform release
   "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@earthkit-1.0",
-  "anemoi-utils[s3]>=0.5",
+  "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
   "jsonschema",
@@ -115,6 +115,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools]
+package-data."anemoi.datasets" = [ "py.typed" ]
 package-data."anemoi.datasets.usage" = [
   "*.css",
 ]

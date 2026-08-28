@@ -23,6 +23,12 @@ from earthkit.data.readers.xarray.coordinates import XCoordinate
 from earthkit.data.readers.xarray.coordinates import YCoordinate
 from earthkit.data.readers.xarray.flavour import DefaultCoordinateGuesser
 
+from anemoi.datasets.create.sources.xarray import _patch_height_level_coordinate
+
+# The guesser is earthkit-data's, plus the 'standard_name: height' rule (#707)
+# that anemoi-datasets patches in (see _patch_height_level_coordinate).
+_patch_height_level_coordinate()
+
 
 def create_ds(var_name, standard_name, long_name, units, coord_length=5):
     attrs = {
@@ -75,6 +81,7 @@ def create_ds(var_name, standard_name, long_name, units, coord_length=5):
         # level
         ("lev", "atmosphere_hybrid_sigma_pressure_coordinate", None, None, LevelCoordinate),
         ("h", None, "height", "m", LevelCoordinate),
+        ("h", "height", None, "m", LevelCoordinate),
         ("level", "air_pressure", None, "hPa", LevelCoordinate),
         ("pressure_0", None, "pressure", "hPa", LevelCoordinate),
         ("pressure_0", None, "pressure", "Pa", LevelCoordinate),
