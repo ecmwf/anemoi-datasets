@@ -119,15 +119,15 @@ class _CollectorBase(_Base):
         if len(data) == 0:
             return
         # data shape: (n_samples, n_columns)
-        data = data.astype(np.float64)
 
-        # Create mask for valid data (not NaN)
-        valid_mask = ~np.isnan(data)
-
-        # Process each column
+        # Process each column, casting to float64 and creating the mask for
+        # valid data (not NaN) one column at a time: on the whole batch they
+        # would allocate a float64 copy of the batch plus a boolean mask
+        # (2.25 times the batch size), which dominates the peak memory when
+        # the batches are large.
         for col_idx in range(data.shape[1]):
-            col_data = data[:, col_idx]
-            col_mask = valid_mask[:, col_idx]
+            col_data = np.asarray(data[:, col_idx], dtype=np.float64)
+            col_mask = ~np.isnan(col_data)
             valid_data = col_data[col_mask]
 
             if valid_data.size == 0:
@@ -379,7 +379,11 @@ class _ConstantsCollector(_Base):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state["_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
+        # ``_hash`` may have been streamed during collection (see
+        # ``TrajectoryStatisticsCollector._finalise_constants``); otherwise it
+        # is computed here from the retained reference.
+        if state["_hash"] is None:
+            state["_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
         state["_first"] = None
         state["_nans"] = None
         return state
@@ -768,6 +772,13 @@ class TrajectoryStatisticsCollector:
     tendencies : dict[str, int], optional
         Mapping ``name -> step_delta`` for tendency statistics; the delta is
         an integer offset along the step axis.
+    constants_reference : bool, optional
+        Only read by :meth:`collect_by_steps`. Whether the constants check
+        retains the first kept trajectory as a reference for comparison with
+        the following ones (default is True). Pass ``False`` when this
+        collector will see at most one kept trajectory (e.g. a single-row
+        group), so that nothing is retained; a second kept trajectory then
+        raises rather than being silently skipped.
     """
 
     def __init__(
@@ -776,6 +787,7 @@ class TrajectoryStatisticsCollector:
         allow_nans: bool = False,
         filter: Any = None,
         tendencies: dict[str, int] | None = None,
+        constants_reference: bool = True,
         _collector: _Collector | None = None,
         _tendencies_collectors: dict[str, _Collector] | None = None,
         _constants_collectors: dict[str, _ConstantsCollector] | None = None,
@@ -787,6 +799,16 @@ class TrajectoryStatisticsCollector:
         self._tendencies = tendencies or {}
         self._tendencies_collectors = _tendencies_collectors or {}
         self._constants_collectors = _constants_collectors or {}
+
+        # State of the step-sliced collection path (``collect_by_steps``).
+        # The whole-array path (``collect``) does not use any of it.
+        self._constants_reference = constants_reference
+        self._by_steps = False  # whether collect_by_steps() was used
+        self._collect_used = False  # whether collect() was used
+        self._constants_first_seen = False  # a kept trajectory has been seen
+        self._constants_hashers = None  # per-variable streaming hash of the first kept trajectory
+        self._constants_refs = None  # per-step slabs of the first kept trajectory
+        self._constants_still = None  # per-variable "constant so far" flags
 
     def __repr__(self):
         return (
@@ -813,6 +835,10 @@ class TrajectoryStatisticsCollector:
         base_dates : array-like
             The base dates for axis 0 of ``array``.
         """
+        if self._by_steps:
+            raise RuntimeError("Cannot mix collect() and collect_by_steps() on the same collector")
+        self._collect_used = True
+
         assert array.ndim == 5, f"Expected 5-D array, got shape {array.shape}"
         assert array.shape[1] == len(self._variables_names), (
             f"Array variables count {array.shape[1]} does not match variables names count "
@@ -850,6 +876,139 @@ class TrajectoryStatisticsCollector:
                 continue
             diff = kept[:, :, :, step_delta:, :] - kept[:, :, :, :-step_delta, :]
             self._tendencies_collectors[name].update(diff)
+
+    def collect_by_steps(self, read_step: Callable, n_steps: int, base_dates: Any) -> None:
+        """Collect statistics from a batch of trajectories, one step at a time.
+
+        Numerically equivalent to :meth:`collect` on the full 5-D array — the
+        collectors are batch-incremental, and the tendency differences are
+        formed inside a sliding window of ``max(step_delta) + 1`` step slabs —
+        but only a few step slabs are resident at any moment instead of a
+        whole trajectory. With the trajectory layout of one
+        ``(base_date, step)`` pair per Zarr chunk, the peak memory is a few
+        chunks rather than the ``n_steps`` chunks of a full trajectory.
+
+        Parameters
+        ----------
+        read_step : Callable
+            ``read_step(s)`` must return the slab for step ``s`` of the batch,
+            of shape ``(n_base_dates, n_variables, n_ensembles, 1, n_cells)``.
+        n_steps : int
+            The number of steps of the trajectories.
+        base_dates : array-like
+            The base dates for axis 0 of the slabs.
+        """
+        if self._collect_used:
+            raise RuntimeError("Cannot mix collect() and collect_by_steps() on the same collector")
+        self._by_steps = True
+
+        mask = None if self._filter is None else self._filter.mask(base_dates)
+        has_kept = mask is None or bool(np.any(mask))
+        is_first_batch = has_kept and not self._constants_first_seen
+        max_delta = max(self._tendencies.values(), default=0)
+
+        window: dict[int, Any] = {}
+        for s in range(n_steps):
+            slab = read_step(s)
+            assert slab.ndim == 5 and slab.shape[3] == 1, f"Expected a single-step 5-D slab, got shape {slab.shape}"
+
+            kept = slab if mask is None else slab[mask]
+
+            if self._collector is None:  # lazily initialise collectors, as in ``collect``
+                names = self._variables_names
+                column_names = [str(i) if names is None else names[i] for i in range(slab.shape[1])]
+
+                self._collector = _Collector(column_names)
+                for i, name in enumerate(column_names):
+                    self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
+                for name in self._tendencies:
+                    self._tendencies_collectors[name] = _Collector(column_names)
+
+            if len(kept) == 0:
+                continue
+
+            self._collector.update(kept)
+
+            self._update_constants_by_step(kept, s, is_first_batch)
+
+            # The same difference ``collect`` computes along the step axis of
+            # the full array, restricted to the (s - step_delta, s) pairs.
+            for name, step_delta in self._tendencies.items():
+                if s >= step_delta:
+                    self._tendencies_collectors[name].update(kept - window[s - step_delta])
+
+            if self._tendencies:
+                window[s] = kept
+                # Only the last ``max_delta`` slabs can still be needed.
+                window.pop(s - max_delta, None)
+
+        if has_kept:
+            self._constants_first_seen = True
+
+    def _update_constants_by_step(self, kept: Any, s: int, is_first_batch: bool) -> None:
+        """Constants check for one step slab of a kept batch.
+
+        Reproduces the semantics of :class:`_ConstantsCollector` fed with
+        whole trajectories: a variable is constant when every kept
+        trajectory's block equals (NaN-tolerantly) the first kept
+        trajectory's block. The first kept trajectory is also hashed,
+        streamed step by step, to stand in for the hash of the retained
+        reference that ``_ConstantsCollector.__getstate__`` would compute
+        (the bytes are identical for a single-member ensemble).
+        """
+        n_vars = kept.shape[1]
+
+        if is_first_batch:
+            if self._constants_still is None:
+                self._constants_still = np.ones(n_vars, dtype=bool)
+                self._constants_hashers = [hashlib.sha256() for _ in range(n_vars)]
+                if self._constants_reference:
+                    self._constants_refs = {}
+            first = kept[0:1]
+            for v in range(n_vars):
+                self._constants_hashers[v].update(np.ascontiguousarray(first[0, v]).tobytes())
+            if self._constants_reference:
+                self._constants_refs[s] = first
+            others = kept[1:]
+        else:
+            if not self._constants_reference:
+                raise RuntimeError(
+                    "A second kept trajectory reached a collector created with "
+                    "constants_reference=False; the constants check cannot be performed."
+                )
+            first = self._constants_refs[s]
+            others = kept
+
+        if len(others):
+            still = self._constants_still
+            idx = np.flatnonzero(still)
+            if len(idx):
+                a = others[:, idx]
+                b = first[:, idx]
+                ok = (a == b) | (np.isnan(a) & np.isnan(b))
+                still[idx] &= ok.all(axis=(0, 2, 3, 4))
+
+    def _finalise_constants(self) -> None:
+        """Fold the step-sliced constants results into the per-variable collectors.
+
+        Idempotent; a no-op when :meth:`collect_by_steps` was not used (the
+        whole-array path updates the collectors directly).
+        """
+        if not getattr(self, "_by_steps", False) or self._constants_still is None:
+            return
+        for i, c in enumerate(self._constants_collectors.values()):
+            c._is_constant = c._is_constant and bool(self._constants_still[i])
+            if c._hash is None:
+                c._hash = self._constants_hashers[i].hexdigest()
+
+    def __getstate__(self):
+        self._finalise_constants()
+        state = self.__dict__.copy()
+        # The streaming state is not picklable (and is already folded into
+        # the constants collectors by ``_finalise_constants``).
+        state["_constants_hashers"] = None
+        state["_constants_refs"] = None
+        return state
 
     def merge(self, other: "TrajectoryStatisticsCollector") -> "TrajectoryStatisticsCollector":
         if not isinstance(other, TrajectoryStatisticsCollector):
@@ -927,6 +1086,7 @@ class TrajectoryStatisticsCollector:
         return result
 
     def constant_variables(self) -> list[str]:
+        self._finalise_constants()
         return [name for name, c in self._constants_collectors.items() if c.is_constant]
 
     def add_to_dataset(self, dataset: Any) -> None:

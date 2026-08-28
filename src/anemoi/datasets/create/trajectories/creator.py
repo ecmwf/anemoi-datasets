@@ -21,8 +21,7 @@ from anemoi.transform.variables import Variable
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.buffering import ReadAheadBuffer
-from anemoi.datasets.buffering import WriteBehindBuffer
+from anemoi.datasets.buffering import ChunkAlignedWriteBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -245,7 +244,13 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 raise ValueError(f"Trajectories: step {step_td} not in dataset.steps")
             return int(indices[0])
 
-        with WriteBehindBuffer(dataset.data) as array:
+        # Buffer whole Zarr chunks, not whole rows: a row here is
+        # ``n_steps`` chunks, so a row-granular buffer would hold ``n_steps``
+        # times more data than a chunk needs. ``read_back=False`` is safe
+        # because the loop below writes every element of every chunk it
+        # touches -- a chunk is all the variables of one (basetime, step),
+        # and the coverage guard above has checked that they are all there.
+        with ChunkAlignedWriteBuffer(dataset.data, read_back=False) as array:
             for cubelet in cube.iterate_cubelets():
                 data = cubelet.to_numpy()
                 # The cube yields raw earthkit fields; wrap for the Field properties.
@@ -417,23 +422,38 @@ class TrajectoryGriddedCreator(GriddedCreator):
     def _compute_partial_statistics_indices(self, dataset: Dataset, indices) -> TrajectoryStatisticsCollector:
         """Collect statistics over an explicit set of axis-0 rows.
 
-        Rows are read one at a time (the output chunking is ``base_dates: 1``, so
-        each row is a single chunk regardless of ordering), keeping memory bounded
-        while supporting the scattered row layout of trajectory groups.
+        Each row is read one step at a time (the output chunking is one
+        ``(base_date, step)`` pair per chunk), so only a sliding window of a
+        few chunks is ever resident — a whole row is ``n_steps`` chunks and
+        would not fit in memory at high resolution — while supporting the
+        scattered row layout of trajectory groups.
         """
         base_dates = dataset.base_dates
         steps = dataset.steps
 
+        filter = self.recipe.statistics.trajectory_statistics_filter(base_dates, steps)
+
+        # The constants check only needs to retain a reference trajectory when
+        # a second kept trajectory will be compared against it.
+        kept_rows = int(np.sum(filter.mask(base_dates[indices]))) if filter is not None else len(indices)
+
         collector = TrajectoryStatisticsCollector(
             variables_names=self.variables_names,
-            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            filter=filter,
             tendencies=self._tendencies_to_compute(dataset),
+            constants_reference=kept_rows > 1,
         )
 
         data = dataset.data
+        n_steps = len(steps)
+
         for i in tqdm.tqdm(indices):
             i = int(i)
-            collector.collect(data[i : i + 1], base_dates[i : i + 1])
+
+            def read_step(s: int, i: int = i):
+                return data[i : i + 1, :, :, s : s + 1, :]
+
+            collector.collect_by_steps(read_step, n_steps, base_dates[i : i + 1])
 
         return collector
 
@@ -441,19 +461,28 @@ class TrajectoryGriddedCreator(GriddedCreator):
         base_dates = dataset.base_dates
         steps = dataset.steps
 
+        filter = self.recipe.statistics.trajectory_statistics_filter(base_dates, steps)
+        kept_rows = int(np.sum(filter.mask(base_dates[start:end]))) if filter is not None else end - start
+
         collector = TrajectoryStatisticsCollector(
             variables_names=self.variables_names,
-            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            filter=filter,
             tendencies=self._tendencies_to_compute(dataset),
+            constants_reference=kept_rows > 1,
         )
 
-        data = ReadAheadBuffer(dataset.data, start=start)
+        # Read one step chunk at a time (see _compute_partial_statistics_indices).
+        data = dataset.data
+        n_steps = len(steps)
         chunk_size = data.chunks[0]
 
         for i in tqdm.tqdm(range(start, end, chunk_size)):
             j = min(i + chunk_size, end)
-            chunk = data[i:j]
-            collector.collect(chunk, base_dates[i:j])
+
+            def read_step(s: int, i: int = i, j: int = j):
+                return data[i:j, :, :, s : s + 1, :]
+
+            collector.collect_by_steps(read_step, n_steps, base_dates[i:j])
 
         return collector
 
