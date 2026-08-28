@@ -69,6 +69,46 @@ def _iter_accumulate_blocks(node: Any):
             yield from _iter_accumulate_blocks(item)
 
 
+#: The recipe spellings of the time-reduction sources (see
+#: ``create/sources/reduce_support/``).  They share one schema, so one iterator finds
+#: every block whatever the verb.
+REDUCE_NAMES = ("average", "minimum", "maximum")
+
+
+def _iter_reduce_blocks(node: Any):
+    """Yield every ``average``/``minimum``/``maximum`` payload in an input tree.
+
+    Payloads are yielded as ``(name, ReduceSchema)`` pairs: validated Action
+    models carry the schema directly; raw dicts (e.g. under ``concat``) are
+    validated on the fly.
+    """
+    from anemoi.datasets.create.sources.reduce_support import ReduceSchema
+
+    if node is None:
+        return
+    if isinstance(node, BaseModel):
+        for name in type(node).model_fields:
+            value = getattr(node, name)
+            if name in REDUCE_NAMES and isinstance(value, ReduceSchema):
+                yield name, value
+            else:
+                yield from _iter_reduce_blocks(value)
+        if node.model_extra:
+            for value in node.model_extra.values():
+                yield from _iter_reduce_blocks(value)
+        return
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in REDUCE_NAMES and isinstance(value, dict):
+                yield key, ReduceSchema.model_validate(value)
+            else:
+                yield from _iter_reduce_blocks(value)
+        return
+    if isinstance(node, (list, tuple)):
+        for item in node:
+            yield from _iter_reduce_blocks(item)
+
+
 class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
@@ -171,6 +211,44 @@ class Recipe(BaseModel):
                     f"accumulate: 'steps.start' ({frequency_to_string(self.steps.start)}) must "
                     f"be >= the accumulate 'period' ({frequency_to_string(block.period)}) — "
                     "output windows must not straddle the basetime"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _check_reduce(self) -> "Recipe":
+        """Layout-dependent rules for the time-reduction blocks.
+
+        Two rules need the output layout, which the per-block schema cannot
+        see: a run-anchored ``from:`` inherits its run from a trajectory
+        layout, and its window must fit inside that run.  Both apply *only* to
+        the run-anchored shape — a base-less ``from:`` reads an analysis
+        archive, where data before the basetime exists and is the same
+        quantity, so neither rule holds there.
+        """
+        from anemoi.utils.dates import frequency_to_string
+
+        is_traj = isinstance(self.output, TrajectoriesOutput)
+        blocks = list(_iter_reduce_blocks(self.input))
+        blocks += list(_iter_reduce_blocks(self.data_sources))
+
+        for name, block in blocks:
+            if not block.is_run_anchored:
+                continue
+
+            if not is_traj:
+                raise ValueError(
+                    f"{name}: 'from.base_dates: true' is only valid in a "
+                    "'layout: trajectories' recipe — the sentinel inherits the run from the "
+                    "output layout, which only that layout imposes. Describe base-less source "
+                    "data with 'from: {frequency: ...}' instead"
+                )
+
+            if self.steps is not None and self.steps.start < block.period:
+                raise ValueError(
+                    f"{name}: 'steps.start' ({frequency_to_string(self.steps.start)}) must be "
+                    f">= 'period' ({frequency_to_string(block.period)}) — the samples come "
+                    "from the run the layout imposes, so an output window must not straddle "
+                    "the basetime"
                 )
         return self
 

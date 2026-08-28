@@ -51,7 +51,13 @@ LOG = logging.getLogger(__name__)
 #    request["stream"] = "oper"
 
 
-def patch_groupby_keys(group_by: dict | None = None):
+def patch_groupby_keys(group_by: dict | None = None, *, source_name: str = "accumulate"):
+    """Validate a recipe ``group_by:`` block, filling in the default.
+
+    Shared with the time-reduction sources (``average``/``minimum``/``maximum``),
+    which use the same key with the same meaning; *source_name* only names the
+    caller in the error messages.
+    """
     if group_by is None:
         return {"namespace": "mars", "ignore": ["date", "time", "step"]}
     else:
@@ -64,7 +70,7 @@ def patch_groupby_keys(group_by: dict | None = None):
         for key in ["date", "time", "step"]:
             if key not in ignore:
                 raise ValueError(
-                    f"accumulate group_by: '{key}' absent in ignore list {ignore}; "
+                    f"{source_name} group_by: '{key}' absent in ignore list {ignore}; "
                     "at least 'date', 'time', 'step' are required"
                 )
         return group_by

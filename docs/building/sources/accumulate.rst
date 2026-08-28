@@ -23,6 +23,13 @@ Both hold accumulations, each stamped with a timestamp and accumulated over some
 follows some fixed conventions (accumulated over a
 fixed interval, and end-anchored see below) — while the source data may use a different scheme.
 
+.. note::
+
+   ``accumulate`` sums over time. To average, minimise or maximise a window
+   of *instantaneous* fields instead, see :ref:`average, minimum and maximum
+   <sources-average>`, which share this source's ``source:`` / ``period:`` /
+   ``from:`` shape.
+
 
 Accumulation interval
 ---------------------
