@@ -173,9 +173,7 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
         tasks = []
         starts = itertools.product(*(range(0, s, step) for s, step in zip(a.shape, buffer_shape)))
         for start in tqdm.tqdm(list(starts), desc=f"Comparing {path}"):
-            slice_obj = tuple(
-                slice(i, min(i + step, s)) for i, step, s in zip(start, buffer_shape, a.shape)
-            )
+            slice_obj = tuple(slice(i, min(i + step, s)) for i, step, s in zip(start, buffer_shape, a.shape))
             tasks.append(
                 executor.submit(_compare_arrays_partial, errors, a, b, slice_obj, path, tolerance, close_ok=close_ok)
             )

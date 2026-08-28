@@ -60,7 +60,8 @@ def test_compare_detects_different_values(datasets) -> None:
 def test_compare_with_small_buffer_subdivides_non_leading_dimensions(datasets, monkeypatch) -> None:
     """Force a tiny memory budget so the buffer shape must be subdivided along
     dimensions other than the (size 1) leading one, exercising the multi-axis
-    task splitting logic."""
+    task splitting logic.
+    """
     reference, actual, _ = datasets
 
     monkeypatch.setattr(compare_module, "MAX_MEMORY_PER_WORKER", 256)
