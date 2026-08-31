@@ -257,6 +257,32 @@ class RequestFilter:
         return True
 
 
+# With IFS cycle 50r1 (first operational run: 2026-05-12 06 UTC), the
+# short-cutoff "scda" stream was merged into "oper": the 06 and 18 UTC runs
+# are archived in MARS under stream=oper directly.  The last run archived
+# under "scda" is 2026-05-11 18 UTC.
+SCDA_MERGED_INTO_OPER_DATE = datetime.date(2026, 5, 12)
+
+
+def _apply_scda_stream(r: dict[str, Any]) -> None:
+    """Rewrite stream "oper" to "scda" in place for pre-50r1 ECMWF operational 06/18 UTC runs."""
+    if r.get("class") != "od" or r.get("stream") != "oper":
+        return
+
+    if int(r.get("time", 0)) not in (600, 1800):
+        return
+
+    # Accept "YYYYMMDD", "YYYY-MM-DD" and integer dates.
+    date = str(r.get("date", "")).replace("-", "")
+    if len(date) == 8 and date.isdigit():
+        base_date = datetime.date(int(date[:4]), int(date[4:6]), int(date[6:8]))
+        if base_date >= SCDA_MERGED_INTO_OPER_DATE:
+            # On/after the 50r1 cycle change, 06/18 UTC data is under "oper".
+            return
+
+    r["stream"] = "scda"
+
+
 def _expand_mars_request(
     request: dict[str, Any],
     valid_date: datetime.datetime,
@@ -311,10 +337,8 @@ def _expand_mars_request(
             continue
 
         # SCDA stream auto-selection for ECMWF operational data:
-        # the 06 and 18 UTC runs use stream "scda" instead of "oper"
-        if r.get("class") == "od" and r.get("stream") == "oper":
-            if int(r.get("time", 0)) in (600, 1800):
-                r["stream"] = "scda"
+        # before cycle 50r1, the 06 and 18 UTC runs use stream "scda"
+        _apply_scda_stream(r)
 
         requests.append(r)
 
@@ -463,9 +487,7 @@ def compress_prebuilt_requests(
         for grid_key in ("grid", "rotation", "frame", "area", "bitmap", "resol"):
             if grid_key in r and isinstance(r[grid_key], (list, tuple)):
                 r[grid_key] = "/".join(str(x) for x in r[grid_key])
-        if r.get("class") == "od" and r.get("stream") == "oper":
-            if int(r.get("time", 0)) in (600, 1800):
-                r["stream"] = "scda"
+        _apply_scda_stream(r)
         normalised.append(r)
 
     compressed = Availability(normalised)
