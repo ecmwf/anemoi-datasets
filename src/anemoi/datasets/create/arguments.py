@@ -214,7 +214,7 @@ class Intervals(ValidDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, str]:
+    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet
@@ -321,7 +321,7 @@ class ForecastIntervals(ForecastDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, str]:
+    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet

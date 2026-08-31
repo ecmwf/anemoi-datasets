@@ -42,12 +42,14 @@ def parse_mars_step(step: str | int | timedelta) -> timedelta:
     return timedelta(hours=int(hours or 0), minutes=int(minutes or 0))
 
 
-def format_mars_step(offset: timedelta) -> str:
+def format_mars_step(offset: timedelta) -> int | str:
     """Format a lead time using metkit's ``Step`` syntax.
 
-    Whole hours are bare numbers, sub-hourly offsets carry a minute suffix::
+    Whole hours stay plain integers, so that requests built from hour-based
+    recipes are byte-for-byte what they have always been. Only sub-hourly
+    offsets need the string form, carrying a minute suffix::
 
-        0:00  -> "0"      12:00 -> "12"
+        0:00  -> 0        12:00 -> 12
         0:10  -> "10m"    10:10 -> "10h10m"
 
     Raises
@@ -62,7 +64,7 @@ def format_mars_step(offset: timedelta) -> str:
         raise ValueError(f"Step must be a whole number of minutes, got {offset}.")
     hours, minutes = divmod(int(seconds // 60), 60)
     if minutes == 0:
-        return str(hours)
+        return hours
     if hours == 0:
         return f"{minutes}m"
     return f"{hours}h{minutes}m"
@@ -145,9 +147,9 @@ class SignedInterval:
                     format_mars_step(self.end - self.base),
                 ]
             else:
-                earlier = format_mars_step(self.end - self.base)
+                earlier = self.end - self.base
                 steps = [
-                    earlier if earlier == "0" else f"-{earlier}",
+                    format_mars_step(earlier) if not earlier else f"-{format_mars_step(earlier)}",
                     format_mars_step(self.start - self.base),
                 ]
             base_str = f", base={base}, [{steps[0]}-{steps[1]}]"

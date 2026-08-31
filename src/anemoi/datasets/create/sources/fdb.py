@@ -137,7 +137,7 @@ class FdbSource(Source):
 
 def _time_request_keys(
     dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
-) -> dict[str, str]:
+) -> dict[str, int | str]:
     """Defines the time-related keys for the FDB request."""
     out = {}
     out["date"] = dt.strftime("%Y%m%d")
