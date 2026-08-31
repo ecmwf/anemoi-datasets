@@ -12,7 +12,7 @@ import datetime
 import logging
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.intervals import parse_mars_step
+from anemoi.datasets.create.intervals import step_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -86,8 +86,8 @@ class FieldToInterval:
 
         # Sub-hourly fields report their steps in minutes ("0m", "10m"), so parse
         # before comparing.
-        start_step = parse_mars_step(startStep)
-        end_step = parse_mars_step(endStep)
+        start_step = step_to_timedelta(startStep)
+        end_step = step_to_timedelta(endStep)
 
         if start_step > end_step:
             start_step, end_step = end_step, start_step

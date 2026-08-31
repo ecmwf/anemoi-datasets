@@ -43,7 +43,7 @@ import datetime
 from typing import Any
 from typing import Callable
 
-from anemoi.datasets.create.intervals import format_mars_step
+from anemoi.datasets.create.intervals import timedelta_to_step
 
 # ---------------------------------------------------------------------------
 # Base class
@@ -241,7 +241,7 @@ class Intervals(ValidDates):
             "and not call this helper."
         )
         r = request.copy()
-        step = format_mars_step(interval.max - interval.base)
+        step = timedelta_to_step(interval.max - interval.base)
         r["date"] = interval.base.strftime("%Y%m%d")
         r["time"] = interval.base.strftime("%H%M")
         r["step"] = step
@@ -340,7 +340,7 @@ class ForecastIntervals(ForecastDates):
             ``(valid_time, adjusted_request, step)``
         """
         r = request.copy()
-        step = format_mars_step(interval.max - interval.base)
+        step = timedelta_to_step(interval.max - interval.base)
         r["date"] = interval.base.strftime("%Y%m%d")
         r["time"] = interval.base.strftime("%H%M")
         r["step"] = step

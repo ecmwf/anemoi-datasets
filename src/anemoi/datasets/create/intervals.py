@@ -12,10 +12,10 @@ from datetime import datetime
 from datetime import timedelta
 
 
-def parse_mars_step(step: str | int | timedelta) -> timedelta:
-    """Parse a step in metkit's ``Step`` syntax into a timedelta.
+def step_to_timedelta(step: str | int | timedelta) -> timedelta:
+    """Parse a step into a timedelta.
 
-    Inverse of `format_mars_step`. A bare number means hours, so hour-based
+    Inverse of `timedelta_to_step`. A bare number means hours, so hour-based
     configs (``frequency: 1``, ``last_step: 24``) keep working
 
         12 -> 12h, "12" -> 12h, "24h" -> 24h
@@ -42,12 +42,12 @@ def parse_mars_step(step: str | int | timedelta) -> timedelta:
     return timedelta(hours=int(hours or 0), minutes=int(minutes or 0))
 
 
-def format_mars_step(offset: timedelta) -> int | str:
-    """Format a lead time using metkit's ``Step`` syntax.
+def timedelta_to_step(offset: timedelta) -> int | str:
+    """Format a lead time as a step.
 
     Whole hours stay plain integers, so that requests built from hour-based
     recipes are byte-for-byte what they have always been. Only sub-hourly
-    offsets need the string form, carrying a minute suffix::
+    offsets need the string form, carrying a minute suffix:
 
         0:00  -> 0        12:00 -> 12
         0:10  -> "10m"    10:10 -> "10h10m"
@@ -143,14 +143,14 @@ class SignedInterval:
             base = self.base.strftime("%Y%m%d.%H%M")
             if self.sign > 0:
                 steps = [
-                    format_mars_step(self.start - self.base),
-                    format_mars_step(self.end - self.base),
+                    timedelta_to_step(self.start - self.base),
+                    timedelta_to_step(self.end - self.base),
                 ]
             else:
                 earlier = self.end - self.base
                 steps = [
-                    format_mars_step(earlier) if not earlier else f"-{format_mars_step(earlier)}",
-                    format_mars_step(self.start - self.base),
+                    timedelta_to_step(earlier) if not earlier else f"-{timedelta_to_step(earlier)}",
+                    timedelta_to_step(self.start - self.base),
                 ]
             base_str = f", base={base}, [{steps[0]}-{steps[1]}]"
         else:

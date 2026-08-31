@@ -19,7 +19,7 @@ from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.intervals import format_mars_step
+from anemoi.datasets.create.intervals import timedelta_to_step
 
 from ..source import Source
 from . import source_registry
@@ -144,10 +144,10 @@ def _time_request_keys(
     if offset_from_date:
         out["time"] = "0000"
         offset = dt - dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        out["step"] = format_mars_step(offset)
+        out["step"] = timedelta_to_step(offset)
         if not offset and step_zero_from_previous_date:
             out["date"] = (dt - timedelta(days=1)).strftime("%Y%m%d")
-            out["step"] = format_mars_step(timedelta(hours=24))
+            out["step"] = timedelta_to_step(timedelta(hours=24))
     else:
         out["time"] = dt.strftime("%H%M")
     return out

@@ -17,7 +17,7 @@ from anemoi.utils.dates import as_datetime
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.intervals import parse_mars_step
+from anemoi.datasets.create.intervals import step_to_timedelta
 
 from .covering_intervals import covering_intervals
 
@@ -246,7 +246,7 @@ def normalise_steps(steps_list: str | list[str]) -> list[list[datetime.timedelta
             assert "-" in start_end_step, start_end_step
             start_end_step = start_end_step.split("-")
         assert isinstance(start_end_step, (list, tuple)) and len(start_end_step) == 2, start_end_step
-        start_step, end_step = parse_mars_step(start_end_step[0]), parse_mars_step(start_end_step[1])
+        start_step, end_step = step_to_timedelta(start_end_step[0]), step_to_timedelta(start_end_step[1])
         res.append([start_step, end_step])
     return res
 
@@ -257,7 +257,7 @@ def _steps_to(frequency: str | int, last_step: str | int) -> Iterable[tuple[date
     Bare numbers mean hours, so `frequency=1, last_step=24` is unchanged.
     """
     frequency = frequency_to_timedelta(frequency)
-    last_step = parse_mars_step(last_step)
+    last_step = step_to_timedelta(last_step)
     if frequency <= datetime.timedelta(0):
         raise ValueError(f"'frequency' must be positive, got {frequency}.")
 
