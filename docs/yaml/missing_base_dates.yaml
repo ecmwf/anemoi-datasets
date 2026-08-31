@@ -1,0 +1,14 @@
+base_dates:
+  start: 2021-01-01 00:00:00
+  end: 2021-01-10 00:00:00
+  frequency: 12h
+
+  missing:
+  - 2021-01-02 00:00:00
+  - start: 2021-01-05 00:00:00
+    end: 2021-01-06 00:00:00
+
+steps:
+  start: 6
+  end: 30
+  frequency: 6h

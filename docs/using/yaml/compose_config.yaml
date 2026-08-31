@@ -1,0 +1,11 @@
+# A dataset network described entirely as data. Because the description is
+# a plain dictionary, it can live in a YAML file and be loaded by a training
+# framework such as Hydra, without any Python code changes.
+dataset:
+  join:
+    - aifs-ea-an-oper-0001-mars-o96-1979-2022-6h-v8
+    - dataset: extra-variables-o96-1979-2022-6h-v1
+      select: [tp, cp]
+  start: 2000
+  end: 2020
+  frequency: 12h
