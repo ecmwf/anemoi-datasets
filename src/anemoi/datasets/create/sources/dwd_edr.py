@@ -86,6 +86,9 @@ class DWDEDRource(Source):
                 ]
             ]
 
+            # EDR is non-negative; discard invalid negative observations.
+            df = df.loc[df["obs"].ge(0)].copy()
+
             # create dictionary to map varno id to variables namev
             varno_to_var = self.create_varno_dictionaries()
 
