@@ -64,8 +64,9 @@ def _check_array(array, verbosity: int, *path) -> None:
 
     else:
         # zarr v2: dot-separated chunk files directly in the array directory.
-        assert math.prod(array.shape) % math.prod(array.chunks) == 0
-        file_count = math.prod(array.shape) // math.prod(array.chunks)
+        # ceil division per dimension: a partial final chunk is valid zarr, so the
+        # shape need not be an exact multiple of the chunk size (see #718).
+        file_count = math.prod(-(-s // c) for s, c in zip(array.shape, array.chunks))
 
         chunks = array.chunks
         count = 0
