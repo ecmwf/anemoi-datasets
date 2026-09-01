@@ -8,7 +8,11 @@
 # nor does it submit to any jurisdiction.
 
 
+import logging
+
 import zarr
+
+LOG = logging.getLogger(__name__)
 
 ZarrFileNotFoundError = FileNotFoundError
 zarr_append_mode = "a"
@@ -34,6 +38,62 @@ def HTTPStore(url: str) -> zarr.storage.FsspecStore:
 
 
 DebugStore = zarr.storage.LoggingStore
+
+
+LocalStore = zarr.storage.LocalStore
+
+
+def nested_store(path: str) -> str:
+    """Return a store that writes chunk keys in a nested directory layout.
+
+    The zarr3 format already nests chunk keys (``c/0/0``), and the layout is
+    chosen per array via ``chunk_key_encoding`` rather than by the store, so
+    the path is returned unchanged.
+
+    Parameters
+    ----------
+    path : str
+        Path to the store.
+
+    Returns
+    -------
+    str
+        The path, unchanged.
+    """
+    return path
+
+
+def lru_store_cache(store: "str | zarr.abc.store.Store", max_size: int) -> "zarr.abc.store.Store":
+    """Wrap a store in an in-memory LRU cache.
+
+    This is the zarr3 counterpart of zarr2's ``LRUStoreCache``: a ``CacheStore``
+    backed by a ``MemoryStore``, evicting least recently used entries once
+    ``max_size`` bytes are cached. ``CacheStore`` still lives in
+    ``zarr.experimental``, so the store is returned unwrapped on the zarr3
+    releases that predate it.
+
+    Parameters
+    ----------
+    store : str or zarr.abc.store.Store
+        The store to wrap. A path is turned into a ``LocalStore``.
+    max_size : int
+        Maximum size of the cache, in bytes.
+
+    Returns
+    -------
+    zarr.abc.store.Store
+        The cached store.
+    """
+    try:
+        from zarr.experimental.cache_store import CacheStore
+    except ImportError:
+        LOG.warning("Store caching is not available with zarr %s, ignoring cache=%s.", zarr.__version__, max_size)
+        return store
+
+    if isinstance(store, str):
+        store = LocalStore(store)
+
+    return CacheStore(store, cache_store=zarr.storage.MemoryStore(), max_size=max_size)
 
 
 def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.abc.codec.Codec":
