@@ -65,6 +65,7 @@ class Creator(ABC):
 
         self.parts = kwargs.pop("parts", None)
         self.finalise_stage = kwargs.pop("finalise_stage", None)
+        self.rows_per_chunk_print = kwargs.pop("rows_per_chunk_print", False)
 
         self.kwargs = kwargs
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
@@ -271,6 +272,12 @@ class Creator(ABC):
         self.final_metadata(dataset)
         dataset.touch()
 
+    def task_finalise_rows_per_chunk(self) -> None:
+        LOG.info("Finalising dataset (rows-per-chunk stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_rows_per_chunk(dataset)
+        dataset.touch()
+
     def task_finalise_load(self) -> None:
         LOG.info("Finalising dataset (load stage).")
         dataset = Dataset(self.path, update=True)
@@ -291,6 +298,10 @@ class Creator(ABC):
     def finalise_prepare(self, dataset: Dataset) -> None:
         # Layouts that do not support staged finalisation run the whole thing here.
         self.finalise_dataset(dataset)
+
+    def finalise_rows_per_chunk(self, dataset: Dataset) -> None:
+        # Only the tabular layout computes an optimal rows-per-chunk; other layouts ignore this.
+        pass
 
     def finalise_load(self, dataset: Dataset) -> None:
         pass

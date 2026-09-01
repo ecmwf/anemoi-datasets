@@ -49,6 +49,13 @@ class Finalise(Command):
             help="Deduplicate, compute the shape, create the zarr array and write the manifest.",
         )
         stage.add_argument(
+            "--rows-per-chunk",
+            dest="finalise_stage",
+            action="store_const",
+            const="rows_per_chunk",
+            help="Compute and print the optimal rows-per-chunk for each iteration window (report only).",
+        )
+        stage.add_argument(
             "--load",
             dest="finalise_stage",
             action="store_const",
@@ -66,6 +73,13 @@ class Finalise(Command):
             "--parts",
             nargs="+",
             help="Only load the specified parts of the dataset (1-based, e.g. '2/5'). Used with --load.",
+        )
+        command_parser.add_argument(
+            "--print",
+            dest="rows_per_chunk_print",
+            action="store_true",
+            help="With --rows-per-chunk: just print the optimal rows-per-chunk for every window, "
+            "without changing the dataset.",
         )
 
     def run(self, args: Any) -> None:

@@ -11,8 +11,11 @@ import datetime
 import glob
 import hashlib
 import logging
+import math
 import os
 import pickle
+import re
+import shutil
 import socket
 import threading
 import time
@@ -29,6 +32,7 @@ import pandas as pd
 import psutil
 import tqdm
 
+from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
@@ -656,25 +660,20 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         self.last_date = None
         self.range_idx = 0
 
-    def _add_range(self, dates: np.ndarray, data_slice: slice, fragment: Fragment) -> None:
+    def add(self, dates: np.ndarray, data_slice: slice) -> None:
+        """Append the date ranges for a contiguous run of rows written at ``data_slice``.
 
+        ``data_slice.start`` is the absolute row offset of the first date. The rows may be a
+        partial fragment (a chunk boundary can split a fragment across two parts), so no fragment
+        identity is assumed — only that the dates are sorted and strictly after the previous call.
+        """
         now = time.time()
         assert len(dates) > 0
 
-        first_date = epoch_to_date(dates[0])
-        last_date = epoch_to_date(dates[-1])
-
-        assert (
-            first_date == fragment.first_date
-        ), f"First date {first_date} does not match fragment first date {fragment.first_date}  ({type(first_date)=}) ({type(fragment.first_date)=} {first_date-fragment.first_date=})"
-
-        assert (
-            last_date == fragment.last_date
-        ), f"Last date {last_date} does not match fragment last date {fragment.last_date} {fragment.last_date-last_date=})"
-
         if self.last_date is not None and dates[0] <= self.last_date:
             raise ValueError(
-                f"Dates are not strictly increasing: {dates[0]} <= last date {self.last_date} ({first_date} <= {epoch_to_date(self.last_date)})"
+                f"Dates are not strictly increasing: {dates[0]} <= last date {self.last_date} "
+                f"({epoch_to_date(dates[0])} <= {epoch_to_date(self.last_date)})"
             )
 
         self.last_date = dates[-1]
@@ -706,12 +705,35 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         return np.memmap(self.path, dtype=np.int64, mode="r", shape=(self.range_idx, 3))
 
 
-def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice, fragment: Fragment) -> None:
+def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice) -> None:
     try:
-        return builder._add_range(dates, data_slice, fragment)
+        return builder.add(dates, data_slice)
     except Exception:
         LOG.exception("Error processing chunk for duplicate range building")
         raise
+
+
+def _merge_adjacent_epochs(ranges: np.ndarray) -> np.ndarray:
+    """Merge consecutive ``(epoch, offset, count)`` rows that share an epoch.
+
+    Deduplication guarantees a date never spans two fragments, but a chunk boundary can split a
+    date's rows across two parts, so after concatenating the per-part ranges in order the boundary
+    date shows up as the last row of one part and the first row of the next (with contiguous
+    offsets). Summing their counts and keeping the first offset restores one entry per date, which
+    is what the date index expects.
+    """
+    if len(ranges) == 0:
+        return ranges
+    epochs = ranges[:, 0]
+    change = np.empty(len(epochs), dtype=bool)
+    change[0] = True
+    np.not_equal(epochs[1:], epochs[:-1], out=change[1:])
+    starts = np.flatnonzero(change)
+    out = np.empty((len(starts), 3), dtype=ranges.dtype)
+    out[:, 0] = epochs[starts]  # unique epoch (first occurrence)
+    out[:, 1] = ranges[starts, 1]  # first offset of the group
+    out[:, 2] = np.add.reduceat(ranges[:, 2], starts)  # summed counts
+    return out
 
 
 def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
@@ -831,14 +853,13 @@ def _daily_epochs(first_date: datetime.datetime, last_date: datetime.datetime) -
     return np.array(epochs, dtype="datetime64[s]")
 
 
-def _fragment_part_bounds(parts: str | list | None, total: int) -> tuple[int, int, int]:
-    """Return ``(part_index, lo, hi)`` for the fragment slice ``[lo, hi)`` of a part.
+def _part_bounds(parts: str | list | None, total: int) -> tuple[int, int, int]:
+    """Return ``(part_index, lo, hi)`` for the contiguous slice ``[lo, hi)`` of ``[0, total)``.
 
-    Mirrors :class:`~anemoi.datasets.create.parts.PartFilter`'s 1-based ``i/n``
-    contiguous split. The bounds are derived from the global fragment count so
-    that empty parts (``n`` larger than the number of fragments) still yield
-    ``lo == hi`` at the correct boundary, keeping the per-part statistics
-    contiguous for ``tidy``.
+    Mirrors :class:`~anemoi.datasets.create.parts.PartFilter`'s 1-based ``i/n`` contiguous split.
+    Used to divide the zarr **chunks** among ``--load`` calls (``total`` = number of chunks): the
+    bounds are derived from ``total`` so that empty parts (``n`` larger than ``total``) still yield
+    ``lo == hi`` at the correct boundary, keeping the per-part statistics contiguous for ``tidy``.
     """
     if isinstance(parts, list):
         if len(parts) != 1:
@@ -855,33 +876,35 @@ def _fragment_part_bounds(parts: str | list | None, total: int) -> tuple[int, in
     return i - 1, lo, hi
 
 
-def _stream_fragments_into_zarr(
+def _write_part_into_zarr(
     dataset: Any,
-    fragments: list[Fragment],
+    part_fragments: list[Fragment],
+    row_lo: int,
+    row_hi: int,
     collector: StatisticsCollector,
     date_range_builder: "_DuplicateRangeBuilder",
     offset: int,
 ) -> None:
-    """Write a list of fragments into ``store["data"]`` at their offsets.
+    """Write the rows in ``[row_lo, row_hi)`` of a part into the zarr ``data`` array.
 
-    Statistics collection and duplicate-date-range building run on background
-    threads while the next fragment is read ahead, mirroring the original
-    single-pass pipeline. Writes go straight to the zarr array (zarr handles the
-    read-modify-write of partial boundary chunks). Fragment files are not deleted
-    here; the caller removes them only once the whole part is committed, so that a
-    re-run of an interrupted part still finds every fragment on disk.
+    ``[row_lo, row_hi)`` spans a whole number of zarr chunks that only this ``--load`` call owns,
+    so a :class:`WriteBehindBuffer` can accumulate and flush those chunks safely — no other call
+    touches them. Each fragment is sliced to its intersection with the range (a fragment straddling
+    the boundary is written in part by each side, but the writes stay chunk-disjoint). Statistics
+    collection and date-range building run on background threads while the next fragment is read
+    ahead. Fragment files are not deleted here; the caller removes the fully contained ones once the
+    part is committed, so a re-run of an interrupted part still finds every fragment on disk.
     """
-    data = dataset.store["data"]
-
     with (
+        WriteBehindBuffer(dataset.store["data"], no_reload=True, max_cached_chunks=50) as data,
         ThreadPoolExecutor(max_workers=2) as read_ahead,
         ThreadPoolExecutor(max_workers=1) as compute_statistics,
         ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
     ):
         # Double buffering: keep two fragments loaded ahead for performance
         tasks: list[Any] = []
-        for i in range(len(fragments)):
-            tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
+        for i in range(len(part_fragments)):
+            tasks.append(read_ahead.submit(_load_fragment_worker, part_fragments[i]))
             if i >= 1:  # Keep two fragments max : i=0 and i=1, then stop
                 break
 
@@ -890,8 +913,7 @@ def _stream_fragments_into_zarr(
         build = None
         previous_date = None
 
-        total_rows = sum(f.shape[0] for f in fragments)
-        with tqdm.tqdm(total=total_rows, desc="Writing to Zarr", unit="row") as pbar:
+        with tqdm.tqdm(total=row_hi - row_lo, desc="Writing to Zarr", unit="row") as pbar:
             while tasks:
                 fragment, array, _ = tasks.pop(0).result()
 
@@ -902,15 +924,22 @@ def _stream_fragments_into_zarr(
                     )
                 previous_date = fragment.last_date
 
-                data[fragment.offset : fragment.offset + fragment.shape[0], :] = array
+                # Restrict the fragment to the part's row range (it may straddle a boundary).
+                f_lo = fragment.offset
+                f_hi = fragment.offset + fragment.shape[0]
+                lo = max(f_lo, row_lo)
+                hi = min(f_hi, row_hi)
+                sub = array[lo - f_lo : hi - f_lo]
+
+                data[lo:hi, :] = sub
 
                 # Dates are encoded as (days, seconds) in columns 0 and 1
-                epochs = array_to_epoch(array)
+                epochs = array_to_epoch(sub)
 
                 # Wait for previous statistics computation to complete
                 if stats is not None:
                     stats.result()
-                stats = compute_statistics.submit(_statistics_collector_worker, collector, array[:, offset:], epochs)
+                stats = compute_statistics.submit(_statistics_collector_worker, collector, sub[:, offset:], epochs)
 
                 # Wait for previous duplicate range building to complete
                 if build is not None:
@@ -919,15 +948,14 @@ def _stream_fragments_into_zarr(
                     _build_duplicate_ranges_worker,
                     date_range_builder,
                     epochs,
-                    slice(fragment.offset, fragment.offset + fragment.shape[0]),
-                    fragment,
+                    slice(lo, hi),
                 )
 
-                pbar.update(fragment.shape[0])
+                pbar.update(hi - lo)
 
                 # Pre-load next fragment
-                if i < len(fragments):
-                    tasks.append(read_ahead.submit(_load_fragment_worker, fragments[i]))
+                if i < len(part_fragments):
+                    tasks.append(read_ahead.submit(_load_fragment_worker, part_fragments[i]))
                     i += 1
 
             # Ensure the last statistics/range computations are complete
@@ -1007,16 +1035,7 @@ def prepare_tabular_dataset(
         f"total chunks: {(shape[0] + chunking[0] - 1) // chunking[0]:,}"
     )
 
-    if "data" in store:
-        del store["data"]
-
-    store.create_array(
-        "data",
-        shape=shape,
-        chunks=chunking,
-        dtype=np.float32,
-        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
-    )
+    _create_data_array(store, shape, chunking)
 
     manifest = {
         "shape": shape,
@@ -1036,6 +1055,306 @@ def prepare_tabular_dataset(
     LOG.info(f"Prepared {len(fragments):,} fragments for a final shape of {shape}.")
 
 
+def _create_data_array(store: Any, shape: tuple[int, int], chunking: tuple[int, int]) -> None:
+    """Create the empty ``data`` array, replacing any existing one."""
+    if "data" in store:
+        del store["data"]
+    store.create_array(
+        "data",
+        shape=shape,
+        chunks=chunking,
+        dtype=np.float32,
+        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
+    )
+
+
+def set_rows_per_chunk(dataset: Any, work_dir: str, rows_per_chunk: int) -> tuple[int, int]:
+    """Re-chunk the (still empty) ``data`` array to ``rows_per_chunk`` and update the manifest.
+
+    Called after ``prepare`` (which created the array with a provisional chunking) and before
+    ``load``, so the array can be safely recreated. The manifest's ``chunking`` is rewritten too,
+    since ``load`` partitions the work along whole zarr chunks read from it. Returns the new chunking.
+    """
+    manifest = _read_manifest(work_dir)
+    shape = tuple(manifest["shape"])
+    chunking = (min(int(rows_per_chunk), shape[0]), shape[1])
+    LOG.info(f"Re-chunking the data array to {chunking} (rows_per_chunk={chunking[0]:,}).")
+    _create_data_array(dataset.store, shape, chunking)
+    manifest["chunking"] = chunking
+    _write_manifest(work_dir, manifest)
+    return chunking
+
+
+_EPOCH = datetime.datetime(1970, 1, 1)
+
+_DURATION_UNITS = {"s": 1, "min": 60, "m": 60, "h": 3600, "d": 86400}
+
+_DEFAULT_CHUNK_WINDOWS = ("1h", "3h", "6h", "12h", "24h")
+
+# Filesystem read-performance model (all overridable via the recipe / function arguments).
+_DEFAULT_COMPRESSION_RATIO = 0.5  # on-disk bytes / raw bytes (zstd typically ~0.5 on this data)
+_DEFAULT_FS_READ_MIN_BYTES = 64 << 20  # below this a read under-uses the filesystem
+_DEFAULT_FS_READ_MAX_BYTES = 512 << 20  # above this throughput rolls off again
+_DEFAULT_FS_LATENCY_SECONDS = 5e-3  # fixed per-read cost (open + metadata + seek)
+_DEFAULT_FS_BANDWIDTH_BYTES_PER_S = 2e9  # peak streaming bandwidth inside the sweet spot
+
+
+def _to_epoch_seconds(date: datetime.datetime) -> float:
+    """Seconds since the Unix epoch for a naive-UTC datetime (matches ``epoch_to_date``)."""
+    return (date - _EPOCH).total_seconds()
+
+
+def _duration_seconds(value: Any) -> int:
+    """Parse a window/offset given as seconds (int) or a string like ``'1h'``, ``'30min'``, ``'3h'``."""
+    if isinstance(value, (int, float)):
+        return int(value)
+    text = str(value).strip().lower()
+    match = re.fullmatch(r"(\d+)\s*([a-z]*)", text)
+    if not match:
+        raise ValueError(f"Cannot parse duration {value!r}")
+    amount, unit = match.groups()
+    unit = unit or "s"
+    if unit not in _DURATION_UNITS:
+        raise ValueError(f"Unknown duration unit {unit!r} in {value!r}")
+    return int(amount) * _DURATION_UNITS[unit]
+
+
+_DENSITY_DIRNAME = "density"
+
+
+def _density_dir(work_dir: str) -> str:
+    return os.path.join(work_dir, _DENSITY_DIRNAME)
+
+
+def write_fragment_density(work_dir: str, name: str, array: np.ndarray) -> None:
+    """Record the per-timestamp row counts of a freshly created fragment array.
+
+    Called during ``load`` (fragment creation), when the dates are already in memory, so the row
+    density over time is captured for free — no need to re-read terabytes of fragments at finalise
+    time to size the chunks. Columns 0 and 1 encode ``(days, seconds)``. One small ``(timestamp,
+    count)`` file is written per call (atomically) into ``work_dir/density``; ``load`` parts run in
+    parallel and each writes its own, summed later by :func:`compute_rows_per_chunk`. These counts
+    are pre-deduplication; the reader rescales them to the final row total.
+    """
+    if len(array) == 0:
+        return
+    epoch = array[:, 0].astype(np.int64) * 86400 + array[:, 1].astype(np.int64)
+    uniq, counts = np.unique(epoch, return_counts=True)
+    hist = np.column_stack((uniq, counts)).astype(np.int64)
+    directory = _density_dir(work_dir)
+    os.makedirs(directory, exist_ok=True)
+    base = os.path.join(directory, name)
+    np.save(base + ".tmp", hist)
+    os.replace(base + ".tmp.npy", base + ".npy")
+
+
+def _load_density_histogram(work_dir: str) -> tuple[np.ndarray, np.ndarray] | None:
+    """Sum the per-part density files into a single sorted ``(timestamps, counts)`` histogram.
+
+    Returns ``None`` when no density was collected (e.g. an older build), so the caller can fall
+    back to estimating density from the fragment list.
+    """
+    directory = _density_dir(work_dir)
+    if not os.path.isdir(directory):
+        return None
+    files = list(_list_files(directory))
+    parts = [np.load(f) for f in tqdm.tqdm(files, desc="Loading density histogram", unit="file")]
+    if not parts:
+        return None
+    combined = np.concatenate(parts)
+    order = np.argsort(combined[:, 0], kind="stable")
+    epochs = combined[order, 0]
+    counts = combined[order, 1]
+    uniq, first = np.unique(epochs, return_index=True)
+    return uniq, np.add.reduceat(counts, first)
+
+
+def compute_rows_per_chunk(
+    *,
+    dataset: Any,
+    work_dir: str,
+    recipe: Any = None,
+    windows: tuple | list | None = None,
+    offset: Any = None,
+    compression_ratio: float | None = None,
+    fs_read_min_bytes: int | None = None,
+    fs_read_max_bytes: int | None = None,
+    fs_latency_seconds: float | None = None,
+    fs_bandwidth_bytes_per_s: float | None = None,
+) -> dict:
+    """Compute, per iteration-window size, the ``rows_per_chunk`` that minimises read time.
+
+    Zarr re-reads and decompresses a whole chunk on every access, so iterating the dataset with a
+    fixed time window and reading each window in turn reads, in full, every chunk each window spans.
+    The cost of a full sweep is modelled as the total read *time*::
+
+        time(C) = read_time(C) * sum_over_windows( chunks_touched(C) )
+
+    where ``C`` is the chunk size in rows and ``read_time(C)`` is the time to read one chunk from the
+    filesystem. A chunk holds ``C * row_bytes`` raw bytes, which compress to
+    ``C * row_bytes * compression_ratio`` on disk; ``read_time`` is then a fixed ``fs_latency`` plus
+    ``on_disk_bytes / bandwidth``, where the effective bandwidth peaks for reads in the
+    ``[fs_read_min_bytes, fs_read_max_bytes]`` sweet spot and drops off for smaller or larger reads.
+    This penalises both extremes: tiny chunks pay latency per read and under-use the filesystem;
+    chunks bigger than one window waste bandwidth re-reading data the next window already loaded.
+
+    The row density over time comes from the exact per-timestamp histogram collected during ``load``
+    (or, failing that, an estimate from the fragment list), so ramping density is handled correctly.
+    Each window size is treated independently. For each, the returned dict gives the time-optimal
+    ``rows_per_chunk``; the log also reports the "one window per chunk, clamped into the filesystem
+    sweet spot" alternative. This stage only reports — it does not change the ``data`` array.
+
+    All model parameters (``compression_ratio``, the read-size sweet spot, latency and bandwidth)
+    are overridable; the defaults are module-level ``_DEFAULT_*`` constants.
+    """
+    compression_ratio = _DEFAULT_COMPRESSION_RATIO if compression_ratio is None else float(compression_ratio)
+    fs_read_min_bytes = _DEFAULT_FS_READ_MIN_BYTES if fs_read_min_bytes is None else int(fs_read_min_bytes)
+    fs_read_max_bytes = _DEFAULT_FS_READ_MAX_BYTES if fs_read_max_bytes is None else int(fs_read_max_bytes)
+    fs_latency_seconds = _DEFAULT_FS_LATENCY_SECONDS if fs_latency_seconds is None else float(fs_latency_seconds)
+    fs_bandwidth_bytes_per_s = (
+        _DEFAULT_FS_BANDWIDTH_BYTES_PER_S if fs_bandwidth_bytes_per_s is None else float(fs_bandwidth_bytes_per_s)
+    )
+    if not os.path.exists(_manifest_path(work_dir)):
+        raise RuntimeError(
+            f"No manifest in {work_dir!r}: run `anemoi-datasets finalise --prepare` before computing rows per chunk."
+        )
+
+    windows = tuple(windows) if windows else _DEFAULT_CHUNK_WINDOWS
+    offset_seconds = _duration_seconds(offset) if offset is not None else 0
+
+    manifest = _read_manifest(work_dir)
+    fragments = manifest["fragments"]
+    nrows, ncols = manifest["shape"]
+    if not fragments or nrows == 0:
+        LOG.warning("No fragments in manifest; cannot compute rows per chunk.")
+        return {}
+
+    row_bytes = ncols * np.dtype(np.float32).itemsize
+    disk_bytes_per_row = row_bytes * compression_ratio
+    # The filesystem sweet spot expressed in rows, so we can talk about chunk sizes directly.
+    fs_min_rows = max(1, math.ceil(fs_read_min_bytes / disk_bytes_per_row))
+    fs_max_rows = max(fs_min_rows, math.floor(fs_read_max_bytes / disk_bytes_per_row))
+
+    def read_time(chunk_rows: np.ndarray) -> np.ndarray:
+        """Time to read one chunk of ``chunk_rows`` rows: latency + on-disk-bytes / effective bandwidth."""
+        on_disk = chunk_rows * disk_bytes_per_row
+        # Effective bandwidth peaks in the sweet spot and falls off linearly on either side.
+        eff = np.ones_like(on_disk, dtype=np.float64)
+        eff = np.where(on_disk < fs_read_min_bytes, on_disk / fs_read_min_bytes, eff)
+        eff = np.where(on_disk > fs_read_max_bytes, fs_read_max_bytes / on_disk, eff)
+        return fs_latency_seconds + on_disk / (fs_bandwidth_bytes_per_s * eff)
+
+    # The cumulative rows vs time curve gives the row offset of every window boundary. Prefer the
+    # exact per-timestamp histogram collected during load; fall back to estimating it from the
+    # fragment list when no histogram was collected.
+    histogram = _load_density_histogram(work_dir)
+    if histogram is not None:
+        uniq_epochs, uniq_counts = histogram
+        total = int(uniq_counts.sum())
+        # Counts are pre-dedup; rescale so the curve ends exactly at the final (post-dedup) row count.
+        scale = nrows / total if total else 1.0
+        cum_before = np.concatenate(([0], np.cumsum(uniq_counts)))  # rows with epoch < uniq_epochs[k]
+
+        def cumulative_rows(query: np.ndarray) -> np.ndarray:
+            idx = np.searchsorted(uniq_epochs, query, side="left")
+            return np.clip(np.rint(cum_before[idx] * scale), 0, nrows).astype(np.int64)
+
+        first_e, last_e = float(uniq_epochs[0]), float(uniq_epochs[-1])
+        density_source = f"exact per-timestamp histogram ({len(uniq_epochs):,} timestamps, scaled x{scale:.4f})"
+    else:
+        # Piecewise-linear cumulative rows vs time: within a fragment's [first, last] span the cumulative
+        # row count ramps linearly from its offset to offset + nrows; between fragments it is flat (offsets
+        # are chained). Fragments are disjoint and date-ordered after dedup, so the breakpoints are sorted.
+        # Exact for single-timestamp fragments; a uniform-in-time approximation for multi-date fragments.
+        n = len(fragments)
+        times = np.empty(2 * n, dtype=np.float64)
+        cum = np.empty(2 * n, dtype=np.float64)
+        for i, (_, first_date, last_date, shape, off) in enumerate(fragments):
+            times[2 * i] = _to_epoch_seconds(first_date)
+            times[2 * i + 1] = _to_epoch_seconds(last_date)
+            cum[2 * i] = off
+            cum[2 * i + 1] = off + shape[0]
+        # np.interp needs strictly increasing x; single-timestamp fragments give first == last.
+        times[1::2] = np.maximum(times[1::2], times[0::2] + 1e-3)
+
+        def cumulative_rows(query: np.ndarray) -> np.ndarray:
+            return np.clip(np.rint(np.interp(query, times, cum)), 0, nrows).astype(np.int64)
+
+        first_e, last_e = float(times[0]), float(times[-1])
+        density_source = "fragment list (uniform-in-time guess for multi-date fragments)"
+
+    # Candidate chunk sizes on a log grid up to the dataset size. The true optimum for a regular
+    # dataset is a *sharp* dip at chunk == rows-per-window (every read is then one aligned chunk),
+    # which a log grid steps straight over; the per-window rows-per-window statistics are added to
+    # the candidates inside the loop below so that alignment optimum is actually evaluated.
+    log_grid = np.unique(np.rint(np.geomspace(1, max(1, nrows), 256)).astype(np.int64))
+    log_grid = log_grid[log_grid >= 1]
+
+    LOG.info(
+        f"Computing optimal rows per chunk ({nrows:,} rows, {row_bytes} B/row, "
+        f"compression x{compression_ratio:g}). Density from {density_source}."
+    )
+    LOG.info(
+        f"Filesystem read sweet spot {fs_read_min_bytes>>20}-{fs_read_max_bytes>>20} MB on disk "
+        f"= {fs_min_rows:,}-{fs_max_rows:,} rows/chunk; "
+        f"latency {fs_latency_seconds*1e3:g} ms, bandwidth {fs_bandwidth_bytes_per_s/1e9:g} GB/s."
+    )
+
+    def on_disk_mb(chunk_rows: int) -> float:
+        return chunk_rows * disk_bytes_per_row / (1 << 20)
+
+    result: dict[str, int] = {}
+    for window in tqdm.tqdm(windows, desc="Optimising rows per chunk", unit="window"):
+        w = _duration_seconds(window)
+        # Boundaries land on offset + k*w (UTC-aligned by default, since the epoch is UTC midnight
+        # and the window sizes divide a day).
+        start = math.floor((first_e - offset_seconds) / w) * w + offset_seconds
+        boundaries = np.arange(start, last_e + w, w, dtype=np.float64)
+        edges = cumulative_rows(boundaries)
+        lo = edges[:-1]
+        hi = edges[1:]
+        nonempty = hi > lo
+        lo_ne = lo[nonempty]
+        hi_ne = hi[nonempty]
+        rows_per_window = hi_ne - lo_ne
+        mean_rpw = float(np.mean(rows_per_window))
+
+        # Candidates: the log grid, plus rows-per-window and its divisors/multiples (so the sharp
+        # alignment optimum at chunk == rows-per-window is tested), plus the sweet-spot edges.
+        anchors = [mean_rpw, float(np.median(rows_per_window))]
+        aligned = [a / k for a in anchors for k in (1, 2, 3, 4)]
+        aligned += [a * k for a in anchors for k in (2, 3, 4)]
+        aligned += [fs_min_rows, fs_max_rows]
+        candidates = np.unique(np.rint(np.concatenate([log_grid, aligned])).astype(np.int64))
+        candidates = candidates[candidates >= 1]
+
+        touched = np.array(
+            [
+                int(((hi_ne - 1) // c - lo_ne // c + 1).sum())
+                for c in tqdm.tqdm(candidates, desc=f"  {window} candidates", unit="size", leave=False)
+            ]
+        )
+        cost = read_time(candidates.astype(np.float64)) * touched
+        best = int(np.argmin(cost))
+        best_c = int(candidates[best])
+        result[str(window)] = best_c
+
+        # "One window per chunk", clamped into the filesystem sweet spot: the fewest reads while
+        # each read stays in the fast band (a window bigger than the band is capped at the band).
+        ops_c = int(min(max(round(mean_rpw), fs_min_rows), fs_max_rows))
+        chunks_per_read = touched[best] / len(lo_ne)
+
+        LOG.info(
+            f"  window {str(window):>4}: rows/window≈{mean_rpw:,.0f} "
+            f"(min {rows_per_window.min():,} max {rows_per_window.max():,}) | "
+            f"time-opt {best_c:,} rows ({on_disk_mb(best_c):.0f} MB/chunk, {chunks_per_read:.1f} chunks/read) | "
+            f"band-clamped {ops_c:,} rows ({on_disk_mb(ops_c):.0f} MB/chunk)"
+        )
+
+    LOG.info(f"Optimal rows_per_chunk per window (time-optimal): {result}")
+    return result
+
+
 def _part_ranges_path(work_dir: str, part_index: int) -> str:
     return os.path.join(work_dir, f"dates_ranges_{part_index:06d}.bin")
 
@@ -1049,17 +1368,19 @@ def load_tabular_dataset(
     parts: str | list | None,
     delete_files: bool,
 ) -> None:
-    """Load stage: write one part of the fragments into the zarr array.
+    """Load stage: write one part of the dataset into the zarr array.
 
-    Reads the manifest, selects this part's contiguous slice of fragments, writes them into the
-    already-created ``data`` array, and emits a per-part partial :class:`StatisticsCollector`
-    (pickled, mirroring the gridded creator) and a per-part duplicate-date-ranges file. Both are
-    combined in the ``tidy`` stage. ``parts`` is ``None`` (all fragments) or ``"i/n"`` (1-based).
+    Parts are split along **whole zarr chunks** (``parts`` is ``None`` for all chunks, or ``"i/n"``,
+    1-based), so no chunk is ever written by two ``--load`` calls and a :class:`WriteBehindBuffer`
+    can be used safely. This call writes the rows of its chunk range into the already-created
+    ``data`` array (reading whichever fragments overlap the range, slicing those that straddle a
+    boundary) and emits a per-part partial :class:`StatisticsCollector` (pickled, mirroring the
+    gridded creator) and a per-part duplicate-date-ranges file, both combined in ``tidy``.
 
-    Re-runnable: a ``load_<part>.done`` marker is written last, once the part's data,
-    statistics and date ranges are all committed. A re-run of a completed part only finishes
-    deleting its fragment files; a re-run of an interrupted part recomputes it from scratch
-    (the fragment files are only deleted after the marker, so they are still present).
+    Re-runnable: a ``load_<part>.done`` marker is written last, once the part's data, statistics
+    and date ranges are all committed. A re-run of a completed part only finishes deleting the
+    fragment files it owns; a re-run of an interrupted part recomputes it from scratch (the fragment
+    files are only deleted after the marker, so they are still present).
     """
     store = dataset.store
 
@@ -1078,22 +1399,31 @@ def load_tabular_dataset(
         fragment.offset = off
         fragments.append(fragment)
 
-    total = len(fragments)
-    part_index, lo, hi = _fragment_part_bounds(parts, total)
-    part_fragments = fragments[lo:hi]
+    # Parts are split along whole zarr chunks so no chunk is ever written by two --load calls.
+    nrows = manifest["shape"][0]
+    chunk_rows = manifest["chunking"][0]
+    nchunks = (nrows + chunk_rows - 1) // chunk_rows
 
-    final_rows = manifest["shape"][0]
-    start = fragments[lo].offset if lo < total else final_rows
-    end = fragments[hi].offset if hi < total else final_rows
+    part_index, chunk_lo, chunk_hi = _part_bounds(parts, nchunks)
+    row_lo = chunk_lo * chunk_rows
+    row_hi = min(chunk_hi * chunk_rows, nrows)
+
+    # Fragments overlapping this part's row range. A fragment fully inside the range is read only
+    # by this part, so it can be deleted once committed; a fragment straddling a part boundary is
+    # shared with a neighbouring part and is left for tidy/cleanup to remove.
+    part_fragments = [f for f in fragments if f.offset < row_hi and f.offset + f.shape[0] > row_lo]
+    deletable = [f for f in part_fragments if f.offset >= row_lo and f.offset + f.shape[0] <= row_hi]
 
     marker = f"load_{part_index:06d}"
     if _is_marked_done(work_dir, marker):
         LOG.info(f"Part {part_index} already loaded; ensuring its fragment files are removed.")
         if delete_files:
-            _delete_fragment_files(part_fragments)
+            _delete_fragment_files(deletable)
         return
 
-    LOG.info(f"Loading part {part_index} ({parts}): fragments [{lo}:{hi}] of {total}, rows [{start}:{end}).")
+    LOG.info(
+        f"Loading part {part_index} ({parts}): chunks [{chunk_lo}:{chunk_hi}] of {nchunks}, rows [{row_lo}:{row_hi})."
+    )
 
     offset = manifest["offset"]
     epochs = _daily_epochs(manifest["first_date"], manifest["last_date"])
@@ -1103,27 +1433,27 @@ def load_tabular_dataset(
     )
 
     ranges_path = _part_ranges_path(work_dir, part_index)
-    if part_fragments:
-        date_range_builder = _DuplicateRangeBuilder(length=end - start, path=ranges_path)
-        _stream_fragments_into_zarr(dataset, part_fragments, collector, date_range_builder, offset)
+    if row_hi > row_lo:
+        date_range_builder = _DuplicateRangeBuilder(length=row_hi - row_lo, path=ranges_path)
+        _write_part_into_zarr(dataset, part_fragments, row_lo, row_hi, collector, date_range_builder, offset)
         date_range_builder.array()  # close and truncate the ranges file to its used size
     else:
         # Empty part: still emit an (empty) ranges file so tidy sees every part.
         open(ranges_path, "wb").close()
 
-    stats_path = os.path.join(work_dir, f"statistics_{part_index:06d}-{start:09d}-{end:09d}.pkl")
-    collector.serialise(stats_path + ".tmp", group=part_index, start=start, end=end)
+    stats_path = os.path.join(work_dir, f"statistics_{part_index:06d}-{row_lo:09d}-{row_hi:09d}.pkl")
+    collector.serialise(stats_path + ".tmp", group=part_index, start=row_lo, end=row_hi)
     os.replace(stats_path + ".tmp", stats_path)
 
     # Marker last: once it exists, the part's data, statistics and ranges are all committed.
     _mark_done(work_dir, marker)
 
-    # Only now is it safe to free the fragment files. If we are killed mid-deletion and
-    # re-run, the marker short-circuits to the deletion branch above.
+    # Only now is it safe to free the fully contained fragment files. If we are killed mid-deletion
+    # and re-run, the marker short-circuits to the deletion branch above.
     if delete_files:
-        _delete_fragment_files(part_fragments)
+        _delete_fragment_files(deletable)
 
-    LOG.info(f"Loaded part {part_index}: wrote rows [{start}:{end}) and saved partial statistics.")
+    LOG.info(f"Loaded part {part_index}: wrote rows [{row_lo}:{row_hi}) and saved partial statistics.")
 
 
 def tidy_tabular_dataset(
@@ -1180,6 +1510,10 @@ def tidy_tabular_dataset(
     assert part_arrays, "No date ranges found; run the load stage before tidy."
     dates_ranges = part_arrays[0] if len(part_arrays) == 1 else np.concatenate(part_arrays)
 
+    # A date whose rows straddle a chunk/part boundary is split across two parts; merge the
+    # boundary entries so the index sees one (epoch, offset, count) row per date.
+    dates_ranges = _merge_adjacent_epochs(np.asarray(dates_ranges))
+
     LOG.info(f"Duplicate date ranges: {len(dates_ranges):,} ranges from {len(part_arrays)} part(s)")
 
     if recipe.build.validate_date_ranges:
@@ -1217,9 +1551,16 @@ def tidy_tabular_dataset(
     store.attrs.update({_FINALISE_COMPLETE_ATTR: True})
 
     if delete_files:
+        # Remove any fragment files still on disk: fragments that straddle a part boundary are
+        # owned by no single load and so are not deleted during load. By now every load is done,
+        # so they are safe to reclaim.
+        if os.path.exists(_manifest_path(work_dir)):
+            for fragment in _read_manifest(work_dir)["fragments"]:
+                _unlink_if_exists(fragment[0])
         for path in stats_files + range_files + done_markers:
             _unlink_if_exists(path)
         _unlink_if_exists(_manifest_path(work_dir))
+        shutil.rmtree(_density_dir(work_dir), ignore_errors=True)
 
 
 if __name__ == "__main__":

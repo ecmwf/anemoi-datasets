@@ -81,6 +81,23 @@ class Build(BaseModel):
     delete_files: bool = True  # Whether to delete temporary files as we go.
     write_zarr_buffer_size: int = 512 * 1024 * 1024
 
+    # Parameters for the `finalise --rows-per-chunk` stage, which reports the chunk size (in rows)
+    # that minimises read time when iterating a tabular dataset with a fixed time window.
+    chunk_windows: list[str] = Field(default_factory=lambda: ["1h", "3h", "6h", "12h", "24h"])
+    """Iteration window sizes to evaluate the optimal rows-per-chunk for, each treated independently."""
+    chunk_alignment_offset: str | None = None
+    """Offset of the window boundaries from the whole UTC hour (e.g. '30min', '3h'). None means windows end on a whole UTC hour."""
+    chunk_compression_ratio: float = 0.5
+    """Assumed on-disk bytes / raw bytes ratio, used to convert a chunk's row count into its on-disk read size."""
+    fs_read_min_bytes: int = 64 * 1024 * 1024
+    """Lower edge of the filesystem read sweet spot in bytes; reads smaller than this under-use the filesystem."""
+    fs_read_max_bytes: int = 512 * 1024 * 1024
+    """Upper edge of the filesystem read sweet spot in bytes; reads larger than this see throughput roll off."""
+    fs_read_latency_seconds: float = 0.005
+    """Fixed per-read cost in seconds (open + metadata + seek), paid once per chunk read."""
+    fs_read_bandwidth_bytes_per_s: float = 2e9
+    """Peak streaming bandwidth in bytes/second, achieved for reads inside the sweet spot."""
+
     """Environment variables to set when creating the dataset."""
     remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
     """Remapping configuration for the dataset."""

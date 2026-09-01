@@ -46,6 +46,8 @@ class TaskDispatcher:
                 self.creator.task_cleanup()
             case "prepare":
                 self.creator.task_finalise_prepare()
+            case "rows_per_chunk":
+                self.creator.task_finalise_rows_per_chunk()
             case "load":
                 self.creator.task_finalise_load()
             case "tidy":

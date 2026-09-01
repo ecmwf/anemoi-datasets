@@ -141,6 +141,9 @@ class TabularOutput(OutputBase):
     rows_per_chunk: int | None = None
     """The number of rows per chunk for tabular datasets. If None, the chunk size will be determined automatically based on the target fragment size and the row size."""
 
+    auto_rows_per_chunk: str | None = "1d"
+    """Iteration window (e.g. "1d", "6h") used by ``finalise --rows-per-chunk`` to choose ``rows_per_chunk`` automatically. When this is set and ``rows_per_chunk`` is None, finalise computes the chunk size that minimises read time for this window and re-chunks the data array. Set to null to disable and require an explicit ``rows_per_chunk``."""
+
     bytes_per_chunk: int = 64 * 1024 * 1024  # 64 MiB
     """The target size of each chunk in bytes for tabular datasets. This is used to determine the number of rows per chunk if rows_per_chunk is None."""
 
