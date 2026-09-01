@@ -22,7 +22,7 @@ processes (see :ref:`tabular-staged-finalise` below).
 
 Set ``output.layout`` to ``tabular`` in the recipe:
 
-.. literalinclude:: code/tabular.yaml
+.. literalinclude:: ../layouts/code/tabular.yaml
 
 *******************
  One-shot creation
