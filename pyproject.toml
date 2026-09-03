@@ -42,13 +42,13 @@ dynamic = [
 ]
 dependencies = [
   # TODO: replace with anemoi-transform release
-  "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@earthkit-1.0",
+  "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@feat/earthkit-data-1.0",
   "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",                                                                    # Until we move to zarr3
+  "numcodecs<0.16",                                                                              # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
@@ -70,16 +70,9 @@ optional-dependencies.comparelam = [
 ]
 optional-dependencies.create = [
   "cachetools",
-  # earthkit 1 is out (1.2.2 at the time of writing), but the earthkit-1.0 branch
-  # of anemoi-transform still pins the release candidates exactly
-  # (earthkit-data==1.0.0rc12, earthkit-geo==1.0.0rc8, earthkit-meteo==1.0.0rc3).
-  # A bare ">=1" excludes pre-releases (PEP 440), so it cannot be satisfied
-  # alongside those pins and the whole resolution fails.  The floors below are
-  # spelled out to permit them; restore ">=1" once anemoi-transform is on the
-  # released earthkit.
-  "earthkit-data[mars]>=1.0.0rc12,<2",
-  "earthkit-geo>=1.0.0rc8,<2",
-  "earthkit-meteo>=1.0.0rc3",
+  "earthkit-data[mars]>=1",
+  "earthkit-geo>=1",
+  "earthkit-meteo>=1",
   "eccodes>=2.39.1",
   "entrypoints",
   "fasteners",

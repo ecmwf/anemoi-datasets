@@ -150,6 +150,12 @@ class TrajectoryGriddedCreator(GriddedCreator):
         }
         chunks = self.recipe.output.get_chunking(coords)
 
+        # ``load_result`` buffers whole Zarr chunks, one ``(base_date, step)``
+        # region at a time, so that only a single forecast step -- not the whole
+        # trajectory -- is held in memory. That is only chunk-aligned when the
+        # base-date and step axes are chunked by 1 (see ``_check_streaming_chunks``).
+        self._check_streaming_chunks(list(coords), chunks)
+
         grid_points = self.minimal_input.grid_points
 
         # Create arrays
@@ -167,6 +173,31 @@ class TrajectoryGriddedCreator(GriddedCreator):
         dataset.add_array(name="steps", data=np.array(steps), dimensions=("step",))
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
+
+    @staticmethod
+    def _check_streaming_chunks(dims: list[str], chunks: tuple[int, ...]) -> None:
+        """Assert the base-date and step axes are chunked by 1.
+
+        The write in :meth:`load_result` is buffered one ``(base_date, step)``
+        region at a time so that only a single forecast step -- not the whole
+        trajectory -- is held in memory.  Each region maps onto whole chunks
+        (written exactly once, no read-modify-write of an already-populated
+        chunk) only when both the base-date and step axes are chunked by 1.
+        Both default to 1; forbid any other value rather than silently degrade.
+
+        Parameters
+        ----------
+        dims : list of str
+            The dimension names in array order.
+        chunks : tuple of int
+            The chunk sizes in array order.
+        """
+        for axis_name, config_key in (("base_dates", "base_dates"), ("steps", "steps")):
+            chunk = chunks[dims.index(axis_name)]
+            if chunk != 1:
+                raise ValueError(
+                    f"The 'trajectories' layout requires 'output.chunking.{config_key}' == 1, got {chunk}."
+                )
 
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load a multi-basetime, multi-step forecast cube into the 5-D dataset array.
