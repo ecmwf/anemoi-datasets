@@ -1,3 +1,5 @@
+.. _using-methods:
+
 ########################
  Methods and attributes
 ########################
@@ -12,7 +14,7 @@ in more detail.
    All methods and attributes will take into account any subsetting,
    selecting, or combining used to construct the final dataset, with the
    exception of ``statistics``, which will return the values of the
-   first dataset encountered. See :ref:`selecting-statistics` for more
+   first dataset encountered. See :ref:`using-statistics` for more
    details.
 
 *********
@@ -27,13 +29,7 @@ __getitem__(key)
    supports the same `indexing and slicing <indexing>`_ as NumPy. The
    following examples are valid:
 
-         .. code:: python
-
-            ds[0]
-            ds[-1]
-            ds[0:10]
-            ds[0:10:2]
-            ds[0, 1, :]
+         .. literalinclude:: code/methods_getitem_.py
 
       The data returned is a NumPy array. Please note that Zarr will
       load the entire dataset into memory if you use a syntax like
@@ -53,7 +49,7 @@ source(index)
 tree()
    For debugging. Returns the dataset's internal tree structure.
 
-statistics_tendencies(delta):
+statistics_tendencies(delta)
    `Statistics tendencies` are statistics of the difference between two
    dates, typically over 1h, 3h, 6h, 12h and 24h, depending on the
    underlying frequency of the dataset. The delta is given in hours, or
@@ -93,23 +89,13 @@ statistics:
    The dataset's statistics. This is a dictionary with the following
    entries:
 
-      .. code:: python
-
-         {
-             "mean": ...,
-             "stdev": ...,
-             "minimum": ...,
-             "maximum": ...,
-         }
+      .. literalinclude:: code/methods_statistics_dict_.py
 
    Each entry is a NumPy vector with the same length as the number of
    variables, each element corresponding to a variable. You can
    therefore use it like:
 
-      .. code:: python
-
-         values = ds[0]
-         normalised = (values - dataset.statistics["mean"]) / dataset.statistics["stdev"]
+      .. literalinclude:: code/methods_statistics_use_.py
 
    Use the ``name_to_index`` attribute to map variable names to indices.
 
@@ -119,9 +105,7 @@ resolution:
 name_to_index:
    A dictionary mapping variable names to their indices.
 
-   .. code:: python
-
-      print(dataset.name_to_index["2t"])
+   .. literalinclude:: code/methods_name_to_index_.py
 
 variables:
    A list of the dataset's variable names, in the order they appear in
