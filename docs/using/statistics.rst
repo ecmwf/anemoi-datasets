@@ -24,18 +24,20 @@ a specific dataset from which to get the statistics:
    future release.
 
 *Residual statistics* are the statistics of the difference between two
-datasets, e.g. between a high-resolution dataset regridded to a coarser
-grid and the native dataset on that grid. They do not live in a Zarr
-store: they are computed once with the :ref:`compute command
-<compute_command>` and written to a JSON file:
+datasets, e.g. between a high-resolution dataset and the native dataset on
+a coarser grid, both interpolated onto that coarser grid. They do not live
+in a Zarr store: they are computed once with the :ref:`compute command
+<compute_command>` and written to a file:
 
 .. code-block:: bash
 
-    anemoi-datasets compute hi-res grid=o96 \
-        --statistics-residual lo-res --output residual.json
+    anemoi-datasets compute hi-res --minus lo-res --grid o96 \
+        --output-statistics residual.npz
 
-That file is then attached to a dataset with the ``residual_statistics``
-option, and read back from the ``residual_statistics`` property:
+That file is a compressed numpy archive holding the statistics as arrays
+and everything else as a JSON string. It is attached to a dataset with the
+``residual_statistics`` option, and read back from the
+``residual_statistics`` property:
 
 .. literalinclude:: code/statistics_residual_.py
 

@@ -19,24 +19,47 @@ Usage
 ::
 
     anemoi-datasets compute <dataset> [key=value ...] \\
+        [--start DATE] [--end DATE] [--frequency FREQ] \\
         [--statistics] [--statistics-tendencies 6h] \\
-        [--statistics-residual <dataset-2> [key=value ...]] \\
-        [--chunk-size N] [--compare] [--output FILE.json] [--overwrite] \\
+        [--minus <dataset-2> [key=value ...]] \\
+        [--grid o96] [--grid-method nearest] \\
+        [--output PATH.zarr] \\
+        [--chunk-size N] [--compare] [--output-statistics FILE.npz] [--overwrite] \\
         [--checkpoint PATH] [--resume] [--parallel N]
 
-Results are always written to a JSON file. Without ``--output`` the default is
-``<dataset-name>.statistics.json`` in the current directory. The command fails if
-the output file already exists unless ``--overwrite`` is given. The document
-carries a ``kind``/``version``/``datasets`` header (see
+The statistics are always written to a compressed numpy archive (``.npz``), which
+holds them as arrays and everything else -- the header, the variable names, the
+provenance -- as a JSON string under ``metadata``. Without ``--output-statistics``
+the default is ``<dataset-name>.statistics.npz`` in the current directory. The
+command fails if the output file already exists unless ``--overwrite`` is given.
+The document carries a ``kind``/``version``/``datasets`` header (see
 :mod:`anemoi.datasets.misc.residual_statistics`), so a residual document can be
-fed back to ``open_dataset(..., residual_statistics=...)`` -- an experimental
-option that may be removed or renamed in a future release.
+fed back to ``open_dataset(..., residual_statistics=...)`` in either format -- an
+experimental option that may be removed or renamed in a future release.
+
+``--grid`` interpolates the dataset -- and the one given to ``--minus`` -- onto
+the requested grid before anything else, so that two datasets at different
+resolutions can be subtracted. The interpolation is done by anemoi-transform; see
+:mod:`anemoi.datasets.commands.compute.interpolation`.
+
+``--start``, ``--end`` and ``--frequency`` are ``open_dataset`` options applied to
+every dataset of the command, so that the dataset and the one given to ``--minus``
+do not have to repeat them. Giving one of them both as a flag and as a
+``key=value`` (or inside a JSON config) is an error.
+
+``--output`` additionally writes the values read by the loop -- the dataset
+as opened, or the residual ``<dataset> - <dataset-2>`` -- to a new Zarr dataset of
+the same layout (gridded or trajectories), in the same single pass, always as
+``float32``. The recomputed statistics become the statistics
+of that dataset, and its metadata is derived from the opened dataset(s); a
+``derived_from`` metadata entry records the ``open_dataset`` calls the values came
+from. See :mod:`anemoi.datasets.commands.compute.output_dataset`.
 
 ``<dataset>`` is either a name/path followed by ``key=value`` ``open_dataset``
 options (e.g. ``start=2020-01-01 end=2020-12-31``), or a single JSON literal that
 is a complete ``open_dataset`` config (e.g. ``'{"dataset": "x", "start": ...}'``).
 The JSON is passed straight to ``open_dataset``; it must NOT contain compute
-options, which are always given as the CLI flags above. ``--statistics-residual``
+options, which are always given as the CLI flags above. ``--minus``
 introduces a second dataset described the same way (name + ``key=value`` or a JSON
 config). ``--statistics-tendencies`` takes a single delta. NaNs are ignored
 per-variable by default.
@@ -50,15 +73,17 @@ import os
 import sys
 from typing import Any
 
-import numpy as np
-
+from anemoi.datasets.misc.residual_statistics import NPZ_SUFFIX
 from anemoi.datasets.misc.residual_statistics import RESIDUAL_KIND
 from anemoi.datasets.misc.residual_statistics import STATISTICS_KIND
+from anemoi.datasets.misc.residual_statistics import check_path
 from anemoi.datasets.misc.residual_statistics import header
+from anemoi.datasets.misc.residual_statistics import save
 
 from .. import Command
 from .engine import Task
 from .engine import run as run_engine
+from .interpolation import DEFAULT_GRID_METHOD
 from .statistics import DEFAULT_CHUNK_SIZE
 from .statistics import STATISTICS
 
@@ -164,7 +189,15 @@ class _Parsed:
         # Behaviour.
         self.allow_nans = True  # NaNs are ignored per-variable by default
         self.compare = False
-        self.output: str | None = None
+        self.output_statistics: str | None = None
+        # open_dataset options applied to every dataset (both, with --minus).
+        self.start: Any = None
+        self.end: Any = None
+        self.frequency: Any = None
+        # Interpolation.
+        self.grid: str | None = None
+        self.grid_method: str = DEFAULT_GRID_METHOD
+        self.output_dataset: str | None = None
         self.overwrite = False
         self.checkpoint: str | None = None
         self.resume = False
@@ -172,9 +205,67 @@ class _Parsed:
         self.sample_dates: float | None = None
 
     def finalise(self) -> None:
-        """Apply default actions once parsing is complete."""
+        """Apply default actions once parsing is complete, and check the combinations."""
         if not self.do_statistics and self.tendency is None:
             self.do_statistics = True
+
+        for key in ("start", "end", "frequency"):
+            value = getattr(self, key)
+            if value is not None:
+                self._apply_to_every_dataset(key, value)
+
+        if self.grid is None and self.grid_method != DEFAULT_GRID_METHOD:
+            raise ValueError("--grid-method requires --grid")
+
+        if self.output_statistics is not None:
+            check_path(self.output_statistics)
+
+        if self.output_dataset is not None:
+            # A generated dataset always carries its statistics, so they are
+            # computed even when only tendencies were asked for.
+            self.do_statistics = True
+
+            if not self.output_dataset.endswith(".zarr"):
+                raise ValueError(f"--output must end with '.zarr', got '{self.output_dataset}'")
+
+            if self.sample_dates is not None:
+                raise ValueError(
+                    "--output cannot be combined with --sample-dates: every date must be read to be written"
+                )
+
+    def _apply_to_every_dataset(self, key: str, value: Any) -> None:
+        """Add an ``open_dataset`` option to every dataset of the command.
+
+        ``--start``, ``--end`` and ``--frequency`` are shorthands for options that
+        would otherwise have to be repeated on the dataset *and* on the one given
+        to ``--minus``, which is the common case: the two are subtracted by
+        position, so they have to be on the same dates anyway.
+
+        Parameters
+        ----------
+        key : str
+            The ``open_dataset`` option name.
+        value : Any
+            Its value.
+
+        Raises
+        ------
+        ValueError
+            If a dataset already sets that option, as ``key=value`` or inside its
+            JSON config: the two would silently disagree.
+        """
+        for label, args, kwargs in (
+            (self.label, self.open_args, self.open_kwargs),
+            (self.residual_label, self.residual_open_args, self.residual_open_kwargs),
+        ):
+            if not args:  # no --minus
+                continue
+            if key in kwargs or (isinstance(args[0], dict) and key in args[0]):
+                raise ValueError(
+                    f"--{key} conflicts with the '{key}' already given for '{label}'. "
+                    f"Set it either as the global --{key} flag or per dataset, not both."
+                )
+            kwargs[key] = value
 
 
 def _short(obj: Any) -> str:
@@ -185,8 +276,8 @@ def _short(obj: Any) -> str:
     return text if len(text) <= 60 else text[:57] + "..."
 
 
-def _default_output(parsed: "_Parsed") -> str:
-    """Derive the default output path ``<dataset-name>.statistics.json``.
+def _default_statistics_output(parsed: "_Parsed") -> str:
+    """Derive the default ``--output-statistics`` path, ``<dataset-name>.statistics.npz``.
 
     The name is the basename of the (first) dataset with any ``.zarr``/``.zip``
     extension stripped; for a JSON config the short label is used instead.
@@ -195,7 +286,7 @@ def _default_output(parsed: "_Parsed") -> str:
     for ext in (".zarr", ".zip"):
         if name.endswith(ext):
             name = name[: -len(ext)]
-    return f"{name}.statistics.json"
+    return f"{name}.statistics{NPZ_SUFFIX}"
 
 
 def _parse(tokens: list[str]) -> _Parsed:
@@ -204,7 +295,7 @@ def _parse(tokens: list[str]) -> _Parsed:
     The first token is the dataset, either a name/path (optionally followed by
     ``key=value`` ``open_dataset`` options) or a single JSON literal that is a
     complete ``open_dataset`` config. Compute options are always CLI flags and are
-    never part of the JSON. ``--statistics-residual`` introduces a second dataset
+    never part of the JSON. ``--minus`` introduces a second dataset
     described the same way; it consumes only that dataset's spec, so compute flags
     may appear before or after it.
 
@@ -246,10 +337,10 @@ def _parse(tokens: list[str]) -> _Parsed:
                 raise ValueError("--statistics-tendencies requires a delta (e.g. 6h)")
             parsed.tendency = tokens[i]
             i += 1
-        elif tok == "--statistics-residual":
+        elif tok == "--minus":
             i += 1
             if i >= len(tokens):
-                raise ValueError("--statistics-residual requires a dataset")
+                raise ValueError("--minus requires a dataset")
             if _is_json(tokens[i]):
                 seg = [tokens[i]]
                 i += 1
@@ -277,11 +368,49 @@ def _parse(tokens: list[str]) -> _Parsed:
         elif tok == "--resume":
             parsed.resume = True
             i += 1
-        elif tok == "--output":
+        elif tok in ("--output-statistics", "--output_statistics"):
             i += 1
             if i >= len(tokens):
-                raise ValueError("--output requires a path")
-            parsed.output = tokens[i]
+                raise ValueError("--output-statistics requires a path")
+            parsed.output_statistics = tokens[i]
+            i += 1
+        elif tok == "--start":
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--start requires a date")
+            parsed.start = _coerce(tokens[i])
+            i += 1
+        elif tok == "--end":
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--end requires a date")
+            parsed.end = _coerce(tokens[i])
+            i += 1
+        elif tok == "--frequency":
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--frequency requires a frequency (e.g. 6h)")
+            parsed.frequency = _coerce(tokens[i])
+            i += 1
+        elif tok == "--grid":
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--grid requires a grid (e.g. o96, 0.25, or a path to a .npz grid file)")
+            parsed.grid = tokens[i]
+            i += 1
+        elif tok in ("--grid-method", "--grid_method"):
+            i += 1
+            if i >= len(tokens):
+                raise ValueError("--grid-method requires a method (e.g. nearest)")
+            parsed.grid_method = tokens[i]
+            i += 1
+        elif tok in ("--output", "--output-dataset", "--output_dataset"):
+            if tok != "--output":
+                LOG.warning("%s is deprecated, use --output instead.", tok)
+            i += 1
+            if i >= len(tokens):
+                raise ValueError(f"{tok} requires a path")
+            parsed.output_dataset = tokens[i]
             i += 1
         elif tok == "--overwrite":
             parsed.overwrite = True
@@ -316,7 +445,10 @@ def _parse(tokens: list[str]) -> _Parsed:
             kwargs[key] = _coerce(val)
             i += 1
         else:
-            raise ValueError(f"Unexpected token '{tok}' (expected key=value or an option)")
+            raise ValueError(
+                f"Unexpected token '{tok}': expected key=value or an option. "
+                "Only the first token is the dataset, and every option takes a single value."
+            )
 
     parsed.open_kwargs = kwargs
 
@@ -375,6 +507,11 @@ def _args_sha(parsed: "_Parsed") -> str:
         "residual_open_args": parsed.residual_open_args,
         "residual_open_kwargs": parsed.residual_open_kwargs,
         "sample_dates": parsed.sample_dates,
+        "grid": parsed.grid,
+        "grid_method": parsed.grid_method,
+        # The generated dataset is part of the result: a resumed run must not
+        # skip blocks that were written to a different store.
+        "output_dataset": parsed.output_dataset,
     }
     blob = json.dumps(canonical, sort_keys=True, default=str).encode()
     return hashlib.sha1(blob).hexdigest()[:16]
@@ -422,19 +559,177 @@ def _compare_block(
     return block
 
 
-def _jsonable(obj: Any) -> Any:
-    """Recursively convert numpy arrays/scalars to plain Python for JSON output."""
-    if isinstance(obj, np.ndarray):
-        return [None if (isinstance(x, float) and np.isnan(x)) else x for x in obj.tolist()]
-    if isinstance(obj, (np.floating, np.integer)):
-        return obj.item()
-    if isinstance(obj, dict):
-        return {k: _jsonable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_jsonable(v) for v in obj]
-    if isinstance(obj, float) and np.isnan(obj):
-        return None
-    return obj
+#: The ``description`` of the ``compute`` sub-parser: what the command does, how a
+#: dataset is spelled, and every option. The options are not declared to argparse
+#: (see :meth:`Compute.add_arguments`), so this text is the only place ``-h`` gets
+#: them from; keep it in step with :func:`_parse` and with ``docs/cli/compute.rst``.
+HELP = """\
+Recompute the statistics of a dataset -- or of its tendencies, or of its
+difference with another dataset -- on the fly from the dataset as opened, without
+rewriting its Zarr store. Optionally write the values read to a new dataset.
+
+The results are always written to a compressed numpy archive (.npz), and printed
+as a table.
+
+
+THE DATASET
+
+  <dataset> (and the dataset after --minus) is given in one of two ways:
+
+    a name or path, optionally followed by key=value tokens that are forwarded
+    to open_dataset:
+
+        my-dataset start=2020-01-01 end=2020-12-31 select=2t
+
+    or a single JSON literal that is a complete open_dataset config, which is
+    handy for nested ones:
+
+        '{"dataset": "my-dataset", "start": "2020-01-01", "select": ["2t"]}'
+
+  The compute options below are always CLI flags: they never go inside the JSON,
+  and key=value tokens cannot be mixed with a JSON config.
+
+
+WHAT TO COMPUTE (--statistics is used when none of these is given)
+
+  --statistics                mean, minimum, maximum and stdev, in float64.
+
+  --statistics-tendencies DELTA
+                              the same, for value(t) - value(t - DELTA), e.g. 6h.
+                              DELTA must be a multiple of the dataset frequency.
+
+  --minus <dataset-2> [key=value ...]
+                              compute on <dataset> - <dataset-2> instead. The
+                              subtraction is by position, so both datasets must
+                              end up with the same dates, the same variables in
+                              the same order and the same shape. Their grids may
+                              differ only if --grid is given: without it only the
+                              shapes are checked, and two different grids with the
+                              same number of points would be subtracted point by
+                              point, which is meaningless.
+
+  --compare                   also print the difference with the statistics stored
+                              in the dataset. Not applicable to --minus.
+
+
+INTERPOLATION
+
+  --grid GRID                 bring the dataset -- and the one given to --minus --
+                              onto GRID before anything else, so that datasets at
+                              different resolutions can be subtracted. GRID is a
+                              named grid (o96, n320, ...), a resolution (0.25,
+                              0.25x0.25) or the path of an .npz file holding
+                              'latitudes' and 'longitudes' arrays. It is a grid,
+                              not a pre-computed interpolation matrix.
+
+  --grid-method METHOD        how to interpolate (default: nearest). 'nearest' is
+                              a KD-tree over the source points and works for any
+                              pair of grids; any other method (linear, ...) is
+                              passed to earthkit-regrid, which needs both grids to
+                              be known to it and the dataset to have a resolution.
+                              Requires --grid.
+
+
+OUTPUT
+
+  --output-statistics FILE.npz
+                              where to write the statistics. Defaults to
+                              <dataset-name>.statistics.npz in the current
+                              directory. The archive holds one array per
+                              statistic, plus the rest of the document as a JSON
+                              string under 'metadata'.
+
+  --overwrite                 replace the output file, and the generated dataset,
+                              if they exist. Without it the command stops straight
+                              away rather than at the end of the computation.
+
+  --output PATH.zarr          also write the values read -- the dataset as opened,
+                              or the residual -- to a new Zarr dataset, in the same
+                              pass. Gridded and trajectories datasets are both
+                              supported, and the generated one has the layout of
+                              the one it came from. The recomputed statistics become
+                              its statistics. The data array is float32, as in
+                              'anemoi-datasets create'; the statistics stay float64.
+
+
+RUNNING
+
+  --chunk-size N              number of time steps read at a time (default: 1).
+
+  --parallel N                use N worker processes. The dates are split into
+                              segments and merged; the result is identical to the
+                              sequential one.
+
+  --sample-dates FRACTION     compute on a random fraction of the dates (0.1 is
+                              10%), for a quick estimate. Deterministic. Not
+                              compatible with --statistics-tendencies (which needs
+                              adjacent dates) nor with --parallel.
+
+  --checkpoint PATH           checkpoint file (default:
+                              ./compute-checkpoint-<sha1 of the arguments>.pkl).
+                              Written about every minute, removed on success.
+
+  --resume                    restart from the checkpoint. The arguments must be
+                              the ones it was created with.
+
+NaNs are ignored, per variable. Missing dates cannot be read: they are skipped,
+and no tendency is computed across the gap they leave. A generated dataset keeps
+them, as NaN and in its own 'missing_dates'. Open the dataset with
+fill_missing_dates to fill and include them instead.
+"""
+
+#: The ``epilog`` of the ``compute`` sub-parser: worked command lines, printed
+#: after the options.
+EXAMPLES = """\
+EXAMPLES
+
+  Recompute the statistics of a dataset as opened, over a sub-period:
+
+      anemoi-datasets compute my-dataset start=2020-01-01 end=2020-12-31
+
+  Check the statistics stored in a dataset:
+
+      anemoi-datasets compute my-dataset --compare
+
+  Statistics of the 6-hour tendencies, on 8 processes, to a named file:
+
+      anemoi-datasets compute my-dataset --statistics-tendencies 6h \\
+          --parallel 8 --output-statistics tendencies.npz
+
+  A quick estimate from 10% of the dates:
+
+      anemoi-datasets compute my-dataset --sample-dates 0.1
+
+  Write the results as a numpy archive rather than JSON:
+
+      anemoi-datasets compute my-dataset --output-statistics my-dataset.statistics.npz
+
+  Statistics of the difference between two datasets at different resolutions,
+  both brought onto o96 first:
+
+      anemoi-datasets compute hres-dataset --minus lres-dataset --grid o96
+
+  ... interpolating properly rather than by nearest neighbour:
+
+      anemoi-datasets compute hres-dataset --minus lres-dataset \\
+          --grid o96 --grid-method linear
+
+  Give the dataset as a JSON open_dataset config (compute options stay flags):
+
+      anemoi-datasets compute '{"dataset": "my-dataset", "select": ["2t", "10u"]}' \\
+          --statistics --parallel 8
+
+  Materialise a view as a dataset of its own, with the recomputed statistics:
+
+      anemoi-datasets compute my-dataset select=2t --output 2t.zarr \\
+          --output-statistics 2t.statistics.npz
+
+  Write the difference between two datasets as a dataset, and resume it if it
+  is interrupted:
+
+      anemoi-datasets compute a --minus b --grid o96 --output a-b.zarr
+      anemoi-datasets compute a --minus b --grid o96 --output a-b.zarr --resume
+"""
 
 
 class Compute(Command):
@@ -451,23 +746,19 @@ class Compute(Command):
         command_parser : Any
             The argument parser instance.
         """
-        # Everything is captured verbatim and parsed by hand: the grammar (mixed
-        # key=value tokens and a nested --statistics-residual dataset with its own options or
-        # JSON config) does not map cleanly onto argparse.
-        command_parser.add_argument(
-            "rest",
-            nargs=argparse.REMAINDER,
-            help=(
-                "<dataset> [key=value ...] [--statistics] [--statistics-tendencies 6h] "
-                "[--statistics-residual <dataset-2> [key=value ...]] [--chunk-size N] "
-                "[--sample-dates FRACTION] "
-                "[--compare] [--output FILE.json] [--overwrite] [--checkpoint PATH] [--resume] [--parallel N]. "
-                "<dataset> may be a name/path with key=value open_dataset options, or a single "
-                "JSON literal that is a complete open_dataset config (compute options stay as flags). "
-                "Results are written to <dataset-name>.statistics.json by default (use --output to change, "
-                "--overwrite to replace an existing file). NaNs are ignored by default."
-            ),
-        )
+        # The options are documented by hand in HELP/EXAMPLES rather than declared
+        # to argparse, because everything after the command name is captured
+        # verbatim and parsed by hand: the grammar (mixed key=value tokens and a
+        # nested --minus dataset with its own options or JSON config) does not map
+        # cleanly onto argparse. RawDescriptionHelpFormatter keeps the layout of
+        # the two texts, which the default formatter would re-wrap.
+        command_parser.formatter_class = argparse.RawDescriptionHelpFormatter
+        command_parser.usage = "%(prog)s <dataset> [key=value ...] [options]"
+        command_parser.description = HELP
+        command_parser.epilog = EXAMPLES
+        # argparse only carries the tokens; the positional itself is not worth
+        # showing, the usage line and HELP describe it.
+        command_parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
     def run(self, args: Any) -> None:
         """Execute the compute command.
@@ -479,11 +770,17 @@ class Compute(Command):
         """
         parsed = _parse(list(args.rest))
 
-        # Resolve the output path and fail fast (before any computation) if it
+        # Resolve the statistics path and fail fast (before any computation) if it
         # already exists and --overwrite was not given.
-        output = parsed.output or _default_output(parsed)
-        if os.path.exists(output) and not parsed.overwrite:
-            raise ValueError(f"Output file already exists: {output} (use --overwrite to replace it)")
+        output_statistics = parsed.output_statistics or _default_statistics_output(parsed)
+        if os.path.exists(output_statistics) and not parsed.overwrite:
+            raise ValueError(f"Statistics file already exists: {output_statistics} (use --overwrite to replace it)")
+
+        if parsed.output_dataset and os.path.exists(parsed.output_dataset) and not (parsed.overwrite or parsed.resume):
+            raise ValueError(
+                f"Output dataset already exists: {parsed.output_dataset} "
+                "(use --overwrite to replace it, or --resume to continue writing it)"
+            )
 
         sha = _args_sha(parsed)
         checkpoint = parsed.checkpoint or os.path.join(os.getcwd(), f"compute-checkpoint-{sha}.pkl")
@@ -506,6 +803,10 @@ class Compute(Command):
             args_sha=sha,
             sample_dates=parsed.sample_dates,
             live=sys.stdout.isatty(),
+            grid=parsed.grid,
+            grid_method=parsed.grid_method,
+            output_dataset=parsed.output_dataset,
+            output_overwrite=parsed.overwrite,
         )
 
         variables, results = run_engine(task)
@@ -521,8 +822,14 @@ class Compute(Command):
             ),
             "dataset": parsed.label,
             "residual": parsed.residual_label if parsed.has_residual else None,
+            # Where the values came from and what produced them: the
+            # open_dataset call(s), the arithmetic, the anemoi-datasets version
+            # and the command line. The same entry a generated dataset carries.
+            "derived_from": results["derived_from"],
             "variables": variables,
             "tendency": parsed.tendency,
+            "grid": parsed.grid,
+            "output_dataset": parsed.output_dataset,
             "statistics": None,
             "tendency_statistics": None,
             "compare": {},
@@ -550,9 +857,8 @@ class Compute(Command):
         if parsed.compare:
             self._compare(parsed, variables, results, document)
 
-        with open(output, "w") as f:
-            json.dump(_jsonable(document), f, indent=2)
-        LOG.info("Results written to %s", output)
+        save(output_statistics, document)
+        LOG.info("Statistics written to %s", output_statistics)
 
     def _compare(
         self, parsed: "_Parsed", variables: list[str], results: dict[str, Any], document: dict[str, Any]

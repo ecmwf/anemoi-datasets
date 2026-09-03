@@ -16,7 +16,7 @@ Experimental: this option and the ``residual_statistics`` attribute it
 provides may be removed or renamed in a future release.
 
 Attaches the statistics of the difference between two datasets, read from a JSON
-file written by ``anemoi-datasets compute ... --statistics-residual ...``, to a
+file written by ``anemoi-datasets compute ... --minus ...``, to a
 dataset. The file format is described in
 :mod:`anemoi.datasets.misc.residual_statistics`.
 

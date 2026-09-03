@@ -1223,7 +1223,7 @@ class Dataset(ABC, Sized):
         Residual statistics describe the difference between two datasets. They
         are not stored in a dataset; they are attached with
         ``open_dataset(..., residual_statistics="residual.json")``, from a file
-        written by ``anemoi-datasets compute <a> --statistics-residual <b>``.
+        written by ``anemoi-datasets compute <a> --minus <b>``.
 
         Warnings
         --------

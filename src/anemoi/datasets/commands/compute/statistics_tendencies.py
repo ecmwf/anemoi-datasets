@@ -130,6 +130,14 @@ class TendencyAccumulator:
         else:
             self._window = np.array(data[-self.delta :], copy=True)
 
+    def reset_window(self) -> None:
+        """Forget the sliding window, so the next batch starts a new run of dates.
+
+        Used when the dates are not contiguous (a missing date): no tendency is
+        then computed across the gap.
+        """
+        self._window = None
+
     def merge(self, other: "TendencyAccumulator") -> "TendencyAccumulator":
         """Merge another tendency accumulator into a new one.
 
