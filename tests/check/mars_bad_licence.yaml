@@ -1,0 +1,11 @@
+name: mars_bad_licence
+licence: CC-BY-4.0
+attribution: ECMWF
+dates:
+  start: 2020-01-01 00:00:00
+  end: 2020-01-03 00:00:00
+input:
+  mars:
+    class: od
+    expver: 1
+    stream: lwwv

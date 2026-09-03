@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
+from pydantic import ValidationError
 
 from .action import Action
 from .build import Build
@@ -30,6 +31,39 @@ class Recipe(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "Recipe":
+        """Create a Recipe from a dictionary with friendly error messages.
+
+        Parameters
+        ----------
+        data : dict
+            The recipe data.
+
+        Returns
+        -------
+        Recipe
+            The instantiated recipe.
+
+        Raises
+        ------
+        ValueError
+            If validation fails, with a user-friendly error message.
+        """
+        try:
+            return cls(**data)
+        except ValidationError as e:
+            # Format validation errors nicely
+            errors = e.errors()
+            field_errors = []
+            for error in errors:
+                loc = ".".join(str(x) for x in error["loc"])
+                msg = error["msg"]
+                field_errors.append(f"  - {loc}: {msg}")
+
+            error_message = "Failed to parse recipe:\n" + "\n".join(field_errors)
+            raise ValueError(error_message) from e
+
     @model_validator(mode="after")
     def _post_init(self) -> "Recipe":
         # We need to call _post_init on nested BaseModel members
@@ -41,8 +75,9 @@ class Recipe(BaseModel):
         return self
 
     description: str = "No description provided."
-    licence: str = "unknown"
-    attribution: str = "unknown"
+    
+    licence: str
+    attribution: str
 
     dates: Dates
     """The date configuration for the dataset."""
@@ -85,7 +120,7 @@ class Recipe(BaseModel):
             A dictionary containing only non-default values.
         """
 
-        defaults = Recipe(dates={"values": []}).model_dump()
+        defaults = Recipe.from_dict({"dates": {"values": []}, "licence": "unknown", "attribution": "unknown"}).model_dump()
 
         def _only_non_defaults(d, default_d):
 
@@ -112,11 +147,11 @@ class Recipe(BaseModel):
 
     def strip_unknown_keys(self, data: dict) -> dict:
         assert isinstance(data, dict)
-        defaults = Recipe(input={"empty": {}}, dates={"values": []}).model_dump()
+        defaults = Recipe.from_dict({"input": {"empty": {}}, "dates": {"values": []}, "licence": "unknown", "attribution": "unknown"}).model_dump()
         return {key: data[key] for key in defaults.keys()}
 
 
-def loader_recipe_from_yaml(path: str) -> dict:
+def loader_recipe_from_yaml(path: str) -> Recipe:
     """Load a dataset recipe from a YAML file.
 
     Parameters
@@ -126,16 +161,16 @@ def loader_recipe_from_yaml(path: str) -> dict:
 
     Returns
     -------
-    dict
+    Recipe
         The dataset recipe.
     """
     with open(path) as f:
         recipe_yaml = f.read()
     recipe = yaml.safe_load(recipe_yaml)
-    return Recipe(**recipe)
+    return Recipe.from_dict(recipe)
 
 
-def loader_recipe_from_zarr(path: str) -> dict:
+def loader_recipe_from_zarr(path: str) -> Recipe:
     """Load a dataset recipe from a Zarr store.
 
     Parameters
@@ -145,7 +180,7 @@ def loader_recipe_from_zarr(path: str) -> dict:
 
     Returns
     -------
-    dict
+    Recipe
         The dataset recipe.
     """
     import zarr
@@ -160,6 +195,6 @@ def loader_recipe_from_zarr(path: str) -> dict:
 
         recipe = z.attrs[name]
         recipe = recipe if isinstance(recipe, dict) else json.loads(recipe)
-        return Recipe(**recipe)
+        return Recipe.from_dict(recipe)
 
     raise ValueError(f"No recipe found in Zarr store at {path}")
