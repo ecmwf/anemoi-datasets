@@ -73,12 +73,19 @@ The tables below provide more details and some examples.
 
    -  -  **resolution**
 
-      -  o96 (could be : n320, 0p2 for 0.2 degree, 1km, 2km).  The
-         resolution token must start with a digit (``0``-``9``), ``o``
-         or ``n``.  It is **mandatory** for gridded and trajectory
-         layouts and **optional** for tabular layouts (since station
-         observation datasets often have no meaningful spatial
-         resolution). Using ``p`` for decimal points in the resolution is recommended.
+      -  o96 (could be : `n320`, `0p2`, `1km`, `r03b03`).
+
+         The resolution token:
+
+         1. Must either:
+
+            a. start with a digit (``0``-``9``), ``o`` or ``n``
+            b. be of the form ``r\d\db\d\d`` for icosahedral resolutions.
+         2. Should use ``p`` for decimal points in the resolution (e.g.
+            ``0p2`` for 0.2 degree).
+         3. Is **mandatory** for gridded and trajectory layouts and
+            **optional** for tabular layouts (since station observation datasets
+            often have no meaningful spatial resolution).
 
    -  -  **start-year**
       -  1979 if the first validity time is in 1979.
@@ -130,6 +137,7 @@ The tables below provide more details and some examples.
    -  -  aifs-ea-an-enda-0001-mars-o96-1979-2022-6h-v6-recentered-on-oper
    -  -  aifs-ea-ofb-0001-o96-1979-2023-v2-reprojected-gridded-observations
    -  -  aifs-ea-an-oper-0001-mars-n320-1979-2022-6h-v4
+   -  -  dwd-dream-archive-r03b03-2010-2024-3h-v1-ml14
    -  -  aemet-an-harm-2p5km-2016-2021-6h-v0-canarias
 
 .. list-table:: Examples — trajectories
