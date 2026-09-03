@@ -347,8 +347,8 @@ each bridged onto the imposed ``(base_date, step)`` rows:
 
 -  **a base-less, valid-time source** — a bare ``accumulation:`` *duration*
    (no ``base_dates``/``steps``): the field valid at ``base_date + step`` is
-   summed to ``period`` and relabelled onto that row (see `Base-less source
-   data`_).
+   summed to ``period`` and relabelled onto that row (see :ref:`base-less
+   source data <valid-time>`).
 -  **a different forecast archive** — explicit ``base_dates`` + ``steps`` (or
    an omitted ``from:`` for a well-known MARS archive, or a ``lookup-table``)
    describing an archive whose run grid differs from the layout's: each output

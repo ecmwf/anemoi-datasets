@@ -43,7 +43,7 @@ class GribIndexCmd(Command):
 
         command_parser.add_argument(
             "--match",
-            help="Give a glob pattern to match files (default: *.grib)",
+            help="Give a glob pattern to match files (default: any file ending in .grib)",
             default="*.grib",
         )
 
