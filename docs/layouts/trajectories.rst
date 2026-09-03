@@ -65,6 +65,9 @@ Rules enforced by the recipe validator:
 (``6`` meaning 6 hours, or ``"6h"``, ``"1d"``, …). The set of samples
 materialised on disk is the Cartesian product of basetimes and steps.
 
+See :ref:`building-trajectories-cli` for a step-by-step guide to building
+a trajectory dataset with the command line tool.
+
 Which sources can feed a trajectory recipe
 ==========================================
 

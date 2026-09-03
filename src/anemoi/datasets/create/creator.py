@@ -33,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.19"
+VERSION = "0.20"
 
 LOG = logging.getLogger(__name__)
 
@@ -64,6 +64,8 @@ class Creator(ABC):
         self.recipe = recipe
 
         self.parts = kwargs.pop("parts", None)
+        self.finalise_stage = kwargs.pop("finalise_stage", None)
+        self.rows_per_chunk_print = kwargs.pop("rows_per_chunk_print", False)
 
         self.kwargs = kwargs
         self.work_dir = kwargs.get("work_dir", self.path + ".work_dir")
@@ -183,12 +185,13 @@ class Creator(ABC):
         # We use model_dump_json to have a JSON string, because Zarr sorts attrs keys
 
         model_dump = self.recipe.model_dump_json()
+        model_dump = json.loads(model_dump)
+
         metadata["_recipe"] = model_dump
 
         # Store a sanitised (no path, no urls,...) version of the recipe for the catalogue
         # This one will be kept in the finalised dataset metadata
 
-        model_dump = json.loads(model_dump)
         # model_dump = self.recipe.only_non_defaults(model_dump)
         model_dump = self.recipe.strip_unknown_keys(model_dump)
         if self.recipe.output.sanitise:
@@ -262,8 +265,48 @@ class Creator(ABC):
         self.final_metadata(dataset)
         dataset.touch()
 
+    def task_finalise_prepare(self) -> None:
+        LOG.info("Finalising dataset (prepare stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_prepare(dataset)
+        self.final_metadata(dataset)
+        dataset.touch()
+
+    def task_finalise_rows_per_chunk(self) -> None:
+        LOG.info("Finalising dataset (rows-per-chunk stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_rows_per_chunk(dataset)
+        dataset.touch()
+
+    def task_finalise_load(self) -> None:
+        LOG.info("Finalising dataset (load stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_load(dataset)
+        dataset.touch()
+
+    def task_finalise_tidy(self) -> None:
+        LOG.info("Finalising dataset (tidy stage).")
+        dataset = Dataset(self.path, update=True)
+        self.finalise_tidy(dataset)
+        self.final_metadata(dataset)
+        dataset.touch()
+
     @abstractmethod
     def finalise_dataset(self, dataset: Dataset) -> None:
+        pass
+
+    def finalise_prepare(self, dataset: Dataset) -> None:
+        # Layouts that do not support staged finalisation run the whole thing here.
+        self.finalise_dataset(dataset)
+
+    def finalise_rows_per_chunk(self, dataset: Dataset) -> None:
+        # Only the tabular layout computes an optimal rows-per-chunk; other layouts ignore this.
+        pass
+
+    def finalise_load(self, dataset: Dataset) -> None:
+        pass
+
+    def finalise_tidy(self, dataset: Dataset) -> None:
         pass
 
     def final_metadata(self, dataset: Dataset) -> None:
