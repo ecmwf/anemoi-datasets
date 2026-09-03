@@ -7,7 +7,6 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import datetime
 from typing import Any
 
 from anemoi.transform import Field
@@ -77,10 +76,11 @@ class ForcingsSource(Source):
         # with the correct base_datetime/step metadata
         result = []
         for vt, bt in dates:
-            step_hours = int((vt - bt).total_seconds() // 3600)
+            # The step is the lead time itself, not a whole number of hours:
+            # flooring it would place several sub-hourly points on the same step.
             meta = dict(
                 base_datetime=bt,
-                step=datetime.timedelta(hours=step_hours),
+                step=vt - bt,
             )
             for f in fields_by_vdt.get(vt, []):
                 result.append(Field.with_new_metadata(f, units=_units_for(f), **meta))

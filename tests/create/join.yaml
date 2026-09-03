@@ -28,7 +28,6 @@ input:
 
     - accumulate:
         period: 6
-        availability: "auto"
         source:
           mars:
             <<: *mars_request

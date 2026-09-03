@@ -325,10 +325,11 @@ as follows:
       -  ❌
       -  ❌
       -  ✅
-      -  Trajectories only: select a single forecast step. Returns a
-         4-D view ``(base_dates, variables, ensembles, cells)`` —
-         shape-compatible with a gridded dataset at that lead time. See
-         :ref:`subsetting-trajectories`.
+      -  Trajectories only: select a single forecast step, as a
+         time-delta specification (``6`` meaning 6 hours, or ``"6h"``,
+         ``"30m"``). Returns a 4-D view ``(base_dates, variables,
+         ensembles, cells)`` — shape-compatible with a gridded dataset at
+         that lead time. See :ref:`subsetting-trajectories`.
 
    -  -  step_end
       -  ❌

@@ -23,8 +23,10 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.compat import DebugStore
 from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import LocalStore
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import lru_store_cache
 from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
@@ -83,19 +85,19 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
 
                 if not os.path.isdir(store):
                     raise NotImplementedError(
-                        "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
+                        "DEBUG_ZARR_LOADING is only implemented for local directory stores. "
                         "Please disable it for other backends."
                     )
-                store = zarr.storage.DirectoryStore(store)
+                store = LocalStore(store)
             store = DebugStore(store)
 
         if cache is not None:
-            store = zarr.LRUStoreCache(store, max_size=cache)
+            store = lru_store_cache(store, max_size=cache)
 
         return zarr.open(store, mode="r")
     except ZarrFileNotFoundError:
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise ZarrFileNotFoundError(path)
 
 
 QUIET = set()

@@ -347,3 +347,59 @@ if __name__ == "__main__":
         test_grib_index_no_basetime(t)
     for t in RR_OPER_TEST_CASE:
         test_rr_oper(t)
+
+
+# ---------------------------------------------------------------------------
+# Sub-hourly availabilities
+# ---------------------------------------------------------------------------
+
+# A base-less archive of 10-minute increments (the shape a bare
+# ``covering: {auto: "10m"}`` describes).
+SUB_HOURLY_TEST_CASES = [
+    # One increment: exactly one field.
+    (
+        _("20240101.0000 -> 20240101.0010"),
+        [_("20240101.0000 -> 20240101.0010")],
+    ),
+    # A 30-minute window: three summed increments.
+    (
+        _("20240101.0000 -> 20240101.0030"),
+        [
+            _("20240101.0000 -> 20240101.0010"),
+            _("20240101.0010 -> 20240101.0020"),
+            _("20240101.0020 -> 20240101.0030"),
+        ],
+    ),
+    # An hour, starting off the hour and crossing it.
+    (
+        _("20240101.0050 -> 20240101.0120"),
+        [
+            _("20240101.0050 -> 20240101.0100"),
+            _("20240101.0100 -> 20240101.0110"),
+            _("20240101.0110 -> 20240101.0120"),
+        ],
+    ),
+    # A window that no whole number of 10-minute increments can tile.
+    (
+        _("20240101.0000 -> 20240101.0025"),
+        None,
+    ),
+]
+
+
+@pytest.mark.parametrize("test", SUB_HOURLY_TEST_CASES, ids=[str(t[0]) for t in SUB_HOURLY_TEST_CASES])
+def test_sub_hourly_increments(test):
+    """A ``{auto: "10m"}`` availability: 10-minute increments, at any base."""
+    tester = _Tester(interval_generator_factory("10m"))
+    tester.test(test[0], test[1])
+
+
+def test_sub_hourly_availability_must_divide_a_day():
+    """The bare-frequency form tiles a day, so the increment has to divide it."""
+    with pytest.raises(ValueError, match="must divide 24h"):
+        interval_generator_factory("7m")
+
+
+def test_sub_minute_availability_rejected():
+    with pytest.raises(ValueError, match="whole number of minutes"):
+        interval_generator_factory("30s")

@@ -78,51 +78,31 @@ can be used at the leaves of a trajectory recipe. Today this means:
 -  :ref:`mars <sources-mars>` — full forecast and forecast-accumulation
    support.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
-   the ``accumulation: from-zero | from-previous-step`` flag; see below.
+   the ``from: {accumulation: ...}`` block; see below.
+-  :ref:`grib <grib_source>` — local forecast archives, addressed by file
+   path. The file name usually encodes the model run and the lead time
+   rather than the validity time, so the path template takes ``base_date``
+   and ``step`` alongside ``date``; see :ref:`grib-path-keywords`.
+-  :ref:`grib-index <grib-index_source>` — the same local archives,
+   addressed through an index instead of a path template.
 
-``grib-index``, ``fdb``, ``hindcasts`` and ``recentre`` are not
-trajectory-aware in this release. ``from-trajectories:`` is the reverse
-bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
+For local GRIB the two routes are compared, including how each behaves
+under ``accumulate:``, in :ref:`grib-or-grib-index`.
+
+``fdb``, ``hindcasts`` and ``recentre`` are not trajectory-aware in this
+release. The :ref:`from-trajectories
+<sources-from-trajectories>` *source* is the reverse bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
 fields from a forecast archive; see :ref:`sources-from-trajectories`.
 
 Forecast accumulations
 ======================
 
 Inside a trajectory recipe, ``accumulate:`` produces per-step
-accumulation fields anchored on the caller-imposed basetime. The
-``accumulation`` flag is **required** and picks the archive convention:
-
--  ``from-zero`` — the archive stores accumulations from the basetime
-   (``a(0, step)``). The window ``[bt+sA, bt+sE]`` is reconstructed as
-   ``+a(0, sE) − a(0, sA)``.
--  ``from-previous-step`` — the archive stores per-step increments
-   (``a(step − period, step)``). The window is a single interval.
-
-The ``covering:`` key used for archive accumulations is **not** used
-here: the covering is determined entirely by the basetime and the
-``accumulation`` flag.
-
-.. code:: yaml
-
-   base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
-   steps:      {start: 6, end: 30, frequency: 3h}
-
-   input:
-     join:
-       - mars: {type: fc, class: od, param: [q, t], levtype: pl,
-                level: [50], stream: oper, grid: 20./20., expver: "0001"}
-       - pipe:
-           - accumulate:
-               period: 1h
-               accumulation: from-zero
-               source:
-                 mars: {type: fc, class: od, param: [tp], levtype: sfc,
-                        stream: oper, grid: 20./20., expver: "0001"}
-           - rename:
-               param: {tp: tp_accum_1h}
-
-   output:
-     layout: trajectories
+accumulation fields anchored on the caller-imposed basetime, declaring
+the archive's native scheme with ``from.accumulation:``. The
+accumulate source is documented in one place, for both trajectory and
+non-trajectory recipes: see :ref:`accumulate-trajectories` for the
+trajectory case.
 
 Chunking
 ========
@@ -198,15 +178,19 @@ Selecting along the step axis
 ``open_dataset`` accepts additional keyword arguments to subset the step
 axis:
 
--  ``step=<int>`` — select a single forecast step; returns a
+-  ``step=<step>`` — select a single forecast step; returns a
    :ref:`gridded-like<layouts-gridded>` 4-D view ``(base_dates,
    variables, ensembles, cells)`` through a ``SingleStepView`` wrapper.
--  ``steps=[<int>, …]`` — select a list of steps; keeps the 5-D shape
+-  ``steps=[<step>, …]`` — select a list of steps; keeps the 5-D shape
    with the step axis narrowed (``StepSubset``).
 -  ``step_start``, ``step_end``, ``step_frequency`` — range form of the
    above.
 -  ``base_start``, ``base_end`` — filter the base-date axis without the
    valid-time envelope logic.
+
+Every step value above is a time-delta specification: a bare number means
+hours (``step=6``), and a suffixed string is honoured (``step="6h"``,
+``step="30m"`` on a sub-hourly dataset).
 
 .. code:: python
 

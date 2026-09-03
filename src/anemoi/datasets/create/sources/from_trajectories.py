@@ -29,18 +29,20 @@ Recipe example::
 
 The ``bases`` pattern uses ``fnmatch`` wildcard syntax against
 ``"%Y-%m-%d %H:%M:%S"`` formatted basetimes (``?`` matches any single
-character, ``*`` matches any sequence).  Omit ``bases`` to accept any
-basetime.  Omit ``steps`` to default to step 0 (analysis-like).
+character, ``*`` matches any sequence); the seconds, or the whole time,
+may be omitted (e.g. ``????-??-?? 00:00`` or ``????-??-??``).  Omit
+``bases`` to accept any basetime.  Omit ``steps`` to default to step 0
+(analysis-like).
 """
 
 import datetime
-import fnmatch
 import logging
 from typing import Any
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
+from anemoi.datasets.create.time_schemas import matches_date_pattern
 
 from . import source_registry
 from .mars.retrieval import expand_to_by
@@ -112,7 +114,7 @@ class FromTrajectoriesSource(Source):
         """
         if self.bases_pattern is None:
             return True
-        return fnmatch.fnmatch(basetime.strftime("%Y-%m-%d %H:%M:%S"), self.bases_pattern)
+        return matches_date_pattern(basetime, self.bases_pattern)
 
     def _pick_basetime(self, valid_time: datetime.datetime) -> datetime.datetime:
         """Pick the first candidate basetime for *valid_time* satisfying the filters.

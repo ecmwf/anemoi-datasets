@@ -1,11 +1,11 @@
 accumulate:
   period: 6h
-  availability: auto
+  group_by:
+    namespace: mars
+    ignore: [date, time, step, expver]  # accumulate fields together across expver
   source:
     mars:
-      expver: "0001"
       class: ea
-      stream: oper
       type: fc
       grid: 20./20.
       levtype: sfc

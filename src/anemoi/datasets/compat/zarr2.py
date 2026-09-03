@@ -143,6 +143,43 @@ def _monkey_patch_create_array(
 Group.create_array = _monkey_patch_create_array
 
 
+LocalStore = zarr.storage.DirectoryStore
+
+
+def nested_store(path: str) -> "zarr.storage.NestedDirectoryStore":
+    """Return a store that writes chunk keys in a nested directory layout.
+
+    Parameters
+    ----------
+    path : str
+        Path to the store.
+
+    Returns
+    -------
+    zarr.storage.NestedDirectoryStore
+        The nested store.
+    """
+    return zarr.storage.NestedDirectoryStore(path)
+
+
+def lru_store_cache(store: "zarr.storage.BaseStore", max_size: int) -> "zarr.LRUStoreCache":
+    """Wrap a store in an in-memory LRU cache.
+
+    Parameters
+    ----------
+    store : zarr.storage.BaseStore
+        The store to wrap.
+    max_size : int
+        Maximum size of the cache, in bytes.
+
+    Returns
+    -------
+    zarr.LRUStoreCache
+        The cached store.
+    """
+    return zarr.LRUStoreCache(store, max_size=max_size)
+
+
 def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.Blosc":
     """Return a Blosc compressor for zarr2.
 

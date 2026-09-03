@@ -67,7 +67,12 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinxarg.ext",
+    "sphinxcontrib.mermaid",
 ]
+
+# Let mermaid diagrams take their natural height (default is a fixed 500px,
+# which leaves large empty margins around small diagrams).
+mermaid_height = "auto"
 
 # Add any paths that contain templates here, relative to this directory.
 # templates_path = ["_templates"]

@@ -16,11 +16,12 @@ from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.transform import Field
 from anemoi.transform.variables import Variable
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.buffering import ReadAheadBuffer
+from anemoi.datasets.buffering import ChunkAlignedWriteBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -149,10 +150,10 @@ class TrajectoryGriddedCreator(GriddedCreator):
         }
         chunks = self.recipe.output.get_chunking(coords)
 
-        # ``load_result`` streams the write one ``(base_date, step)`` region at a
-        # time so that only a single forecast step -- not the whole trajectory --
-        # is held in memory. That is only chunk-aligned when the base-date and
-        # step axes are chunked by 1 (see ``_check_streaming_chunks``).
+        # ``load_result`` buffers whole Zarr chunks, one ``(base_date, step)``
+        # region at a time, so that only a single forecast step -- not the whole
+        # trajectory -- is held in memory. That is only chunk-aligned when the
+        # base-date and step axes are chunked by 1 (see ``_check_streaming_chunks``).
         self._check_streaming_chunks(list(coords), chunks)
 
         grid_points = self.minimal_input.grid_points
@@ -177,7 +178,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
     def _check_streaming_chunks(dims: list[str], chunks: tuple[int, ...]) -> None:
         """Assert the base-date and step axes are chunked by 1.
 
-        The write in :meth:`load_result` is streamed one ``(base_date, step)``
+        The write in :meth:`load_result` is buffered one ``(base_date, step)``
         region at a time so that only a single forecast step -- not the whole
         trajectory -- is held in memory.  Each region maps onto whole chunks
         (written exactly once, no read-modify-write of an already-populated
@@ -201,19 +202,12 @@ class TrajectoryGriddedCreator(GriddedCreator):
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load a multi-basetime, multi-step forecast cube into the 5-D dataset array.
 
-        The whole trajectory is retrieved with a single request, but the write
-        is *streamed* one ``(base_date, step)`` region at a time so that only a
-        single forecast step is held in memory rather than the whole trajectory.
-
-        The cube's outermost axis is ``traj_point`` (``{date}_{time}_{step}``,
-        see ``TrajectoryGriddedContext.order_by``), so all cubelets sharing a
-        ``(basetime, step)`` are contiguous.  We accumulate their fields into a
-        single ``(variables, ensembles, cells)`` step_block -- keyed by the
-        ``(basetime, step, variable, ensemble)`` identifiers read from the field
-        metadata -- and flush it to ``data[date_idx, :, :, step_idx, :]`` as
-        soon as the region changes.  Because the base-date and step axes are
-        chunked by 1 (enforced in :meth:`initialise_dataset`), each region maps
-        onto whole chunks and is written exactly once, with no read-modify-write.
+        The cube is ordered by ``(date, time, step, param_level, number)``
+        (see ``TrajectoriesOutput.order_by``).  Some axes may be squeezed
+        out of the cube when they have size 1.  For each cubelet we read the
+        underlying field metadata to recover the ``(basetime, step, variable,
+        ensemble)`` identifiers and write into ``data[date_idx, step_idx,
+        var_idx, ens_idx, :]``.
 
         Parameters
         ----------
@@ -281,81 +275,51 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 raise ValueError(f"Trajectories: step {step_td} not in dataset.steps")
             return int(indices[0])
 
-        # Stream the write one region at a time.  Only one ``(base_date, step)``
-        # step_block is resident at a time; ``traj_point`` being the outermost
-        # cube axis guarantees each region is visited exactly once and
-        # contiguously.
-        data_array = dataset.data
-        assert (
-            data_array.chunks[0] == 1 and data_array.chunks[3] == 1
-        ), f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
-        n_variables = len(variables)
-        n_ensembles = data_array.shape[2]
-        n_cells = data_array.shape[4]
+        # Buffer whole Zarr chunks, not whole rows: a row here is
+        # ``n_steps`` chunks, so a row-granular buffer would hold ``n_steps``
+        # times more data than a chunk needs. ``read_back=False`` is safe
+        # because the loop below writes every element of every chunk it
+        # touches -- a chunk is all the variables of one (basetime, step),
+        # and the coverage guard above has checked that they are all there.
+        with ChunkAlignedWriteBuffer(dataset.data, read_back=False) as array:
+            for cubelet in cube.iterate_cubelets():
+                data = cubelet.to_numpy()
+                # The cube yields raw earthkit fields; wrap for the Field properties.
+                field = Field(cube[cubelet.coords])
 
-        current_key: tuple[int, int] | None = None
-        step_block: Any = None
-        flushed_keys: set[tuple[int, int]] = set()
-
-        def flush(key: tuple[int, int] | None, block: Any) -> None:
-            if key is not None:
-                date_idx, step_idx = key
-                data_array[date_idx, :, :, step_idx, :] = block
-
-        for cubelet in cube.iterate_cubelets():
-            data = cubelet.to_numpy()
-            field = cube[cubelet.coords]
-
-            # Recover basetime from field metadata
-            date_int = int(field.metadata("date"))  # YYYYMMDD
-            time_int = int(field.metadata("time") or 0)  # HHMM
-            basetime = datetime.datetime(
-                year=date_int // 10000,
-                month=(date_int // 100) % 100,
-                day=date_int % 100,
-                hour=time_int // 100,
-                minute=time_int % 100,
-            )
-            step_td = datetime.timedelta(hours=int(field.metadata("step")))
-
-            var_name = field.name
-            number = field.number
-
-            if number_to_index is None:
-                ens_idx = 0
-            else:
-                ens_idx = number_to_index.get(int(number))
-                if ens_idx is None:
-                    raise ValueError(
-                        f"Trajectories: member number {number} not in the cube's "
-                        f"'number' coordinate {list(numbers)}"
-                    )
-
-            date_idx = basetime_index_of(basetime)
-            step_idx = step_index_of(step_td)
-
-            var_idx = var_to_idx.get(var_name)
-            if var_idx is None:
-                raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
-
-            key = (date_idx, step_idx)
-            if key != current_key:
-                # Region changed: flush the previous step_block and start a new one.
-                flush(current_key, step_block)
-                if current_key is not None:
-                    flushed_keys.add(current_key)
-                assert key not in flushed_keys, (
-                    f"Trajectories: (base_date, step) region {key} revisited; the cube is "
-                    "not ordered by 'traj_point' as expected, so streaming writes would "
-                    "overwrite an already-flushed region."
+                # Recover basetime from field component paths (works for raw GRIB and wrapped fields alike)
+                basetime = field.time.base_datetime()
+                step_td_raw = field.time.step()
+                # time.step() returns a datetime.timedelta in earthkit 1.0
+                step_td = (
+                    step_td_raw
+                    if isinstance(step_td_raw, datetime.timedelta)
+                    else datetime.timedelta(hours=int(step_td_raw))
                 )
-                current_key = key
-                step_block = np.full((n_variables, n_ensembles, n_cells), np.nan, dtype=data_array.dtype)
 
-            step_block[var_idx, ens_idx, :] = data
+                # The naming scheme (``build.variable_naming``) attached the
+                # variable name to the field when the input was built.
+                var_name = field.name
 
-        # Flush the final region.
-        flush(current_key, step_block)
+                number = field.number
+                if number_to_index is None:
+                    ens_idx = 0
+                else:
+                    ens_idx = number_to_index.get(int(number))
+                    if ens_idx is None:
+                        raise ValueError(
+                            f"Trajectories: member number {number} not in the cube's "
+                            f"'number' coordinate {list(numbers)}"
+                        )
+
+                date_idx = basetime_index_of(basetime)
+                step_idx = step_index_of(step_td)
+
+                var_idx = var_to_idx.get(var_name)
+                if var_idx is None:
+                    raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
+
+                array[(date_idx, var_idx, ens_idx, step_idx)] = data
 
         # Detect silently-missing data. A source that returns no fields for this
         # group (e.g. a corrupt earthkit cache, a MARS gap, or an over-narrow
@@ -430,23 +394,126 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
         return tendencies
 
+    @cached_property
+    def _groups_list(self) -> list[Any]:
+        """Materialise the date groups once so ``load_done`` can index into them.
+
+        The list is small (one entry per group) and the groups are cheap to
+        build, so caching avoids re-iterating the provider for every group.
+        """
+        return list(self.groups)
+
+    def _group_row_indices(self, dataset: Dataset, group: int) -> "np.ndarray":
+        """Return the axis-0 rows that group ``group`` was written to.
+
+        A trajectory group carries every ``(basetime, step)`` pair of a set of
+        base dates. ``load_result`` writes each trajectory at the position of its
+        base date in ``dataset.base_dates``, so the group's rows are the array
+        positions of its (sorted, unique) base dates. These are generally *not*
+        contiguous -- missing base-date slots and non-contiguous groupings such
+        as ``MMDD`` scatter them across the axis -- which is why the statistics
+        must record them explicitly rather than rely on ``group_to_range``.
+        """
+        basetimes = sorted({bt for _, bt in self._groups_list[group]})
+        wanted = np.array([np.datetime64(bt, "s") for bt in basetimes])
+        all_basetimes = np.asarray(dataset.base_dates)
+        return np.searchsorted(all_basetimes, wanted)
+
+    def load_done(self, dataset: Dataset, group: int) -> None:
+        """Compute this group's statistics after it has been loaded.
+
+        Mirrors the gridded creator, but collects over the group's actual
+        (possibly scattered) rows and records their indices in the precomputed
+        file, so finalisation is a plain merge (see
+        :meth:`TrajectoryStatisticsCollector.load_precomputed`).
+        """
+        if self.parts is None:
+            # Statistics for a single full-dataset load are computed once, at the
+            # end, by ``compute_and_store_statistics``.
+            return
+
+        os.makedirs(self.work_dir, exist_ok=True)
+
+        indices = self._group_row_indices(dataset, group)
+
+        LOG.info(f"Computing statistics for group {group} ({len(indices)} rows)")
+
+        collector = self._compute_partial_statistics_indices(dataset, indices)
+
+        start = int(indices.min()) if len(indices) else 0
+        end = int(indices.max()) + 1 if len(indices) else 0
+        collector.serialise(
+            os.path.join(self.work_dir, f"statistics_{group:06d}-{start:09d}-{end:09d}.pkl"),
+            group=group,
+            start=start,
+            end=end,
+            indices=indices,
+        )
+
+    def _compute_partial_statistics_indices(self, dataset: Dataset, indices) -> TrajectoryStatisticsCollector:
+        """Collect statistics over an explicit set of axis-0 rows.
+
+        Each row is read one step at a time (the output chunking is one
+        ``(base_date, step)`` pair per chunk), so only a sliding window of a
+        few chunks is ever resident — a whole row is ``n_steps`` chunks and
+        would not fit in memory at high resolution — while supporting the
+        scattered row layout of trajectory groups.
+        """
+        base_dates = dataset.base_dates
+        steps = dataset.steps
+
+        filter = self.recipe.statistics.trajectory_statistics_filter(base_dates, steps)
+
+        # The constants check only needs to retain a reference trajectory when
+        # a second kept trajectory will be compared against it.
+        kept_rows = int(np.sum(filter.mask(base_dates[indices]))) if filter is not None else len(indices)
+
+        collector = TrajectoryStatisticsCollector(
+            variables_names=self.variables_names,
+            filter=filter,
+            tendencies=self._tendencies_to_compute(dataset),
+            constants_reference=kept_rows > 1,
+        )
+
+        data = dataset.data
+        n_steps = len(steps)
+
+        for i in tqdm.tqdm(indices):
+            i = int(i)
+
+            def read_step(s: int, i: int = i):
+                return data[i : i + 1, :, :, s : s + 1, :]
+
+            collector.collect_by_steps(read_step, n_steps, base_dates[i : i + 1])
+
+        return collector
+
     def _compute_partial_statistics(self, dataset: Dataset, start, end) -> TrajectoryStatisticsCollector:
         base_dates = dataset.base_dates
         steps = dataset.steps
 
+        filter = self.recipe.statistics.trajectory_statistics_filter(base_dates, steps)
+        kept_rows = int(np.sum(filter.mask(base_dates[start:end]))) if filter is not None else end - start
+
         collector = TrajectoryStatisticsCollector(
             variables_names=self.variables_names,
-            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            filter=filter,
             tendencies=self._tendencies_to_compute(dataset),
+            constants_reference=kept_rows > 1,
         )
 
-        data = ReadAheadBuffer(dataset.data, start=start)
+        # Read one step chunk at a time (see _compute_partial_statistics_indices).
+        data = dataset.data
+        n_steps = len(steps)
         chunk_size = data.chunks[0]
 
         for i in tqdm.tqdm(range(start, end, chunk_size)):
             j = min(i + chunk_size, end)
-            chunk = data[i:j]
-            collector.collect(chunk, base_dates[i:j])
+
+            def read_step(s: int, i: int = i, j: int = j):
+                return data[i:j, :, :, s : s + 1, :]
+
+            collector.collect_by_steps(read_step, n_steps, base_dates[i:j])
 
         return collector
 

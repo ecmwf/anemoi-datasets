@@ -9,11 +9,10 @@ input:
   accumulate:
     period: 6h
 
-    availability:
-        type: accumulated-from-previous-step
-        basetime: [6, 18]
-        frequency: 3
-        last_step: 18
+    from:
+      base_dates: {times: ["06:00", "18:00"]}
+      steps: {start: 3h, end: 18h, frequency: 3h}
+      accumulation: 3h
 
     source:
       mars:

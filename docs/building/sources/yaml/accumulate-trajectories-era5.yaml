@@ -1,0 +1,15 @@
+accumulate:
+  period: 6h
+  from:
+    base_dates: {times: ["06:00", "18:00"]}
+    steps: {start: 1h, end: 18h, frequency: 1h}
+    accumulation: 1h       # per-step increments, one step-spacing long
+  source:
+    mars:
+      expver: "0001"
+      class: ea
+      stream: oper
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]
