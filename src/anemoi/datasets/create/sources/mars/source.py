@@ -14,6 +14,7 @@ from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.intervals import timedelta_to_step
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
@@ -181,17 +182,20 @@ class MarsSource(Source):
         per_item_requests: list[dict[str, Any]] = []
         for valid_time, basetime in dates.items:
             step_seconds = (valid_time - basetime).total_seconds()
-            if step_seconds % 3600:
+            if step_seconds % 60:
                 raise ValueError(
-                    f"MARS forecast requests only support whole-hour steps, got "
+                    f"MARS forecast requests only support whole-minute steps, got "
                     f"step={valid_time - basetime} (valid_time={valid_time}, basetime={basetime})."
                 )
-            step_hours = int(step_seconds // 3600)
+            # A whole-hour step stays a plain integer (the request is then
+            # byte-for-byte what it has always been); a sub-hourly one takes
+            # the archive's minute syntax ("10m", "1h10m").
+            step = timedelta_to_step(valid_time - basetime)
             for request in base_requests:
                 r = request.copy()
                 r["date"] = basetime.strftime("%Y%m%d")
                 r["time"] = basetime.strftime("%H%M")
-                r["step"] = step_hours
+                r["step"] = step
                 if self._hindcast_refdates is not None:
                     self._apply_hindcast(r, basetime)
                 per_item_requests.append(r)

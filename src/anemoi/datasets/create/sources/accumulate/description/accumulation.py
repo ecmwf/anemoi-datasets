@@ -11,8 +11,10 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 ACCUMULATION_VALUES = (
@@ -23,23 +25,32 @@ ACCUMULATION_VALUES = (
 _RESET_RE = re.compile(r"^from-zero-reset-every-(.+)$")
 
 
-def parse_accumulation(value: str) -> tuple[str, int | None]:
+def _check_duration(value: datetime.timedelta, what: str) -> datetime.timedelta:
+    """Validate a scheme duration: positive, and a whole number of minutes."""
+    if value <= datetime.timedelta(0):
+        raise ValueError(f"{what} must be positive, got {frequency_to_string(value)}")
+    if value.total_seconds() % 60:
+        raise ValueError(f"{what} must be a whole number of minutes, got {frequency_to_string(value)}")
+    return value
+
+
+def parse_accumulation(value: str) -> tuple[str, datetime.timedelta | None]:
     """Parse an ``accumulation:`` value.
 
     Parameters
     ----------
     value
-        ``from-zero``, a duration (e.g. ``1h`` — the fixed length each
-        field holds, which used to be spelled ``from-previous-step``), or
-        ``from-zero-reset-every-<frequency>``.
+        ``from-zero``, a duration (e.g. ``1h`` or ``10m`` — the fixed length
+        each field holds, which used to be spelled ``from-previous-step``),
+        or ``from-zero-reset-every-<frequency>``.
 
     Returns
     -------
     tuple
-        ``(kind, hours)`` where *kind* is ``"from-zero"``, ``"increment"``
-        or ``"from-zero-reset"``.  *hours* is the increment length (for
+        ``(kind, length)`` where *kind* is ``"from-zero"``, ``"increment"``
+        or ``"from-zero-reset"``.  *length* is the increment length (for
         ``"increment"``), the reset frequency (for ``"from-zero-reset"``),
-        both in whole hours, or ``None`` (for ``"from-zero"``).
+        both as timedeltas, or ``None`` (for ``"from-zero"``).
     """
     if not isinstance(value, str):
         raise ValueError(f"Invalid 'accumulation' value {value!r}; expected one of {ACCUMULATION_VALUES}")
@@ -51,17 +62,11 @@ def parse_accumulation(value: str) -> tuple[str, int | None]:
             reset = frequency_to_timedelta(m.group(1))
         except Exception as e:
             raise ValueError(f"Invalid reset frequency in 'accumulation: {value}': {m.group(1)!r}") from e
-        hours = reset.total_seconds() / 3600
-        if not (hours.is_integer() and hours > 0):
-            raise ValueError(f"Reset frequency in 'accumulation: {value}' must be a positive whole number of hours")
-        return "from-zero-reset", int(hours)
+        return "from-zero-reset", _check_duration(reset, f"Reset frequency in 'accumulation: {value}'")
     # A bare duration: the fixed accumulation length each field holds (the
     # former 'from-previous-step', now stated as the length itself).
     try:
         increment = frequency_to_timedelta(value)
     except Exception:
         raise ValueError(f"Invalid 'accumulation' value {value!r}; expected one of {ACCUMULATION_VALUES}")
-    hours = increment.total_seconds() / 3600
-    if not (hours.is_integer() and hours > 0):
-        raise ValueError(f"Invalid 'accumulation' value {value!r}; a duration must be a positive whole number of hours")
-    return "increment", int(hours)
+    return "increment", _check_duration(increment, f"The duration in 'accumulation: {value}'")

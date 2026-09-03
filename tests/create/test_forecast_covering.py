@@ -20,6 +20,10 @@ def _hours(n):
     return datetime.timedelta(hours=n)
 
 
+def _minutes(n):
+    return datetime.timedelta(minutes=n)
+
+
 def test_valid_time_single_field_when_period_equals_length():
     """A base-less 5h source serving a 5h period is one field — 5h need not divide 24h."""
     d = datetime.datetime(2024, 6, 1, 7)  # 07:00, not on any midnight grid
@@ -162,8 +166,47 @@ def test_reset_window_starting_on_boundary():
     assert cover == [SignedInterval(start=bt + _hours(24), end=bt + _hours(30), base=bt)]
 
 
-def test_non_integer_hours_rejected():
+def test_sub_hourly_offsets_are_supported():
+    """A window whose endpoints are sub-hourly offsets of the basetime is covered.
+
+    Was rejected outright ("integer-hour offsets"); the decomposition is the
+    same signed difference, in whole minutes rather than whole hours.
+    """
     bt = datetime.datetime(2021, 1, 1)
-    sel = ForecastCovering(period=_hours(6), accumulation="from-zero")
-    with pytest.raises(ValueError, match="integer-hour"):
-        sel.cover(bt + datetime.timedelta(minutes=30), bt + _hours(6), basetime=bt)
+    sel = ForecastCovering(period=_minutes(30), accumulation="from-zero")
+    cover = sel.cover(bt + _minutes(30), bt + _minutes(60), basetime=bt)
+    assert cover == [
+        SignedInterval(start=bt, end=bt + _minutes(60), base=bt),
+        -SignedInterval(start=bt, end=bt + _minutes(30), base=bt),
+    ]
+
+
+def test_sub_hourly_increment_tiles_the_window():
+    """A 30 min window from a 10 min increment source is three summed fields."""
+    bt = datetime.datetime(2021, 1, 1)
+    sel = ForecastCovering(period=_minutes(30), accumulation="10m")
+    cover = sel.cover(bt + _minutes(30), bt + _minutes(60), basetime=bt)
+    assert cover == [
+        SignedInterval(start=bt + _minutes(30), end=bt + _minutes(40), base=bt),
+        SignedInterval(start=bt + _minutes(40), end=bt + _minutes(50), base=bt),
+        SignedInterval(start=bt + _minutes(50), end=bt + _minutes(60), base=bt),
+    ]
+
+
+def test_sub_hourly_reset_boundary():
+    """Reset every 30 min: a window ending on the boundary is one interval."""
+    bt = datetime.datetime(2021, 1, 1)
+    sel = ForecastCovering(period=_minutes(20), accumulation="from-zero-reset-every-30m")
+    cover = sel.cover(bt + _minutes(10), bt + _minutes(30), basetime=bt)
+    assert cover == [
+        -SignedInterval(start=bt, end=bt + _minutes(10), base=bt),
+        SignedInterval(start=bt, end=bt + _minutes(30), base=bt),
+    ]
+
+
+def test_window_not_multiple_of_increment_rejected():
+    """The increment must tile the window exactly, sub-hourly included."""
+    bt = datetime.datetime(2021, 1, 1)
+    sel = ForecastCovering(period=_minutes(25), accumulation="10m")
+    with pytest.raises(ValueError, match="whole\\s+multiple of the source increment"):
+        sel.cover(bt + _minutes(5), bt + _minutes(30), basetime=bt)

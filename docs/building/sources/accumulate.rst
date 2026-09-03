@@ -40,13 +40,19 @@ the requested ``period:``.
 Source data may use a different accumulation period, or even a different scheme.
 The source data may be accumulated :
 
- - a fixed period (e.g. 1h, 3h, 6h, 12h, 24h)
+ - a fixed period (e.g. 10m, 1h, 3h, 6h, 12h, 24h)
  - accumulated from the start of the forecast
  - accumulated from the previous step
  - accumulated from earlier but reset every *N* hours (special custom use case)
  - other schemes (managed by a lookup table)
 
 Source data accumulation interval is described by the ``accumulation:`` key in the ``from:`` block.
+
+Every period, duration and step in this page may be **sub-hourly**
+(``period: 30m``, ``accumulation: 10m``, ``steps: {start: 10m, end: 1h,
+frequency: 10m}``, an explicit pair ``"0-10m"``). The finest resolution is
+the minute — the smallest unit a MARS or FDB ``step`` and a GRIB step range
+can carry.
 
 The ``accumulate`` source combines them to produce the fixed period you request.
 
@@ -243,7 +249,7 @@ The three keys
    (the first field cannot begin before the forecast). There is no field at
    step 0.
 
-   **An explicit list of pairs**, one per available field (whole hours), each
+   **An explicit list of pairs**, one per available field, each
    written ``"sA-sE"`` or ``[sA, sE]`` (the two are interchangeable). The
    pairs *are* the description, so ``accumulation`` is not used (and is
    rejected). This is the only form general enough for an **irregular grid of

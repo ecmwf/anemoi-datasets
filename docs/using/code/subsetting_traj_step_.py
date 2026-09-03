@@ -8,3 +8,8 @@ ds_subset = open_dataset("traj.zarr", steps=[6, 12, 18])
 
 # Step range form (all three are optional).
 ds_range = open_dataset("traj.zarr", step_start=6, step_end=24, step_frequency="6h")
+
+# A step is a time-delta specification: a bare number means hours, and a
+# suffixed string is honoured — so a sub-hourly dataset is addressed as:
+ds_30m = open_dataset("traj.zarr", step="30m")
+ds_sub = open_dataset("traj.zarr", step_start="10m", step_end="1h", step_frequency="10m")

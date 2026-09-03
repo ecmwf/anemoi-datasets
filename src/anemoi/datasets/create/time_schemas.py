@@ -104,13 +104,15 @@ class Steps(BaseModel):
                 f"'steps.end' - 'steps.start' "
                 f"({frequency_to_string(self.start)} to {frequency_to_string(self.end)})"
             )
-        # The pipeline (MARS step requests, per-field placement) assumes
-        # whole-hour steps throughout.
+        # Minute is the finest resolution the pipeline can express end to end:
+        # a step reaches the archive through the MARS/FDB step syntax, whose
+        # smallest unit is the minute, and it is written to (and read back
+        # from) GRIB step ranges in the same unit.
         for name in ("start", "end", "frequency"):
             value = getattr(self, name)
-            if value.total_seconds() % 3600:
+            if value.total_seconds() % 60:
                 raise ValueError(
-                    f"'steps.{name}' must be a whole number of hours, " f"got {frequency_to_string(value)}"
+                    f"'steps.{name}' must be a whole number of minutes, " f"got {frequency_to_string(value)}"
                 )
         return self
 

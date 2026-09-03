@@ -25,6 +25,8 @@ from anemoi.transform import FieldList
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data.utils.availability import Availability
 
+from anemoi.datasets.create.intervals import step_to_timedelta
+
 # ---------------------------------------------------------------------------
 # MARS key whitelist
 # ---------------------------------------------------------------------------
@@ -319,8 +321,10 @@ def _expand_mars_request(
         if isinstance(step, str) and "-" in step:
             assert step.count("-") == 1, step
 
-        hours = int(str(step).split("-")[-1])
-        base = valid_date - datetime.timedelta(hours=hours)  # MARS base date/time
+        # The lead time is the *end* of the step, which may be sub-hourly
+        # ("10m", "1h10m"); a bare number still means hours.
+        lead = step_to_timedelta(str(step).split("-")[-1])
+        base = valid_date - lead  # MARS base date/time
         r.update(
             {
                 "date": base.strftime("%Y%m%d"),

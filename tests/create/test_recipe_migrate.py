@@ -16,6 +16,7 @@ for the table, a bare ``accumulation`` duration otherwise), and the result
 must pass recipe validation.
 """
 
+import datetime
 import warnings
 
 from anemoi.datasets.commands.recipe.migrate import migrate
@@ -328,7 +329,7 @@ def test_single_pair_with_nonzero_start_is_faithful():
     block = _block(_migrate_and_validate(old))
     assert block["from"]["steps"] == {"start": "12h", "end": "12h", "frequency": "6h"}
     d = FromTrajectories.model_validate(block["from"])
-    assert d.step_pairs() == [(6, 12)]
+    assert d.step_pairs() == [(datetime.timedelta(hours=6), datetime.timedelta(hours=12))]
 
 
 def test_block_level_scheme_is_dropped_outside_trajectory_recipes():

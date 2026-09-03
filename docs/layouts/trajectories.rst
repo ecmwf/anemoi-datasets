@@ -65,6 +65,16 @@ Rules enforced by the recipe validator:
 (``6`` meaning 6 hours, or ``"6h"``, ``"1d"``, …). The set of samples
 materialised on disk is the Cartesian product of basetimes and steps.
 
+Steps may be **sub-hourly** (``frequency: 10m``): the finest resolution
+the pipeline expresses is the minute, which is the smallest unit a MARS
+or FDB ``step`` and a GRIB step range can carry. A step that is not a
+whole number of minutes is rejected. Whether a given source can serve
+sub-hourly steps depends on the archive: the ``mars`` and ``fdb`` sources
+send them in the archive's minute syntax (``10m``, ``1h10m``), the
+``grib`` source addresses them through the ``step_minutes`` path keyword,
+and ``grib-index`` reads them via the validity time (its ``step`` column
+holds whole hours only).
+
 Which sources can feed a trajectory recipe
 ==========================================
 
@@ -175,15 +185,19 @@ Selecting along the step axis
 ``open_dataset`` accepts additional keyword arguments to subset the step
 axis:
 
--  ``step=<int>`` — select a single forecast step; returns a
+-  ``step=<step>`` — select a single forecast step; returns a
    :ref:`gridded-like<layouts-gridded>` 4-D view ``(base_dates,
    variables, ensembles, cells)`` through a ``SingleStepView`` wrapper.
--  ``steps=[<int>, …]`` — select a list of steps; keeps the 5-D shape
+-  ``steps=[<step>, …]`` — select a list of steps; keeps the 5-D shape
    with the step axis narrowed (``StepSubset``).
 -  ``step_start``, ``step_end``, ``step_frequency`` — range form of the
    above.
 -  ``base_start``, ``base_end`` — filter the base-date axis without the
    valid-time envelope logic.
+
+Every step value above is a time-delta specification: a bare number means
+hours (``step=6``), and a suffixed string is honoured (``step="6h"``,
+``step="30m"`` on a sub-hourly dataset).
 
 .. code:: python
 

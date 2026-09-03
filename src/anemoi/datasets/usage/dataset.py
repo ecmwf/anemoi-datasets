@@ -438,32 +438,34 @@ class Dataset(ABC, Sized):
         return [i for i, date in enumerate(self.dates) if start <= date <= end]
 
     def _step_to_index(self, step: int | str) -> int:
-        """Convert a step value (in hours) to a step-axis index.
+        """Convert a step value to a step-axis index.
 
         Parameters
         ----------
         step : int or str
-            The forecast step in hours.
+            The forecast step, as a frequency: a bare number means hours
+            (``6``, ``"6"``), a suffixed string is honoured (``"6h"``, ``"30m"``).
 
         Returns
         -------
         int
             Index into the step axis.
         """
-        target = datetime.timedelta(hours=int(step))
+        target = frequency_to_timedelta(step)
         steps = self.steps
         for i, s in enumerate(steps):
             if s.astype("timedelta64[s]").astype(datetime.timedelta) == target:
                 return i
-        raise ValueError(f"step={step}h not found in dataset steps: {steps}")
+        raise ValueError(f"step={frequency_to_string(target)} not found in dataset steps: {steps}")
 
     def _steps_to_indices(self, steps: int | str | list) -> list[int]:
-        """Convert a collection of step values (in hours) to step-axis indices.
+        """Convert a collection of step values to step-axis indices.
 
         Parameters
         ----------
         steps : int, str, or list
-            Step values in hours.  A single value is treated as a 1-element list.
+            Step values as frequencies (a bare number means hours).  A single
+            value is treated as a 1-element list.
 
         Returns
         -------
@@ -484,9 +486,9 @@ class Dataset(ABC, Sized):
         steps = self.steps
         td = [s.astype("timedelta64[s]").astype(datetime.timedelta) for s in steps]
 
-        lo = datetime.timedelta(hours=int(step_start)) if step_start is not None else td[0]
-        hi = datetime.timedelta(hours=int(step_end)) if step_end is not None else td[-1]
-        freq = datetime.timedelta(hours=int(step_frequency)) if step_frequency is not None else None
+        lo = frequency_to_timedelta(step_start) if step_start is not None else td[0]
+        hi = frequency_to_timedelta(step_end) if step_end is not None else td[-1]
+        freq = frequency_to_timedelta(step_frequency) if step_frequency is not None else None
 
         indices = [i for i, s in enumerate(td) if lo <= s <= hi]
 

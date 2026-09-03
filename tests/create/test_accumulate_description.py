@@ -41,6 +41,15 @@ def _hours(n):
     return datetime.timedelta(hours=n)
 
 
+def _minutes(n):
+    return datetime.timedelta(minutes=n)
+
+
+def _pairs(*pairs):
+    """Step pairs written in hours, as the timedeltas ``step_pairs`` returns."""
+    return [(_hours(a), _hours(b)) for a, b in pairs]
+
+
 # ---------------------------------------------------------------------------
 # from.accumulation: grammar
 # ---------------------------------------------------------------------------
@@ -48,14 +57,20 @@ def _hours(n):
 
 def test_parse_accumulation_values():
     assert parse_accumulation("from-zero") == ("from-zero", None)
-    assert parse_accumulation("1h") == ("increment", 1)
-    assert parse_accumulation("3h") == ("increment", 3)
-    assert parse_accumulation("from-zero-reset-every-24h") == ("from-zero-reset", 24)
-    assert parse_accumulation("from-zero-reset-every-1d") == ("from-zero-reset", 24)
-    assert parse_accumulation("from-zero-reset-every-6h") == ("from-zero-reset", 6)
+    assert parse_accumulation("1h") == ("increment", _hours(1))
+    assert parse_accumulation("3h") == ("increment", _hours(3))
+    assert parse_accumulation("from-zero-reset-every-24h") == ("from-zero-reset", _hours(24))
+    assert parse_accumulation("from-zero-reset-every-1d") == ("from-zero-reset", _hours(24))
+    assert parse_accumulation("from-zero-reset-every-6h") == ("from-zero-reset", _hours(6))
 
 
-@pytest.mark.parametrize("bad", ["auto", "from-start", "from-zero-reset-every-", "from-zero-reset-every-30m", ""])
+def test_parse_accumulation_sub_hourly():
+    """A sub-hourly scheme is a duration or a reset frequency like any other."""
+    assert parse_accumulation("10m") == ("increment", _minutes(10))
+    assert parse_accumulation("from-zero-reset-every-30m") == ("from-zero-reset", _minutes(30))
+
+
+@pytest.mark.parametrize("bad", ["auto", "from-start", "from-zero-reset-every-", "from-zero-reset-every-30s", ""])
 def test_parse_accumulation_rejects(bad):
     with pytest.raises(ValueError):
         parse_accumulation(bad)
@@ -151,16 +166,40 @@ def _description(**kwargs):
 def test_step_pairs_increment():
     """`steps` lists the fields; each covers (step - frequency, step)."""
     d = _description()
-    assert d.step_pairs() == [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)]
+    assert d.step_pairs() == _pairs((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6))
 
     # a 3-hourly archive: fields at 3, 6, ... each covering 3h
     d = _description(steps={"start": "3h", "end": "12h", "frequency": "3h"}, accumulation="3h")
-    assert d.step_pairs() == [(0, 3), (3, 6), (6, 9), (9, 12)]
+    assert d.step_pairs() == _pairs((0, 3), (3, 6), (6, 9), (9, 12))
+
+
+def test_step_pairs_sub_hourly_increment():
+    """A 10-minute archive: fields at 10m, 20m, ... each covering 10m."""
+    d = _description(steps={"start": "10m", "end": "30m", "frequency": "10m"}, accumulation="10m")
+    assert d.step_pairs() == [
+        (_minutes(0), _minutes(10)),
+        (_minutes(10), _minutes(20)),
+        (_minutes(20), _minutes(30)),
+    ]
+
+
+def test_step_pairs_sub_hourly_from_zero_reset():
+    """Reset every 30 min, fields every 10 min: the boundary maths is exact."""
+    d = _description(
+        steps={"start": "10m", "end": "70m", "frequency": "10m"},
+        accumulation="from-zero-reset-every-30m",
+    )
+    pairs = {b: a for a, b in d.step_pairs()}  # end -> start
+    assert pairs[_minutes(10)] == _minutes(0)
+    assert pairs[_minutes(30)] == _minutes(0)  # a step *on* the boundary belongs to the cycle below
+    assert pairs[_minutes(40)] == _minutes(30)
+    assert pairs[_minutes(60)] == _minutes(30)
+    assert pairs[_minutes(70)] == _minutes(60)
 
 
 def test_step_pairs_from_zero():
     d = _description(steps={"start": "1h", "end": "4h", "frequency": "1h"}, accumulation="from-zero")
-    assert d.step_pairs() == [(0, 1), (0, 2), (0, 3), (0, 4)]
+    assert d.step_pairs() == _pairs((0, 1), (0, 2), (0, 3), (0, 4))
 
 
 def test_step_pairs_reset():
@@ -169,13 +208,13 @@ def test_step_pairs_reset():
         accumulation="from-zero-reset-every-24h",
     )
     pairs = {b: a for a, b in d.step_pairs()}  # end -> start
-    assert pairs[1] == 0
-    assert pairs[23] == 0
-    assert pairs[24] == 0
-    assert pairs[25] == 24
-    assert pairs[48] == 24
-    assert pairs[49] == 48
-    assert pairs[50] == 48
+    assert pairs[_hours(1)] == _hours(0)
+    assert pairs[_hours(23)] == _hours(0)
+    assert pairs[_hours(24)] == _hours(0)
+    assert pairs[_hours(25)] == _hours(24)
+    assert pairs[_hours(48)] == _hours(24)
+    assert pairs[_hours(49)] == _hours(48)
+    assert pairs[_hours(50)] == _hours(48)
 
 
 def test_step_pairs_explicit_pairs():
@@ -186,13 +225,13 @@ def test_step_pairs_explicit_pairs():
         accumulation=None,
     )
     assert d.is_explicit_pairs
-    assert d.step_pairs() == [(0, s) for s in (1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30)]
+    assert d.step_pairs() == [(_hours(0), _hours(s)) for s in (1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30)]
 
 
 def test_step_pairs_explicit_mixed_increments():
     """Explicit pairs express what a single scheme cannot: mixed accumulation lengths."""
     d = _description(steps=["0-1", "1-2", "2-3", "3-4", "4-5", "5-6", "6-9", "9-12"], accumulation=None)
-    assert d.step_pairs() == [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 9), (9, 12)]
+    assert d.step_pairs() == _pairs((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 9), (9, 12))
 
 
 def test_from_layout_sentinel():
@@ -204,7 +243,7 @@ def test_from_layout_sentinel():
     with pytest.raises(ValueError, match="not defined for a 'from-layout'"):
         d.step_pairs()
     with pytest.raises(ValueError, match="not defined for a 'from-layout'"):
-        _ = d.step_grid_hours
+        _ = d.step_grid
 
     # A duration or a reset scheme are equally valid layout schemes.
     assert _description(base_dates="from-layout", steps="from-layout", accumulation="3h").is_layout_grid
@@ -229,10 +268,16 @@ def test_from_layout_requires_accumulation():
 
 def test_step_pairs_accept_both_spellings():
     """A pair may be written ``"sA-sE"`` or ``[sA, sE]``, even mixed in one list."""
-    want = [(0, 6), (6, 9)]
+    want = _pairs((0, 6), (6, 9))
     assert _description(steps=["0-6", "6-9"], accumulation=None).step_pairs() == want
     assert _description(steps=[[0, 6], [6, 9]], accumulation=None).step_pairs() == want
     assert _description(steps=["0-6", [6, 9]], accumulation=None).step_pairs() == want
+
+
+def test_step_pairs_accept_sub_hourly_spellings():
+    """A minute suffix is honoured on either half of an explicit pair."""
+    want = [(_minutes(0), _minutes(10)), (_minutes(10), _minutes(20))]
+    assert _description(steps=["0-10m", "10m-20m"], accumulation=None).step_pairs() == want
 
 
 def test_partial_description_rejected_both_ways():
@@ -260,10 +305,10 @@ def test_accumulation_length_is_independent_of_frequency():
     """A duration is the window length, decoupled from the step spacing."""
     # overlapping / rolling: 24 h windows archived every 6 h
     d = _description(steps={"start": "24h", "end": "48h", "frequency": "6h"}, accumulation="24h")
-    assert d.step_pairs() == [(0, 24), (6, 30), (12, 36), (18, 42), (24, 48)]
+    assert d.step_pairs() == _pairs((0, 24), (6, 30), (12, 36), (18, 42), (24, 48))
     # sparse: 1 h windows archived every 6 h (gaps between them)
     d = _description(steps={"start": "6h", "end": "18h", "frequency": "6h"}, accumulation="1h")
-    assert d.step_pairs() == [(5, 6), (11, 12), (17, 18)]
+    assert d.step_pairs() == _pairs((5, 6), (11, 12), (17, 18))
 
 
 def test_list_of_range_dicts_is_rejected():
@@ -353,8 +398,8 @@ def test_infer_from_trajectories_auto():
     d = infer_from_trajectories("mars", {"class": "ea", "stream": "oper"})
     assert d.base_dates.times == [datetime.time(6), datetime.time(18)]
     assert d.accumulation == "1h"
-    assert d.step_grid_hours == list(range(1, 19))  # fields at MARS steps 1..18
-    assert d.step_pairs() == [(s - 1, s) for s in range(1, 19)]
+    assert d.step_grid == [_hours(s) for s in range(1, 19)]  # fields at MARS steps 1..18
+    assert d.step_pairs() == [(_hours(s - 1), _hours(s)) for s in range(1, 19)]
 
     with pytest.raises(ValueError, match="only supported for the 'mars' source"):
         infer_from_trajectories("grib-index", {"index-db": "x"})

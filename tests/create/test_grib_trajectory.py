@@ -113,6 +113,42 @@ def test_sub_hourly_step_is_refused_not_truncated() -> None:
         source.execute_forecast_dates(ForecastDates([(bt + datetime.timedelta(minutes=30), bt)]))
 
 
+def test_sub_hourly_step_via_step_minutes_keyword() -> None:
+    """``step_minutes`` addresses an archive whose files are named by the minute."""
+    bt = datetime.datetime(2020, 10, 1, 0)
+    source = _source("/data/fc+{step_minutes:int(%04d)}")
+
+    source.execute_forecast_dates(
+        ForecastDates(
+            [
+                (bt + datetime.timedelta(minutes=30), bt),
+                (bt + datetime.timedelta(hours=1, minutes=30), bt),
+            ]
+        )
+    )
+
+    assert source.captured == ["/data/fc+0030", "/data/fc+0090"]
+
+
+def test_sub_hourly_step_via_step_seconds_keyword() -> None:
+    bt = datetime.datetime(2020, 10, 1, 0)
+    source = _source("/data/fc+{step_seconds:int(%d)}")
+
+    source.execute_forecast_dates(ForecastDates([(bt + datetime.timedelta(minutes=30), bt)]))
+
+    assert source.captured == ["/data/fc+1800"]
+
+
+def test_step_minutes_alongside_whole_hour_steps() -> None:
+    """The new keywords coexist with ``step``; whole hours are unaffected."""
+    bt = datetime.datetime(2020, 10, 1, 0)
+    source = _source("/data/{step:int(%03d)}h/{step_minutes:int(%05d)}")
+
+    source.execute_forecast_dates(ForecastDates([(bt + datetime.timedelta(hours=36), bt)]))
+
+    assert source.captured == ["/data/036h/02160"]
+
+
 def test_sub_hourly_step_is_fine_when_the_path_ignores_it() -> None:
     """The refusal is only about ``{step}`` — a base_date-only path still works."""
     bt = datetime.datetime(2020, 10, 1, 0)

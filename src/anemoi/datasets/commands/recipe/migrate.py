@@ -13,6 +13,8 @@ import logging
 import warnings
 from typing import Any
 
+from anemoi.datasets.create.intervals import timedelta_to_step
+
 LOG = logging.getLogger(__name__)
 
 
@@ -196,13 +198,29 @@ def migrate_group_by(config: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _grid_to_steps(grid: list[int], frequency: int | None = None) -> dict | list[dict]:
-    """Convert a sorted step grid (hours) to Steps range dict(s).
+def _frequency_string(value: datetime.timedelta) -> str:
+    """Format a lead time as a recipe frequency string.
+
+    Whole hours are written in hours (``"24h"``, not ``"1d"``, which is what
+    ``frequency_to_string`` would give) so that migrating an hour-based recipe
+    reproduces the spelling it has always had; anything finer is written in
+    minutes.  Both forms are accepted by ``frequency_to_timedelta``, which
+    does not understand the compound ``"1h10m"`` archive-step syntax.
+    """
+    seconds = int(value.total_seconds())
+    if seconds % 3600 == 0:
+        return f"{seconds // 3600}h"
+    return f"{seconds // 60}m"
+
+
+def _grid_to_steps(grid: list[datetime.timedelta], frequency: datetime.timedelta | None = None) -> dict | list[dict]:
+    """Convert a sorted step grid to Steps range dict(s).
 
     ``frequency`` is the known spacing, when the scheme dictates one
     (from-previous-step): an isolated grid value carries no spacing of its
     own, and guessing it would mis-describe the accumulation length.
     """
+    zero = datetime.timedelta(0)
     runs = []
     i, n = 0, len(grid)
     while i < n:
@@ -215,25 +233,39 @@ def _grid_to_steps(grid: list[int], frequency: int | None = None) -> dict | list
             i = j + 1
         else:
             value = grid[i]
-            runs.append((value, value, frequency or (value if value > 0 else 1)))
+            runs.append((value, value, frequency or (value if value > zero else datetime.timedelta(hours=1))))
             i += 1
-    result = [{"start": f"{a}h", "end": f"{b}h", "frequency": f"{f}h"} for a, b, f in runs]
+    result = [
+        {
+            "start": _frequency_string(a),
+            "end": _frequency_string(b),
+            "frequency": _frequency_string(f),
+        }
+        for a, b, f in runs
+    ]
     return result[0] if len(result) == 1 else result
 
 
-def _factorise_pairs(pairs) -> tuple[str, list[int], int | None] | None:
-    """Factorise raw (start, end) step pairs into (accumulation scheme, step grid, frequency)."""
+def _factorise_pairs(
+    pairs,
+) -> tuple[str, list[datetime.timedelta], datetime.timedelta | None] | None:
+    """Factorise raw (start, end) step pairs into (accumulation scheme, step grid, frequency).
+
+    The pairs are lead-time timedeltas, so a sub-hourly archive factorises
+    just like an hourly one.
+    """
     from math import gcd
 
-    pairs = sorted({(int(a), int(b)) for a, b in pairs})
+    zero = datetime.timedelta(0)
+    pairs = sorted({(a, b) for a, b in pairs})
 
     if any(b <= a for a, b in pairs):
         # Degenerate legacy entries ("6-6", "6-0") name no real field; any
         # factorisation would invent one.
         return None
 
-    if all(a == 0 for a, b in pairs):
-        return "from-zero", sorted({b for _, b in pairs if b > 0}), None
+    if all(a == zero for a, b in pairs):
+        return "from-zero", sorted({b for _, b in pairs if b > zero}), None
 
     if len({a for a, _ in pairs}) == len(pairs) and all(pairs[i][1] == pairs[i + 1][0] for i in range(len(pairs) - 1)):
         # `steps` lists the steps at which fields exist; the accumulation
@@ -243,13 +275,20 @@ def _factorise_pairs(pairs) -> tuple[str, list[int], int | None] | None:
         if len(lengths) != 1:
             return None
         length = next(iter(lengths))
-        return f"{length}h", [b for _, b in pairs], length
+        return _frequency_string(length), [b for _, b in pairs], length
 
-    reset = 0
+    reset_seconds = 0
     for a, _ in pairs:
-        reset = gcd(reset, a)
-    if reset > 0 and all(a == (b - 1) // reset * reset for a, b in pairs):
-        return f"from-zero-reset-every-{reset}h", sorted({b for _, b in pairs}), None
+        reset_seconds = gcd(reset_seconds, int(a.total_seconds()))
+    if reset_seconds > 0:
+        reset = datetime.timedelta(seconds=reset_seconds)
+        # The reset boundary is the largest multiple of `reset` strictly below b.
+        if all(a == (b - datetime.timedelta.resolution) // reset * reset for a, b in pairs):
+            return (
+                f"from-zero-reset-every-{_frequency_string(reset)}",
+                sorted({b for _, b in pairs}),
+                None,
+            )
 
     return None
 
@@ -284,8 +323,11 @@ def _factorise_entries(entries, day_of_month=None) -> dict | None:
         return {"base_dates": base_dates, "steps": steps_repr, "accumulation": scheme}
     # An irregular grid: the explicit (start, end) pairs are the whole
     # description, so no 'accumulation' is written (they cannot be a range).
-    ordered = sorted({(int(a), int(b)) for a, b in pairs}, key=lambda p: (p[1], p[0]))
-    return {"base_dates": base_dates, "steps": [f"{a}-{b}" for a, b in ordered]}
+    ordered = sorted({(a, b) for a, b in pairs}, key=lambda p: (p[1], p[0]))
+    return {
+        "base_dates": base_dates,
+        "steps": [f"{timedelta_to_step(a)}-{timedelta_to_step(b)}" for a, b in ordered],
+    }
 
 
 def _convert_legacy_description(value) -> tuple[str, object] | None:

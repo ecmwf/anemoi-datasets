@@ -21,6 +21,7 @@ from anemoi.transform import Field
 from anemoi.transform import FieldList
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
+from anemoi.utils.dates import frequency_to_string
 from cachetools import LRUCache
 
 from anemoi.datasets.create.arguments import ForecastDates
@@ -682,7 +683,15 @@ class GribIndexSource(Source):
         yields a positive length.
         """
         request = self.request.copy()
-        request["step"] = int((interval.max - interval.min).total_seconds() / 3600)
+        length = interval.max - interval.min
+        if length.total_seconds() % 3600:
+            raise ValueError(
+                "grib-index: a sub-hourly accumulation window cannot be addressed by the index's "
+                f"'step' column (got {frequency_to_string(length)}), which stores whole hours. "
+                "Use a run-anchored archive (where 'date'/'time' address the field and the "
+                "validity time implies the step) instead."
+            )
+        request["step"] = int(length.total_seconds() // 3600)
         return request
 
     def execute_intervals(self, dates: Intervals) -> FieldList:

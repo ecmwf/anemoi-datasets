@@ -61,6 +61,13 @@ what the recipe asks the source for:
    -  -  ``step``
       -  Lead time in whole hours, ``date − base_date``.
       -  as ``base_date``
+   -  -  ``step_minutes``
+      -  The same lead time in whole minutes. Use it when the archive
+         names its files by a sub-hourly lead time.
+      -  as ``base_date``
+   -  -  ``step_seconds``
+      -  The same lead time in whole seconds.
+      -  as ``base_date``
    -  -  ``start_date``
       -  Start of the accumulation window.
       -  ``accumulate:``
@@ -117,7 +124,9 @@ known — a plain ``dates:`` recipe, or an accumulation over a
 validity-time-indexed archive — raises ``Missing parameter 'step'``.
 A lead time that is not a whole number of hours is refused rather than
 truncated (``expected an integer``), since truncating it would silently
-read a neighbouring file.
+read a neighbouring file. Use ``{step_minutes}`` (or ``{step_seconds}``)
+for an archive whose files are named by a sub-hourly lead time: those two
+keywords always render, whatever the lead time.
 
 Each archive field is read once, however many output rows it feeds. An
 accumulation that both adds and subtracts the same field, and

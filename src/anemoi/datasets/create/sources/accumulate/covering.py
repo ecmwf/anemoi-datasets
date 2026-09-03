@@ -38,6 +38,8 @@ from abc import ABC
 from abc import abstractmethod
 from collections.abc import Iterable
 
+from anemoi.utils.dates import frequency_to_string
+
 from anemoi.datasets.create.intervals import SignedInterval
 
 from .interval_generators import IntervalGenerator
@@ -78,10 +80,17 @@ def check_covering(
         detail = "\n".join(f"    {'+' if i.length >= 0 else '-'} {i}" for i in covering)
         raise ValueError(
             f"Covering of {start} → {end} does not add up: its signed lengths total "
-            f"{total / 3600:g}h, expected {wanted / 3600:g}h. The intervals were:\n{detail}\n"
+            f"{_signed_frequency_string(total)}, expected {_signed_frequency_string(wanted)}. "
+            f"The intervals were:\n{detail}\n"
             "Summing these would produce a wrong accumulation, so the build is stopped."
         )
     return covering
+
+
+def _signed_frequency_string(seconds: float) -> str:
+    """Format a possibly-negative number of seconds as a frequency string."""
+    sign = "-" if seconds < 0 else ""
+    return sign + frequency_to_string(datetime.timedelta(seconds=abs(seconds)))
 
 
 class Covering(ABC):
@@ -176,9 +185,9 @@ class ForecastCovering(Covering):
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
         from .description import parse_accumulation
 
-        # `_hours` is the scheme's hour parameter: the reset frequency for
-        # from-zero-reset, the increment length for a duration, else None.
-        self._kind, self._hours = parse_accumulation(accumulation)
+        # `_length` is the scheme's timedelta parameter: the reset frequency
+        # for from-zero-reset, the increment length for a duration, else None.
+        self._kind, self._length = parse_accumulation(accumulation)
         self.period = period
         self.accumulation = accumulation
 
@@ -192,25 +201,16 @@ class ForecastCovering(Covering):
         if basetime is None:
             raise ValueError("ForecastCovering.cover requires an explicit basetime.")
 
-        delta_end = end - basetime
-        delta_start = start - basetime
-        step_end_h = delta_end.total_seconds() / 3600
-        step_start_h = delta_start.total_seconds() / 3600
+        zero = datetime.timedelta(0)
+        step_end = end - basetime
+        step_start = start - basetime
 
-        if not (step_end_h.is_integer() and step_start_h.is_integer()):
-            raise ValueError(
-                "ForecastCovering requires integer-hour offsets between basetime "
-                f"and the window endpoints; got start={step_start_h}, end={step_end_h}."
-            )
-        step_end_h = int(step_end_h)
-        step_start_h = int(step_start_h)
-
-        if step_start_h < 0:
+        if step_start < zero:
             raise ValueError(
                 f"Window {start}..{end} straddles basetime {basetime} "
-                f"(step_start={step_start_h}h); not supported in v1."
+                f"(step_start={frequency_to_string(step_start)}); not supported in v1."
             )
-        if step_end_h <= step_start_h:
+        if step_end <= step_start:
             raise ValueError(f"Window {start}..{end} has non-positive length relative to basetime {basetime}.")
 
         if self._kind == "from-zero":
@@ -218,41 +218,45 @@ class ForecastCovering(Covering):
             covering.append(
                 SignedInterval(
                     start=basetime,
-                    end=basetime + datetime.timedelta(hours=step_end_h),
+                    end=basetime + step_end,
                     base=basetime,
                 )
             )
-            if step_start_h > 0:
+            if step_start > zero:
                 covering.append(
                     -SignedInterval(
                         start=basetime,
-                        end=basetime + datetime.timedelta(hours=step_start_h),
+                        end=basetime + step_start,
                         base=basetime,
                     )
                 )
             return check_covering(covering, start, end)
 
         if self._kind == "from-zero-reset":
-            reset = self._hours
-            first_cycle = step_start_h // reset * reset
-            last_cycle = (step_end_h - 1) // reset * reset
+            reset = self._length
+            first_cycle = step_start // reset * reset
+            # The last cycle is the one holding the window's end: the largest
+            # multiple of `reset` strictly below `step_end`.
+            last_cycle = (step_end - datetime.timedelta.resolution) // reset * reset
             covering = []
-            if step_start_h > first_cycle:
+            if step_start > first_cycle:
                 covering.append(
                     -SignedInterval(
-                        start=basetime + datetime.timedelta(hours=first_cycle),
-                        end=basetime + datetime.timedelta(hours=step_start_h),
+                        start=basetime + first_cycle,
+                        end=basetime + step_start,
                         base=basetime,
                     )
                 )
-            for cycle in range(first_cycle, last_cycle + 1, reset):
+            cycle = first_cycle
+            while cycle <= last_cycle:
                 covering.append(
                     SignedInterval(
-                        start=basetime + datetime.timedelta(hours=cycle),
-                        end=basetime + datetime.timedelta(hours=min(cycle + reset, step_end_h)),
+                        start=basetime + cycle,
+                        end=basetime + min(cycle + reset, step_end),
                         base=basetime,
                     )
                 )
+                cycle += reset
             return check_covering(covering, start, end)
 
         # increment (a fixed per-step window of length ``L``): tile the
@@ -260,21 +264,25 @@ class ForecastCovering(Covering):
         # ``period`` coarser than the source increment re-accumulates (e.g. a
         # 6 h window from 3 h increments = two fields). The window must be a
         # whole multiple of ``L``.
-        length = self._hours
-        window = step_end_h - step_start_h
-        if window % length != 0:
+        length = self._length
+        window = step_end - step_start
+        if window % length:
             raise ValueError(
-                f"accumulate: the requested window ({window}h) must be a whole multiple of the "
-                f"source increment ({length}h) to re-accumulate; got a {window}h window."
+                f"accumulate: the requested window ({frequency_to_string(window)}) must be a whole "
+                f"multiple of the source increment ({frequency_to_string(length)}) to re-accumulate; "
+                f"got a {frequency_to_string(window)} window."
             )
-        covering = [
-            SignedInterval(
-                start=basetime + datetime.timedelta(hours=k),
-                end=basetime + datetime.timedelta(hours=k + length),
-                base=basetime,
+        covering = []
+        k = step_start
+        while k < step_end:
+            covering.append(
+                SignedInterval(
+                    start=basetime + k,
+                    end=basetime + k + length,
+                    base=basetime,
+                )
             )
-            for k in range(step_start_h, step_end_h, length)
-        ]
+            k += length
         return check_covering(covering, start, end)
 
 
@@ -318,8 +326,9 @@ class ValidTimeCovering(Covering):
         window_seconds = (end - start).total_seconds()
         if window_seconds % length_seconds != 0:
             raise ValueError(
-                f"accumulate: the requested window ({window_seconds / 3600:g}h) must be a whole "
-                f"multiple of the source increment ({length_seconds / 3600:g}h) to re-accumulate."
+                f"accumulate: the requested window ({_signed_frequency_string(window_seconds)}) must be a "
+                f"whole multiple of the source increment ({_signed_frequency_string(length_seconds)}) "
+                "to re-accumulate."
             )
         covering: list[SignedInterval] = []
         t = start

@@ -21,6 +21,7 @@ from typing import Any
 from typing import Literal
 
 import numpy as np
+from anemoi.utils.dates import frequency_to_string
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
@@ -29,6 +30,7 @@ from pydantic import field_validator
 from pydantic import model_validator
 
 from anemoi.datasets.create.intervals import SignedInterval
+from anemoi.datasets.create.intervals import step_to_timedelta
 from anemoi.datasets.create.time_schemas import Steps
 
 from ..covering_intervals import covering_intervals
@@ -37,25 +39,28 @@ from .accumulation import parse_accumulation
 from .base_dates import RecurringBaseDates
 
 
-def _parse_step_pair(item: Any) -> tuple[int, int]:
-    """Parse one explicit step pair into whole-hour ``(start, end)``.
+def _parse_step_pair(item: Any) -> tuple[datetime.timedelta, datetime.timedelta]:
+    """Parse one explicit step pair into ``(start, end)`` lead times.
 
     Two spellings are accepted: the string ``"sA-sE"`` (e.g. ``"6-9"``) and a
-    two-element list/tuple ``[sA, sE]`` (e.g. ``[6, 9]``).
+    two-element list/tuple ``[sA, sE]`` (e.g. ``[6, 9]``).  Each half is a
+    step: a bare number means hours, and a minute suffix is honoured
+    (``"0-10m"``, ``"10m-20m"``).
     """
+    forms = "e.g. '6-9', [6, 9] or '0-10m'"
     if isinstance(item, str):
         if item.count("-") != 1:
-            raise ValueError(f"from: step pair {item!r} must be 'startStep-endStep' (whole hours), e.g. '6-9'")
+            raise ValueError(f"from: step pair {item!r} must be 'startStep-endStep', {forms}")
         a, b = item.split("-")
     elif isinstance(item, (list, tuple)) and len(item) == 2:
         a, b = item
     else:
-        raise ValueError(f"from: step pair {item!r} must be 'sA-sE' or [sA, sE] (whole hours), e.g. '6-9' or [6, 9]")
+        raise ValueError(f"from: step pair {item!r} must be 'sA-sE' or [sA, sE], {forms}")
     try:
-        start, end = int(a), int(b)
+        start, end = step_to_timedelta(a), step_to_timedelta(b)
     except (ValueError, TypeError):
-        raise ValueError(f"from: step pair {item!r} must be whole hours, e.g. '6-9' or [6, 9]")
-    if not (0 <= start < end):
+        raise ValueError(f"from: step pair {item!r} must be a pair of steps, {forms}")
+    if not (datetime.timedelta(0) <= start < end):
         raise ValueError(f"from: step pair {item!r} must have 0 <= startStep < endStep")
     return start, end
 
@@ -160,8 +165,8 @@ class FromTrajectories(BaseModel):
                 "'from-zero', a duration, or 'from-zero-reset-every-<freq>'); "
                 "or give an explicit 'steps' pair list instead"
             )
-        grid = self.step_grid_hours
-        kind, hours = parse_accumulation(self.accumulation)
+        grid = self.step_grid
+        kind, length = parse_accumulation(self.accumulation)
 
         if kind == "increment":
             # A duration is the window *length* each field holds — the field at
@@ -171,15 +176,16 @@ class FromTrajectories(BaseModel):
             # accumulation < frequency = a sparse grid with gaps. The only
             # constraint is that the first field cannot start before the
             # forecast. (For a mixed-*length* grid, use an explicit pair list.)
-            first = int(self.steps.start.total_seconds() // 3600)
-            if first < hours:
+            first = self.steps.start
+            if first < length:
                 raise ValueError(
-                    f"from: 'steps.start' ({first}h) is shorter than the 'accumulation' length "
-                    f"({hours}h); the first field would start before the forecast"
+                    f"from: 'steps.start' ({frequency_to_string(first)}) is shorter than the "
+                    f"'accumulation' length ({frequency_to_string(length)}); the first field "
+                    "would start before the forecast"
                 )
         if not grid:
             raise ValueError("from: 'steps' is empty")
-        if grid[0] == 0:
+        if not grid[0]:
             # a per-step duration is rejected above with a more specific hint.
             raise ValueError(
                 "from: 'steps' lists the steps at which fields exist, and no field "
@@ -189,21 +195,21 @@ class FromTrajectories(BaseModel):
         return self
 
     @property
-    def step_grid_hours(self) -> list[int]:
-        """The sorted end-steps, in whole hours (range form only)."""
+    def step_grid(self) -> list[datetime.timedelta]:
+        """The sorted end-steps, as lead times (range form only)."""
         if self.is_layout_grid:
             raise ValueError(
-                "from: 'step_grid_hours' is not defined for a 'from-layout' description — "
+                "from: 'step_grid' is not defined for a 'from-layout' description — "
                 "the run grid comes from the output layout at runtime"
             )
         if self.is_explicit_pairs:
             return sorted({_parse_step_pair(s)[1] for s in self.steps})
-        grid: set[int] = set()
+        grid: set[datetime.timedelta] = set()
         for value in self.steps.values:
-            grid.add(int(value / np.timedelta64(1, "h")))
+            grid.add(datetime.timedelta(seconds=int(value / np.timedelta64(1, "s"))))
         return sorted(grid)
 
-    def step_pairs(self) -> list[tuple[int, int]]:
+    def step_pairs(self) -> list[tuple[datetime.timedelta, datetime.timedelta]]:
         """The ``(start_step, end_step)`` pairs of the fields the source data holds.
 
         An explicit pair list *is* those pairs; a range + ``accumulation``
@@ -217,16 +223,17 @@ class FromTrajectories(BaseModel):
             )
         if self.is_explicit_pairs:
             return sorted((_parse_step_pair(s) for s in self.steps), key=lambda p: (p[1], p[0]))
-        kind, hours = parse_accumulation(self.accumulation)
-        grid = self.step_grid_hours
+        kind, length = parse_accumulation(self.accumulation)
+        grid = self.step_grid
         if kind == "increment":
             # One regular range, enforced above: each field covers the frequency
             # (== the declared duration) ending at its own step.
-            return [(s - hours, s) for s in grid]
+            return [(s - length, s) for s in grid]
         if kind == "from-zero":
-            return [(0, s) for s in grid]
-        # from-zero-reset: each step is accumulated since the last reset of lead time
-        return [((s - 1) // hours * hours, s) for s in grid]
+            return [(datetime.timedelta(0), s) for s in grid]
+        # from-zero-reset: each step is accumulated since the last reset of lead
+        # time, i.e. from the largest multiple of `length` strictly below it.
+        return [((s - datetime.timedelta.resolution) // length * length, s) for s in grid]
 
 
 class FromBare(BaseModel):
@@ -261,8 +268,8 @@ class FromBare(BaseModel):
     @property
     def duration(self) -> datetime.timedelta | None:
         """The accumulation length, when it is a fixed duration (else ``None``)."""
-        kind, hours = parse_accumulation(self.accumulation)
-        return datetime.timedelta(hours=hours) if kind == "increment" else None
+        kind, length = parse_accumulation(self.accumulation)
+        return length if kind == "increment" else None
 
 
 class FromLookupTable(BaseModel):
@@ -316,11 +323,11 @@ class TrajectoryIntervalGenerator(IntervalGenerator):
 
         for start_step, end_step in self.pairs:
             # Forward: an interval starting at current_time has base = current_time - start_step.
-            base = current_time - datetime.timedelta(hours=start_step)
+            base = current_time - start_step
             if base_dates.matches(base):
                 interval = SignedInterval(
                     start=current_time,
-                    end=base + datetime.timedelta(hours=end_step),
+                    end=base + end_step,
                     base=base,
                 )
                 if interval not in seen:
@@ -329,10 +336,10 @@ class TrajectoryIntervalGenerator(IntervalGenerator):
 
             # Backward: an interval ending at current_time has base = current_time - end_step;
             # its negation starts at current_time (used for the signed walk).
-            base = current_time - datetime.timedelta(hours=end_step)
+            base = current_time - end_step
             if base_dates.matches(base):
                 interval = -SignedInterval(
-                    start=base + datetime.timedelta(hours=start_step),
+                    start=base + start_step,
                     end=current_time,
                     base=base,
                 )

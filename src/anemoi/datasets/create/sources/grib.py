@@ -135,10 +135,27 @@ class GribSource(Source):
         Whole hours are returned as an ``int``, so that ``{step:int(%03d)}``
         renders them. A sub-hourly lead time is returned as a ``float``, which
         that same format rejects — truncating it to the hour instead would
-        silently resolve to a neighbouring file.
+        silently resolve to a neighbouring file.  An archive whose files are
+        named by a sub-hourly lead time is addressed with ``step_minutes`` or
+        ``step_seconds`` instead.
         """
         hours = (valid_time - basetime).total_seconds() / 3600
         return int(hours) if hours.is_integer() else hours
+
+    @staticmethod
+    def _step_keywords(valid_time: Any, basetime: Any) -> dict[str, Any]:
+        """The lead-time path keywords: ``step`` (hours), ``step_minutes``, ``step_seconds``.
+
+        ``step`` keeps its whole-hour-only contract (see :meth:`_step`);
+        the other two always render, so a minute-resolution archive can be
+        addressed with e.g. ``{step_minutes:int(%04d)}``.
+        """
+        offset = valid_time - basetime
+        return {
+            "step": GribSource._step(valid_time, basetime),
+            "step_minutes": int(offset.total_seconds() // 60),
+            "step_seconds": int(offset.total_seconds()),
+        }
 
     def _sel_kwargs(self, valid_datetimes: list[str]) -> tuple[dict[str, Any], dict[str, str]]:
         """Build ``.sel()`` kwargs, remapping legacy key names to earthkit 1.0 paths.
@@ -269,10 +286,10 @@ class GribSource(Source):
 
         all_fields: list[Any] = []
         for valid_time, basetime in dates.items:
-            step = self._step(valid_time, basetime)
+            step_kwargs = self._step_keywords(valid_time, basetime)
             sel_kwargs, sel_remapping = self._sel_kwargs([valid_time.isoformat()])
             for path in given_paths:
-                paths = self._substitute_paths(path, date=valid_time, base_date=basetime, step=step)
+                paths = self._substitute_paths(path, date=valid_time, base_date=basetime, **step_kwargs)
                 all_fields.extend(self._read_fields(paths, sel_kwargs, sel_remapping))
 
         return self._finalise(all_fields, dates.items, given_paths)
@@ -350,7 +367,7 @@ class GribSource(Source):
             }
             if interval.base is not None:
                 template_kwargs["base_date"] = interval.base
-                template_kwargs["step"] = self._step(end, interval.base)
+                template_kwargs.update(self._step_keywords(end, interval.base))
 
             sel_kwargs, sel_remapping = self._sel_kwargs([end.isoformat()])
             for path in given_paths:
