@@ -65,15 +65,8 @@ Rules enforced by the recipe validator:
 (``6`` meaning 6 hours, or ``"6h"``, ``"1d"``, …). The set of samples
 materialised on disk is the Cartesian product of basetimes and steps.
 
-Steps may be **sub-hourly** (``frequency: 10m``): the finest resolution
-the pipeline expresses is the minute, which is the smallest unit a MARS
-or FDB ``step`` and a GRIB step range can carry. A step that is not a
-whole number of minutes is rejected. Whether a given source can serve
-sub-hourly steps depends on the archive: the ``mars`` and ``fdb`` sources
-send them in the archive's minute syntax (``10m``, ``1h10m``), the
-``grib`` source addresses them through the ``step_minutes`` path keyword,
-and ``grib-index`` reads them via the validity time (its ``step`` column
-holds whole hours only).
+See :ref:`building-trajectories-cli` for a step-by-step guide to building
+a trajectory dataset with the command line tool.
 
 Which sources can feed a trajectory recipe
 ==========================================
