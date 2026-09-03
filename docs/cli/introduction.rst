@@ -20,6 +20,7 @@ The commands are:
 - :ref:`Copy Command <copy_command>`
 - :ref:`Inspect Command <Inspect_command>`
 - :ref:`Compare Command <compare_command>`
+- :ref:`Compute Command <compute_command>`
 - :ref:`Scan Command <scan_command>`
 - :ref:`Validate Command <validate_command>`
 - :ref:`Compare LAM Command <compare_lam_command>`
@@ -40,6 +41,7 @@ The commands are:
    inspect
    grib-index
    compare
+   compute
    copy
    scan
    patch

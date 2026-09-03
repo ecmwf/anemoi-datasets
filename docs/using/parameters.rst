@@ -266,6 +266,16 @@ as follows:
       -  🧪
       -  Rescaling mapping/tuples/units for variables.
 
+   -  -  residual_statistics
+      -  ✅
+      -  🧪
+      -  ✅
+      -  Experimental. Attach the statistics of the difference between
+         two datasets, from a JSON file written by the :ref:`compute
+         command <compute_command>`, and expose them as
+         ``ds.residual_statistics``. This attribute is experimental and
+         may be removed or renamed. See :ref:`using-statistics`.
+
    -  -  select
       -  ✅
       -  ✅
