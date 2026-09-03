@@ -9,7 +9,9 @@
 
 
 import fnmatch
+import itertools
 import logging
+import math
 import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
@@ -26,6 +28,8 @@ from anemoi.datasets.usage.store import open_zarr_store
 from . import Command
 
 LOG = logging.getLogger(__name__)
+
+MAX_MEMORY_PER_WORKER = 2 * 1024 * 1024 * 1024  # 2 GB per CPU core
 
 
 class _Error:
@@ -106,7 +110,7 @@ class ErrorCollector:
 
 
 def _compare_arrays_partial(
-    errors, a: zarr.Array, b: zarr.Array, slice_obj: slice, path: str, tolerance=1e-6, close_ok=False
+    errors, a: zarr.Array, b: zarr.Array, slice_obj: tuple, path: str, tolerance=1e-6, close_ok=False
 ) -> None:
     """Compare two arrays."""
     a = a[slice_obj]
@@ -143,27 +147,43 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
         errors.error(f"🧮 {path}: dtypes are different {a.dtype} != {b.dtype}")
         return
 
-    buffer_size = 64 * 1024 * 1024  # 64 MB
-
-    size = a.dtype.itemsize * a.size
-    row_size = a.dtype.itemsize * a.shape[0]
-    if size <= buffer_size:
-        return _compare_arrays_partial(errors, a, b, slice(None), path, tolerance, close_ok=close_ok)
-
     max_workers = os.cpu_count() or 4
-    max_memory = 1024 * 1024 * 1024  # 2 GB
+    max_memory = MAX_MEMORY_PER_WORKER
+
     # Divide by two because both arrays need to be in memory
-    max_workers = max(min(max_workers, max_memory // buffer_size // 2), 1)
+    half_memory = max_memory // 2
+    itemsize = a.dtype.itemsize
+    chunk_size = math.prod(a.chunks) * itemsize  # Preferred buffer size if fits in memory
+    buffer_size = chunk_size if chunk_size < half_memory else half_memory
+
+    # The first (chunk) axis is often 1, so subdivide also other dimensions as needed
+    # to bring the buffer shape down to buffer_size.
+    buffer_shape = list(a.chunks)
+    while math.prod(buffer_shape) * itemsize > buffer_size:
+        i = max(range(len(buffer_shape)), key=lambda i: buffer_shape[i])
+        if buffer_shape[i] == 1:
+            break
+        buffer_shape[i] = max(1, buffer_shape[i] // 2)
+    buffer_shape = tuple(buffer_shape)
+    buffer_size = math.prod(buffer_shape) * itemsize
+
+    max_workers = max(min(max_workers, (half_memory * max_workers) // buffer_size), 1)
+
+    size = itemsize * a.size
+    if size <= buffer_size:
+        return _compare_arrays_partial(errors, a, b, (slice(None),), path, tolerance, close_ok=close_ok)
 
     LOG.info(f"Comparing large arrays {path} using {max_workers} workers")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
 
         tasks = []
-        step = max(1, buffer_size // row_size)
-        for i in tqdm.tqdm(range(0, a.shape[0], step), desc=f"Comparing {path}"):
-            last = min(i + step, a.shape[0])
-            tasks.append(executor.submit(_compare_arrays_partial, errors, a, b, slice(i, last), path, tolerance))
+        starts = itertools.product(*(range(0, s, step) for s, step in zip(a.shape, buffer_shape)))
+        for start in tqdm.tqdm(list(starts), desc=f"Comparing {path}"):
+            slice_obj = tuple(slice(i, min(i + step, s)) for i, step, s in zip(start, buffer_shape, a.shape))
+            tasks.append(
+                executor.submit(_compare_arrays_partial, errors, a, b, slice_obj, path, tolerance, close_ok=close_ok)
+            )
 
         with tqdm.tqdm(total=len(tasks), desc=f"Comparing {path}", unit="part") as pbar:
             for future in as_completed(tasks):
@@ -266,9 +286,6 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         "metadata.total_size",
         "metadata.latest_write_timestamp",
         "metadata.version",
-        # 'order_by' is now hard-coded and no longer read from the recipe;
-        # ignore both the top-level metadata key and the recipe copy so that
-        # references created before this change keep matching.
         "metadata.order_by",
         "metadata.recipe.output.order_by",
         # remapping templates changed from bare {key} to {metadata.key} form
@@ -292,6 +309,7 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         # This ignores only the mars provenance sub-dict; units and the new grib
         # sub-dict (paramId, shortName) are left intact for regression checking.
         "metadata.variables_metadata.*.mars",
+        "metadata.recipe.build.validate_date_ranges",
     ]
 
     IGNORE_MISSINGS = [

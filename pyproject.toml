@@ -41,13 +41,13 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform",
-  "anemoi-utils[s3]>=0.5",
+  "anemoi-transform>=0.4",
+  "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",        # Until we move to zarr3
+  "numcodecs<0.16",           # Until we move to zarr3
   "numpy",
   "pint",
   "psutil",
@@ -115,6 +115,7 @@ urls.Repository = "https://github.com/ecmwf/anemoi-datasets/"
 scripts.anemoi-datasets = "anemoi.datasets.__main__:main"
 
 [tool.setuptools]
+package-data."anemoi.datasets" = [ "py.typed" ]
 package-data."anemoi.datasets.usage" = [
   "*.css",
 ]
