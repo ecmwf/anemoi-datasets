@@ -1,4 +1,4 @@
-.. _selecting-variables:
+.. _using-selecting:
 
 #####################
  Selecting variables
@@ -13,18 +13,17 @@ Selecting is the action of filtering the dataset by its second dimension
  select
 ********
 
-Select '2t' and 'tp' in that order:
+If you pass a **list**, the resulting dataset contains the requested
+variables in the order given by the list. Here, ``2t`` comes first and
+``tp`` second, regardless of their order in the original dataset:
 
-.. code:: python
+.. literalinclude:: code/selecting_select_list_.py
 
-   ds = open_dataset(dataset, select=["2t", "tp"])
+If you pass a **set**, the resulting dataset contains the same variables,
+but their original order in the dataset is preserved (sets are unordered,
+so they cannot impose an order):
 
-Select '2t' and 'tp', but preserve the order in which they are in the
-dataset:
-
-.. code:: python
-
-   ds = open_dataset(dataset, select={"2t", "tp"})
+.. literalinclude:: code/selecting_select_set_.py
 
 .. _drop:
 
@@ -34,9 +33,7 @@ dataset:
 
 You can also drop some variables:
 
-.. code:: python
-
-   ds = open_dataset(dataset, drop=["10u", "10v"])
+.. literalinclude:: code/selecting_drop_.py
 
 .. _reorder:
 
@@ -48,27 +45,11 @@ and reorder them:
 
 ... using a list:
 
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       reorder=["2t", "msl", "sp", "10u", "10v"],
-   )
+.. literalinclude:: code/selecting_reorder_list_.py
 
 ... or using a dictionary:
 
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       reorder={
-           "2t": 0,
-           "msl": 1,
-           "sp": 2,
-           "10u": 3,
-           "10v": 4,
-       },
-   )
+.. literalinclude:: code/selecting_reorder_dict_.py
 
 .. _rename:
 
@@ -78,9 +59,7 @@ and reorder them:
 
 You can also rename variables:
 
-.. code:: python
-
-   ds = open_dataset(dataset, rename={"2t": "t2m"})
+.. literalinclude:: code/selecting_rename_.py
 
 This will be useful when you join datasets and do not want variables
 from one dataset to override the ones from the other.
@@ -90,28 +69,8 @@ from one dataset to override the ones from the other.
 ********
 
 If a dataset is an ensemble, you can select one or more specific members
-using the `number` option. You can also use ``numbers`` (which is an
-alias for ``number``), and ``member`` (or ``members``). The difference
-between the two is that ``number`` is **1-based**, while ``member`` is
-**0-based**.
-
-Select a single element:
-
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       number=1,
-   )
-
-... or a list:
-
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       number=[1, 3, 5],
-   )
+using the `number` option. See :ref:`number` in the
+:ref:`using-ensembles` section for details.
 
 .. _rescale:
 
@@ -122,38 +81,7 @@ Select a single element:
 When combining datasets, you may want to rescale the variables so that
 they have matching units. This can be done with the `rescale` option:
 
-.. code:: python
-
-   # Scale and offset can be passed as a dictionary...
-
-   ds = open_dataset(
-       dataset,
-       rescale={"2t": {"scale": 1.0, "offset": -273.15}},
-   )
-
-   # ... a tuple of floating points ...
-
-   ds = open_dataset(
-       dataset,
-       rescale={"2t": (1.0, -273.15)},
-   )
-
-   # ... or a tuple of strings representing units.
-
-   ds = open_dataset(
-       dataset,
-       rescale={"2t": ("K", "degC")},
-   )
-
-   # Several variables can be rescaled at once.
-
-   ds = open_dataset(
-       dataset,
-       rescale={
-           "2t": ("K", "degC"),
-           "tp": ("m", "mm"),
-       },
-   )
+.. literalinclude:: code/selecting_rescale_.py
 
 The `rescale` option will also rescale the statistics. The rescaling is
 currently limited to simple linear conversions.
@@ -169,5 +97,3 @@ to rescale the data.
    the case.
 
 .. _cfunits: https://github.com/NCAS-CMS/cfunits
-
-.. _number:

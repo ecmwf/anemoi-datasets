@@ -63,8 +63,8 @@ as follows:
       -  ✅
       -  ❌
       -  🧪
-      -  Spatial cropping area as a list [lon_min, lat_min, lon_max,
-         lat_max].
+      -  Spatial cropping area as a list ``(north, west, south, east)``.
+         See :ref:`the area option <using-grids>`.
 
    -  -  base_end
       -  ❌
@@ -89,7 +89,7 @@ as follows:
       -  🗑️
 
       -  Experimental chain operation. Same behaviour as `concat`, but
-         does not check that the dates are continous. Will be removed in
+         does not check that the dates are continuous. Will be removed in
          the future.
 
    -  -  concat
@@ -100,7 +100,7 @@ as follows:
 
       -  🧪
 
-      -  Concatanate two or more datasets along the time dimension. That
+      -  Concatenate two or more datasets along the time dimension. That
          may work, but the behaviour of the windowing at the seam is not
          well defined. So it should be skipped for now.
 
