@@ -82,7 +82,6 @@ class Context(ABC):
             The joined result.
         """
 
-
         import earthkit.data as ekd
 
         results = list(results)  # In case it's a generator
