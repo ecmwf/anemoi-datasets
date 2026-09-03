@@ -220,7 +220,7 @@ class ComputedForcingValue(ValueGenerator):
             longitudes=self.longitudes,
             date=py_dates,
             param=[self.param],
-        )
+        ).to_fieldlist()
         # One field per date (single param, no ensemble), in date order.
         assert len(fields) == len(py_dates), (len(fields), len(py_dates))
         return np.stack([f.to_numpy(flatten=True) for f in fields]).astype(np.float64)

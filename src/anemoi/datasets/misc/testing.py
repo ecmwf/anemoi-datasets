@@ -51,18 +51,29 @@ def assert_field_list(
     first = fs[0]
     last = fs[-1]
 
+    def _valid_datetime_iso(field):
+        """Return valid_datetime as ISO string, using earthkit 1.0 component path."""
+        vdt = field.get("time.valid_datetime", default=None)
+        if vdt is None:
+            return None
+        if hasattr(vdt, "isoformat"):
+            return vdt.isoformat()
+        return str(vdt)
+
     if constant:
         # TODO: add a check for constant fields
         pass
     else:
-        assert start is None or first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
-        assert end is None or last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
-        print(first.datetime())
+        first_vdt = _valid_datetime_iso(first)
+        last_vdt = _valid_datetime_iso(last)
+        assert start is None or first_vdt == start, (first_vdt, start)
+        assert end is None or last_vdt == end, (last_vdt, end)
+        print("valid_datetime:", first_vdt)
 
-    print(last.metadata())
+    print("last field:", last.get("parameter.variable", default=None), _valid_datetime_iso(last))
 
-    first = first
-    latitudes, longitudes = first.grid_points()
+    latitudes = first.geography.latitudes().flatten()
+    longitudes = first.geography.longitudes().flatten()
 
     assert len(latitudes.shape) == 1, latitudes.shape
     assert len(longitudes.shape) == 1, longitudes.shape

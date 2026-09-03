@@ -21,6 +21,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
+import earthkit.data as ekd
 from anemoi.utils.humanize import did_you_mean
 from earthkit.data import from_source
 from earthkit.data.utils.availability import Availability
@@ -380,7 +381,7 @@ def _validate_keys(requests: tuple) -> None:
 
 def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None) -> Any:
     """Send a list of ready-to-fire request dicts to MARS or CDS."""
-    ds = from_source("empty")
+    ds = from_source("empty").to_fieldlist()
     for r in requests:
         r = {k: v for k, v in r.items() if v != ("-",)}
 
@@ -394,9 +395,9 @@ def _fire_requests(context: Any, requests: list, use_cdsapi_dataset: str | None)
                 )
         try:
             if use_cdsapi_dataset:
-                ds = ds + from_source("cds", use_cdsapi_dataset, r)
+                ds = ekd.concat(ds, from_source("cds", use_cdsapi_dataset, r).to_fieldlist())
             else:
-                ds = ds + from_source("mars", **r)
+                ds = ekd.concat(ds, from_source("mars", **r).to_fieldlist())
         except Exception as e:
             if "File is empty:" not in str(e):
                 raise
