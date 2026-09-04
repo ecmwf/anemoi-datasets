@@ -14,8 +14,6 @@ from typing import Any
 
 import numpy as np
 
-from anemoi.datasets.date_indexing import create_date_indexing
-
 from ..creator import Creator
 from ..dataset import Dataset
 from .context import TabularContext
@@ -116,6 +114,12 @@ class TabularCreator(Creator):
             np.save(os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}.npy"), array)
             return
 
+        # Record the row density over time now, while the dates are in memory, so `finalise` can size
+        # the zarr chunks without re-reading the fragments (see compute_rows_per_chunk).
+        from .finalise import write_fragment_density
+
+        write_fragment_density(self.work_dir, f"{result.start_range}-{result.end_range}", array)
+
         one_row_size = array.shape[1] * array.itemsize
         rows_per_file = max(round(self.recipe.build.max_fragment_size / one_row_size), 1)
 
@@ -158,44 +162,139 @@ class TabularCreator(Creator):
         #     )
 
         for i, part in enumerate(partitions):
-            # LOG.info(
-            #     f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
-            # )
+            LOG.info(
+                f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
+            )
             np.save(
                 os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
                 array[part],
             )
 
     def finalise_dataset(self, dataset: Dataset) -> None:
-        """Finalise the dataset after all data has been loaded.
+        """Finalise the dataset in a single process (backward-compatible full path).
+
+        Runs the prepare, load (all fragments) and tidy stages in sequence. Splitting these
+        stages across processes is done via ``finalise_prepare`` / ``finalise_load`` /
+        ``finalise_tidy`` (see the ``anemoi-datasets finalise --prepare/--load/--tidy`` flags).
 
         Parameters
         ----------
         dataset : Dataset
             The dataset object to be finalised.
         """
-        from .finalise import finalise_tabular_dataset
+        self.finalise_prepare(dataset)
+        self.finalise_rows_per_chunk(dataset)
+        self._finalise_load(dataset, parts=None)
+        self.finalise_tidy(dataset)
 
-        collector = finalise_tabular_dataset(
-            store=dataset.store,
+    def finalise_prepare(self, dataset: Dataset) -> None:
+        """Prepare stage: dedup, compute shape, create the zarr array and write the manifest."""
+        from .finalise import prepare_tabular_dataset
+
+        prepare_tabular_dataset(
+            dataset=dataset,
+            work_dir=self.work_dir,
+            recipe=self.recipe,
+            variables_names=self.variables_names,
+            delete_files=self.recipe.build.delete_files,
+            offset=4,
+        )
+
+    def finalise_rows_per_chunk(self, dataset: Dataset) -> None:
+        """Choose (or just report) the optimal rows-per-chunk for tabular iteration windows.
+
+        With ``--print`` it prints the optimum for every ``build.chunk_windows`` and changes nothing.
+        Otherwise, when ``output.auto_rows_per_chunk`` is set and ``output.rows_per_chunk`` is still
+        None, it computes the optimum for that single window, stores it as ``output.rows_per_chunk``
+        and re-chunks the (still empty) data array. If ``rows_per_chunk`` is already set or
+        ``auto_rows_per_chunk`` is null, it does nothing — unless invoked as the explicit
+        ``finalise --rows-per-chunk`` stage, in which case it raises.
+        """
+        output = self.recipe.output
+
+        if self.rows_per_chunk_print:
+            print(self._compute_rows_per_chunk(dataset, self.recipe.build.chunk_windows))
+            return
+
+        explicit = self.finalise_stage == "rows_per_chunk"
+
+        if output.rows_per_chunk is not None:
+            message = f"output.rows_per_chunk is already set to {output.rows_per_chunk:,}."
+            if explicit:
+                raise ValueError(f"{message} Nothing to compute; use --print to just report the optima.")
+            LOG.info(f"{message} Keeping the user's value; skipping automatic rows-per-chunk.")
+            return
+
+        if output.auto_rows_per_chunk is None:
+            message = "output.auto_rows_per_chunk is null and output.rows_per_chunk is unset."
+            if explicit:
+                raise ValueError(f"{message} Set one of them, or use --print to just report the optima.")
+            LOG.info(f"{message} Skipping automatic rows-per-chunk.")
+            return
+
+        window = output.auto_rows_per_chunk
+        value = int(self._compute_rows_per_chunk(dataset, [window])[str(window)])
+
+        # Persist the chosen value in the live recipe and both stored recipe copies (`recipe` is kept
+        # in the finalised metadata, `_recipe` is used by later build steps before cleanup)...
+        output.rows_per_chunk = value
+        for key in ("_recipe", "recipe"):
+            meta = dataset.get_metadata(key)
+            if not meta:
+                continue
+            meta.setdefault("output", {})["rows_per_chunk"] = value
+            dataset.update_metadata(**{key: meta})
+
+        # ... and recreate the empty data array with the matching chunking before the load stage.
+        from .finalise import set_rows_per_chunk
+
+        set_rows_per_chunk(dataset, self.work_dir, value)
+        LOG.info(f"Set output.rows_per_chunk={value:,} from the {window} window and re-chunked the data array.")
+
+    def _compute_rows_per_chunk(self, dataset: Dataset, windows: Any) -> dict:
+        from .finalise import compute_rows_per_chunk
+
+        build = self.recipe.build
+        return compute_rows_per_chunk(
+            dataset=dataset,
+            work_dir=self.work_dir,
+            recipe=self.recipe,
+            windows=windows,
+            offset=build.chunk_alignment_offset,
+            compression_ratio=build.chunk_compression_ratio,
+            fs_read_min_bytes=build.fs_read_min_bytes,
+            fs_read_max_bytes=build.fs_read_max_bytes,
+            fs_latency_seconds=build.fs_read_latency_seconds,
+            fs_bandwidth_bytes_per_s=build.fs_read_bandwidth_bytes_per_s,
+        )
+
+    def finalise_load(self, dataset: Dataset) -> None:
+        """Load stage: write this process's ``--parts`` slice of fragments into the zarr array."""
+        self._finalise_load(dataset, parts=self.parts)
+
+    def _finalise_load(self, dataset: Dataset, parts: Any) -> None:
+        from .finalise import load_tabular_dataset
+
+        load_tabular_dataset(
+            dataset=dataset,
+            work_dir=self.work_dir,
+            recipe=self.recipe,
+            variables_names=self.variables_names,
+            parts=parts,
+            delete_files=self.recipe.build.delete_files,
+        )
+
+    def finalise_tidy(self, dataset: Dataset) -> None:
+        """Tidy stage: merge partial statistics/date-ranges, build the index, set attrs and metadata."""
+        from .finalise import tidy_tabular_dataset
+
+        tidy_tabular_dataset(
+            dataset=dataset,
             work_dir=self.work_dir,
             date_indexing=self.recipe.output.date_indexing,
             recipe=self.recipe,
             variables_names=self.variables_names,
-            delete_files=False,
-            offset=4,
-        )
-
-        collector.add_to_dataset(dataset)
-
-        LOG.info("Computing date indexing for the dataset.")
-
-        date_indexing = create_date_indexing(dataset.store.attrs["date_indexing"], dataset.store)
-        start, end = date_indexing.start_end_dates()
-        dataset.update_metadata(
-            index_start_date=start.isoformat(),
-            index_end_date=end.isoformat(),
-            index_length=date_indexing.length(),
+            delete_files=self.recipe.build.delete_files,
         )
 
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
