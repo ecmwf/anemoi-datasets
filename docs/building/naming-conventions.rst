@@ -40,6 +40,10 @@ whether they are gridded or tabular.
    added. The part **purpose** is especially difficult to define for
    some datasets and may be revisited.
 
+.. note::
+
+   The naming convention is implemented in the ``anemoi.datasets.create.naming`` module.
+
 The tables below provide more details and some examples.
 
 .. list-table:: Dataset naming conventions
