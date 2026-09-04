@@ -149,12 +149,18 @@ class StartEndDates(DatesProvider):
 
     @cached_property
     def values(self) -> list[datetime.datetime]:
-        missing_set = set(self.missing)
+        # ``values`` are the slots along the dataset's time axis, and must keep
+        # an entry for every date in the range, *including* the missing ones.
+        # The on-disk array reserves a (NaN-filled) slot for each missing date;
+        # the missing dates are removed only from the iteration that drives data
+        # loading (see ``anemoi.datasets.dates.groups.Groups``, which applies a
+        # ``Filter(self._dates.missing)``).  Excluding them here would shorten
+        # the stored time axis to ``all_dates - missing_dates`` and break the
+        # length checks when the dataset is later combined (e.g. cutout, #700).
         dates = []
         date = self.start
         while date <= self.end:
-            if date not in missing_set:
-                dates.append(date)
+            dates.append(date)
             date += self.frequency
         return dates
 
@@ -178,20 +184,11 @@ class BaseDates(StartEndDates):
     as a distinct type so the ``base_dates`` recipe field is self-documenting and
     can be exported to the JSON schema independently of analysis ``dates``.
 
-    Unlike :class:`StartEndDates`, ``values`` retains the slots for ``missing``
+    Like :class:`StartEndDates`, ``values`` retains the slots for ``missing``
     base dates: the on-disk trajectory array must keep an entry for every base
     date in the range, and :class:`~anemoi.datasets.dates.groups.TrajectoryGroups`
     removes the missing ones only from the iteration that drives data loading.
     """
-
-    @cached_property
-    def values(self) -> list[datetime.datetime]:
-        dates = []
-        date = self.start
-        while date <= self.end:
-            dates.append(date)
-            date += self.frequency
-        return dates
 
 
 class Steps(BaseModel):

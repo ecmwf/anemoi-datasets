@@ -95,9 +95,20 @@ def test_recipe_supports_missing_ranges() -> None:
         input={"join": []},
     )
 
+    # The time axis keeps a slot for every date in the range, including the
+    # missing ones (see issue #700): the missing dates are removed only from the
+    # iteration that drives data loading, and their slots are NaN-filled.
     assert [d.strftime("%Y-%m-%d %H:%M:%S") for d in recipe.dates.values] == [
         "2020-01-01 00:00:00",
+        "2020-01-01 06:00:00",  # missing
+        "2020-01-01 12:00:00",  # missing
         "2020-01-01 18:00:00",
+    ]
+
+    # The range is expanded into the individual missing dates.
+    assert [d.strftime("%Y-%m-%d %H:%M:%S") for d in recipe.dates.missing] == [
+        "2020-01-01 06:00:00",
+        "2020-01-01 12:00:00",
     ]
 
 
