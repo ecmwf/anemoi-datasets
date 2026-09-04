@@ -234,7 +234,12 @@ class DatasetSourceMixin:
         return create_datasets_source(context, config)
 
     def call_object(self, context, source, argument):
-        return source.execute(argument)
+        return context.origin(source.execute(argument), self, argument)
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformSourceMixin:
@@ -244,6 +249,11 @@ class TransformSourceMixin:
         from anemoi.transform.sources import create_source as create_transform_source
 
         return create_transform_source(context, config)
+
+    def origin(self):
+        from .origin import Source
+
+        return Source(self.path[-1], self.config)
 
 
 class TransformFilterMixin:
@@ -255,7 +265,12 @@ class TransformFilterMixin:
         return create_transform_filter(context, config)
 
     def call_object(self, context, filter, argument):
-        return filter.forward(argument)
+        return context.origin(filter.forward(argument), self, argument)
+
+    def origin(self):
+        from .origin import Filter
+
+        return Filter(self.path[-1], self.config)
 
 
 class FilterFunction(Function):

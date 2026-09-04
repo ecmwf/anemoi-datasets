@@ -9,7 +9,7 @@
 
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 
 from . import source_registry
 from .legacy import LegacySource
@@ -20,7 +20,7 @@ from .xarray import load_many
 class XarrayZarrSource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> FieldList:
         """Execute the data loading process.
 
         Parameters
@@ -38,7 +38,7 @@ class XarrayZarrSource(LegacySource):
 
         Returns
         -------
-        ekd.FieldList
+        FieldList
             The loaded data.
         """
         return load_many("🇿", context, dates, url, *args, **kwargs)

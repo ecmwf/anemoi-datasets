@@ -31,7 +31,7 @@ class OutputBase(BaseModel):
 
     remapping: dict[str, Any] | None = Field(
         default=None,
-        deprecated="'output.remapping' is deprecated. Please use 'build.remapping' instead.",
+        deprecated="'output.remapping' is deprecated. Please use 'build.variable_naming' instead.",
     )
 
     sanitise: bool = True
@@ -67,7 +67,9 @@ class GriddedOutput(OutputBase):
     """The chunking configuration for the output."""
 
     # Fixed value that the deprecated ``order_by`` field must match, if set.
-    # Kept in sync with ``SimpleGriddedContext.order_by``.
+    # Uses the old bare-key form that users would have written in recipes;
+    # ``SimpleGriddedContext.order_by`` now uses ``metadata.``-prefixed keys
+    # internally but the user-facing recipe schema keeps the legacy names.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
 
     def _post_init(self, recipe: Any) -> None:

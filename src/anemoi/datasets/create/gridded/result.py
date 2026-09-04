@@ -17,15 +17,33 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
-from anemoi.utils.dates import as_timedelta
+from anemoi.transform.variables import Variable
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
+
+# Importing build_remapping from anemoi.transform.fields also applies the
+# earthkit-data 1.0 build_remapping compatibility shim (see that module).
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
+
+
+def _field_metadata_callable(field: Any) -> Any:
+    """Return a callable(key, default=None) backed by field.get(key) for earthkit 1.0.
+
+    Keys are passed through verbatim; callers must already use the
+    ``metadata.``-prefixed form required by earthkit 1.0's ``_get_single``.
+    For remapped synthetic keys (e.g. ``param_level``) the earthkit
+    ``Remapping`` wrapper intercepts the call before it reaches here.
+    """
+
+    def _get(key: str, default: Any = None) -> Any:
+        return field.get(key, default=default)
+
+    return _get
 
 
 # Synthetic variable names with known metadata flags.
@@ -49,6 +67,13 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
+    One representative field per variable (and per ensemble member /
+    trajectory point) is serialised via
+    ``Variable.from_field(...).as_dict()`` (the ``variable/1`` schema);
+    this function only walks the cube, merges the per-member ``mars``
+    request dictionaries, enforces units consistency across calls, and
+    overlays the known computed-forcing flags.
+
     Parameters
     ----------
     variables : tuple of str
@@ -62,7 +87,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
     Returns
     -------
     dict
-        The metadata dictionary.
+        The metadata dictionary, keyed by variable name.
     """
     assert isinstance(variables, tuple), variables
 
@@ -91,9 +116,6 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         return result
 
-    mars: dict[str, Any] = {}
-    other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
-
     # Find the axis that corresponds to the variables dimension — the one whose
     # values are the variable names.  This is position-agnostic so it works for
     # both 3-key (gridded) and 5-key (trajectories, [date, time, step,
@@ -111,9 +133,12 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         )
 
     # We hold the first axis fixed (so we only walk one "row" of the cube) and
-    # collect one representative field per variable.
+    # collect one representative field per variable (per remaining axis value,
+    # e.g. per ensemble member).
     seen_variables: set[str] = set()
     primary_axis_value: Any = None
+    result: dict[str, dict[str, Any]] = {}
+
     for c in cube.iterate_cubelets():
 
         if primary_axis_value is None:
@@ -124,109 +149,9 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         current_variable = c._coords_names[variables_axis_idx]
 
-        f = cube[c.coords]
-        md = f.metadata(namespace="mars")
-        if not md:
-            md = f.metadata(namespace="default")
+        md = Variable.from_field(current_variable, cube[c.coords]).as_dict()
 
-        if md.get("param") == "~":
-            md["param"] = f.metadata("param")
-            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
-
-        if md.get("param") == "unknown":
-            md["param"] = str(f.metadata("paramId", default="unknown"))
-            # assert md['param'] != 'unknown', (md, f.metadata('param'))
-
-        startStep = f.metadata("startStep", default=None)
-        if startStep is not None:
-            startStep = as_timedelta(startStep)
-
-        endStep = f.metadata("endStep", default=None)
-        if endStep is not None:
-            endStep = as_timedelta(endStep)
-
-        stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
-        typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)
-        timeRangeIndicator = f.metadata("timeRangeIndicator", default=None)
-
-        # GRIB1 precipitation accumulations are not correctly encoded
-        if startStep == endStep and stepTypeForConversion == "accum":
-            # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
-            # Note that this is, on purpose, the opposite of the usual convention.
-            endStep = as_timedelta(f.metadata("P1"))
-            startStep = as_timedelta(f.metadata("P2"))
-
-        if startStep is not None and endStep is not None:
-            assert endStep >= startStep, (startStep, endStep, md)
-
-        if startStep != endStep:
-            # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
-            TYPE_OF_STATISTICAL_PROCESSING: dict[int | None, str | None] = {
-                None: None,
-                0: "average",
-                1: "accumulation",
-                2: "maximum",
-                3: "minimum",
-                4: "difference(end-start)",
-                5: "root_mean_square",
-                6: "standard_deviation",
-                7: "covariance",
-                8: "difference(start-end)",
-                9: "ratio",
-                10: "standardized_anomaly",
-                11: "summation",
-                100: "severity",
-                101: "mode",
-            }
-
-            # https://codes.ecmwf.int/grib/format/grib1/ctable/5/
-
-            TIME_RANGE_INDICATOR: dict[int, str] = {
-                4: "accumulation",
-                3: "average",
-            }
-
-            STEP_TYPE_FOR_CONVERSION: dict[str, str] = {
-                "min": "minimum",
-                "max": "maximum",
-                "accum": "accumulation",
-            }
-
-            #
-            # A few patches
-            #
-
-            PATCHES: dict[str, str] = {
-                "10fg6": "maximum",
-                "mntpr3": "minimum",  # Not in param db
-                "mntpr6": "minimum",  # Not in param db
-                "mxtpr3": "maximum",  # Not in param db
-                "mxtpr6": "maximum",  # Not in param db
-            }
-
-            process = TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)
-            if process is None:
-                process = TIME_RANGE_INDICATOR.get(timeRangeIndicator)
-            if process is None:
-                process = STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)
-            if process is None:
-                process = PATCHES.get(md["param"])
-                if process is not None:
-                    LOG.error(f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead")
-
-            if process is None:
-                raise ValueError(
-                    f"Unknown for {md['param']}:"
-                    f" {stepTypeForConversion=} ({STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)}),"
-                    f" {typeOfStatisticalProcessing=} ({TYPE_OF_STATISTICAL_PROCESSING.get(typeOfStatisticalProcessing)}),"
-                    f" {timeRangeIndicator=} ({TIME_RANGE_INDICATOR.get(timeRangeIndicator)})"
-                )
-
-            # print(md["param"], "startStep", startStep, "endStep", endStep, "process", process, "typeOfStatisticalProcessing", typeOfStatisticalProcessing)
-            other[current_variable]["process"] = process
-            other[current_variable]["period"] = (startStep, endStep)
-
-        units = f.metadata("units", default=None)
+        units = md.get("parameter", {}).get("units")
         if current_variable in units_seen:
             if units_seen[current_variable] != units:
                 raise ValueError(
@@ -239,29 +164,27 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             LOG.warning(f"Cannot establish units for variable '{current_variable}'.")
             QUIET.add(current_variable)
 
-        other[current_variable]["units"] = units
-
-        grib = {k: f.metadata(k, default=None) for k in ("paramId", "shortName")}
-        if any(grib.values()):
-            other[current_variable]["grib"] = grib
-
-        for k in md.copy().keys():
-            if k.startswith("_"):
-                md.pop(k)
-
-        if current_variable in mars:
-            mars[current_variable] = _merge(md, mars[current_variable])
+        # The mars request differs between cubelets of the same variable
+        # (e.g. ensemble members): merge differing values into sorted lists.
+        # Everything else is per-variable: the last cubelet wins, as before.
+        mars = md.pop("mars", None)
+        if current_variable in result:
+            previous = result[current_variable]
+            previous_mars = previous.pop("mars", None)
+            if mars and previous_mars:
+                mars = _merge(mars, previous_mars)
+            previous.update(md)
+            if mars or previous_mars:
+                previous["mars"] = mars or previous_mars
         else:
-            mars[current_variable] = md
+            if mars:
+                md["mars"] = mars
+            result[current_variable] = md
 
         seen_variables.add(current_variable)
 
-    result: dict[str, dict[str, Any]] = {}
-    for k, v in mars.items():
-        result[k] = dict(mars=v) if v else {}
-        result[k].update(other[k])
+    for k in result:
         result[k].update(_KNOWN_VARIABLES.get(k, {}))
-        # assert result[k], k
 
     assert seen_variables == variables_set, (seen_variables, variables_set)
     return result
@@ -290,20 +213,57 @@ def _data_request(data: Any) -> dict[str, Any]:
     for field in data:
         try:
             if date is None:
-                date = field.metadata("valid_datetime")
+                date = field.time.valid_datetime()
 
-            if field.metadata("valid_datetime") != date:
+            if field.time.valid_datetime() != date:
                 continue
 
-            as_mars = field.metadata(namespace="mars")
+            as_mars = field.get(collections="metadata.mars")
             if not as_mars:
                 continue
+
+            # In earthkit 1.0, forcing fields (e.g. cos_latitude) are wrapped
+            # with new_field_with_metadata and inherit the template GRIB's MARS
+            # metadata.  Their parameter.variable differs from as_mars["param"]
+            # so we skip them to avoid recording spurious area/grid/param_level.
+            # Note: renamed GRIB fields (e.g. tp → tp_accum_1h) also trigger
+            # this condition (as_mars["param"]='tp', parameter.variable='tp_accum_1h'),
+            # but since the comparison ignores metadata.data_request.param_level
+            # and metadata.data_request.param_step, this is acceptable.
+            _param_var = field.get("parameter.variable", default=None)
+            _mars_param = as_mars.get("param")
+            if _param_var is not None and _mars_param is not None and _param_var != _mars_param:
+                continue
+
+            # Use _param_var (the human-facing variable name) as the param so
+            # that renamed fields are recorded under their display name rather
+            # than the raw GRIB param.
+            param = _param_var if _param_var is not None else _mars_param
             step = as_mars.get("step")
             levtype = as_mars.get("levtype", "sfc")
-            param = as_mars["param"]
             levelist = as_mars.get("levelist", None)
-            area = field.mars_area
-            grid = field.mars_grid
+            area = as_mars.get("area", None)
+            # Recover grid resolution as [di, dj] (matching old field.mars_grid behaviour).
+            # Fall back to spacing computed from grid points when the increment
+            # metadata is masked (earthkit 1.0 fields wrapped with
+            # new_field_with_valid_datetime mask iDirectionIncrementInDegrees).
+            _di = field.get("metadata.iDirectionIncrementInDegrees", default=None)
+            _dj = field.get("metadata.jDirectionIncrementInDegrees", default=None)
+            if _di is not None and _dj is not None:
+                grid = [_di, _dj]
+            else:
+                try:
+                    _glats, _glons = field.geography.latlons()
+                    _ulats = np.unique(_glats)
+                    _ulons = np.unique(_glons)
+                    if len(_ulats) > 1 and len(_ulons) > 1:
+                        _dj = float(np.amin(np.abs(np.diff(np.sort(_ulats)))))
+                        _di = float(np.amin(np.abs(np.diff(np.sort(_ulons)))))
+                        grid = [_di, _dj]
+                    else:
+                        grid = field.get("metadata.gridType", default=None)
+                except Exception:
+                    grid = field.get("metadata.gridType", default=None)
 
             if levelist is None:
                 params_levels[levtype].add(param)
@@ -356,7 +316,7 @@ class GriddedResult(Result):
             self.group_of_dates, (GroupOfDates, ForecastDates)
         ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
-        self._origins = []
+        self._origins = None
         # Used to check if units are consistent across fields for the same variable
         self._past_units = {}
 
@@ -367,8 +327,57 @@ class GriddedResult(Result):
 
     @property
     def origins(self) -> dict[str, Any]:
-        """Return a dictionary with the parameters needed to retrieve the data origins."""
+        """Return a dictionary with the origin (source and filters) of each variable."""
+        if self._origins is None:
+            self._origins = self._collect_origins()
         return {"version": 1, "origins": self._origins}
+
+    def _collect_origins(self) -> list[dict[str, Any]]:
+        """Group the variables by origin, from the fields' labels.
+
+        Each field carries its origin in the ``labels.anemoi_origin`` label
+        (attached by the source and filter actions) and its variable name in
+        ``labels.name`` (attached by the naming scheme).
+
+        For trajectories this iterates the fields of every ``(basetime,
+        step)`` pair of the group. A variable's fields all share the same
+        origin object regardless of the trajectory point they belong to
+        (the actions tag every retrieval with the same ``Source``/``Pipe``
+        instance), so the grouping below naturally collapses a whole
+        trajectory dataset to one origin entry per variable — identical in
+        shape to the plain gridded case.
+
+        Origins are first grouped per ensemble member; a variable whose
+        members come from different origins is not supported (asserted
+        below).
+        """
+        origins_per_number: DefaultDict[Any, DefaultDict[Any, set]] = defaultdict(lambda: defaultdict(set))
+
+        for fs in self.datasource:
+            o = fs.get("labels.anemoi_origin", default=None)
+            if o is None:
+                raise ValueError(f"Field {fs} carries no origin (labels.anemoi_origin)")
+            name = fs.name
+            number = fs.number
+
+            assert name not in origins_per_number[number][o], name
+            origins_per_number[number][o].add(name)
+
+        origins_per_variables: DefaultDict[Any, DefaultDict[Any, set]] = defaultdict(lambda: defaultdict(set))
+        for number, origins in origins_per_number.items():
+            for origin, names in origins.items():
+                for name in names:
+                    origins_per_variables[name][origin].add(number)
+
+        origins = defaultdict(set)
+
+        # Check if all members of a variable have the same origins
+        for name, origin_number in origins_per_variables.items():
+            # For now we do not support variables with members from different origins
+            assert len(origin_number) == 1, origin_number
+            origins[list(origin_number.keys())[0]].add(name)
+
+        return [{"origin": k.as_dict(), "variables": sorted(v)} for k, v in origins.items()]
 
     def get_cube(self) -> Any:
         """Retrieve the data cube for the result.
@@ -381,20 +390,25 @@ class GriddedResult(Result):
 
         ds: Any = self.datasource
 
-        self.remapping: Any = self.context.remapping
         self.order_by: Any = self.context.order_by
+        # Composite synthetic keys (e.g. the trajectories layout's
+        # ``traj_point``) still need an earthkit remapping; field naming
+        # itself is carried by the ``labels.name`` label.
+        self.remapping: Any = getattr(self.context, "remapping", None)
         self.start: float = time.time()
-        LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
+        LOG.info("Sorting dataset %s", self.order_by)
         assert self.order_by, self.order_by
 
-        self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
+        self.patches: dict[str, Any] = {
+            "metadata.number": {None: 0},
+        }
 
         try:
-            cube: Any = ds.cube(
+            cube: Any = ds.to_cube(
                 self.order_by,
                 remapping=self.remapping,
                 flatten_values=True,
-                patches=self.patches,
+                patch=self.patches,
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
@@ -427,7 +441,7 @@ class GriddedResult(Result):
         args : Any
             Additional arguments.
         remapping : Any
-            The remapping configuration.
+            The remapping for composite synthetic keys (e.g. ``traj_point``).
         patches : Any
             The patches configuration.
         """
@@ -464,8 +478,8 @@ class GriddedResult(Result):
                 names += list(a.keys())
 
         print(f"Building a {len(names)}D hypercube using", names)
-        ds = ds.order_by(*args, remapping=remapping, patches=patches)
-        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches, progress_bar=False)
+        ds = ds.order_by(*args, remapping=remapping, patch=patches)
+        user_coords = ds.unique(*names, remapping=remapping, patch=patches, progress_bar=False)
 
         print()
         print("Number of unique values found for each coordinate:")
@@ -492,7 +506,7 @@ class GriddedResult(Result):
             print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
 
             for f in ds:
-                metadata = remapping(f.metadata)
+                metadata = remapping(_field_metadata_callable(f))
                 key = tuple(metadata(n, default=None) for n in names)
                 if key in expected:
                     expected.remove(key)
@@ -551,7 +565,7 @@ class GriddedResult(Result):
             duplicated = defaultdict(list)
             for f in ds:
                 # print(f.metadata(namespace="default"))
-                metadata = remapping(f.metadata)
+                metadata = remapping(_field_metadata_callable(f))
                 key = tuple(metadata(n, default=None) for n in names)
                 duplicated[key].append(f)
 
@@ -561,7 +575,11 @@ class GriddedResult(Result):
             for i, (k, v) in enumerate(sorted(duplicated.items())):
                 print(" ", k)
                 for f in v:
-                    x = {k: f.metadata(k, default=None) for k in METADATA if f.metadata(k, default=None) is not None}
+                    x = {
+                        k: f.get(f"metadata.{k}", default=None)
+                        for k in METADATA
+                        if f.get(f"metadata.{k}", default=None) is not None
+                    }
                     print("   ", f, x)
                 if i >= 9 and len(duplicated) > 10:
                     print("...", len(duplicated) - i - 1, "more")
@@ -622,10 +640,9 @@ class GriddedResult(Result):
         self._post_build_coords(from_data, keys_from_config)
 
         first_field: Any = self.datasource[0]
-        grid_points: Any = first_field.grid_points()
-
-        lats: Any = grid_points[0]
-        lons: Any = grid_points[1]
+        lats: Any = first_field.geography.latitudes().flatten()
+        lons: Any = first_field.geography.longitudes().flatten()
+        grid_points: Any = (lats, lons)
 
         assert len(lats) == len(lons), (len(lats), len(lons), first_field)
         assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
@@ -645,12 +662,18 @@ class GriddedResult(Result):
         grid_values: list = list(range(len(grid_points[0])))
 
         self._grid_points: Any = grid_points
-        self._resolution: Any = first_field.resolution
+        self._resolution: Any = first_field.get("metadata.iDirectionIncrementInDegrees", default=None)
         if self._resolution is None:
-            try:
-                self._resolution = first_field.metadata().get("resolution")
-            except Exception:
-                pass
+            self._resolution = first_field.get("metadata.gridName", default=None)
+        if self._resolution is None:
+            self._resolution = first_field.get("metadata.gridType", default=None)
+        if self._resolution is None:
+            # Fallback: infer resolution from unique latitude spacing when
+            # iDirectionIncrementInDegrees is masked (earthkit 1.0 fields
+            # wrapped with new_field_with_valid_datetime or new_field_with_metadata).
+            unique_lats = np.unique(lats)
+            if len(unique_lats) > 1:
+                self._resolution = float(np.amin(np.abs(np.diff(np.sort(unique_lats)))))
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
@@ -673,8 +696,6 @@ class GriddedResult(Result):
     @property
     def typed_variables(self) -> dict[str, Any]:
         """Retrieve the typed metadata for the variables."""
-        from anemoi.transform.variables import Variable
-
         return {k: Variable.from_dict(k, v) for k, v in self.variables_metadata.items()}
 
     @property

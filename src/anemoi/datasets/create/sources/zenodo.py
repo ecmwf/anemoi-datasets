@@ -10,8 +10,7 @@
 
 from typing import Any
 
-import earthkit.data as ekd
-from earthkit.data.core.fieldlist import MultiFieldList
+from anemoi.transform import FieldList
 from earthkit.data.sources.url import download_and_cache
 
 from . import source_registry
@@ -24,7 +23,7 @@ from .xarray import load_one
 class ZenodoSource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> FieldList:
         """Executes the download and processing of files from Zenodo.
 
         Parameters
@@ -44,7 +43,7 @@ class ZenodoSource(LegacySource):
 
         Returns
         -------
-        MultiFieldList
+        FieldList
             A list of fields loaded from the downloaded files.
         """
         import requests
@@ -68,4 +67,4 @@ class ZenodoSource(LegacySource):
             path = download_and_cache(urls[url])
             result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
 
-        return MultiFieldList(result)
+        return FieldList.concat(*result)

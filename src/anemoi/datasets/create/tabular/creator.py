@@ -60,6 +60,7 @@ class TabularCreator(Creator):
         metadata["meta_variables"] = [v for v in variables if v.startswith("__")]
 
         metadata["dimensions"] = ["dates", "variables"]
+        metadata["origins"] = self.minimal_input.origins
 
         assert (
             variables == metadata["meta_variables"] + metadata["variables"]

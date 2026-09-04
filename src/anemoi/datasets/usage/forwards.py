@@ -294,7 +294,27 @@ class Forwards(Dataset):
         """Returns the constant fields of the forward dataset."""
         return self.forward.constant_fields
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Pass the projection through unchanged, recording this wrapper.
+
+        Default behaviour for wrappers that alter the *data* but not the
+        indexing (thinning, rescale, masking, rename, ...): coordinates
+        are untouched, so the projection is forwarded as-is, and the
+        wrapper registers itself on the way back so that its
+        ``origin_transformation`` becomes a ``dataset-usage`` step in the
+        variables' origins. Index-changing wrappers override this.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in this dataset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projection(s), with this wrapper appended to
+            their traversal record.
+        """
         return self.forward.project(projection).add_transformation(self)
 
     def usage_factory_load(self, name: str) -> Any:
@@ -773,7 +793,25 @@ class GivenAxis(Combined):
                 offset += len(d)
         return result
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Fan the projection out into the datasets combined along ``self.axis``.
+
+        Each constituent dataset occupies a contiguous block along the
+        combined axis, so the projection is shifted by minus the block's
+        offset (:meth:`Projection.offset`) to land in that dataset's own
+        coordinates before recursing. Positions falling outside a
+        constituent compose to an empty selection downstream.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the combined dataset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projections of all constituents.
+        """
         result = []
         offset = 0
 
