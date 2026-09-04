@@ -61,8 +61,12 @@ the ensemble, and the fourth dimension is the grid points values.
 "Chunks" are the basic unit of data storage in Zarr_. This means that it
 is the granularity at which data is read from disk.
 
-By default, the array is chunked along the time dimension so the whole
-state of the atmosphere at a given time is loaded in one go:
+By default, the array is chunked along the time dimension and each date is
+split into four chunks along the grid dimension. All variables remain
+together in each grid chunk. If one of those chunks would exceed the codec's
+maximum buffer size, the grid is split further into 8, 16, 32, and so on
+until each chunk fits. An explicit ``output.chunking.values`` setting
+overrides this automatic grid chunk size.
 
 .. figure:: _static/schemas/matrix.png
    :alt: Data chunking
