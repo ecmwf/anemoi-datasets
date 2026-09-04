@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.43](https://github.com/ecmwf/anemoi-datasets/compare/0.5.42...0.5.43) (2026-09-04)
+
+
+### Features
+
+* Missing dates as NaNs ([#708](https://github.com/ecmwf/anemoi-datasets/issues/708)) ([7067a33](https://github.com/ecmwf/anemoi-datasets/commit/7067a33ef697238bd763d6bcfa63da0c106534f6))
+* Support very large observations datasets ([#726](https://github.com/ecmwf/anemoi-datasets/issues/726)) ([85791a6](https://github.com/ecmwf/anemoi-datasets/commit/85791a68e13875150f326bf70cd82ceb41b0a8d3))
+
+
+### Bug Fixes
+
+* Resolve _compare_arrays logic bug ([#747](https://github.com/ecmwf/anemoi-datasets/issues/747)) ([4c3a20a](https://github.com/ecmwf/anemoi-datasets/commit/4c3a20aa796f600f6ce7d0a824b90d172aac0a69))
+
+
+### Performance Improvements
+
+* **cutout:** Push the grid index down to the source datasets ([#736](https://github.com/ecmwf/anemoi-datasets/issues/736)) ([2068e4d](https://github.com/ecmwf/anemoi-datasets/commit/2068e4d3b2980674e4a724a9a4b8f1f904281c9d))
+
 ## [0.5.42](https://github.com/ecmwf/anemoi-datasets/compare/0.5.41...0.5.42) (2026-08-13)
 
 
