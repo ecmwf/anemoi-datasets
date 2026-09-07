@@ -75,7 +75,8 @@ data_sources:
 output:
   layout: gridded # The layout of the dataset: `gridded`, `tabular` or `trajectories`.
   dtype: float32 # The data type of the output variables (e.g. float32, int16, etc.)
-  # chunking: {dates: 1, ensembles: 1}         # for layout: gridded
+  # chunking: {dates: 1, ensembles: 1}         # gridded: grid is split at least 4 ways automatically
+  # chunking: {dates: 1, ensembles: 1, values: 100000}  # gridded: explicit grid chunk size
   # chunking: {base_dates: 1, steps: 1, ensembles: 1}  # for layout: trajectories
   #
   # Note: `output.order_by` is deprecated. The cube ordering is
