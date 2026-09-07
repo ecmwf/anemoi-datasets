@@ -167,7 +167,15 @@ class Dataset(ABC, Sized):
         # When adding a new option here, please also update `test_classes`
         ############
 
-        # This one must be first
+        # Must be before fill_missing_dates
+        if "extend_start" in kwargs or "extend_end" in kwargs:
+            Extend = self.usage_factory_load("Extend")
+
+            extend_start = kwargs.pop("extend_start", None)
+            extend_end = kwargs.pop("extend_end", None)
+            return Extend(self, extend_start=extend_start, extend_end=extend_end)._subset(**kwargs).mutate()
+
+        # Must be before the rest
         if "fill_missing_dates" in kwargs:
             fill_missing_dates_factory = self.usage_factory_load("fill_missing_dates_factory")
 
