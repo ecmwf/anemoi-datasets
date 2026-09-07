@@ -307,6 +307,24 @@ class Subset(Forwards):
         ), tuple
         return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Map the projection through this date subset.
+
+        The subset keeps ``self.indices`` along the date axis (axis 0) of
+        the forward dataset; ``from_indices`` composes that mapping with
+        the projection's own date selection before recursing (possibly
+        splitting into several projections when the kept dates are not
+        one contiguous run).
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the subset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projection(s).
+        """
         projection = projection.from_indices(axis=0, indices=self.indices)
         return self.dataset.project(projection)

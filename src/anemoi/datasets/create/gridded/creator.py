@@ -65,7 +65,8 @@ class GriddedCreator(Creator):
         variables = self.minimal_input.variables
         LOG.info(f"Found {len(variables)} variables : {', '.join(variables)}.")
 
-        metadata["remapping"] = self.recipe.build.remapping
+        metadata["variable_naming"] = self.recipe.build.variable_naming
+        metadata["origins"] = self.minimal_input.origins
         # Read from the context rather than the recipe so that layouts whose
         # cube ordering is internal (e.g. trajectories) can provide their own
         # ``order_by`` without exposing it in the recipe schema.
@@ -124,7 +125,7 @@ class GriddedCreator(Creator):
 
         cube = result.get_cube()
         shape = cube.extended_user_shape
-        dates_in_data = cube.user_coords["valid_datetime"]
+        dates_in_data = cube.user_coords["time.valid_datetime"]
 
         # LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
 

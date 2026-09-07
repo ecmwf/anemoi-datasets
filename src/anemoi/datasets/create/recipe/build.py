@@ -99,8 +99,10 @@ class Build(BaseModel):
     """Peak streaming bandwidth in bytes/second, achieved for reads inside the sweet spot."""
 
     """Environment variables to set when creating the dataset."""
-    remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
-    """Remapping configuration for the dataset."""
+    remapping: dict[str, Any] | None = Field(
+        default=None,
+        deprecated="'build.remapping' is deprecated. Please use 'build.variable_naming' instead.",
+    )
 
     def _post_init(self, recipe: Recipe) -> None:
         """Post-initialisation hook to handle legacy config options.
@@ -133,23 +135,37 @@ class Build(BaseModel):
 
         # Support legacy 'output.remapping'
         if recipe.output.__dict__.get("remapping") is not None:
-            if self.remapping:
+            if self.__dict__.get("remapping"):
                 raise PydanticCustomError(
                     "conflicting_remapping",
-                    "Cannot specify 'remapping' in both 'output' and 'build'. Please use 'build.remapping' only.",
+                    "Cannot specify 'remapping' in both 'output' and 'build'. "
+                    "Please use 'build.variable_naming' only.",
                 )
+            # Attribute access (not __dict__) so the deprecation warning fires.
             self.remapping = dict(recipe.output.remapping)
             recipe.output.remapping = None
+
+        # Legacy recipes carried the field naming as an earthkit remapping
+        # (e.g. {"param_level": "{param}_{levelist}"}). Substitute the
+        # equivalent 'variable_naming' unless it was set explicitly.
+        if self.__dict__.get("remapping"):
+            from anemoi.transform.naming import variable_naming_from_remapping
+
+            # Attribute access (not __dict__) so the deprecation warning fires.
+            variable_naming = variable_naming_from_remapping(self.remapping)
+            if variable_naming is not None:
+                if self.variable_naming != validate_variable_naming("default"):
+                    raise PydanticCustomError(
+                        "conflicting_naming",
+                        "Cannot specify both 'variable_naming' and a 'remapping' with a "
+                        "'param_level' entry. Please use 'variable_naming' only.",
+                    )
+                self.variable_naming = validate_variable_naming(variable_naming)
 
         # Reconcile the deprecated 'build.additions' flag with the canonical
         # 'statistics.tendencies' option. The rest of the codebase relies
         # solely on 'statistics.tendencies'.
         self._resolve_tendencies(recipe)
-
-        # Apply variable_naming to remapping
-        # This is for backward compatibility
-        if "param_level" in self.remapping:
-            self.remapping["param_level"] = self.variable_naming
 
     def _resolve_tendencies(self, recipe: Recipe) -> None:
         """Reconcile the deprecated ``build.additions`` flag with ``statistics.tendencies``.

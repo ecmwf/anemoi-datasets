@@ -242,31 +242,6 @@ class GriddedZarr(ZarrStore):
         """Collect input sources."""
         pass
 
-    @cached_property
-    def origins(self):
-        origins = self.store.attrs.get("origins")
-
-        if origins is None:
-            import rich
-
-            rich.print(dict(self.store.attrs))
-            raise ValueError(f"No 'origins' in {self.dataset_name}")
-
-        # version = origins["version"]
-        origins = origins["origins"]
-
-        result = {}
-
-        for origin in origins:
-            for v in origin["variables"]:
-                result[v] = origin["origin"]
-
-        return result
-
-    def project(self, projection):
-        slices = tuple(slice(0, i, 1) for i in self.shape)
-        return projection.from_store(slices, self).apply(projection)
-
     @property
     def dataset_name(self) -> str:
         """Return the name of the dataset."""
@@ -348,8 +323,3 @@ class ZarrWithMissingDates(GriddedZarr):
     def label(self) -> str:
         """Return the label of the dataset."""
         return "zarr*"
-
-    # def origin(self, index):
-    #     if index[0] in self.missing:
-    #         self._report_missing(index[0])
-    #     return super().origin(index)

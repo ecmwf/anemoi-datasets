@@ -10,7 +10,7 @@
 
 from typing import Any
 
-import earthkit.data as ekd
+from anemoi.transform import FieldList
 
 from . import source_registry
 from .legacy import LegacySource
@@ -21,7 +21,7 @@ from .xarray import load_many
 class NetCDFSource(LegacySource):
 
     @staticmethod
-    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> FieldList:
         """Execute the loading of multiple NetCDF files.
 
         Parameters

@@ -14,14 +14,13 @@ from urllib.parse import urlparse
 import planetary_computer
 import pystac
 import pystac_client
-from earthkit.data.core.fieldlist import FieldList
-from earthkit.data.core.fieldlist import MultiFieldList
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.types import DateList
 
 from . import source_registry
 from .xarray import XarraySourceBase
-from .xarray_support import load_one
+from .xarray import load_one
 
 _MEDIA_TYPE_XR_ENGINES = {
     "application/vnd+zarr": "zarr",
@@ -164,7 +163,7 @@ class PlanetaryComputerSource(XarraySourceBase):
             raise ValueError(msg)
         return uris
 
-    def execute(self, dates: DateList) -> FieldList | MultiFieldList:
+    def execute(self, dates: DateList) -> FieldList:
         """Execute data loading for given dates.
 
         Parameters
@@ -174,7 +173,7 @@ class PlanetaryComputerSource(XarraySourceBase):
 
         Returns
         -------
-        earthkit.data.FieldList | earthkit.data.MultiFieldList
+        FieldList
             Loaded data field(s).
 
         """
@@ -204,7 +203,7 @@ class PlanetaryComputerSource(XarraySourceBase):
                     **self.kwargs,
                 ),
             )
-        return MultiFieldList(result)
+        return FieldList.concat(*result)
 
 
 def _signed_url_to_abfs(url: str) -> tuple[str, dict]:

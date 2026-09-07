@@ -131,7 +131,7 @@ class DateMapperClosest(DateMapper):
             for f in result:
                 cnt += 1
                 # We could keep the fields in a dictionary, but we don't want to keep the fields in memory
-                date = as_datetime(f.metadata("valid_datetime"))
+                date = f.valid_datetime
 
                 if self.skip_all_nans:
                     if np.isnan(f.to_numpy()).all():

@@ -88,7 +88,9 @@ class LoadSource:
         name = self.filename(args, kwargs)
 
         try:
-            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+            return original_from_source(
+                "file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{name}")
+            ).to_fieldlist()
         except RuntimeError:
             raise  # If offline
         except Exception:
@@ -114,4 +116,4 @@ class LoadSource:
         if name == "mars":
             return self.mars(args, kwargs)
 
-        return original_from_source(name, *args, **kwargs)
+        return original_from_source(name, *args, **kwargs).to_fieldlist()

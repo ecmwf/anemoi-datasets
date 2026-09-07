@@ -199,6 +199,21 @@ class ZarrStore(Dataset):
         # This seems to speed up the reading of the data a lot
         self.data = self.store["data"]
 
+    @cached_property
+    def origins(self):
+        """Return the origin of each variable, as stored in the dataset metadata."""
+        origins = self.store.attrs.get("origins")
+
+        if origins is None:
+            raise ValueError(f"No 'origins' in {self.path}")
+
+        result = {}
+        for origin in origins["origins"]:
+            for v in origin["variables"]:
+                result[v] = origin["origin"]
+
+        return result
+
     @classmethod
     def from_group(cls, group: zarr.Group, path: str = None, options: Options = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
@@ -324,28 +339,25 @@ class ZarrStore(Dataset):
         """Collect input sources."""
         pass
 
-    @cached_property
-    def origins(self):
-        origins = self.store.attrs.get("origins")
+    def project(self, projection) -> Any:
+        """Terminate the projection descent at this zarr store.
 
-        if origins is None:
-            import rich
+        The store binds the projection to itself
+        (``projection.from_store`` builds a ``ProjectionStore`` covering
+        the store's full shape) and composes the selection accumulated by
+        the views above (``apply``), yielding the exact store region this
+        view reads.
 
-            rich.print(dict(self.store.attrs))
-            raise ValueError(f"No 'origins' in {self.dataset_name}")
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the store's coordinates.
 
-        # version = origins["version"]
-        origins = origins["origins"]
-
-        result = {}
-
-        for origin in origins:
-            for v in origin["variables"]:
-                result[v] = origin["origin"]
-
-        return result
-
-    def project(self, projection):
+        Returns
+        -------
+        ProjectionBase
+            The resolved ``ProjectionStore``(s).
+        """
         slices = tuple(slice(0, i, 1) for i in self.shape)
         return projection.from_store(slices, self).apply(projection)
 

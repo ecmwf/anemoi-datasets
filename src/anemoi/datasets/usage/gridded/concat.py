@@ -256,7 +256,26 @@ class Concat(ConcatMixin, Combined):
         """
         return {}
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Fan the projection out into every concatenated period.
+
+        A ``concat`` combines datasets holding the *same variables* over
+        consecutive date ranges. Unlike :meth:`GivenAxis.project`, the
+        projection is deliberately **not** shifted along the date axis:
+        each period is asked for the full variable selection, so the
+        origins reported for a variable cover every period it comes from
+        (a variable may have a different provenance per period).
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the concatenated dataset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projections of all periods.
+        """
         result = []
 
         for dataset in self.datasets:

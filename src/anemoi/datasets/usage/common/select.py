@@ -178,6 +178,24 @@ class SelectBase(Forwards):
 
         return self.dataset.origin((index[0], self.indices[index[1]], index[2], index[3]))
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Map the projection through this variable selection.
+
+        The selection keeps ``self.indices`` along the variable axis
+        (axis 1) of the forward dataset; ``from_indices`` composes that
+        mapping with the projection's own variable selection before
+        recursing, so only the origins of the selected variables are
+        reported.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the selection's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projection(s).
+        """
         projection = projection.from_indices(axis=1, indices=self.indices)
         return self.dataset.project(projection)

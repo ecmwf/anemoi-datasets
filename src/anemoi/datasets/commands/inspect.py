@@ -336,7 +336,11 @@ class Version:
             return str(x)
 
         for i, v in enumerate(self.variables):
-            row = [i, v] + [x[i] for x in stats] + [self.variables_metadata.get(v, {}).get("units", "-")]
+            md = self.variables_metadata.get(v, {})
+            # Legacy datasets store units at the top level, the 'variable/1'
+            # schema stores them under parameter.units.
+            units = md.get("units") or md.get("parameter", {}).get("units") or "-"
+            row = [i, v] + [x[i] for x in stats] + [units]
             table.add_row(*map(_, row))
 
         console.print()
