@@ -470,14 +470,12 @@ class HindcastsDates(DatesProvider):
         mindelta = datetime.timedelta(seconds=mindelta_seconds)
         self.frequency = mindelta
         assert mindelta.total_seconds() > 0, mindelta
-        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", dates[0], dates[-1], mindelta)
 
         # Use all values between start and end by frequency, and set the ones that are missing
         self.values = []
         missing = []
         date = dates[0]
         last = date
-        print("------", date, dates[-1])
         dateset = set(dates)
         while date <= dates[-1]:
             self.values.append(date)
@@ -489,9 +487,6 @@ class HindcastsDates(DatesProvider):
             date = date + mindelta
 
         self.mapping = seen
-
-        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", self.values[0], self.values[-1], mindelta)
-        print("🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥", f"{len(self.values)=} - {len(missing)=}")
 
         super().__init__(missing=missing)
 

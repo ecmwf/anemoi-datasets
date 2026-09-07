@@ -401,6 +401,21 @@ class _ConstantsCollector(_Base):
 
         data = data[:, self._index]
 
+        # Missing dates are stored as slots that are entirely NaN.  They carry
+        # no information about whether the field is constant in time, so drop
+        # them before comparing: keeping them would make every constant field
+        # (e.g. a forcing such as ``cos_latitude``) look non-constant, and would
+        # also poison the first-row hash used to merge partial statistics.
+        # (A field that is genuinely constant but has NaN at *fixed* grid points
+        # is still handled below via the ``both_nan`` mask, which uses the NaN
+        # pattern of the first non-missing slot.)
+        if data.ndim > 1:
+            missing_rows = np.isnan(data).reshape(data.shape[0], -1).all(axis=1)
+            if missing_rows.any():
+                data = data[~missing_rows]
+                if len(data) == 0:
+                    return
+
         if self._first is None:
             self._first = data[0].copy()
             self._nans = np.isnan(self._first)

@@ -38,18 +38,37 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
     ):
         create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
 
-    dates = zarr.open(str(output), mode="r")["dates"][:]
+    store = zarr.open(str(output), mode="r")
+    dates = store["dates"][:]
 
+    # The on-disk time axis keeps a slot for every date in the range, including
+    # the missing ones (see issue #700): otherwise the stored length would be
+    # ``all_dates - missing_dates`` and length checks would fail when the
+    # dataset is later combined (e.g. cutout).
     assert dates.tolist() == [
         np.datetime64("2020-12-30T00:00:00"),
+        np.datetime64("2020-12-30T12:00:00"),  # missing
         np.datetime64("2020-12-31T00:00:00"),
         np.datetime64("2020-12-31T12:00:00"),
         np.datetime64("2021-01-01T00:00:00"),
         np.datetime64("2021-01-01T12:00:00"),
         np.datetime64("2021-01-02T00:00:00"),
         np.datetime64("2021-01-02T12:00:00"),
+        np.datetime64("2021-01-03T00:00:00"),  # missing
         np.datetime64("2021-01-03T12:00:00"),
     ]
+
+    # The missing dates are recorded in the metadata and their slots are NaN.
+    assert set(store.attrs["missing_dates"]) == {
+        "2020-12-30T12:00:00",
+        "2021-01-03T00:00:00",
+    }
+    assert np.isnan(store["data"][1]).all()
+    assert np.isnan(store["data"][8]).all()
+
+    # The (all-NaN) missing slots must not prevent a genuinely constant forcing
+    # from being detected as constant in time (see #700).
+    assert store.attrs["constant_fields"] == ["cos_latitude"]
 
 
 @skip_if_offline
@@ -63,15 +82,26 @@ def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSo
     ):
         create_dataset(recipe=str(recipe), output=str(output), delta=["12h"])
 
-    dates = zarr.open(str(output), mode="r")["dates"][:]
+    store = zarr.open(str(output), mode="r")
+    dates = store["dates"][:]
 
+    # The missing dates keep their slots in the on-disk time axis (see #700).
     assert dates.tolist() == [
         np.datetime64("2020-12-30T00:00:00"),
+        np.datetime64("2020-12-30T12:00:00"),  # missing
         np.datetime64("2020-12-31T00:00:00"),
         np.datetime64("2020-12-31T12:00:00"),
         np.datetime64("2021-01-01T00:00:00"),
         np.datetime64("2021-01-01T12:00:00"),
         np.datetime64("2021-01-02T00:00:00"),
         np.datetime64("2021-01-02T12:00:00"),
+        np.datetime64("2021-01-03T00:00:00"),  # missing
         np.datetime64("2021-01-03T12:00:00"),
     ]
+
+    assert set(store.attrs["missing_dates"]) == {
+        "2020-12-30T12:00:00",
+        "2021-01-03T00:00:00",
+    }
+    assert np.isnan(store["data"][1]).all()
+    assert np.isnan(store["data"][8]).all()
