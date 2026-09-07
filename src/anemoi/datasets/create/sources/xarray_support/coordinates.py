@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
@@ -126,12 +125,7 @@ class Coordinate:
         str
             The string representation of the coordinate.
         """
-        return "{}[name={},values={},shape={}]".format(
-            self.__class__.__name__,
-            self.variable.name,
-            self.variable.values if self.scalar else len(self),
-            self.variable.shape,
-        )
+        return f"{self.__class__.__name__}[name={self.variable.name},values={self.variable.values if self.scalar else len(self)},shape={self.variable.shape}]"
 
     def reduced(self, i: int) -> Coordinate:
         """Create a new coordinate with a single value.

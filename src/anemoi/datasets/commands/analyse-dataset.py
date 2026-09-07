@@ -62,8 +62,7 @@ class AnalyseDataset(Command):
         args : Any
             The command arguments.
         """
-        from anemoi.datasets import __version__
-        from anemoi.datasets import open_dataset
+        from anemoi.datasets import __version__, open_dataset
         from anemoi.datasets.usage.store import open_zarr_store
 
         z, path = open_zarr_store(args.path, return_path=True)
@@ -127,7 +126,7 @@ class AnalyseDataset(Command):
             "version": "1.0",
             "anemoi_datasets_version": __version__,
             "path": path,
-            "created": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "created": datetime.datetime.now(datetime.UTC).isoformat(),
             "record": {
                 "name": name,
                 "metadata": metadata,

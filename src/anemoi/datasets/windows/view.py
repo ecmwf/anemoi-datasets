@@ -17,16 +17,13 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
 
-from anemoi.datasets.usage.misc import as_first_date
-from anemoi.datasets.usage.misc import as_last_date
+from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
 from ..annotated._numpy import AnnotatedNDArray
-from ..annotated.metadata import MultipleWindowMetaData
-from ..annotated.metadata import WindowMetaData
+from ..annotated.metadata import MultipleWindowMetaData, WindowMetaData
 from ..buffering import RandomReadBuffer
 from ..date_indexing import create_date_indexing
-from ..epochs import date_to_epoch
-from ..epochs import epoch_to_date
+from ..epochs import date_to_epoch, epoch_to_date
 from .window import Window
 
 LOG = logging.getLogger(__name__)
