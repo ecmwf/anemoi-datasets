@@ -16,10 +16,7 @@ from math import gcd
 from typing import Any
 
 # from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import DateTimes
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import DateTimes, as_datetime, frequency_to_string, frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 

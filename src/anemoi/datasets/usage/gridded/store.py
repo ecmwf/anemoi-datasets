@@ -20,13 +20,8 @@ from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.debug import Node, Source, debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.options import Options
 
@@ -134,8 +129,7 @@ class GriddedZarr(ZarrStore):
             delta = self.frequency
         if isinstance(delta, int):
             delta = f"{delta}h"
-        from anemoi.utils.dates import frequency_to_string
-        from anemoi.utils.dates import frequency_to_timedelta
+        from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
         delta = frequency_to_timedelta(delta)
         delta = frequency_to_string(delta)
@@ -236,11 +230,9 @@ class GriddedZarr(ZarrStore):
 
     def collect_supporting_arrays(self, collected: set, *path: str) -> None:
         """Collect supporting arrays."""
-        pass
 
     def collect_input_sources(self, collected: set) -> None:
         """Collect input sources."""
-        pass
 
     @cached_property
     def origins(self):

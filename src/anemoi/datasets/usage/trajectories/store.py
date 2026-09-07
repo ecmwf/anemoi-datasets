@@ -18,12 +18,8 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
+from anemoi.datasets.usage.debug import Node, Source, debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..store import ZarrStore
@@ -329,8 +325,7 @@ class TrajectoriesZarr(ZarrStore):
         A base date is kept if and only if its entire step range falls within
         [start, end]:  ``base + step_start >= start AND base + step_end <= end``.
         """
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         base_dates = self.base_dates
         step_start = self.steps[0]

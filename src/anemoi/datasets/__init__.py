@@ -12,11 +12,13 @@
 # monkey-patches ``zarr.Group.create_array`` so the zarr3 API is available.
 from anemoi.datasets import compat  # noqa: F401
 from anemoi.datasets.create.naming import check_dataset_name
-from anemoi.datasets.usage.gridded import MissingDateError
-from anemoi.datasets.usage.gridded import add_dataset_path
-from anemoi.datasets.usage.gridded import add_named_dataset
-from anemoi.datasets.usage.gridded import list_dataset_names
-from anemoi.datasets.usage.gridded import open_dataset
+from anemoi.datasets.usage.gridded import (
+    MissingDateError,
+    add_dataset_path,
+    add_named_dataset,
+    list_dataset_names,
+    open_dataset,
+)
 
 try:
     # NOTE: the `_version.py` file must not be present in the git repository
@@ -27,11 +29,11 @@ except ImportError:  # pragma: no cover
     __version__ = "999"
 
 __all__: list[str] = [
+    "MissingDateError",
+    "__version__",
     "add_dataset_path",
     "add_named_dataset",
     "check_dataset_name",
     "list_dataset_names",
-    "MissingDateError",
     "open_dataset",
-    "__version__",
 ]

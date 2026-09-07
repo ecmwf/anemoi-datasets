@@ -9,8 +9,7 @@
 
 import datetime
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -124,7 +123,7 @@ def load_one(
 
         for i, k in enumerate(fs):
             a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
-            for n in kwargs.keys():
+            for n in kwargs:
                 a.extend([n, k.metadata(n, default=None)])
             LOG.warning(f"{[str(x) for x in a]}")
 

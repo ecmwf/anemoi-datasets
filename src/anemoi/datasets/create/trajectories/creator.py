@@ -17,8 +17,7 @@ from typing import Any
 import numpy as np
 import tqdm
 from anemoi.transform.variables import Variable
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
 from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates

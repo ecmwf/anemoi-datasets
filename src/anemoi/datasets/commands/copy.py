@@ -12,19 +12,14 @@ import logging
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
 import tqdm
-from anemoi.utils.remote import Transfer
-from anemoi.utils.remote import TransferMethodNotImplementedError
+from anemoi.utils.remote import Transfer, TransferMethodNotImplementedError
 
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import zarr_append_mode
-from anemoi.datasets.compat import zarr_private_files
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import ZarrFileNotFoundError, zarr_append_mode, zarr_private_files, zarr_version
 from anemoi.datasets.misc.check import check_zarr
 from anemoi.datasets.usage.store import open_zarr_store
 
@@ -348,8 +343,7 @@ class ZarrCopier:
         block_size = self.block_size
 
         block_size = (block_size // size) * size
-        if block_size < size:
-            block_size = size
+        block_size = max(block_size, size)
 
         if block_size != self.block_size:
             LOG.info(

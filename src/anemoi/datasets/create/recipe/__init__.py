@@ -9,29 +9,19 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Field
-from pydantic import model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .action import Action
 from .build import Build
-from .dates import BaseDates
-from .dates import Dates
-from .dates import Steps
-from .output import GriddedOutput
-from .output import Output
-from .output import TabularOutput
-from .output import TrajectoriesOutput
+from .dates import BaseDates, Dates, Steps
+from .output import GriddedOutput, Output, TabularOutput, TrajectoriesOutput
 from .statistics import Statistics
 
 if TYPE_CHECKING:
-    from anemoi.datasets.dates.groups import Groups
-    from anemoi.datasets.dates.groups import TrajectoryGroups
+    from anemoi.datasets.dates.groups import Groups, TrajectoryGroups
 
 LOG = logging.getLogger(__name__)
 
