@@ -75,7 +75,7 @@ The tables below provide more details and some examples.
 
       -  o96 (could be : n320, 0p2 for 0.2 degree, 1km, 2km).  The
          resolution token must start with a digit (``0``-``9``), ``o``
-         or ``n``.  It is **mandatory** for gridded and trajectory
+         or ``n`` or ``r``.  It is **mandatory** for gridded and trajectory
          layouts and **optional** for tabular layouts (since station
          observation datasets often have no meaningful spatial
          resolution). Using ``p`` for decimal points in the resolution is recommended.
