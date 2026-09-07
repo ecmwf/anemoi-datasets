@@ -21,11 +21,13 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.buffering import ReadAheadBuffer
+from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
+from ..gridded.result import _strip_zero_level_suffix
 from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
@@ -141,12 +143,6 @@ class TrajectoryGriddedCreator(GriddedCreator):
         }
         chunks = self.recipe.output.get_chunking(coords)
 
-        # ``load_result`` streams the write one ``(base_date, step)`` region at a
-        # time so that only a single forecast step -- not the whole trajectory --
-        # is held in memory. That is only chunk-aligned when the base-date and
-        # step axes are chunked by 1 (see ``_check_streaming_chunks``).
-        self._check_streaming_chunks(list(coords), chunks)
-
         grid_points = self.minimal_input.grid_points
 
         # Create arrays
@@ -165,47 +161,15 @@ class TrajectoryGriddedCreator(GriddedCreator):
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
 
-    @staticmethod
-    def _check_streaming_chunks(dims: list[str], chunks: tuple[int, ...]) -> None:
-        """Assert the base-date and step axes are chunked by 1.
-
-        The write in :meth:`load_result` is streamed one ``(base_date, step)``
-        region at a time so that only a single forecast step -- not the whole
-        trajectory -- is held in memory.  Each region maps onto whole chunks
-        (written exactly once, no read-modify-write of an already-populated
-        chunk) only when both the base-date and step axes are chunked by 1.
-        Both default to 1; forbid any other value rather than silently degrade.
-
-        Parameters
-        ----------
-        dims : list of str
-            The dimension names in array order.
-        chunks : tuple of int
-            The chunk sizes in array order.
-        """
-        for axis_name, config_key in (("base_dates", "base_dates"), ("steps", "steps")):
-            chunk = chunks[dims.index(axis_name)]
-            if chunk != 1:
-                raise ValueError(
-                    f"The 'trajectories' layout requires 'output.chunking.{config_key}' == 1, got {chunk}."
-                )
-
     def load_result(self, result: Any, dataset: Dataset) -> None:
         """Load a multi-basetime, multi-step forecast cube into the 5-D dataset array.
 
-        The whole trajectory is retrieved with a single request, but the write
-        is *streamed* one ``(base_date, step)`` region at a time so that only a
-        single forecast step is held in memory rather than the whole trajectory.
-
-        The cube's outermost axis is ``traj_point`` (``{date}_{time}_{step}``,
-        see ``TrajectoryGriddedContext.order_by``), so all cubelets sharing a
-        ``(basetime, step)`` are contiguous.  We accumulate their fields into a
-        single ``(variables, ensembles, cells)`` step_block -- keyed by the
-        ``(basetime, step, variable, ensemble)`` identifiers read from the field
-        metadata -- and flush it to ``data[date_idx, :, :, step_idx, :]`` as
-        soon as the region changes.  Because the base-date and step axes are
-        chunked by 1 (enforced in :meth:`initialise_dataset`), each region maps
-        onto whole chunks and is written exactly once, with no read-modify-write.
+        The cube is ordered by ``(date, time, step, param_level, number)``
+        (see ``TrajectoriesOutput.order_by``).  Some axes may be squeezed
+        out of the cube when they have size 1.  For each cubelet we read the
+        underlying field metadata to recover the ``(basetime, step, variable,
+        ensemble)`` identifiers and write into ``data[date_idx, step_idx,
+        var_idx, ens_idx, :]``.
 
         Parameters
         ----------
@@ -256,7 +220,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # Map GRIB member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
-        numbers = cube.user_coords.get("number")
+        numbers = cube.user_coords.get("metadata.number")
         number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
@@ -279,85 +243,50 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 raise ValueError(f"Trajectories: step {step_td} not in dataset.steps")
             return int(indices[0])
 
-        # Stream the write one region at a time.  Only one ``(base_date, step)``
-        # step_block is resident at a time; ``traj_point`` being the outermost
-        # cube axis guarantees each region is visited exactly once and
-        # contiguously.
-        data_array = dataset.data
-        assert (
-            data_array.chunks[0] == 1 and data_array.chunks[3] == 1
-        ), f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
-        n_variables = len(variables)
-        n_ensembles = data_array.shape[2]
-        n_cells = data_array.shape[4]
+        with WriteBehindBuffer(dataset.data) as array:
+            for cubelet in cube.iterate_cubelets():
+                data = cubelet.to_numpy()
+                field = cube[cubelet.coords]
 
-        current_key: tuple[int, int] | None = None
-        step_block: Any = None
-        flushed_keys: set[tuple[int, int]] = set()
-
-        def flush(key: tuple[int, int] | None, block: Any) -> None:
-            if key is not None:
-                date_idx, step_idx = key
-                data_array[date_idx, :, :, step_idx, :] = block
-
-        for cubelet in cube.iterate_cubelets():
-            data = cubelet.to_numpy()
-            field = cube[cubelet.coords]
-
-            # Recover basetime from field metadata
-            date_int = int(field.metadata("date"))  # YYYYMMDD
-            time_int = int(field.metadata("time") or 0)  # HHMM
-            basetime = datetime.datetime(
-                year=date_int // 10000,
-                month=(date_int // 100) % 100,
-                day=date_int % 100,
-                hour=time_int // 100,
-                minute=time_int % 100,
-            )
-            step_td = datetime.timedelta(hours=int(field.metadata("step")))
-
-            # Recover variable name via the build.variable_naming remapping
-            # (param_level pattern), matching the names declared at init.
-            var_name = remapping(field.metadata)("param_level", default=None)
-            if var_name is None:
-                var_name = str(field.metadata("param"))
-
-            number = field.metadata("number", default=0) or 0
-            if number_to_index is None:
-                ens_idx = 0
-            else:
-                ens_idx = number_to_index.get(int(number))
-                if ens_idx is None:
-                    raise ValueError(
-                        f"Trajectories: member number {number} not in the cube's "
-                        f"'number' coordinate {list(numbers)}"
-                    )
-
-            date_idx = basetime_index_of(basetime)
-            step_idx = step_index_of(step_td)
-
-            var_idx = var_to_idx.get(var_name)
-            if var_idx is None:
-                raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
-
-            key = (date_idx, step_idx)
-            if key != current_key:
-                # Region changed: flush the previous step_block and start a new one.
-                flush(current_key, step_block)
-                if current_key is not None:
-                    flushed_keys.add(current_key)
-                assert key not in flushed_keys, (
-                    f"Trajectories: (base_date, step) region {key} revisited; the cube is "
-                    "not ordered by 'traj_point' as expected, so streaming writes would "
-                    "overwrite an already-flushed region."
+                # Recover basetime from field component paths (works for raw GRIB and wrapped fields alike)
+                basetime = field.time.base_datetime()
+                step_td_raw = field.time.step()
+                # time.step() returns a datetime.timedelta in earthkit 1.0
+                step_td = (
+                    step_td_raw
+                    if isinstance(step_td_raw, datetime.timedelta)
+                    else datetime.timedelta(hours=int(step_td_raw))
                 )
-                current_key = key
-                step_block = np.full((n_variables, n_ensembles, n_cells), np.nan, dtype=data_array.dtype)
 
-            step_block[var_idx, ens_idx, :] = data
+                # Recover variable name via the build.variable_naming remapping
+                # (param_level pattern), matching the names declared at init.
+                # Use field.get() so the remapping template {metadata.key} vars
+                # route correctly through earthkit 1.0's _get_single.
+                var_name = _strip_zero_level_suffix(
+                    remapping(lambda k, default=None: field.get(k, default=default))("param_level", default=None)
+                )
+                if var_name is None:
+                    var_name = str(field.metadata("param"))
 
-        # Flush the final region.
-        flush(current_key, step_block)
+                number = field.get("metadata.number", default=0) or 0
+                if number_to_index is None:
+                    ens_idx = 0
+                else:
+                    ens_idx = number_to_index.get(int(number))
+                    if ens_idx is None:
+                        raise ValueError(
+                            f"Trajectories: member number {number} not in the cube's "
+                            f"'number' coordinate {list(numbers)}"
+                        )
+
+                date_idx = basetime_index_of(basetime)
+                step_idx = step_index_of(step_td)
+
+                var_idx = var_to_idx.get(var_name)
+                if var_idx is None:
+                    raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
+
+                array[(date_idx, var_idx, ens_idx, step_idx)] = data
 
         # Detect silently-missing data. A source that returns no fields for this
         # group (e.g. a corrupt earthkit cache, a MARS gap, or an over-narrow

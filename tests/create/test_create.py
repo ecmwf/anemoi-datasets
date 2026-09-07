@@ -51,8 +51,11 @@ class FilterForTesting(Filter):
 
         self.kwargs = kwargs
 
+    _KEY_MAP = {"level": "vertical.level", "param": "parameter.variable"}
+
     def forward(self, data):
-        return data.sel(**self.kwargs)
+        kwargs = {self._KEY_MAP.get(k, k): v for k, v in self.kwargs.items()}
+        return data.sel(**kwargs)
 
 
 @pytest.fixture
