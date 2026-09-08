@@ -371,17 +371,19 @@ class ZarrWithMissingDates(GriddedZarr):
 
 class ReIndex:
     def __init__(self, data, shape, index_mapping):
+        self._len = shape[0]
         self.data = data
         self.shape = shape
         self.index_mapping = index_mapping
 
     def __getitem__(self, idx):
+
         match idx:
             case int():
                 return self.data[self.index_mapping[idx]]
 
             case slice():
-                indices = range(*idx.indices(len(self.data)))
+                indices = list(range(*idx.indices(self._len)))
                 return np.stack([self.data[self.index_mapping[i]] for i in indices])
 
             case list():
@@ -394,7 +396,7 @@ class ReIndex:
                         return self.data[self.index_mapping[first], *rest]
 
                     case slice():
-                        indices = range(*first.indices(len(self.data)))
+                        indices = list(range(*first.indices(self._len)))
                         return np.stack([self.data[self.index_mapping[i], *rest] for i in indices])
 
                     case list():
