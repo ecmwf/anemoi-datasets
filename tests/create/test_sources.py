@@ -7,8 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import os
 import shutil
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -423,33 +426,40 @@ def test_eccs_fstd(get_test_data: callable) -> None:
 @pytest.mark.slow
 @skip_if_offline
 @skip_missing_packages("kerchunk", "s3fs")
-def test_kerchunk(get_test_data: callable) -> None:
-    """Test for Kerchunk JSON files.
+@pytest.mark.parametrize("input_kind", ["path", "string", "dict", "url"])
+def test_kerchunk(get_test_data: Callable[[str, bool], str], input_kind: str) -> None:
+    """Test for Kerchunk JSON files with different input kinds."""
+    storage_opts = {"remote_protocol": "s3", "remote_options": {"anon": True}}
+    if input_kind == "url":
+        from anemoi.utils.testing import url_for_test_data
 
-    This function tests the creation of a dataset from a Kerchunk JSON file.
+        data_path = url_for_test_data("anemoi-datasets/create/kerchunck.json.gz")
+        json_opts = {"compression": "gzip"}
+    else:
+        data_path = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
+        json_opts = {}
 
-    """
-    # Note: last version of kerchunk compatible with zarr 2 is 0.2.7
-
-    data = get_test_data("anemoi-datasets/create/kerchunck.json", gzipped=True)
+    if input_kind in ["path", "url"]:
+        json_arg = data_path
+    elif input_kind == "string":
+        json_arg = Path(data_path).read_text()
+    else:
+        with Path(data_path).open() as f:
+            json_arg = json.load(f)
 
     recipe = {
-        "dates": {
-            "start": "2024-03-01T00:00:00",
-            "end": "2024-03-01T18:00:00",
-            "frequency": "6h",
-        },
+        "dates": {"start": "2024-03-01T00:00:00", "end": "2024-03-01T18:00:00", "frequency": "6h"},
         "input": {
             "xarray-kerchunk": {
-                "json": data,
+                "json": json_arg,
+                "json_options": json_opts,
+                "storage_options": storage_opts,
                 "param": ["T"],
                 "level": [1000],
             },
         },
     }
-
-    created = create_dataset(recipe=recipe, output=None)
-    ds = open_dataset(created)
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
     assert ds.shape == (4, 1, 1, 1038240)
 
 

@@ -5,6 +5,12 @@ dates:
 
 input:
   xarray-kerchunk:
-    json: combined.json
+    json: abfs://<container>/<path>/references.json
+    storage_options:
+      remote_protocol: abfs
+      remote_options: &options
+        account_name: <account>
+        sas_token: <token>
+    json_options: *options
     param: T
     level: [ 1000, 50 ]
