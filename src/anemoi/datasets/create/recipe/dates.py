@@ -169,6 +169,15 @@ class StartEndDates(DatesProvider):
     def dump(self, dumper):
         return dumper.start_end_dates(self.start, self.end, self.frequency)
 
+    def full_dates_list(self) -> list[datetime.datetime]:
+        """Return the list of dates including missing ones."""
+        dates = []
+        date = self.start
+        while date <= self.end:
+            dates.append(date)
+            date += self.frequency
+        return dates
+
 
 class BaseDates(StartEndDates):
     """Basetimes (forecast initialisation times) for the ``trajectories`` layout.
