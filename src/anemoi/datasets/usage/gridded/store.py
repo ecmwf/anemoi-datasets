@@ -370,21 +370,36 @@ class ZarrWithMissingDates(GriddedZarr):
 
 
 class ReIndex:
-    def __init__(self, data, index_mapping):
+    def __init__(self, data, shape, index_mapping):
         self.data = data
+        self.shape = shape
         self.index_mapping = index_mapping
 
     def __getitem__(self, idx):
-        if isinstance(idx, int):
-            return self.data[self.index_mapping[idx]]
+        match idx:
+            case int():
+                return self.data[self.index_mapping[idx]]
 
-        if isinstance(idx, slice):
-            return self.data[[self.index_mapping[i] for i in range(*idx.indices(len(self.data)))]]
+            case slice():
+                return self.data[[self.index_mapping[i] for i in range(*idx.indices(len(self.data)))]]
 
-        if isinstance(idx, (list, tuple)):
-            return self.data[[self.index_mapping[i] for i in idx]]
+            case list():
+                return self.data[[self.index_mapping[i] for i in idx]]
 
-        raise TypeError(f"Unsupported index type: {type(idx)}")
+            case tuple():
+                first, *rest = idx
+                match first:
+                    case int():
+                        return self.data[self.index_mapping[first], *rest]
+
+                    case slice():
+                        return self.data[[self.index_mapping[i] for i in range(*first.indices(len(self.data)))], *rest]
+
+                    case list():
+                        return self.data[[self.index_mapping[i] for i in first], *rest]
+
+            case _:
+                raise TypeError(f"Unsupported index type: {type(idx)}")
 
 
 class ZarrWithMissingDatesFix(ZarrWithMissingDates):
@@ -418,9 +433,9 @@ class ZarrWithMissingDatesFix(ZarrWithMissingDates):
 
         self._actual_dates = np.array(actual_dates)
 
-        self.data = ReIndex(store["data"], index_mapping)
-
         super().__init__(store, path)
+
+        self.data = ReIndex(store["data"], self.shape, index_mapping)
 
     def mutate(self):
         return self
@@ -433,3 +448,11 @@ class ZarrWithMissingDatesFix(ZarrWithMissingDates):
     def label(self) -> str:
         """Return the label of the dataset."""
         return "zarr?"
+
+    @property
+    def shape(self):
+        s = super().shape
+        return (len(self._actual_dates), *s[1:])
+
+    def __len__(self):
+        return len(self._actual_dates)
