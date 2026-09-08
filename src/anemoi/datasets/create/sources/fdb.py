@@ -19,6 +19,7 @@ from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.intervals import timedelta_to_step
 
 from ..source import Source
 from . import source_registry
@@ -136,16 +137,17 @@ class FdbSource(Source):
 
 def _time_request_keys(
     dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
-) -> str:
+) -> dict[str, int | str]:
     """Defines the time-related keys for the FDB request."""
     out = {}
     out["date"] = dt.strftime("%Y%m%d")
     if offset_from_date:
         out["time"] = "0000"
-        out["step"] = int((dt - dt.replace(hour=0, minute=0)).total_seconds() // 3600)
-        if out["step"] == 0 and step_zero_from_previous_date:
+        offset = dt - dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        out["step"] = timedelta_to_step(offset)
+        if not offset and step_zero_from_previous_date:
             out["date"] = (dt - timedelta(days=1)).strftime("%Y%m%d")
-            out["step"] = 24
+            out["step"] = timedelta_to_step(timedelta(hours=24))
     else:
         out["time"] = dt.strftime("%H%M")
     return out
