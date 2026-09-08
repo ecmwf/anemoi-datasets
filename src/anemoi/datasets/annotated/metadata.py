@@ -76,6 +76,28 @@ class WindowMetaData(WindowMetaDataBase):
     def boundaries(self) -> list[slice]:
         return [slice(0, len(self._aux_array))]
 
+    @property
+    def _unsharded_window_size(self) -> int:
+        """Row count of this window before sharding."""
+        range_slice = self.owner._slice(self.index)
+        return range_slice.stop - range_slice.start
+
+    @property
+    def unsharded_boundaries(self) -> list[slice]:
+        """Where this shard's rows sit within the unsharded window.
+
+        Returns a single slice ``[lo, hi)`` giving the position this shard's
+        rows occupy in the full (unsharded) window ``index``. For an unsharded
+        view this equals :attr:`boundaries`. Use it to scatter a shard's rows
+        into an array sized for the whole window.
+        """
+        n = self.owner.num_shards
+        i = self.owner.shard_index or 0
+        total = self._unsharded_window_size
+        lo = (total * i) // n
+        hi = (total * (i + 1)) // n
+        return [slice(lo, hi)]
+
 
 class MultipleWindowMetaData(WindowMetaDataBase):
     """Holds metadata for multiple windowed data arrays, aggregating metadata from child arrays."""
@@ -136,4 +158,23 @@ class MultipleWindowMetaData(WindowMetaDataBase):
             length = len(child)
             result.append(slice(offset, offset + length))
             offset += length
+        return result
+
+    @property
+    def unsharded_boundaries(self) -> list[slice]:
+        """Per-window placement of this shard's rows in the unsharded result.
+
+        One slice per window. The offsets accumulate the *unsharded* window
+        sizes, so the slices index into an array sized for the whole
+        (unsharded) concatenation of these windows. Pair with
+        :attr:`boundaries` (which indexes this shard's own array) to scatter a
+        shard's rows into the full array.
+        """
+        result = []
+        offset = 0
+        for child in self.children:
+            meta = child._anemoi_annotation
+            (within_window,) = meta.unsharded_boundaries
+            result.append(slice(offset + within_window.start, offset + within_window.stop))
+            offset += meta._unsharded_window_size
         return result
