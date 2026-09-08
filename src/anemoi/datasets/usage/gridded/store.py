@@ -381,10 +381,11 @@ class ReIndex:
                 return self.data[self.index_mapping[idx]]
 
             case slice():
-                return self.data[[self.index_mapping[i] for i in range(*idx.indices(len(self.data)))]]
+                indices = range(*idx.indices(len(self.data)))
+                return np.stack([self.data[self.index_mapping[i]] for i in indices])
 
             case list():
-                return self.data[[self.index_mapping[i] for i in idx]]
+                return np.stack([self.data[self.index_mapping[i]] for i in idx])
 
             case tuple():
                 first, *rest = idx
@@ -393,10 +394,11 @@ class ReIndex:
                         return self.data[self.index_mapping[first], *rest]
 
                     case slice():
-                        return self.data[[self.index_mapping[i] for i in range(*first.indices(len(self.data)))], *rest]
+                        indices = range(*first.indices(len(self.data)))
+                        return np.stack([self.data[self.index_mapping[i], *rest] for i in indices])
 
                     case list():
-                        return self.data[[self.index_mapping[i] for i in first], *rest]
+                        return np.stack([self.data[self.index_mapping[i], *rest] for i in first])
 
             case _:
                 raise TypeError(f"Unsupported index type: {type(idx)}")
