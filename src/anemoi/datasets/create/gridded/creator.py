@@ -42,7 +42,7 @@ class GriddedCreator(Creator):
         Trajectories override this to return the base dates (factorised from
         ``(basetime, step)`` tuples).
         """
-        return self.groups.provider.values
+        return self.groups.provider.full_dates_list()
 
     def _metadata_date_range(self):
         """Return ``(start_date, end_date)`` for the dataset metadata.
@@ -351,13 +351,13 @@ class SimpleGriddedCreator(GriddedCreator):
         return SimpleGriddedContext(self.recipe)
 
     def initialise_dataset(self, dataset: Dataset) -> None:
-        dates = self.groups.provider.values
-        shape = (len(dates),) + self.minimal_input.shape[1:]
+        all_dates = self.groups.provider.full_dates_list()
+        shape = (len(all_dates),) + self.minimal_input.shape[1:]
 
         assert len(shape) == 4, f"Expected 4D shape, got {shape}"
 
         coords = self.minimal_input.coords
-        coords["dates"] = dates
+        coords["dates"] = all_dates
         chunks = self.recipe.output.get_chunking(coords)
 
         grid_points = self.minimal_input.grid_points
@@ -373,6 +373,6 @@ class SimpleGriddedCreator(GriddedCreator):
             fill_value=np.nan,
         )
 
-        dataset.add_array(name="dates", data=np.array(dates, "<M8[s]"), dimensions=("time",))
+        dataset.add_array(name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",))
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))

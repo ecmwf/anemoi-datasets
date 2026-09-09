@@ -401,6 +401,13 @@ class _ConstantsCollector(_Base):
 
         data = data[:, self._index]
 
+        if data.ndim > 1:
+            missing_rows = np.isnan(data).reshape(data.shape[0], -1).all(axis=1)
+            if missing_rows.any():
+                data = data[~missing_rows]
+                if len(data) == 0:
+                    return
+
         if self._first is None:
             self._first = data[0].copy()
             self._nans = np.isnan(self._first)
