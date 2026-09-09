@@ -310,7 +310,12 @@ class ZarrWithMissingDates(GriddedZarr):
         LOG.warning("=" * 80)
         LOG.warning("Applying in memory fix...")
         LOG.warning("=" * 80)
-        return ZarrWithMissingDatesFix(self.store, self.path)
+        use_fix = int(os.environ.get("ANEMOI_DATASETS_MISSING_DATES_FIX_EXPERIMENTAL", 0))
+        if use_fix:
+            return ZarrWithMissingDatesFix(self.store, self.path)
+        raise ValueError(
+            f"Dataset {self} is not encoded correctly. Please recreate the dataset with a newer version of anemoi-datasets."
+        )
 
     @property
     def missing(self) -> set[int]:
