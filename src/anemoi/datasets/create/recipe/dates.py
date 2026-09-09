@@ -117,6 +117,9 @@ class DatesProvider(BaseModel):
         """
         return len(self.values)
 
+    def full_dates_list(self) -> list[datetime.datetime]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement full_dates_list()")
+
 
 class StartEndDates(DatesProvider):
 
@@ -313,6 +316,9 @@ class TrajectoryDates(DatesProvider):
 
 class ValuesDates(DatesProvider):
     values: list[datetime.datetime]
+
+    def full_dates_list(self) -> list[datetime.datetime]:
+        return list(self.values)
 
 
 class HindcastsDates(DatesProvider):

@@ -42,7 +42,7 @@ class GriddedCreator(Creator):
         Trajectories override this to return the base dates (factorised from
         ``(basetime, step)`` tuples).
         """
-        return self.groups.provider.values
+        return self.groups.provider.full_dates_list()
 
     def _metadata_date_range(self):
         """Return ``(start_date, end_date)`` for the dataset metadata.
