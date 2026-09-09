@@ -136,7 +136,9 @@ def load_one(
     return result
 
 
-def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, date_content:dict=None, **kwargs: Any) -> ekd.FieldList:
+def load_many(
+    emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, date_content: dict = None, **kwargs: Any
+) -> ekd.FieldList:
     """Loads multiple datasets.
 
     Parameters
