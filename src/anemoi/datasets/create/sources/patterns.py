@@ -13,6 +13,7 @@ from collections.abc import Generator
 from typing import Any
 
 from earthkit.data.utils.patterns import Pattern
+from anemoi.datasets.dates import DatesProvider
 
 
 def _expand(paths: list[str]) -> Generator[str, None, None]:
@@ -52,7 +53,7 @@ def _expand(paths: list[str]) -> Generator[str, None, None]:
 
 
 def iterate_patterns(
-    path: str, dates: list[datetime.datetime], **kwargs: Any
+    path: str, dates: list[datetime.datetime], date_content:dict=None, **kwargs: Any
 ) -> Generator[tuple[str, list[str]], None, None]:
     """Iterate over patterns and expand them with given dates and additional keyword arguments.
 
@@ -73,10 +74,26 @@ def iterate_patterns(
     given_paths = path if isinstance(path, list) else [path]
 
     dates = [d.isoformat() for d in dates]
+    substitution_dates = {}
     if len(dates) > 0:
-        kwargs["date"] = dates
+        substitution_dates["date"] = dates
 
     for path in given_paths:
-        paths = Pattern(path).substitute(allow_extra=True, **kwargs)
-        for path in _expand(paths):
-            yield path, dates
+        paths = Pattern(path).substitute(allow_extra=True, **substitution_dates)
+        if date_content is not None:
+            start = Pattern(date_content["start"]).substitute(allow_extra=True, **substitution_dates)
+            end = Pattern(date_content["end"]).substitute(allow_extra=True, **substitution_dates)
+            frequency = date_content["frequency"]
+            substituted_dates = [
+                [
+                    d.isoformat() for d in DatesProvider.from_config(
+                **{"start": s, "end": e, "frequency":frequency})
+                ] for s, e in zip(start, end)
+                ]
+
+            for path, substituted_date in zip(_expand(paths), substituted_dates):
+                substituted_date = list(set(dates).intersection(substituted_date))
+                yield path, substituted_date
+        else:
+            for path in _expand(paths):
+                yield path, dates

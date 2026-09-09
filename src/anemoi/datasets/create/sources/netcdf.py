@@ -42,4 +42,5 @@ class NetCDFSource(LegacySource):
         object
             The loaded data.
         """
-        return load_many("📁", context, dates, path, *args, **kwargs)
+
+        return load_many("📁", context, dates, path, date_content=kwargs.pop("date_content", None), *args, **kwargs)
