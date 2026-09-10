@@ -426,6 +426,39 @@ def test_serialisation():
     compare_constants(c_constants, c2.constant_variables())
 
 
+def test_merge_tendencies_with_batches_smaller_than_delta():
+    """Check that no tendencies are missed when the data is split into parts."""
+    n_dates = 30
+    partition = 15
+    delta = 6
+    dates = np.arange(n_dates).astype(float)
+    data = np.square(dates)[:, None]
+    filter = StatisticsFilter(dates[0], dates[-1])
+    tendencies = {"delta_6": delta}
+
+    c0 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+    for i in range(n_dates):
+        c0.collect(data[i : i + 1], dates[i : i + 1])
+    c0_stats = deepcopy(c0.statistics())
+
+    c1 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+    c2 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
+
+    for i in range(partition):
+        c1.collect(data[i : i + 1], dates[i : i + 1])
+    for i in range(partition, n_dates):
+        c2.collect(data[i : i + 1], dates[i : i + 1])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path1 = f"{tmpdir}/collector1.pkl"
+        path2 = f"{tmpdir}/collector2.pkl"
+        c1.serialise(path1, group=0, start=0, end=partition)
+        c2.serialise(path2, group=1, start=partition, end=n_dates)
+        reloaded = StatisticsCollector.load_precomputed(DatasetMock(data, dates), [path1, path2])
+
+    compare_statistics(reloaded.statistics(), c0_stats)
+
+
 @pytest.mark.parametrize(
     "deltas",
     [

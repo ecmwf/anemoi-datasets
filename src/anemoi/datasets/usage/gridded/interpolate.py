@@ -143,7 +143,8 @@ class InterpolateFrequency(Forwards):
         alpha = self.alphas[x]
 
         assert 0 < alpha < 1, alpha
-        return self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
+        result = self.forward[i] * (1 - alpha) + self.forward[i + 1] * alpha
+        return result.astype(self.dtype, copy=False)
 
     def __len__(self) -> int:
         """Get the length of the interpolated dataset.

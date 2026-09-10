@@ -96,6 +96,10 @@ class Recipe(BaseModel):
         for member in self.__dict__.values():
             if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
                 member._post_init(self)
+
+        if isinstance(self.output, TrajectoriesOutput) and "group_by" not in self.build.model_fields_set:
+            self.build.group_by = 1
+
         return self
 
     description: str = "No description provided."

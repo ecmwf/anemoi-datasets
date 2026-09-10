@@ -27,6 +27,9 @@ Please note that this is the default value, so setting it is optional.
    output:
      layout: gridded
 
+See :ref:`building-gridded-cli` for a step-by-step guide to building a
+gridded dataset with the command line tool.
+
 .. _gridded-using:
 
 *******

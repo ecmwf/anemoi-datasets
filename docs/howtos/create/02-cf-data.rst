@@ -13,7 +13,9 @@ datasets are accessed by `anemoi-datasets` using the Xarray_ library.
  NetCDF
 ********
 
-(Coming soon)
+The ``netcdf`` source allows you to create an anemoi dataset from one or
+more NetCDF files. It uses `Xarray`_ internally to access the data, and
+assumes that the NetCDF files follow the `CF conventions`_.
 
 .. literalinclude:: yaml/netcdf1.yaml
    :language: yaml
@@ -28,12 +30,25 @@ Please note that the ``path`` keyword can also be a list, and that paths
 can contain wildcards and patterns. See :ref:`file-pattern` for more
 information.
 
+.. warning::
+
+   We are aware of instances in which the creation of an anemoi dataset
+   from a netCDF source does not work as expected due to missing
+   information in the files' metadata that anemoi-datasets expects. The
+   anemoi-datasets' internal routines do their best to infer missing
+   information, but in some cases this is not possible. If you encounter
+   this or similar issues, please open an issue in the anemoi-datasets
+   repository.
+
+For more details, see the :doc:`netcdf source documentation
+</building/sources/netcdf>`.
+
 *********
  OpenDAP
 *********
 
 OpenDAP is a protocol that allows you to access remote datasets over the
-internet. The OpenDAP source is identical toe the NetCDF source. The
+internet. The OpenDAP source is identical to the NetCDF source. The
 only difference is that a URL is used instead of a file path.
 
 .. literalinclude:: yaml/opendap1.yaml
@@ -61,8 +76,6 @@ For using local zarr datasets (such as anemoi-generated datasets), use
 *********************************************
  Handling data that is not 100% CF-compliant
 *********************************************
-
-(Coming soon)
 
 Patching
 ========
@@ -106,8 +119,6 @@ The resulting dataset will look like this:
 
 Using a `flavour`
 =================
-
-(Coming soon)
 
 .. literalinclude:: yaml/xarray-flavour1.yaml
 

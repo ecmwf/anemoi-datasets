@@ -208,9 +208,7 @@ class _TendencyCollector(_CollectorBase):
         # Number of dates at the start that couldn't have tendencies computed
         # A "missing" date d means we could not compute value(d) - value(d - delta)
         # because d - delta is before available data.
-        # The first delta dates of the entire (filtered) dataset are permanently missing:
-        # there's no data before them, so their tendencies can never be computed.
-        # This is set once on the first update call and not changed afterwards.
+        # This is updated as more dates are seen, until it reaches delta.
         self._n_missing = None
 
     def __repr__(self, extra: str = ""):
@@ -262,11 +260,9 @@ class _TendencyCollector(_CollectorBase):
             tendencies = combined[self._delta :] - combined[: -self._delta]
             _CollectorBase.update(self, tendencies)
 
-        # Track date summary and offset (only on first call do we set n_missing and offset)
+        # Track date summary and offset
         if self._first_date is None and len(dates) > 0:
             self._first_date = dates[0]
-            # On first call, the missing count is min(delta, number of dates in first batch)
-            self._n_missing = min(self._delta, len(dates))
             # Compute offset from group start to first filtered date
             if first_offset_in_batch is not None:
                 self._first_date_offset = self._unfiltered_dates_seen + first_offset_in_batch
@@ -274,6 +270,7 @@ class _TendencyCollector(_CollectorBase):
         if len(dates) > 0:
             self._last_date = dates[-1]
         self._n_dates += len(dates)
+        self._n_missing = min(self._delta, self._n_dates)
 
         # Track unfiltered dates for offset computation across batches
         if unfiltered_batch_size is not None:
