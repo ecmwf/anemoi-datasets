@@ -33,6 +33,22 @@ will choose the value of the largest date. You can change this behaviour
 by setting the ``closest`` parameter to ``'down'`` or ``'up'``
 explicitly.
 
+You can also fill the missing dates with ``NaN`` values:
+
+.. code:: python
+
+   ds = open_dataset(dataset, fill_missing_dates="nans")
+
+Finally, you can fill the missing dates with per-variable statistics
+computed over the dataset. The supported statistics are ``mean``,
+``maximum`` and ``minimum``:
+
+.. code:: python
+
+   ds = open_dataset(dataset, fill_missing_dates="mean")
+   ds = open_dataset(dataset, fill_missing_dates="maximum")
+   ds = open_dataset(dataset, fill_missing_dates="minimum")
+
 ************************************************
  Skipping missing when iterating over a dataset
 ************************************************
