@@ -37,16 +37,14 @@ def test_odb_sql_str_wildcard_select_disables_required_columns(select: str) -> N
     )
 
     assert sql == (
-        "SELECT *, WHERE (timestamp(date, time) >= 20250101000000 "
-        "AND timestamp(date, time) <= 20250101235959)"
+        "SELECT *, WHERE (timestamp(date, time) >= 20250101000000 AND timestamp(date, time) <= 20250101235959)"  # noqa: E501
     )
 
 
-def test_odb_sql_str_select_containing_asterisk_substring_keeps_required_columns() -> (
-    None
-):
+def test_odb_sql_str_select_containing_asterisk_substring_keeps_required_columns() -> None:  # noqa: E501
     """A "*" that is part of a larger SELECT expression (e.g. count(*)) must not be
-    treated as a wildcard select, and required/default columns should still be added."""
+    treated as a wildcard select, and required/default columns should still be added.
+    """
     from anemoi.datasets.create.sources.odb import odb_sql_str
 
     sql = odb_sql_str(
