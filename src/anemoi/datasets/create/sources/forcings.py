@@ -14,6 +14,7 @@ from anemoi.transform import FieldList
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.ensembles import ensemble_member
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
@@ -55,9 +56,24 @@ class ForcingsSource(Source):
         self.template = template
         self.param = param
 
+    # The members of the template, one forcing field per member ([0] for a
+    # deterministic template). The earthkit forcings source can find them on
+    # its own, but it looks them up under the wrong key of its own `unique()`
+    # result and so always settles for the single member 0 -- which leaves an
+    # ensemble dataset without forcings for every member but the first.
+    # Passing `number` explicitly bypasses that search.
+    def _numbers(self) -> list[int]:
+        return sorted({ensemble_member(f) for f in self.template}) or [0]
+
     def execute_valid_dates(self, dates: ValidDates) -> Any:
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
-        fields = FieldList.from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
+        fields = FieldList.from_source(
+            "forcings",
+            source_or_dataset=self.template,
+            date=list(dates),
+            param=self.param,
+            number=self._numbers(),
+        )
         result = [Field.with_new_metadata(f, units=_units_for(f)) for f in fields]
         return FieldList.from_fields(result)
 
@@ -65,7 +81,13 @@ class ForcingsSource(Source):
         self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
 
         valid_times = [vt for vt, _bt in dates]
-        fields = FieldList.from_source("forcings", source_or_dataset=self.template, date=valid_times, param=self.param)
+        fields = FieldList.from_source(
+            "forcings",
+            source_or_dataset=self.template,
+            date=valid_times,
+            param=self.param,
+            number=self._numbers(),
+        )
 
         # Index forcing fields by valid_datetime for quick lookup
         fields_by_vdt = {}

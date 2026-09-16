@@ -22,6 +22,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.buffering import ChunkAlignedWriteBuffer
+from anemoi.datasets.create.ensembles import ENSEMBLE_KEY
+from anemoi.datasets.create.ensembles import ensemble_member
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -249,10 +251,10 @@ class TrajectoryGriddedCreator(GriddedCreator):
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
 
-        # Map GRIB member numbers to positions on the ensemble axis.  Member
+        # Map ensemble member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
-        numbers = cube.user_coords.get("metadata.number")
+        numbers = cube.user_coords.get(ENSEMBLE_KEY)
         number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
@@ -301,7 +303,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 # variable name to the field when the input was built.
                 var_name = field.name
 
-                number = field.number
+                number = ensemble_member(field)
                 if number_to_index is None:
                     ens_idx = 0
                 else:

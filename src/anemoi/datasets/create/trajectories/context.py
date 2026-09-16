@@ -12,6 +12,7 @@ from typing import Any
 
 from earthkit.data.core.order import build_remapping
 
+from anemoi.datasets.create.ensembles import ENSEMBLE_KEY
 from anemoi.datasets.create.input.context import Context
 from anemoi.datasets.create.recipe.dates import Steps  # noqa: F401  (re-exported for back-compat)
 from anemoi.datasets.create.trajectories.result import TrajectoryGriddedResult
@@ -49,10 +50,12 @@ class TrajectoryGriddedContext(Context):
     # coupled to the ``traj_point`` remapping key injected below, and
     # per-field placement in ``TrajectoryGriddedCreator.load_result`` reads
     # ``date/time/step`` from field metadata, so cube ordering does not
-    # affect the output. Keys use the ``metadata.`` prefix required by
-    # earthkit 1.0's ``_get_single``; ``traj_point`` and ``param_level`` are
-    # remapped synthetic keys and have no prefix.
-    order_by: list[str] = ["traj_point", "labels.name", "metadata.number"]
+    # affect the output. Keys are component paths (``labels.name``,
+    # ``ensemble.member``) rather than raw ``metadata.`` keys, which do not
+    # survive field.set() (see ``anemoi.datasets.create.ensembles``);
+    # ``traj_point`` and ``param_level`` are remapped synthetic keys and have
+    # no prefix.
+    order_by: list[str] = ["traj_point", "labels.name", ENSEMBLE_KEY]
 
     def __init__(self, recipe: Any) -> None:
         super().__init__(recipe)

@@ -188,7 +188,7 @@ def test_forcings_step_is_not_floored_to_the_hour(monkeypatch):
 
     class _FieldList:
         @staticmethod
-        def from_source(name, source_or_dataset=None, date=None, param=None):
+        def from_source(name, source_or_dataset=None, date=None, param=None, number=None):
             return [_Field(vt) for vt in date]
 
         @staticmethod
@@ -206,7 +206,7 @@ def test_forcings_step_is_not_floored_to_the_hour(monkeypatch):
     monkeypatch.setattr(forcings_module, "FieldList", _FieldList)
     monkeypatch.setattr(forcings_module, "Field", _FieldFactory)
 
-    source = ForcingsSource(_Context(), template=None, param=["cos_latitude"])
+    source = ForcingsSource(_Context(), template=[], param=["cos_latitude"])
     source.execute_forecast_dates(ForecastDates(pairs))
 
     assert [r["step"] for r in recorded] == [_minutes(10), _minutes(20), datetime.timedelta(hours=1)]
