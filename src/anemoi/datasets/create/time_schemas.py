@@ -1,0 +1,136 @@
+# (C) Copyright 2026- Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""Leaf pydantic building blocks shared by the recipe schemas and the source schemas.
+
+``Frequency`` and ``Steps`` are used both by the recipe models
+(``create/recipe/dates.py``, which re-exports them) and by per-source
+validation schemas such as the accumulate archive description.  They live
+in this import-light module — importing nothing from the ``recipe`` or
+``sources`` packages — so that source modules can use them without
+creating an import cycle with the recipe package (whose ``Action`` union
+imports every source at import time).
+"""
+
+from __future__ import annotations
+
+import datetime
+import fnmatch
+from functools import cached_property
+from typing import Annotated
+
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
+from pydantic import BaseModel
+from pydantic import BeforeValidator
+from pydantic import ConfigDict
+from pydantic import PlainSerializer
+from pydantic import model_validator
+
+# The canonical string a date pattern is matched against.
+_DATE_PATTERN_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def matches_date_pattern(dt: datetime.datetime, pattern: str) -> bool:
+    """Return whether *dt* matches an ``fnmatch`` wildcard date pattern.
+
+    The pattern is matched against *dt* formatted as
+    ``"%Y-%m-%d %H:%M:%S"``; ``?`` matches any single character and ``*``
+    any sequence.  A pattern that omits the seconds (``YYYY-MM-DD HH:MM``)
+    or the whole time (``YYYY-MM-DD``) is padded with ``*`` so it matches
+    every second, respectively every time, on the selected day(s).
+
+    Parameters
+    ----------
+    dt : datetime.datetime
+        The date to test.
+    pattern : str
+        A wildcard pattern such as ``????-01-02``, ``????-01-02 00:00`` or
+        ``????-??-?? 00:00:00``.
+
+    Returns
+    -------
+    bool
+        ``True`` if *dt* matches *pattern*, ``False`` otherwise.
+    """
+    if " " not in pattern:
+        # No time part: match every time on the selected day(s).
+        pattern = f"{pattern} *"
+    elif pattern.rsplit(" ", 1)[1].count(":") < 2:
+        # Time given without seconds: match every second within the minute.
+        pattern = f"{pattern}*"
+    return fnmatch.fnmatch(dt.strftime(_DATE_PATTERN_FMT), pattern)
+
+
+# A datetime.timedelta that accepts frequency strings (e.g. "6h") on input
+# and serialises back to the same short form (e.g. "6h") rather than pydantic's
+# default ISO 8601 duration (e.g. "PT6H").
+Frequency = Annotated[
+    datetime.timedelta,
+    BeforeValidator(frequency_to_timedelta),
+    PlainSerializer(frequency_to_string, return_type=str, when_used="json"),
+]
+
+
+class Steps(BaseModel):
+    """Forecast lead times for the ``trajectories`` layout.
+
+    Models a regular range of steps via ``start`` / ``end`` / ``frequency``
+    (all parsed as :class:`datetime.timedelta`).  Exposes the same iteration and
+    ``numpy`` array interface the trajectories pipeline relies on.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    start: Frequency
+    end: Frequency
+    frequency: Frequency
+
+    @model_validator(mode="after")
+    def _check_range(self) -> "Steps":
+        if self.frequency <= datetime.timedelta(0):
+            raise ValueError(f"'steps.frequency' must be positive, got {self.frequency}")
+        if self.end < self.start:
+            raise ValueError(f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})")
+        if (self.end - self.start) % self.frequency != datetime.timedelta(0):
+            raise ValueError(
+                f"'steps.frequency' ({frequency_to_string(self.frequency)}) must divide "
+                f"'steps.end' - 'steps.start' "
+                f"({frequency_to_string(self.start)} to {frequency_to_string(self.end)})"
+            )
+        # Minute is the finest resolution the pipeline can express end to end:
+        # a step reaches the archive through the MARS/FDB step syntax, whose
+        # smallest unit is the minute, and it is written to (and read back
+        # from) GRIB step ranges in the same unit.
+        for name in ("start", "end", "frequency"):
+            value = getattr(self, name)
+            if value.total_seconds() % 60:
+                raise ValueError(
+                    f"'steps.{name}' must be a whole number of minutes, " f"got {frequency_to_string(value)}"
+                )
+        return self
+
+    @cached_property
+    def values(self):
+        import numpy as np
+
+        return np.arange(self.start, self.end + self.frequency, self.frequency)
+
+    def dump(self, dumper):
+        return dumper.steps(self.start, self.end, self.frequency)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __array__(self, dtype=None, copy=None):
+        arr = self.values if dtype is None else self.values.astype(dtype)
+        return arr.copy() if copy else arr

@@ -7,7 +7,97 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import re
 from datetime import datetime
+from datetime import timedelta
+
+# A step written in the archive's syntax: an optional hour part and an optional
+# minute part, e.g. "24h", "10m", "10h10m".  A bare number means hours.
+_STEP_RE = re.compile(r"^(?:(\d+)h)?(?:(\d+)m)?$")
+
+
+def step_to_timedelta(step: str | int | timedelta) -> timedelta:
+    """Parse a step written in the archive's syntax into a timedelta.
+
+    Inverse of :func:`timedelta_to_step`.  A bare number means hours, so
+    hour-based configurations (``frequency: 1``, ``last_step: 24``) keep
+    their meaning::
+
+        12 -> 12h, "12" -> 12h, "24h" -> 24h
+        "10m" -> 10min, "10h10m" -> 10h10min
+
+    Parameters
+    ----------
+    step : str or int or datetime.timedelta
+        The step to parse.  A timedelta is returned unchanged.
+
+    Returns
+    -------
+    datetime.timedelta
+        The lead time the step denotes.
+
+    Raises
+    ------
+    ValueError
+        If the step cannot be parsed.
+    """
+    if isinstance(step, timedelta):
+        return step
+    if isinstance(step, bool):
+        # bool is an int subclass; a boolean step is always a mistake.
+        raise ValueError(f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'.")
+    if isinstance(step, int):
+        return timedelta(hours=step)
+
+    text = str(step).strip()
+    if text.isdigit():
+        return timedelta(hours=int(text))
+
+    match = _STEP_RE.match(text)
+    if not match or not any(match.groups()):
+        raise ValueError(f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'.")
+    hours, minutes = match.groups()
+    return timedelta(hours=int(hours or 0), minutes=int(minutes or 0))
+
+
+def timedelta_to_step(offset: timedelta) -> int | str:
+    """Format a lead time in the archive's step syntax.
+
+    Whole hours stay plain integers, so that requests built from hour-based
+    recipes are byte-for-byte what they have always been (the cached test
+    fixtures are named after the hash of the request).  Only sub-hourly
+    offsets take the string form, carrying a minute suffix::
+
+        0:00  -> 0        12:00 -> 12
+        0:10  -> "10m"    10:10 -> "10h10m"
+
+    Parameters
+    ----------
+    offset : datetime.timedelta
+        The lead time to format.
+
+    Returns
+    -------
+    int or str
+        The step: an ``int`` number of hours when the offset is a whole
+        number of hours, otherwise a string with a minute suffix.
+
+    Raises
+    ------
+    ValueError
+        If the offset is negative or not a whole number of minutes.
+    """
+    seconds = offset.total_seconds()
+    if seconds < 0:
+        raise ValueError(f"Step must not be negative, got {offset}.")
+    if seconds % 60:
+        raise ValueError(f"Step must be a whole number of minutes, got {offset}.")
+    hours, minutes = divmod(int(seconds // 60), 60)
+    if minutes == 0:
+        return hours
+    if hours == 0:
+        return f"{minutes}m"
+    return f"{hours}h{minutes}m"
 
 
 class SignedInterval:
@@ -83,13 +173,16 @@ class SignedInterval:
             base = self.base.strftime("%Y%m%d.%H%M")
             if self.sign > 0:
                 steps = [
-                    int((self.start - self.base).total_seconds() / 3600),
-                    int((self.end - self.base).total_seconds() / 3600),
+                    timedelta_to_step(self.start - self.base),
+                    timedelta_to_step(self.end - self.base),
                 ]
             else:
+                # The negated interval runs backwards; show the earlier
+                # endpoint with a minus sign (but not "-0").
+                earlier = self.end - self.base
                 steps = [
-                    -int((self.end - self.base).total_seconds() / 3600),
-                    int((self.start - self.base).total_seconds() / 3600),
+                    timedelta_to_step(earlier) if not earlier else f"-{timedelta_to_step(earlier)}",
+                    timedelta_to_step(self.start - self.base),
                 ]
             base_str = f", base={base}, [{steps[0]}-{steps[1]}]"
         else:

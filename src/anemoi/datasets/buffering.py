@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import math
 import threading
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -236,7 +237,7 @@ class ReadAheadWriteBehindBuffer:
         self._no_reload = no_reload
         self._was_loaded = set()
 
-        size_per_row = np.dtype(array.dtype).itemsize * array[0].size
+        size_per_row = np.dtype(array.dtype).itemsize * math.prod(array.shape[1:])
         chunk_size = self._nrows_in_chunks * size_per_row
 
         if max_cached_chunks is None:
@@ -753,3 +754,289 @@ class RandomReadBuffer(ReadAheadWriteBehindBuffer):
 
 class WriteBehindBuffer(ReadAheadWriteBehindBuffer):
     pass
+
+
+class _ChunkAlignedBuffer:
+    """A single chunk-aligned block of a Zarr array, held in memory until flushed.
+
+    Parameters
+    ----------
+    array : zarr.Array
+        The Zarr array the block belongs to.
+    block : tuple of int
+        The block coordinates, one per leading dimension addressed by the
+        caller. Trailing dimensions are covered in full.
+    read_back : bool
+        Whether to load the block's current content from the array. When
+        ``False`` the block starts at the array's fill value, which is only
+        valid if the caller overwrites every element of the block.
+    """
+
+    def __init__(self, array: zarr.Array, block: tuple[int, ...], read_back: bool):
+        self.array = array
+        self.block = block
+
+        slices = []
+        for dim, size in enumerate(array.shape):
+            if dim < len(block):
+                chunk = array.chunks[dim]
+                start = block[dim] * chunk
+                slices.append(slice(start, min(start + chunk, size)))
+            else:
+                slices.append(slice(0, size))
+        self.slices = tuple(slices)
+
+        if read_back:
+            self.cache = array[self.slices]
+        else:
+            fill = array.fill_value
+            shape = tuple(s.stop - s.start for s in self.slices)
+            self.cache = np.full(shape, 0 if fill is None else fill, dtype=array.dtype)
+
+        self.dirty = False
+        self.lock = threading.RLock()
+
+    def __repr__(self) -> str:
+        """Return a string representation of the block."""
+        return f"<ChunkAlignedBuffer[block={self.block} shape={self.cache.shape} dirty={self.dirty}]>"
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        """Set a value in the block and mark it dirty.
+
+        Parameters
+        ----------
+        key : Any
+            The block-local index.
+        value : Any
+            The value to set.
+        """
+        with self.lock:
+            self.cache[key] = value
+            self.dirty = True
+
+    def __getitem__(self, key: Any) -> Any:
+        """Get a value from the block.
+
+        Parameters
+        ----------
+        key : Any
+            The block-local index.
+
+        Returns
+        -------
+        Any
+            The value at the given index.
+        """
+        with self.lock:
+            return self.cache[key]
+
+    def flush(self) -> None:
+        """Write the block back to the Zarr array if it has been modified."""
+        with self.lock:
+            if self.dirty:
+                if LOG.isEnabledFor(logging.DEBUG):
+                    LOG.debug(f"Flushing {self}")
+                self.array[self.slices] = self.cache
+                self.dirty = False
+
+
+class ChunkAlignedWriteBuffer:
+    """Write-behind buffer that caches whole Zarr chunks rather than whole rows.
+
+    :class:`ReadAheadWriteBehindBuffer` only buffers along the first dimension,
+    so its unit is an entire ``array[i]`` row. When an array is chunked in more
+    than one dimension, a row spans many chunks and the buffer then holds far
+    more data than a chunk needs. A trajectory dataset of shape
+    ``(n_traj, n_vars, n_ens, n_steps, n_points)`` chunked
+    ``(1, n_vars, 1, 1, n_points)`` has ``n_steps`` chunks per row, so the row
+    buffer is ``n_steps`` times too large.
+
+    This buffer caches chunk-aligned blocks instead. It is meant for writers
+    that address individual chunks, i.e. that index the leading dimensions with
+    plain integers; the trailing dimensions must not be chunked.
+
+    Parameters
+    ----------
+    array : zarr.Array
+        The Zarr array to write to.
+    buffer_size : int, optional
+        The cache size in bytes (default is 512 * 1024 * 1024).
+    max_cached_chunks : int, optional
+        The number of chunks to cache, overriding ``buffer_size``.
+    read_back : bool, optional
+        Whether to load a block's current content before writing to it
+        (default is True). Pass ``False`` only when every element of every
+        block touched is overwritten, otherwise the untouched elements are
+        reset to the array's fill value.
+    """
+
+    def __init__(
+        self,
+        array: zarr.Array,
+        buffer_size: int = 512 * 1024 * 1024,
+        max_cached_chunks: int = None,
+        read_back: bool = True,
+    ):
+        self._arr = array
+        self._read_back = read_back
+
+        chunk_size = np.dtype(array.dtype).itemsize * math.prod(array.chunks)
+
+        if max_cached_chunks is None:
+            chunks_in_cache = max(buffer_size, chunk_size) // chunk_size
+        else:
+            chunks_in_cache = max_cached_chunks
+
+        LOG.info(
+            f"Initializing ChunkAlignedWriteBuffer with chunk shape {array.chunks}, "
+            f"caching {chunks_in_cache} chunks ({chunks_in_cache * chunk_size / 1024 / 1024:.2f} MB)",
+        )
+
+        self._lru_chunks_cache = LRU(chunks_in_cache, callback=self._evict_buffer)
+        self._lock = threading.RLock()
+        self.chunks_in_cache = chunks_in_cache
+        # With read_back=False, a block that comes back after being flushed
+        # would restart from the fill value and lose what was written before.
+        self._was_evicted = set()
+
+    @staticmethod
+    def _evict_buffer(key: tuple[int, ...], buffer: _ChunkAlignedBuffer) -> None:
+        """Flush a block when it is evicted from the cache.
+
+        Parameters
+        ----------
+        key : tuple of int
+            The block coordinates.
+        buffer : _ChunkAlignedBuffer
+            The block to evict.
+        """
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug(f"Evicting {buffer}")
+
+        buffer.flush()
+
+    def _locate(self, key: Any) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """Split an index into block coordinates and a block-local index.
+
+        Parameters
+        ----------
+        key : Any
+            A tuple of integers addressing the leading dimensions.
+
+        Returns
+        -------
+        tuple
+            The block coordinates and the block-local index.
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+
+        assert len(key) <= self._arr.ndim, f"Too many indices {key} for shape {self._arr.shape}"
+
+        block, local = [], []
+        for dim, index in enumerate(key):
+            assert isinstance(index, (int, np.integer)), f"Only integer indices are supported, got {index!r}"
+            index = int(index)
+            if index < 0:
+                index += self._arr.shape[dim]
+            assert 0 <= index < self._arr.shape[dim], f"Index {index} out of bounds for dimension {dim}"
+            chunk = self._arr.chunks[dim]
+            block.append(index // chunk)
+            local.append(index % chunk)
+
+        # The trailing dimensions are written in full, so they must fit in a
+        # single chunk, otherwise a block would not be chunk-aligned.
+        for dim in range(len(key), self._arr.ndim):
+            assert self._arr.chunks[dim] >= self._arr.shape[dim], (
+                f"ChunkAlignedWriteBuffer requires the trailing dimensions to be unchunked, "
+                f"but dimension {dim} has chunk {self._arr.chunks[dim]} for size {self._arr.shape[dim]}"
+            )
+
+        return tuple(block), tuple(local)
+
+    def _ensure_chunk_in_cache(self, block: tuple[int, ...]) -> _ChunkAlignedBuffer:
+        """Return the cached block, loading it if needed.
+
+        Parameters
+        ----------
+        block : tuple of int
+            The block coordinates.
+
+        Returns
+        -------
+        _ChunkAlignedBuffer
+            The cached block.
+        """
+        with self._lock:
+            if block in self._lru_chunks_cache:
+                return self._lru_chunks_cache[block]
+
+            # Evict before allocating, so that the old and the new block are
+            # never both resident. Note that ``LRU.popitem()`` keeps a
+            # reference to the value it returns, which would defeat the point;
+            # ``LRU.pop(key)`` releases it. Neither calls the LRU callback, so
+            # the eviction is done by hand here.
+            if len(self._lru_chunks_cache) >= self.chunks_in_cache:
+                lru_key, _ = self._lru_chunks_cache.peek_last_item()
+                evicted = self._lru_chunks_cache.pop(lru_key)
+                self._evict_buffer(lru_key, evicted)
+                del evicted
+
+            if not self._read_back:
+                if block in self._was_evicted:
+                    raise RuntimeError(
+                        f"Chunk {block} is written to again after being flushed, which would lose data "
+                        f"because read_back is disabled. Write the array one chunk at a time, or "
+                        f"increase the number of cached chunks."
+                    )
+                self._was_evicted.add(block)
+
+            self._lru_chunks_cache[block] = _ChunkAlignedBuffer(self._arr, block, self._read_back)
+            return self._lru_chunks_cache[block]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        """Set a value in the cached array.
+
+        Parameters
+        ----------
+        key : Any
+            A tuple of integers addressing the leading dimensions.
+        value : Any
+            The value to set.
+        """
+        block, local = self._locate(key)
+        with self._lock:
+            self._ensure_chunk_in_cache(block)[local] = value
+
+    def __getitem__(self, key: Any) -> Any:
+        """Get a value from the cached array.
+
+        Parameters
+        ----------
+        key : Any
+            A tuple of integers addressing the leading dimensions.
+
+        Returns
+        -------
+        Any
+            The value at the given index.
+        """
+        block, local = self._locate(key)
+        with self._lock:
+            return self._ensure_chunk_in_cache(block)[local]
+
+    def flush(self) -> None:
+        """Flush all cached blocks to the underlying Zarr array."""
+        with self._lock:
+            for buffer in self._lru_chunks_cache.values():
+                buffer.flush()
+
+    def __enter__(self) -> "ChunkAlignedWriteBuffer":
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.flush()
+        # Drop the blocks so the memory is released when leaving the block,
+        # rather than when the buffer itself is garbage collected.
+        with self._lock:
+            self._lru_chunks_cache.clear()

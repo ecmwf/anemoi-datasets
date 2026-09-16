@@ -6,13 +6,14 @@ dates:
 input:
   pipe:
     - accumulate:
+        period: 6h
+        from:
+          accumulation: 3h   # base-less: the archive stores 3h increments
         source:
           grib-index:
             indexdb: /path/to/gribindex.db
             levtype: sfc
             param:
             - tp
-            accumulation_period: 6
-            data_accumulation_period: 3
     - rename:
         tp: tp_6h

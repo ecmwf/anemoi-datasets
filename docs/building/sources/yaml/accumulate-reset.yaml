@@ -1,0 +1,18 @@
+accumulate:
+  period: 1h
+  from:
+    base_dates:
+      times: ["00:00"]
+      day_of_month: 1        # one run per month, on the 1st at 00Z
+    steps: {start: 1h, end: 720h, frequency: 1h}
+    accumulation: from-zero-reset-every-24h   # the DATA resets every 24h
+  patch:
+    - reset_24h_accumulations  # AND its GRIB metadata is broken
+                               # (startStep==endStep) - both are needed here
+  source:
+    mars:
+      class: rd
+      expver: i6aj
+      type: fc
+      levtype: sfc
+      param: [tp]

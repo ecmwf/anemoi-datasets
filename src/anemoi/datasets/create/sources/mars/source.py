@@ -14,12 +14,86 @@ from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.intervals import timedelta_to_step
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
 from .retrieval import RequestFilter
 from .retrieval import execute_mars_request
 from .retrieval import fire_prebuilt_requests
+
+_WEEKDAY_NAMES = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def _weekday_name(value: Any) -> str:
+    """Coerce a weekday given as a full name or its exact 3-letter abbreviation to the full name.
+
+    Same dialect as the accumulate ``from.base_dates.day_of_week`` selector:
+    ``monday`` and ``mon`` are accepted, misspellings like ``mondi`` are not.
+    """
+    name = str(value).strip().lower()
+    for full in _WEEKDAY_NAMES:
+        if name in (full, full[:3]):
+            return full
+    raise ValueError(f"mars hindcast: invalid day_of_week {value!r} (expected e.g. 'monday' or 'mon')")
+
+
+def _hindcast_refdate_mapping(config: dict[str, Any]) -> dict[datetime.date, datetime.date]:
+    """Build the hdate → refdate lookup table for the mars ``hindcast`` option.
+
+    Reforecast (hindcast) MARS requests need both ``date`` (the reference
+    date of the model run) and ``hdate`` (the start of the hindcast run,
+    same month-day in an earlier year). Given the reference-date window,
+    every hdate produced by the archive convention (``years`` previous
+    years of each reference date) is mapped back to its reference date.
+
+    Parameters
+    ----------
+    config : dict
+        The ``hindcast`` option: ``reference_start``/``reference_end``
+        (the reference-date window), optional ``day_of_week`` (e.g.
+        ``[monday, thursday]`` or ``[mon, thu]``) restricting the
+        reference dates, and optional ``years`` (number of hindcast
+        years, default 20).
+
+    Returns
+    -------
+    dict
+        Mapping of hdate to reference date.
+    """
+    from anemoi.utils.dates import DateTimes
+    from anemoi.utils.hindcasts import HindcastDatesTimes
+
+    config = dict(config)
+    start = config.pop("reference_start")
+    end = config.pop("reference_end")
+    day_of_week = config.pop("day_of_week", None)
+    years = config.pop("years", 20)
+    if config:
+        raise ValueError(f"mars hindcast: unknown option(s) {sorted(config)}")
+
+    kwargs = {}
+    if day_of_week is not None:
+        if not isinstance(day_of_week, (list, tuple)):
+            day_of_week = [day_of_week]
+        kwargs["day_of_week"] = [_weekday_name(d) for d in day_of_week]
+
+    reference_dates = list(DateTimes(start, end, increment=24, **kwargs))
+    if not reference_dates:
+        raise ValueError(f"mars hindcast: no reference dates in [{start}, {end}] (day_of_week={day_of_week})")
+
+    mapping: dict[datetime.date, datetime.date] = {}
+    for hdate, refdate in HindcastDatesTimes(reference_dates=reference_dates, years=years):
+        key = hdate.date()
+        other = mapping.get(key)
+        if other is not None and other != refdate.date():
+            raise ValueError(
+                f"mars hindcast: hdate {key} is a hindcast date of two reference dates "
+                f"({other} and {refdate.date()}); narrow the [reference_start, reference_end] "
+                "window or set day_of_week to make the mapping unique"
+            )
+        mapping[key] = refdate.date()
+    return mapping
 
 
 def _reject_filters(requests: list[dict[str, Any]], context_label: str) -> None:
@@ -41,11 +115,52 @@ class MarsSource(Source):
     def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, *args, **kwargs)
         self.use_cdsapi_dataset = kwargs.pop("use_cdsapi_dataset", None)
+        self.hindcast = kwargs.pop("hindcast", None)
+        self._hindcast_refdates = None if self.hindcast is None else _hindcast_refdate_mapping(self.hindcast)
         self.args = args
         self.kwargs = kwargs
 
+    def _apply_hindcast(self, request: dict[str, Any], basetime: datetime.datetime) -> dict[str, Any]:
+        """Rewrite a stamped forecast request as a reforecast (hindcast) request.
+
+        The incoming request carries ``date``/``time`` from the basetime and a
+        ``step`` relative to it. For hindcast streams (eefh/enfh) the basetime
+        is the hindcast start (``hdate``, always 00Z) while ``date`` must be the
+        reference date of the model run; the step stays relative to the hdate.
+
+        Parameters
+        ----------
+        request : dict
+            The request to rewrite (mutated in place).
+        basetime : datetime.datetime
+            The model-run basetime of the trajectory item.
+
+        Returns
+        -------
+        dict
+            The rewritten request (the same object as ``request``).
+        """
+        if (basetime.hour, basetime.minute, basetime.second) != (0, 0, 0):
+            raise ValueError(f"mars hindcast: basetime must be at 00Z, got {basetime}")
+        refdate = self._hindcast_refdates.get(basetime.date())
+        if refdate is None:
+            raise ValueError(
+                f"mars hindcast: basetime {basetime.date()} is not a hindcast date of any "
+                f"reference date in [{self.hindcast['reference_start']}, {self.hindcast['reference_end']}] "
+                f"(day_of_week={self.hindcast.get('day_of_week')}, years={self.hindcast.get('years', 20)})"
+            )
+        request["hdate"] = basetime.strftime("%Y%m%d")
+        request["date"] = refdate.strftime("%Y%m%d")
+        request["time"] = "0000"
+        return request
+
     def execute_valid_dates(self, dates: ValidDates) -> Any:
         """Handle instant analysis / reanalysis requests."""
+        if self.hindcast is not None:
+            raise ValueError(
+                "The mars 'hindcast' option needs a basetime for each date and is only "
+                "supported in forecast contexts (trajectories layout), not with validity dates."
+            )
         if not dates.dates:
             # No validity dates: the request already encodes its own date
             # (e.g. repeated_dates constant mode with date=None).
@@ -67,17 +182,22 @@ class MarsSource(Source):
         per_item_requests: list[dict[str, Any]] = []
         for valid_time, basetime in dates.items:
             step_seconds = (valid_time - basetime).total_seconds()
-            if step_seconds % 3600:
+            if step_seconds % 60:
                 raise ValueError(
-                    f"MARS forecast requests only support whole-hour steps, got "
+                    f"MARS forecast requests only support whole-minute steps, got "
                     f"step={valid_time - basetime} (valid_time={valid_time}, basetime={basetime})."
                 )
-            step_hours = int(step_seconds // 3600)
+            # A whole-hour step stays a plain integer (the request is then
+            # byte-for-byte what it has always been); a sub-hourly one takes
+            # the archive's minute syntax ("10m", "1h10m").
+            step = timedelta_to_step(valid_time - basetime)
             for request in base_requests:
                 r = request.copy()
                 r["date"] = basetime.strftime("%Y%m%d")
                 r["time"] = basetime.strftime("%H%M")
-                r["step"] = step_hours
+                r["step"] = step
+                if self._hindcast_refdates is not None:
+                    self._apply_hindcast(r, basetime)
                 per_item_requests.append(r)
 
         self.context.trace("🛰️", f"Forecast dates: {len(dates)} items → {len(per_item_requests)} requests")
@@ -85,17 +205,25 @@ class MarsSource(Source):
 
     def execute_intervals(self, dates: Intervals) -> Any:
         """Handle archive-resolved interval requests from AccumulateSource."""
+        if self.hindcast is not None:
+            raise ValueError(
+                "The mars 'hindcast' option needs a basetime for each date and is only "
+                "supported in forecast contexts (trajectories layout), not with validity dates."
+            )
         base_requests = list(self.args) or [self.kwargs]
         _reject_filters(base_requests, "accumulation")
         per_interval_requests: list[dict[str, Any]] = []
         for request in base_requests:
             for interval in dates.intervals:
-                # MARS sources always have a model-run time; only grib_index is
-                # allowed to produce base-less intervals (flat valid-time index).
-                assert interval.base is not None, (
-                    f"MarsSource received an interval without a basetime: {interval!r}. "
-                    "Only grib_index is expected to produce base=None intervals."
-                )
+                # A mars accumulation is addressed by model run (date/time) + step,
+                # so it can only serve intervals that carry a basetime.
+                if interval.base is None:
+                    raise NotImplementedError(
+                        f"The mars source was asked to serve a base-less (valid-time-indexed) "
+                        f"accumulation interval {interval!r}, but a mars accumulation is addressed "
+                        f"by model run (date/time) + step, so it can only serve intervals that "
+                        f"carry a basetime."
+                    )
                 self.context.trace("🌧️", "interval:", interval)
                 _, r, _ = dates.adjust_request(interval, request)
                 self.context.trace("🌧️", "  adjusted request =", r)
@@ -116,12 +244,16 @@ class MarsSource(Source):
         per_interval_requests: list[dict[str, Any]] = []
         for request in base_requests:
             for interval in dates.intervals:
-                # Trajectory accumulations always go through ForecastCovering, which
-                # sets base=basetime; a base-less interval here would be a bug.
-                assert interval.base is not None, (
-                    f"MarsSource received a forecast interval without a basetime: {interval!r}. "
-                    "Only grib_index is expected to produce base=None intervals."
-                )
+                # Trajectory from-layout accumulations go through ForecastCovering,
+                # which sets base=basetime; a mars accumulation is addressed by model
+                # run (date/time) + step, so a base-less interval cannot be served.
+                if interval.base is None:
+                    raise NotImplementedError(
+                        f"The mars source was asked to serve a base-less (valid-time-indexed) "
+                        f"forecast accumulation interval {interval!r}, but a mars accumulation is "
+                        f"addressed by model run (date/time) + step, so it can only serve "
+                        f"run-anchored intervals."
+                    )
                 self.context.trace(
                     "\U0001f327\ufe0f",
                     "forecast interval:",
@@ -132,6 +264,8 @@ class MarsSource(Source):
                     interval.base,
                 )
                 _, r, _ = dates.adjust_request(interval, request)
+                if self._hindcast_refdates is not None:
+                    self._apply_hindcast(r, interval.base)
                 self.context.trace("🌧️", "  adjusted request =", r)
                 per_interval_requests.append(r)
 

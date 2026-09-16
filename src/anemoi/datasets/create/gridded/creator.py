@@ -352,6 +352,22 @@ class SimpleGriddedCreator(GriddedCreator):
         return SimpleGriddedContext(self.recipe)
 
     def initialise_dataset(self, dataset: Dataset) -> None:
+        # The gridded statistics path computes per-group statistics from a
+        # *contiguous* slice of the time axis (``Dataset.group_to_range``). That
+        # is only valid when ``group_by`` preserves date order, so each group is
+        # a contiguous run of rows. A grouping like ``MMDD`` (or ``weekday``)
+        # scatters a group across the whole axis -- one row per year for a given
+        # calendar day -- so ``group_to_range`` would read the wrong rows and
+        # silently corrupt the statistics. The trajectories layout handles this
+        # by recording each group's actual row indices; the gridded layout does
+        # not, so reject the unsupported grouping loudly instead.
+        assert self.recipe.build.group_by != "MMDD", (
+            "group_by: MMDD is not supported for the gridded layout because its groups are not "
+            "contiguous along the time axis, which the per-group statistics rely on. Use a "
+            "date-ordered grouping (e.g. daily/monthly/yearly or a fixed size), or the "
+            "trajectories layout, which supports scattered groups."
+        )
+
         dates = self.groups.provider.values
         shape = (len(dates),) + self.minimal_input.shape[1:]
 

@@ -16,18 +16,24 @@ zarr_private_files = (".zgroup", ".zattrs", ".zarray", "zarr.json")
 if zarr_version < 3:
     from .zarr2 import DebugStore
     from .zarr2 import HTTPStore
+    from .zarr2 import LocalStore
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
     from .zarr2 import blosc_compressor
+    from .zarr2 import lru_store_cache
+    from .zarr2 import nested_store
     from .zarr2 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
 else:
     from .zarr3 import DebugStore
     from .zarr3 import HTTPStore
+    from .zarr3 import LocalStore
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
     from .zarr3 import blosc_compressor
+    from .zarr3 import lru_store_cache
+    from .zarr3 import nested_store
     from .zarr3 import zarr_append_mode
 
     MemoryStore = zarr.storage.MemoryStore
@@ -35,10 +41,13 @@ else:
 __all__ = [
     "ZarrFileNotFoundError",
     "HTTPStore",
+    "LocalStore",
     "S3Store",
     "DebugStore",
     "MemoryStore",
     "blosc_compressor",
+    "lru_store_cache",
+    "nested_store",
     "zarr_append_mode",
     "zarr_version",
     "zarr_private_files",

@@ -1,11 +1,11 @@
 accumulate:
   period: 6h
-  availability: auto
+  clip:
+    - {param: tp, minimum: 0} # a 6h total precipitation is never negative
+    - {param: cp, minimum: 0}
   source:
     mars:
-      expver: "0001"
       class: ea
-      stream: oper
       type: fc
       grid: 20./20.
       levtype: sfc

@@ -1,0 +1,11 @@
+average:
+  period: 24h            # the window you want
+  from:
+    frequency: 6h        # what the source data is: an instant every 6h
+  source:
+    mars:
+      class: ea
+      type: an
+      grid: 20./20.
+      levtype: sfc
+      param: [2t]

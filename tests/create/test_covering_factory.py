@@ -9,6 +9,8 @@
 
 """Tests for the recipe-side covering_factory dispatch and back-compat."""
 
+import datetime
+
 import pytest
 
 from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
@@ -45,7 +47,10 @@ def test_discriminator_cycle_not_implemented():
 
 
 def test_migrate_rewrites_availability():
-    """Recipe migrator rewrites accumulate.availability to covering.auto."""
+    """Recipe migrator rewrites accumulate.availability to a description key.
+
+    (Full migration coverage lives in test_recipe_migrate.py.)
+    """
     from anemoi.datasets.commands.recipe.migrate import migrate
 
     old = {
@@ -64,26 +69,76 @@ def test_migrate_rewrites_availability():
     new = migrate(old)
     block = new["input"]["join"][0]["accumulate"]
     assert "availability" not in block
-    assert block["covering"] == {"auto": [(0, "0-6/0-12"), (12, "0-6/0-12")]}
+    assert "covering" not in block
+    assert "type" not in block["from"]
+    assert set(block["from"]) == {"base_dates", "steps", "accumulation"}
+    assert block["from"]["accumulation"] == "from-zero"
 
 
-def test_migrate_leaves_existing_covering_untouched():
-    from anemoi.datasets.commands.recipe.migrate import migrate
+# ---------------------------------------------------------------------------
+# lookup-table: the entry pins WHICH intervals may be used, the signed search
+# decides HOW they combine — so a covering that does not add up is impossible.
+# ---------------------------------------------------------------------------
 
-    old = {
-        "input": {
-            "join": [
-                {
-                    "accumulate": {
-                        "period": "6h",
-                        "covering": {"auto": "auto"},
-                        "source": {"mars": {"class": "od"}},
-                    }
-                }
-            ]
-        }
+
+def _lookup(**table):
+    from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
+    from anemoi.datasets.create.sources.accumulate.interval_generators import LookupTableIntervalGenerator
+
+    return AutoCovering(LookupTableIntervalGenerator(start="1970-01-01", **table))
+
+
+def _window(h0, h1):
+    return datetime.datetime(2024, 1, 1, h0), datetime.datetime(2024, 1, 1, h1)
+
+
+@pytest.mark.parametrize("steps", ["0-12/0-6", "0-6/0-12"])
+def test_lookup_table_expresses_a_from_zero_difference(steps):
+    """An entry naming two from-zero fields is combined as a(0,12) - a(0,6), not summed.
+
+    Regression: these were previously returned as two *positive* intervals and
+    silently added, giving 18h of accumulation labelled as a 6h window.
+    """
+    start, end = _window(6, 12)
+    cover = _lookup(**{"6-12": [0, steps]}).cover(start, end)
+
+    assert sum(i.length for i in cover) == (end - start).total_seconds()
+    signed = {
+        (int((i.min - i.base).total_seconds() // 3600), int((i.max - i.base).total_seconds() // 3600)): i.sign
+        for i in cover
     }
-    new = migrate(old)
-    block = new["input"]["join"][0]["accumulate"]
-    assert block["covering"] == {"auto": "auto"}
-    assert "availability" not in block
+    assert signed == {(0, 12): 1, (0, 6): -1}
+
+
+def test_lookup_table_rejects_entries_that_cannot_cover_the_window():
+    start, end = _window(6, 12)
+    with pytest.raises(ValueError, match="Cannot find coverage"):
+        _lookup(**{"6-12": [0, "0-12/0-3"]}).cover(start, end)
+
+
+def test_lookup_table_single_archived_window_still_works():
+    """The documented form: the archive natively stores the requested windows."""
+    start, end = _window(6, 12)
+    cover = _lookup(**{"0-6": [18, "6-12"], "6-12": [18, "12-18"], "12-18": [18, "18-24"], "18-24": [18, "0-6"]}).cover(
+        start, end
+    )
+    assert len(cover) == 1
+    assert cover[0].sign == 1
+    assert sum(i.length for i in cover) == (end - start).total_seconds()
+
+
+def test_check_covering_rejects_a_mismatched_sum():
+    """No Covering may return intervals whose signed lengths miss the window."""
+    from anemoi.datasets.create.intervals import SignedInterval
+    from anemoi.datasets.create.sources.accumulate.covering import check_covering
+
+    bt = datetime.datetime(2024, 1, 1, 0)
+    start, end = _window(6, 12)
+    both_positive = [
+        SignedInterval(bt, bt + datetime.timedelta(hours=12), base=bt),
+        SignedInterval(bt, bt + datetime.timedelta(hours=6), base=bt),
+    ]
+    with pytest.raises(ValueError, match="does not add up"):
+        check_covering(both_positive, start, end)
+
+    assert check_covering([SignedInterval(start, end, base=bt)], start, end)
