@@ -16,10 +16,13 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import field_validator
 from pydantic import model_validator
 
 from anemoi.datasets.create.time_schemas import Frequency
 
+from ..clip import ClipSpec
+from ..clip import normalise_clip
 from .normalise import normalise_from
 from .union import From
 from .union import FromBare
@@ -59,6 +62,7 @@ class AccumulateSchema(BaseModel):
 
     patch: list[str] | None = None
     group_by: dict[str, Any] | None = None
+    clip: list[ClipSpec] | None = None
 
     # Deprecated spellings, kept for one release.  They are folded into
     # `from_` during validation (so they are always None afterwards) and
@@ -79,6 +83,14 @@ class AccumulateSchema(BaseModel):
         if isinstance(self.from_, FromBare):
             return "bare (accumulation only)"
         return None
+
+    @field_validator("clip", mode="before")
+    @classmethod
+    def _normalise_clip(cls, value: Any) -> Any:
+        # Every accepted spelling of `clip:` (absent, false, one mapping, a
+        # list of mappings) is folded here into the list of ClipSpec, by the
+        # same function the runtime source uses.
+        return normalise_clip(value)
 
     @model_validator(mode="before")
     @classmethod

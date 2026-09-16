@@ -134,6 +134,9 @@ data is.
    * - ``group_by``
      - *Optional.* Which fields are accumulated together; see
        :ref:`how-to-group-by`.
+   * - ``clip``
+     - *Optional.* Bounds applied to the accumulated values; see
+       :ref:`how-to-clip`.
 
 The **bare** form means different things in different places: outside a
 ``layout: trajectories`` recipe it describes base-less source data indexed
@@ -510,3 +513,53 @@ difference::
 
 A set of intervals that cannot be combined into exactly the requested
 window is an error, never a silent partial sum.
+
+.. _how-to-clip:
+
+Bounding the accumulated values
+===============================
+
+The accumulated value of a physically non-negative quantity can come out
+slightly negative, because it is built by *differencing* cumulative fields
+that the archive holds at finite precision. ``clip:`` bounds the result.
+
+.. literalinclude:: yaml/accumulate-clip.yaml
+   :language: yaml
+
+The configuration is that of the ``clip`` filter of *anemoi-transform* —
+``param``, ``minimum``, ``maximum``, at least one of the two bounds — and
+it is that filter that does the arithmetic, so
+
+.. code:: yaml
+
+   - accumulate:
+       period: 6h
+       source: {...}
+       clip: {param: tp, minimum: 0}
+
+and
+
+.. code:: yaml
+
+   - pipe:
+       - accumulate: {period: 6h, source: {...}}
+       - clip: {param: tp, minimum: 0}
+
+are the same computation. Write one mapping, or a list of them. Omitting
+the key (or ``clip: false``) clips nothing, which is the default.
+
+Two things differ from the filter written in a ``pipe:``:
+
+-  ``param`` may be **omitted**, meaning every accumulated parameter (the
+   filter itself requires one);
+-  a ``param`` that does not name an accumulated parameter is an **error**,
+   where the filter would silently pass every field through.
+
+As in the filter, no bound is inferred: ``clip: true`` is not a value, and
+a ``clip:`` entry with neither ``minimum`` nor ``maximum`` is rejected.
+
+.. note::
+
+   The bounds apply to the **accumulated** value, not to the intervals it
+   was built from. In a 6h accumulation assembled from 3h differences, a
+   negative increment cancelled by a positive one is never seen here.

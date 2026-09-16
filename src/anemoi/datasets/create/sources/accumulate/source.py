@@ -25,6 +25,8 @@ from anemoi.datasets.create.sources import source_registry
 
 from .accumulator import Accumulator
 from .accumulator import Logs
+from .clip import apply_clip
+from .clip import normalise_clip
 from .covering import AutoCovering
 from .covering import ForecastCovering
 from .covering import ValidTimeCovering
@@ -91,6 +93,7 @@ class AccumulateSource(Source):
         accumulation: str | None = None,
         patch: Any = None,
         group_by: dict | None = None,
+        clip: Any = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(context)
@@ -135,6 +138,7 @@ class AccumulateSource(Source):
         self.period = frequency_to_timedelta(period)
         self.patch = patch
         self.group_by = patch_groupby_keys(group_by)
+        self.clip = normalise_clip(clip)
         self._field_to_interval = FieldToInterval(patch)
         self._source_name = self._prepare_source()
 
@@ -191,7 +195,7 @@ class AccumulateSource(Source):
         if not accumulators:
             raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
-        ds = FieldList.from_fields(fields)
+        ds = apply_clip(FieldList.from_fields(fields), self.clip)
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
         for f in ds:

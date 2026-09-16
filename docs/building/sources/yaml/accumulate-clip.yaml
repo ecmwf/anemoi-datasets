@@ -1,0 +1,12 @@
+accumulate:
+  period: 6h
+  clip:
+    - {param: tp, minimum: 0} # a 6h total precipitation is never negative
+    - {param: cp, minimum: 0}
+  source:
+    mars:
+      class: ea
+      type: fc
+      grid: 20./20.
+      levtype: sfc
+      param: [tp, cp]
