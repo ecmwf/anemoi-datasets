@@ -153,6 +153,9 @@ You may also have to install pandoc on macOS:
    :caption: CLI
 
    cli/introduction
+   cli/building-gridded
+   cli/building-tabular
+   cli/building-trajectories
 
 .. toctree::
    :maxdepth: 1

@@ -28,6 +28,8 @@ from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
+MAX_WARNINGS = 10
+
 
 class MissingDatesFill(Forwards):
     """Class to handle filling missing dates in a dataset."""
@@ -130,6 +132,14 @@ class MissingDatesFill(Forwards):
                 b = i
 
         return self._fill_missing(n, a, b)
+
+    def _issue_warning(self, n):
+        return n not in self._warnings and len(self._warnings) < MAX_WARNINGS
+
+    def _register_warning(self, n):
+        self._warnings.add(n)
+        if len(self._warnings) == MAX_WARNINGS:
+            LOG.warning("Reached maximum number of warnings for missing dates. Further warnings will be suppressed.")
 
 
 class MissingDatesClosest(MissingDatesFill):
@@ -237,13 +247,14 @@ class MissingDatesInterpolate(MissingDatesFill):
         NDArray[Any]
             The filled data for the missing date.
         """
-        if n not in self._warnings:
-            LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
 
-            if a is None or b is None:
-                raise MissingDateError(
-                    f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
-                )
+        if a is None or b is None:
+            raise MissingDateError(
+                f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
+            )
+
+        if self._do_warning:
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
 
             assert a < n < b, (a, n, b)
 
@@ -255,7 +266,7 @@ class MissingDatesInterpolate(MissingDatesFill):
 
             self._alpha[n] = alpha
 
-            self._warnings.add(n)
+            self._register_warning(n)
 
         alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
@@ -281,6 +292,117 @@ class MissingDatesInterpolate(MissingDatesFill):
         return Node(self, [self.forward.tree()])
 
 
+class MissingDatesFillWithNaNs(MissingDatesFill):
+    """Class to handle filling missing dates with NaNs."""
+
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+        """Fill the missing date at the given index with NaNs.
+
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
+
+        Returns
+        -------
+        NDArray[Any]
+            An array filled with NaNs for the missing date.
+        """
+        if self._issue_warning(n):
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
+            self._register_warning(n)
+
+        return np.full(self.shape[1:], np.nan, dtype=self.dtype)
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get metadata specific to the subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
+        """
+        return {}
+
+    def tree(self) -> Node:
+        """Get the tree representation of the object.
+
+        Returns
+        -------
+        Node
+            The tree representation of the object.
+        """
+        return Node(self, [self.forward.tree()])
+
+
+class MissingDatesFillStatistics(MissingDatesFill):
+    """Class to handle filling missing dates with statistical values."""
+
+    def __init__(self, dataset: Any, method: str) -> None:
+        """Initialize the MissingDatesFillStatistics class.
+
+        Parameters
+        ----------
+        dataset : Any
+            The dataset with missing dates.
+        method : str
+            The statistical method to use for filling missing dates ('mean', 'maximum', 'minimum').
+        """
+        super().__init__(dataset)
+        self._method = method
+        self._statistics = self.statistics[method]
+        self._statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
+        self._statistics = self._statistics.astype(self.dtype)
+
+    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+        """Fill the missing date at the given index with statistical values.
+
+        Parameters
+        ----------
+        n : int
+            The index of the missing date.
+        a : Optional[int]
+            The previous available date index.
+        b : Optional[int]
+            The next available date index.
+
+        Returns
+        -------
+        NDArray[Any]
+            An array filled with statistical values for the missing date.
+        """
+
+        if self._issue_warning(n):
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with `{self._method}`")
+            self._register_warning(n)
+
+        return np.broadcast_to(self._statistics, self.shape[1:])
+
+    def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
+        """Get metadata specific to the subclass.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The metadata specific to the subclass.
+        """
+        return {"method": self._method}
+
+    def tree(self) -> Node:
+        """Get the tree representation of the object.
+
+        Returns
+        -------
+        Node
+            The tree representation of the object.
+        """
+        return Node(self, [self.forward.tree()], method=self._method)
+
+
 def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create an instance of a class to fill missing dates.
 
@@ -304,5 +426,11 @@ def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]
 
     if method == "interpolate":
         return MissingDatesInterpolate(dataset)
+
+    if method.lower() in ("nans", "nan"):
+        return MissingDatesFillWithNaNs(dataset)
+
+    if method in ("mean", "maximum", "minimum"):
+        return MissingDatesFillStatistics(dataset, method=method)
 
     raise ValueError(f"Invalid `fill_missing_dates` method '{method}'")

@@ -1,4 +1,4 @@
-.. _selecting-members:
+.. _using-ensembles:
 
 ###################
  Selecting members
@@ -18,18 +18,8 @@ between the two is that ``number`` is **1-based**, whereas ``member`` is
 
 Select a single element:
 
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       number=1,
-   )
+.. literalinclude:: code/ensembles_number_single_.py
 
 ... or a list:
 
-.. code:: python
-
-   ds = open_dataset(
-       dataset,
-       number=[1, 3, 5],
-   )
+.. literalinclude:: code/ensembles_number_list_.py

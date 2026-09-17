@@ -75,7 +75,7 @@ using the following operations:
 
 join
    The join is the process of combining several sources of data. Each
-   source is expected to provide different variables for the same of
+   source is expected to provide different variables for the same set of
    dates.
 
 pipe

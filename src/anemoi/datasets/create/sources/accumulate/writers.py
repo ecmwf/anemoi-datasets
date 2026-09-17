@@ -56,10 +56,34 @@ def write_accumulated_field_with_valid_time(
     time = (valid_date - period).strftime("%H%M")
     endStep = period
 
-    hours = endStep.total_seconds() / 3600
-    if hours != int(hours):
-        raise ValueError(f"Accumulation period must be integer hours, got {hours}")
-    hours = int(hours)
+    seconds = endStep.total_seconds()
+    if seconds % 60:
+        raise ValueError(f"Accumulation period must be a whole number of minutes, got {period}")
+
+    total_minutes = int(seconds // 60)
+    if total_minutes % 60:
+        # Sub-hourly steps must be counted in minutes: in hour units a 10min
+        # accumulation gets a validity time of 01:00. GRIB1 has hours only.
+        if template.metadata("edition") == 1:
+            raise ValueError(f"GRIB edition 1 cannot encode a sub-hourly accumulation period, got {period}")
+        # dataDate/dataTime rather than date/time: earthkit rescales a `time` below 100
+        # as hours, turning 00:30 into hour 30. Reference time must be set before the
+        # step keys, from which the end of the accumulation interval is derived.
+        output.write(
+            values,
+            template=template,
+            dataDate=int(date),
+            dataTime=int(time),
+            stepUnits="m",
+            stepType="accum",
+            startStep=0,
+            endStep=total_minutes,
+            check_nans=True,
+            missing_value=MISSING_VALUE,
+        )
+        return
+
+    hours = total_minutes // 60
 
     # NOTE: key order below is significant. earthkit passes this dict straight to
     # codes_set_key_vals in insertion order, and setting stepType *after*
