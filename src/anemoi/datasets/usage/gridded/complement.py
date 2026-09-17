@@ -110,6 +110,16 @@ class Complement(Combined):
         return {k: v[index] for k, v in self._source.statistics_tendencies(delta).items()}
 
     @property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Return the residual statistics of the complemented variables.
+
+        Only the variables taken from the source dataset are exposed, so the
+        residual statistics come from the source alone.
+        """
+        index = [self._source.name_to_index[v] for v in self._variables]
+        return {k: v[index] for k, v in self._source.residual_statistics.items()}
+
+    @property
     def name_to_index(self) -> dict[str, int]:
         """Returns a dictionary mapping variable names to their indices."""
         return {v: i for i, v in enumerate(self.variables)}
