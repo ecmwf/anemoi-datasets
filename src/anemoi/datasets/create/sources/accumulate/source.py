@@ -30,7 +30,10 @@ from .accumulator import Accumulator
 from .accumulator import Logs
 from .covering import ForecastCovering
 from .covering import covering_factory
+from .covering import declared_step_ranges
+from .covering import validate_tiling
 from .field_to_interval import FieldToInterval
+from .operations import Sum
 
 LOG = logging.getLogger(__name__)
 
@@ -60,6 +63,11 @@ def patch_groupby_keys(group_by: dict | None = None):
 
 @source_registry.register("accumulate")
 class AccumulateSource(Source):
+
+    # Whether the covering must be a forward-only tiling of the window.  False here:
+    # accumulate reconstructs windows by subtracting archived fields.  The `reduce`
+    # source sets it True, which is the only structural difference between the two.
+    POSITIVE_ONLY = False
 
     def __init__(
         self,
@@ -93,6 +101,8 @@ class AccumulateSource(Source):
         self.period = frequency_to_timedelta(period)
         self.covering = covering
         self.accumulation = accumulation
+        # accumulate always adds; `reduce` is the source that varies the operation.
+        self.operation = Sum()
         self.patch = patch
         self.group_by = patch_groupby_keys(group_by)
         self._field_to_interval = FieldToInterval(patch)
@@ -119,7 +129,7 @@ class AccumulateSource(Source):
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
-            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True).encode()
+            json.dumps((str(self.period), self.source, self.operation.name, *extra_hash_parts), sort_keys=True).encode()
         ).hexdigest()
         return self.context.create_source(self.source, "data_sources", h)
 
@@ -216,6 +226,7 @@ class AccumulateSource(Source):
                         key=key,
                         coverage=coverages[target],
                         basetime=basetime,
+                        operation=self.operation,
                     )
 
                 acc = accumulators[accumulator_key]
@@ -247,7 +258,15 @@ class AccumulateSource(Source):
 
         LOG.debug("💬 source for accumulations: %s", self.source)
         source_object = self._create_source_object()
-        covering_obj = covering_factory(self.covering, self._source_name, self.source[self._source_name])
+        covering_obj = covering_factory(
+            self.covering,
+            self._source_name,
+            self.source[self._source_name],
+            positive_only=self.POSITIVE_ONLY,
+        )
+
+        if self._field_to_interval.needs_declared_steps:
+            self._field_to_interval.bind_steps(declared_step_ranges(covering_obj))
 
         # generate the interval coverage for every date
         coverages = {}
@@ -255,6 +274,8 @@ class AccumulateSource(Source):
             if not isinstance(d, datetime.datetime):
                 raise TypeError("valid_date must be a datetime.datetime instance")
             coverages[(d, None)] = covering_obj.cover(d - self.period, d)
+            if self.POSITIVE_ONLY:
+                validate_tiling(coverages[(d, None)], d - self.period, d)
             LOG.debug(f"  Found covering intervals: for {d - self.period} to {d}:")
             for c in coverages[(d, None)]:
                 LOG.debug(f"    {c}")
@@ -287,14 +308,26 @@ class AccumulateSource(Source):
             )
         if self.covering is not None:
             LOG.debug("Trajectory branch: ignoring 'covering:' (basetime imposed by caller).")
+        if self._field_to_interval.needs_declared_steps:
+            raise ValueError(
+                "Patch 'start_step_from_covering' is not supported in trajectory recipes: "
+                "the trajectory branch ignores 'covering:', so there is no declared step "
+                "list to read the window from."
+            )
 
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         source_object = self._create_source_object(self.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=self.accumulation)
+        covering = ForecastCovering(
+            period=self.period,
+            accumulation=self.accumulation,
+            positive_only=self.POSITIVE_ONLY,
+        )
 
         coverages: dict = {}
         for vt, bt in dates.items:
             coverages[(vt, bt)] = covering.cover(vt - self.period, vt, basetime=bt)
+            if self.POSITIVE_ONLY:
+                validate_tiling(coverages[(vt, bt)], vt - self.period, vt)
             LOG.debug("  Forecast covering for (vt=%s, bt=%s):", vt, bt)
             for c in coverages[(vt, bt)]:
                 LOG.debug("    %s", c)
