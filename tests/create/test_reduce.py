@@ -450,8 +450,8 @@ def test_mean_of_equal_intervals_is_the_plain_average():
 def test_mean_weights_by_interval_length():
     """A 1h piece and a 3h piece must not count equally."""
     op = Mean()
-    acc = op.combine(None, np.array([10.0]), 1, 3600.0)       # 1h at 10
-    acc = op.combine(acc, np.array([2.0]), 1, 3 * 3600.0)     # 3h at 2
+    acc = op.combine(None, np.array([10.0]), 1, 3600.0)  # 1h at 10
+    acc = op.combine(acc, np.array([2.0]), 1, 3 * 3600.0)  # 3h at 2
     # (1*10 + 3*2) / 4 = 4.0, not the unweighted (10+2)/2 = 6.0
     assert np.allclose(op.finalize(acc, 4 * 3600.0), [4.0])
 
@@ -488,12 +488,8 @@ def test_accumulator_mean_over_a_mixed_length_tiling():
         SignedInterval(base + _hours(2), base + _hours(3), base=base),
         SignedInterval(base + _hours(3), base + _hours(6), base=base),
     ]
-    acc = Accumulator(
-        base + _hours(6), period=_hours(6), key=(("param", "2t"),), coverage=coverage, operation="mean"
-    )
-    for values, interval in zip(
-        [np.array([12.0]), np.array([6.0]), np.array([6.0]), np.array([2.0])], coverage
-    ):
+    acc = Accumulator(base + _hours(6), period=_hours(6), key=(("param", "2t"),), coverage=coverage, operation="mean")
+    for values, interval in zip([np.array([12.0]), np.array([6.0]), np.array([6.0]), np.array([2.0])], coverage):
         assert acc.compute(values, interval) is True
 
     assert acc.is_complete()
@@ -518,8 +514,13 @@ class InstantField:
 
     def __init__(self, step=6, step_type="instant"):
         self._md = {
-            "date": 20210101, "time": 0, "startStep": step, "endStep": step,
-            "validityDate": 20210101, "validityTime": step * 100, "stepType": step_type,
+            "date": 20210101,
+            "time": 0,
+            "startStep": step,
+            "endStep": step,
+            "validityDate": 20210101,
+            "validityTime": step * 100,
+            "stepType": step_type,
         }
 
     def metadata(self, key):
@@ -551,9 +552,9 @@ def test_rejection_names_both_likely_causes():
     with pytest.raises(ValueError) as excinfo:
         FieldToInterval(require_interval=True)(InstantField(step=6))
     message = str(excinfo.value)
-    assert "stepType='instant'" in message      # the evidence
-    assert "instantaneous" in message           # cause 1: wrong parameter for this source
-    assert "patch:" in message                  # cause 2: repairable metadata
+    assert "stepType='instant'" in message  # the evidence
+    assert "instantaneous" in message  # cause 1: wrong parameter for this source
+    assert "patch:" in message  # cause 2: repairable metadata
 
 
 def test_reduce_requires_real_intervals():

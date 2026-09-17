@@ -271,7 +271,6 @@ def operation_factory(operation: str | Operation | None) -> Operation:
     operation = _ALIASES.get(operation, operation)
     if operation not in _OPERATIONS:
         raise ValueError(
-            f"Unknown operation {operation!r}; expected one of "
-            f"{sorted(_OPERATIONS)} (or {sorted(_ALIASES)})"
+            f"Unknown operation {operation!r}; expected one of " f"{sorted(_OPERATIONS)} (or {sorted(_ALIASES)})"
         )
     return _OPERATIONS[operation]()

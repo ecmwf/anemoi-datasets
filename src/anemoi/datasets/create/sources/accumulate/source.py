@@ -129,9 +129,7 @@ class AccumulateSource(Source):
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
-            json.dumps(
-                (str(self.period), self.source, self.operation.name, *extra_hash_parts), sort_keys=True
-            ).encode()
+            json.dumps((str(self.period), self.source, self.operation.name, *extra_hash_parts), sort_keys=True).encode()
         ).hexdigest()
         return self.context.create_source(self.source, "data_sources", h)
 
