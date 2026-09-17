@@ -37,6 +37,7 @@ The following `sources` are currently available:
    sources/opendap
    sources/planetary-computer
    sources/recentre
+   sources/reduce
    sources/repeated-dates
    sources/xarray-based
    sources/xarray-kerchunk

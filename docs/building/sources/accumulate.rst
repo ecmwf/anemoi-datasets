@@ -45,11 +45,9 @@ The ``accumulate`` source requires the following parameters:
   release with a ``DeprecationWarning``.
 - **accumulation** (trajectory recipes only): one of ``from-zero`` or
   ``from-previous-step``; see `Forecast accumulations (trajectory recipes)`_.
-- **reduction** (optional, default ``sum``): how the fields covering the window
-  are combined — ``sum``, ``max`` or ``min``. Use ``max`` for windowed extrema
-  such as wind gusts; see `Reductions: sum, max and min`_.
 - **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
   Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
+  See `Fixing mis-encoded step metadata`_ for the available patches.
 
   .. warning::
 
@@ -192,90 +190,74 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
 
 These two examples are equivalent to those shown in Option 1 above.
 
-Reductions: sum, max and min
-============================
+Fixing mis-encoded step metadata
+================================
 
-By default the fields covering a window are **added** together — the classic
-accumulation for precipitation or radiation. Some parameters are instead
-*windowed extrema*: a wind gust field holds the largest gust observed since the
-last output, not a quantity accumulated over it. Adding six hourly gust fields
-would be meaningless; you want their maximum.
-
-Set ``reduction`` to choose:
+The source works out which window each returned field covers from its
+``startStep``/``endStep`` metadata, and refuses a field it cannot place —
+*"Field not used for any accumulation"*. Some archives encode those keys
+incorrectly, and ``patch:`` repairs them before the field is placed:
 
 .. list-table::
-   :widths: 15 85
+   :widths: 30 70
    :header-rows: 1
 
-   * - Value
-     - Meaning
-   * - ``sum``
-     - Default. Adds the covering fields, subtracting where the covering uses a
-       reversed interval.
-   * - ``max``
-     - Largest value over the window, element by element (e.g. maximum wind gust).
-   * - ``min``
-     - Smallest value over the window.
+   * - Patch
+     - Effect
+   * - ``set_start_step_to_zero``
+     - Force ``startStep`` to ``0``, keeping ``endStep``. For archives whose
+       fields are accumulated from the start of the forecast but carry a
+       non-zero ``startStep``.
+   * - ``reset_24h_accumulations``
+     - Set ``startStep`` to the previous 24-hour boundary
+       (``25-25`` → ``24-25``). For archives that reset accumulations daily but
+       encode only ``endStep`` correctly.
+   * - ``start_step_from_covering``
+     - Take ``startStep`` from the interval declared in ``covering:`` that ends
+       at this field's ``endStep``.
 
-For example, a 6-hourly dataset built from hourly gust fields:
+``start_step_from_covering`` addresses archives that stamp ``startStep=0`` on
+every field even when the value is a *per-interval* statistic. For example, in
+``class: rr`` / ``origin: se-al-ec``, a field at step 9 covers ``[6, 9]`` but is
+encoded as ``[0, 9]``. ``endStep`` is correct, so the recipe's own ``covering:``
+declaration says where the window really starts:
 
 .. code:: yaml
 
-   input:
-     accumulate:
-       period: 6h
-       reduction: max
-       covering:
-         auto:
-           - [0,  "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12"]
-           - [12, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12"]
-       source:
-         mars:
-           class: od
-           stream: oper
-           type: fc
-           levtype: sfc
-           param: [10fg]
+   accumulate:
+     period: 6h
+     patch:
+       - start_step_from_covering
+     covering:
+       auto:
+         - [0,  "0-1/1-2/2-3/3-4/4-5/5-6/6-9/9-12/12-15/15-18/18-21/21-24"]
+         - [12, "0-1/1-2/2-3/3-4/4-5/5-6/6-9/9-12/12-15/15-18/18-21/21-24"]
+     source:
+       mars:
+         class: rr
+         expver: prod
+         origin: se-al-ec
+         stream: oper
+         type: fc
+         levtype: sfc
+         param: [tp]
 
-For a valid date of 12:00 this takes the maximum of the six hourly fields
-covering 06:00 → 12:00.
-
-What ``max`` and ``min`` require
---------------------------------
-
-Addition is invertible, so a window can be reconstructed by *subtracting*
-archived fields: ``a(6,12) = +a(0,12) - a(0,6)``. This is what makes
-``accumulated-from-start`` archives usable, and what ``accumulation: from-zero``
-relies on in trajectory recipes.
-
-Extrema are **not** invertible. The maximum over ``[6,12]`` cannot be recovered
-from the maxima over ``[0,12]`` and ``[0,6]``. Consequently ``max`` and ``min``
-only work when the archive provides intervals that **tile the window exactly**,
-which in practice means per-step values:
-
-- An archive storing per-step values (ERA5-style, ``accumulated-from-previous-step``,
-  or an explicit ``0-1/1-2/...`` interval list) works.
-- An archive storing values from the start of the forecast
-  (``accumulated-from-start``) does **not**, and the source raises rather than
-  producing a wrong answer.
-- In trajectory recipes, ``accumulation: from-previous-step`` works and
-  ``accumulation: from-zero`` is rejected.
+With that declaration the patch maps ``endStep=9`` to ``startStep=6`` and
+``endStep=12`` to ``startStep=9``. A field whose ``endStep`` is not declared in
+``covering:`` is an error rather than a guess, and declaring one end step with
+two different start steps is rejected as ambiguous.
 
 .. warning::
 
-   The ``covering: {auto: ...}`` presets describe how **precipitation** is laid
-   out for a given class/stream. A parameter such as wind gust may be archived
-   with completely different step ranges in the very same stream, so give an
-   explicit interval list rather than relying on ``auto``. If no forward-only
-   covering can be found, the source fails with an error naming the window.
+   Only use this patch when the encoded ``startStep`` is genuinely wrong. If an
+   archive really does store values accumulated from the start of the forecast,
+   the encoding is correct and this patch would silently reinterpret the data.
+   A quick check: a field accumulated (or maximised) from the start of the
+   forecast is pointwise non-decreasing in ``endStep``, so its mean cannot fall
+   as the step grows. If it does, the fields are per-interval and mis-encoded.
 
-.. note::
-
-   GRIB edition 1 has no way to encode a minimum: it shares
-   ``timeRangeIndicator=2`` with maximum, so the field would be read back as a
-   maximum. ``reduction: min`` therefore raises an error when the source
-   delivers GRIB1; ``max`` is encoded correctly in both editions. NaNs
-   propagate, as they do for ``sum``.
+The patch is not available in trajectory recipes, which ignore ``covering:``.
+It applies equally to the :ref:`reduce <sources-reduce>` source.
 
 Controlling the fields regrouped within accumulation
 ====================================================

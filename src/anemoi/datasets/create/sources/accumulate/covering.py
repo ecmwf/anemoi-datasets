@@ -90,12 +90,13 @@ class AutoCovering(Covering):
         Description of what the archive contains.
     positive_only
         Discard reversed candidates during the search, so the covering is a
-        plain tiling instead of a signed decomposition.  Set by the caller for
-        non-invertible reductions (``max``/``min``).  Filtering during the
-        search — rather than rejecting the result afterwards — matters: the
-        search minimises total length, so it can return a ``+9h -3h`` path even
-        where a clean positive tiling exists, and the failure would then only
-        surface after the retrieval had been paid for.
+        plain tiling instead of a signed decomposition.  Set by the ``reduce``
+        source, which aggregates archived fields directly and never subtracts
+        one from another.  Filtering during the search — rather than rejecting
+        the result afterwards — matters: the search minimises total length, so
+        it can return a ``+9h -3h`` path even where a clean positive tiling
+        exists, and the failure would then only surface after the retrieval had
+        been paid for.
     """
 
     def __init__(self, availability: IntervalGenerator, positive_only: bool = False) -> None:
@@ -120,15 +121,18 @@ class AutoCovering(Covering):
             if not self.positive_only:
                 raise
             # The bare search error ("Cannot find coverage of ...") gives no hint that
-            # the reduction is what ruled out the subtractive solution.
+            # forward-only searching is what ruled out the subtractive solution.
             raise ValueError(
                 f"{e}\n"
-                "No forward-only covering exists for this window. A max/min reduction cannot "
-                "subtract one archived field from another, so the archive must provide intervals "
-                "that tile the window exactly, i.e. per-step values ('from-previous-step'). "
-                "Check that 'covering:' describes how *this* parameter is archived: the 'auto' "
-                "presets describe precipitation-style layouts, and a parameter such as wind gust "
-                "may be stored with different step ranges in the very same class/stream."
+                "No forward-only covering exists for this window. The 'reduce' source aggregates "
+                "archived fields directly and never subtracts one from another, so the archive "
+                "must provide intervals that tile the window exactly, i.e. per-step values. "
+                "This parameter looks like it is stored accumulated from the start of the "
+                "forecast; deriving a window from it would require de-accumulating first, which "
+                "'reduce' does not do (use 'accumulate' if the quantity is additive). "
+                "Also check that 'covering:' describes how *this* parameter is archived: the "
+                "'auto' presets describe precipitation-style layouts, and a parameter such as "
+                "wind gust may be stored with different step ranges in the very same class/stream."
             ) from e
 
 
@@ -158,8 +162,7 @@ class ForecastCovering(Covering):
         default — the caller must declare it explicitly.
     positive_only
         Reject ``from-zero``, whose decomposition subtracts one archived field
-        from another.  Set by the caller for non-invertible reductions
-        (``max``/``min``).
+        from another.  Set by the ``reduce`` source.
     """
 
     def __init__(self, period: datetime.timedelta, accumulation: str, positive_only: bool = False) -> None:
@@ -168,9 +171,8 @@ class ForecastCovering(Covering):
         if positive_only and accumulation == "from-zero":
             raise ValueError(
                 "'accumulation: from-zero' builds a window by subtracting two archived "
-                "fields, which is only defined for an additive reduction. A max/min "
-                "reduction needs an archive storing per-step values: use "
-                "'accumulation: from-previous-step'."
+                "fields, which the 'reduce' source does not do. It needs an archive "
+                "storing per-step values: use 'accumulation: from-previous-step'."
             )
         self.period = period
         self.accumulation = accumulation
@@ -236,6 +238,51 @@ class ForecastCovering(Covering):
         ]
 
 
+def declared_step_ranges(covering: Covering) -> dict[int, int]:
+    """Map each declared end step to its start step, from a covering's availability.
+
+    Used by the ``start_step_from_covering`` patch: when an archive stamps
+    ``startStep=0`` on fields that are really per-interval statistics, the
+    recipe's own ``covering:`` declaration is the source of truth for where each
+    window starts.  A covering declaring ``6-9/9-12`` yields ``{9: 6, 12: 9}``.
+
+    Parameters
+    ----------
+    covering
+        The covering built from the recipe.
+
+    Returns
+    -------
+    dict[int, int]
+        Mapping of end step to start step, in hours.
+
+    Raises
+    ------
+    ValueError
+        If the covering has no explicit step list, or declares one end step with
+        two different start steps.
+    """
+    availability = getattr(covering, "availability", None)
+    patterns = getattr(availability, "patterns", None)
+    if patterns is None:
+        raise ValueError(
+            "Patch 'start_step_from_covering' needs a covering with an explicit step "
+            f"list (e.g. 'covering: {{auto: [[0, \"0-1/1-2/...\"]]}}'), got {covering!r}."
+        )
+
+    mapping: dict[int, int] = {}
+    for pattern in patterns:
+        for start_step, end_step in pattern.steps:
+            previous = mapping.setdefault(end_step, start_step)
+            if previous != start_step:
+                raise ValueError(
+                    f"Patch 'start_step_from_covering': 'covering:' declares end step "
+                    f"{end_step} with two different start steps ({previous} and {start_step}), "
+                    "so the window of a field ending at that step is ambiguous."
+                )
+    return mapping
+
+
 def validate_tiling(
     intervals: Iterable[SignedInterval],
     start: datetime.datetime,
@@ -243,9 +290,9 @@ def validate_tiling(
 ) -> None:
     """Raise unless ``intervals`` is a gapless, all-positive tiling of ``[start, end]``.
 
-    A signed decomposition is fine for an additive reduction but meaningless for
-    ``max``/``min``: those cannot subtract, and an interval reaching outside the
-    window would fold in a value from outside it.  ``AutoCovering`` already
+    A signed decomposition is fine for ``accumulate`` but meaningless for
+    ``reduce``: it cannot subtract, and an interval reaching outside the window
+    would fold in a value from outside it.  ``AutoCovering`` already
     guarantees this when built with ``positive_only``, but
     ``CycleIntervalProvider`` builds its intervals directly and only checks that
     *some* interval starts at ``start`` and *some* ends at ``end`` — it can
@@ -272,7 +319,7 @@ def validate_tiling(
     if reversed_:
         raise ValueError(
             f"Covering of {start} → {end} contains reversed interval(s) "
-            f"{reversed_}, which a max/min reduction cannot use."
+            f"{reversed_}, which the 'reduce' source cannot use."
         )
 
     ordered = sorted(intervals, key=lambda i: i.start)
@@ -286,7 +333,7 @@ def validate_tiling(
             what = "gap" if previous.end < following.start else "overlap"
             raise ValueError(
                 f"Covering of {start} → {end} has a {what} between {previous} and {following}; "
-                f"a max/min reduction needs the window tiled exactly."
+                f"the 'reduce' source needs the window tiled exactly."
             )
 
 
