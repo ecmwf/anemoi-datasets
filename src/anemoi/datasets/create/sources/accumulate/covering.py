@@ -37,6 +37,7 @@ from abc import abstractmethod
 from collections.abc import Iterable
 
 from anemoi.datasets.create.intervals import SignedInterval
+from anemoi.datasets.create.intervals import timedelta_to_step
 
 from .interval_generators import IntervalGenerator
 from .interval_generators import interval_generator_factory
@@ -238,7 +239,7 @@ class ForecastCovering(Covering):
         ]
 
 
-def declared_step_ranges(covering: Covering) -> dict[int, int]:
+def declared_step_ranges(covering: Covering) -> dict[datetime.timedelta, datetime.timedelta]:
     """Map each declared end step to its start step, from a covering's availability.
 
     Used by the ``start_step_from_covering`` patch: when an archive stamps
@@ -253,8 +254,8 @@ def declared_step_ranges(covering: Covering) -> dict[int, int]:
 
     Returns
     -------
-    dict[int, int]
-        Mapping of end step to start step, in hours.
+    dict[datetime.timedelta, datetime.timedelta]
+        Mapping of end step to start step, as offsets from the base time.
 
     Raises
     ------
@@ -270,14 +271,15 @@ def declared_step_ranges(covering: Covering) -> dict[int, int]:
             f"list (e.g. 'covering: {{auto: [[0, \"0-1/1-2/...\"]]}}'), got {covering!r}."
         )
 
-    mapping: dict[int, int] = {}
+    mapping: dict[datetime.timedelta, datetime.timedelta] = {}
     for pattern in patterns:
         for start_step, end_step in pattern.steps:
             previous = mapping.setdefault(end_step, start_step)
             if previous != start_step:
                 raise ValueError(
                     f"Patch 'start_step_from_covering': 'covering:' declares end step "
-                    f"{end_step} with two different start steps ({previous} and {start_step}), "
+                    f"{timedelta_to_step(end_step)} with two different start steps "
+                    f"({timedelta_to_step(previous)} and {timedelta_to_step(start_step)}), "
                     "so the window of a field ending at that step is ambiguous."
                 )
     return mapping

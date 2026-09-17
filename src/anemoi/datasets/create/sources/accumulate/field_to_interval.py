@@ -13,6 +13,8 @@ import logging
 
 from anemoi.datasets.create.intervals import SignedInterval
 from anemoi.datasets.create.intervals import step_to_timedelta
+from anemoi.datasets.create.intervals import timedelta_to_step
+from anemoi.datasets.create.intervals import step_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -69,12 +71,16 @@ def _set_start_step_from_covering(startStep, endStep, field=None, steps=None):
             f"Patch {COVERING_PATCH!r} needs the step ranges declared in 'covering:', "
             "but none were bound to this FieldToInterval."
         )
-    if endStep not in steps:
+    # `steps` is keyed by timedelta, and endStep may be an int or a sub-hourly
+    # string ("10m"), so normalise before looking it up.
+    key = step_to_timedelta(endStep)
+    if key not in steps:
+        declared = sorted(timedelta_to_step(k) for k in steps)
         raise ValueError(
             f"Patch {COVERING_PATCH!r}: 'covering:' declares no interval ending at step "
-            f"{endStep} (declared end steps: {sorted(steps)}). Field: {field}"
+            f"{endStep} (declared end steps: {declared}). Field: {field}"
         )
-    return steps[endStep], endStep
+    return steps[key], endStep
 
 
 patch_registry = {
@@ -90,7 +96,7 @@ class FieldToInterval:
     def __init__(
         self,
         patches: dict | None = None,
-        steps: dict[int, int] | None = None,
+        steps: dict[datetime.timedelta, datetime.timedelta] | None = None,
         require_interval: bool = False,
     ):
         if patches is None:
@@ -117,7 +123,7 @@ class FieldToInterval:
         """Whether any requested patch needs the ``covering:`` step ranges."""
         return COVERING_PATCH in self.patches
 
-    def bind_steps(self, steps: dict[int, int]) -> None:
+    def bind_steps(self, steps: dict[datetime.timedelta, datetime.timedelta]) -> None:
         """Supply the end-step to start-step mapping declared in ``covering:``."""
         self.steps = steps
 

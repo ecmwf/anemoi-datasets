@@ -23,6 +23,10 @@ RR_STEPS = "0-1/1-2/2-3/3-4/4-5/5-6/6-9/9-12/12-15/15-18/18-21/21-24"
 RR_COVERING = {"auto": [[0, RR_STEPS], [12, RR_STEPS]]}
 
 
+def _hours(n):
+    return datetime.timedelta(hours=n)
+
+
 class FakeField:
     """Minimal stand-in for a GRIB field, carrying only what FieldToInterval reads."""
 
@@ -61,11 +65,18 @@ def rr_gust_field(end_step, validity_time):
 
 
 def test_declared_step_ranges_maps_end_to_start():
+    """Steps are timedeltas, so sub-hourly coverings work the same way."""
     mapping = declared_step_ranges(covering_factory(RR_COVERING))
-    assert mapping[9] == 6
-    assert mapping[12] == 9
-    assert mapping[1] == 0
-    assert mapping[6] == 5
+    assert mapping[_hours(9)] == _hours(6)
+    assert mapping[_hours(12)] == _hours(9)
+    assert mapping[_hours(1)] == datetime.timedelta(0)
+    assert mapping[_hours(6)] == _hours(5)
+
+
+def test_declared_step_ranges_handles_sub_hourly_steps():
+    mapping = declared_step_ranges(covering_factory({"auto": [[0, "0m-10m/10m-20m"]]}))
+    assert mapping[datetime.timedelta(minutes=10)] == datetime.timedelta(0)
+    assert mapping[datetime.timedelta(minutes=20)] == datetime.timedelta(minutes=10)
 
 
 def test_declared_step_ranges_rejects_ambiguous_declaration():
