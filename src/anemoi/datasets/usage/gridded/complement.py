@@ -99,7 +99,9 @@ class Complement(Combined):
     def statistics(self) -> dict[str, NDArray[Any]]:
         datasets = [self._source, self._target]
         return {
-            k: np.array([d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables])
+            k: np.array(
+                [d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables]
+            )
             for k in datasets[0].statistics
         }
 
