@@ -9,7 +9,6 @@
 
 import datetime
 import logging
-from typing import Any
 
 import numpy as np
 
@@ -48,7 +47,7 @@ def write_accumulated_field_with_valid_time(
     edition
         GRIB edition to force on the output, or ``None`` to keep the template's own edition.
         Used to escape edition 1, which cannot encode a maximum or a minimum.
-    
+
     Returns
     -------
     None
