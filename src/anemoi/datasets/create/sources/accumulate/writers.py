@@ -24,7 +24,7 @@ def write_accumulated_field_with_valid_time(
     output,
     step_type: str = "accum",
     edition: int | None = None,
-) -> Any:
+) -> None:
     """Write a window-reduced field stamped with its validity time.
 
     Parameters
@@ -48,6 +48,11 @@ def write_accumulated_field_with_valid_time(
     edition
         GRIB edition to force on the output, or ``None`` to keep the template's own edition.
         Used to escape edition 1, which cannot encode a maximum or a minimum.
+    
+    Returns
+    -------
+    None
+        The reduced field is written to ``output``.
     """
     MISSING_VALUE = 1e-38
     assert np.all(values != MISSING_VALUE)

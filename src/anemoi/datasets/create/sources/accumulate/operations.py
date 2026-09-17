@@ -161,10 +161,10 @@ class _Extremum(Operation):
         #
         # When it does not, writing edition 1 would either record the wrong statistic
         # (min on 10fg is read back as a maximum) or record none at all (max on tp
-        # resolves to nothing and fails later in the build). Promote to edition 2, where
-        # typeOfStatisticalProcessing states it in the message. The MARS local definition
-        # (class/stream/expver/type) survives the conversion; the parameter is renamed by
-        # eccodes to the one that genuinely matches, e.g. 10fg -> min_i10fg.
+        # resolves to nothing and fails later in the build). 
+        # Promote to edition 2, where typeOfStatisticalProcessing states it in the message. 
+        # The MARS local definition # (class/stream/expver/type) survives the conversion; 
+        # the parameter is renamed by eccodes to the one that genuinely matches, e.g. 10fg -> min_i10fg.
         if template.metadata("edition") != 1:
             return None
 
