@@ -178,12 +178,14 @@ class Subset(Forwards):
         if isinstance(n, slice):
             return self._get_slice(n)
 
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset[n]
 
     def get_aux(self, n: FullIndex) -> NDArray[Any]:
-        assert n >= 0, n
+        if n < 0:
+            n += len(self.indices)
         n = self.indices[n]
         return self.dataset.get_aux(n)
 
