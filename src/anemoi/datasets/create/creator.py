@@ -33,7 +33,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.20"
+VERSION = "0.21"
 
 LOG = logging.getLogger(__name__)
 
@@ -264,6 +264,7 @@ class Creator(ABC):
         self.finalise_dataset(dataset)
         self.final_metadata(dataset)
         dataset.touch()
+        self.task_verify()
 
     def task_finalise_prepare(self) -> None:
         LOG.info("Finalising dataset (prepare stage).")
@@ -290,6 +291,7 @@ class Creator(ABC):
         self.finalise_tidy(dataset)
         self.final_metadata(dataset)
         dataset.touch()
+        self.task_verify()
 
     @abstractmethod
     def finalise_dataset(self, dataset: Dataset) -> None:
@@ -361,8 +363,9 @@ class Creator(ABC):
 
     ########################
     def task_verify(self) -> None:
-        LOG.info("BACK: Verifying dataset.")
-        return
+        from anemoi.datasets.validation import dataset_validation
+
+        dataset_validation(self.path, raise_error=True)
 
     ########################
     def task_statistics(self) -> None:

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.44](https://github.com/ecmwf/anemoi-datasets/compare/0.5.43...0.5.44) (2026-09-14)
+
+
+### Features
+
+* Support sub-hourly steps for gridded datasets ([#734](https://github.com/ecmwf/anemoi-datasets/issues/734)) ([4c91da9](https://github.com/ecmwf/anemoi-datasets/commit/4c91da979c5084965c5dd27be83e761f1d822956))
+
+
+### Bug Fixes
+
+* Mismatch between shape and missing dates ([#753](https://github.com/ecmwf/anemoi-datasets/issues/753)) ([3c6bf07](https://github.com/ecmwf/anemoi-datasets/commit/3c6bf0714fb5c72613741873d98b4635689d964d))
+
 ## [0.5.43](https://github.com/ecmwf/anemoi-datasets/compare/0.5.42...0.5.43) (2026-09-07)
 
 
