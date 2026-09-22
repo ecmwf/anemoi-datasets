@@ -167,7 +167,6 @@ class GriddedOutput(OutputBase):
         return prod(chunks) * np.dtype(self.dtype).itemsize
 
 
-
 class TabularOutput(OutputBase):
     """Output configuration for tabular datasets."""
 
