@@ -12,40 +12,21 @@ variables for `concat` or the `dates` and `frequency` for `join`.
 You can let the package automatically adjust the attributes of the input
 datasets using the `adjust` keyword, to adjust one of the attributes:
 
-.. code:: python
-
-   ds = open_dataset(
-       join=[dataset1, dataset2],
-       adjust="frequency",
-   )
+.. literalinclude:: code/matching_frequency_.py
 
 or more than one attribute:
 
-.. code:: python
-
-   ds = open_dataset(
-       join=[dataset1, dataset2],
-       adjust=["start", "end", "frequency"],
-   )
+.. literalinclude:: code/matching_multiple_.py
 
 You can also use `dates` as a shortcut for the above. This is equivalent
 to:
 
-.. code:: python
-
-   ds = open_dataset(join=[dataset1, dataset2], adjust="dates")
+.. literalinclude:: code/matching_dates_.py
 
 To use the common set of variables, use:
 
-.. code:: python
-
-   ds = open_dataset(concat=[dataset1, dataset2], adjust="variables")
+.. literalinclude:: code/matching_variables_.py
 
 To match all the attributes:
 
-.. code:: python
-
-   ds = open_dataset(
-       cutout=[dataset1, dataset2],
-       adjust="all",
-   )
+.. literalinclude:: code/matching_all_.py

@@ -40,6 +40,16 @@ Frequency = Annotated[
     PlainSerializer(frequency_to_string, return_type=str, when_used="json"),
 ]
 
+# A datetime normalised to naive-UTC on input, via ``as_datetime``: an
+# explicitly-offset value (``Z``, ``+02:00``) is converted through its own
+# offset, a naive value is taken as UTC as-is. Every recipe date is put on
+# the same naive convention regardless of which YAML construct wrote it
+# (top-level ``dates``, a ``concat``/``pipe`` block's ``dates``,
+# ``base_dates``). Without this, a stray ``Z`` in a block's ``dates`` yields
+# a tz-aware datetime that never compares equal to the naive top-level dates,
+# so ``concat``/``join`` date-set matching silently finds nothing.
+NaiveDatetime = Annotated[datetime.datetime, BeforeValidator(as_datetime)]
+
 
 def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
@@ -107,16 +117,19 @@ class DatesProvider(BaseModel):
         """
         return len(self.values)
 
+    def full_dates_list(self) -> list[datetime.datetime]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement full_dates_list()")
+
 
 class StartEndDates(DatesProvider):
 
     class MissingRange(BaseModel):
-        start: datetime.datetime
-        end: datetime.datetime
+        start: NaiveDatetime
+        end: NaiveDatetime
         frequency: Frequency | None = None
 
-    start: datetime.datetime
-    end: datetime.datetime
+    start: NaiveDatetime
+    end: NaiveDatetime
     frequency: Frequency = frequency_to_timedelta("1h")
     missing: list[datetime.datetime | str | MissingRange] = Field(default_factory=list)
 
@@ -158,6 +171,15 @@ class StartEndDates(DatesProvider):
 
     def dump(self, dumper):
         return dumper.start_end_dates(self.start, self.end, self.frequency)
+
+    def full_dates_list(self) -> list[datetime.datetime]:
+        """Return the list of dates including missing ones."""
+        dates = []
+        date = self.start
+        while date <= self.end:
+            dates.append(date)
+            date += self.frequency
+        return dates
 
 
 class BaseDates(StartEndDates):
@@ -294,6 +316,9 @@ class TrajectoryDates(DatesProvider):
 
 class ValuesDates(DatesProvider):
     values: list[datetime.datetime]
+
+    def full_dates_list(self) -> list[datetime.datetime]:
+        return list(self.values)
 
 
 class HindcastsDates(DatesProvider):

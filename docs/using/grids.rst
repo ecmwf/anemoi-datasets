@@ -1,4 +1,4 @@
-.. _selecting-grids:
+.. _using-grids:
 
 #######################
  Selecting grid points
@@ -14,9 +14,7 @@ You can thin a dataset by specifying the ``thinning`` parameter in the
 will mask out all but every Nth point, with N specified by the
 ``thinning`` parameter.
 
-.. code:: python
-
-   ds = open_dataset(dataset, thinning=N, method="every-nth")
+.. literalinclude:: code/grids_thinning_.py
 
 Please note that the thinning will apply to all dimensions of the
 fields. So for 2D fields, the thinning will apply to both the latitude
@@ -46,9 +44,7 @@ You can apply an arbitrary spatial mask to a dataset by specifying the
 NumPy .npy file containing a boolean array, where True indicates points
 to be kept and False indicates points to be removed.
 
-.. code:: python
-
-   ds = open_dataset(dataset, mask="path/to/mask.npy")
+.. literalinclude:: code/grids_masking_.py
 
 The mask array must have the same total number of grid points and
 dimension as the dataset. Please note that this masking will not be
@@ -66,9 +62,7 @@ numbers in the order ``(north, west, south, east)``. For example, to
 crop a dataset to the area between 60N and 20N and 50W and 0E, you can
 use:
 
-.. code:: python
-
-   ds = open_dataset(dataset, area=(60, -50, 20, 0))
+.. literalinclude:: code/grids_area_.py
 
 Which will result in the following dataset:
 
@@ -79,9 +73,7 @@ Which will result in the following dataset:
 Alternatively, you can specify another dataset as the area. In this
 case, the bounding box of the dataset will be used.
 
-.. code:: python
-
-   ds = open_dataset(dataset1, area=dataset2)
+.. literalinclude:: code/grids_area_dataset_.py
 
 ***********
  trim_edge
@@ -95,14 +87,12 @@ upper_dim0, lower_dim1, upper_dim1)``.
 
 That is, the following
 
-.. code:: python
-
-   ds = open_dataset(dataset1, trim_edge=(3, 10, 4, 2))
+.. literalinclude:: code/grids_trim_edge_.py
 
 will remove the first 3 and last 10 rows of the domain, and the first 4
 and last 2 columns of the domain. If the first dimension of the grid is
 the y-dimension (i.e north/south), then 3 grid points in the south, 10
-in the north, 4 in the west and 10 in the east will be removed.
+in the north, 4 in the west and 2 in the east will be removed.
 
 Note that if ``thinning`` is also specified, ``trim_edge`` is applied
 first.
