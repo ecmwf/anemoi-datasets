@@ -1,0 +1,6 @@
+{
+    "geography": {"bbox": [90, 0, -90, 350], "resolution": 10},
+    "dates": {"start": "1979-01-01", "end": "2022-12-31", "frequency": "6h"},
+    "layout": "gridded",
+    "variables": ["2t", "msl", "10u", "10v"]
+}

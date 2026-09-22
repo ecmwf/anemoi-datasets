@@ -42,12 +42,14 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
 
     assert dates.tolist() == [
         np.datetime64("2020-12-30T00:00:00"),
+        np.datetime64("2020-12-30T12:00:00"),
         np.datetime64("2020-12-31T00:00:00"),
         np.datetime64("2020-12-31T12:00:00"),
         np.datetime64("2021-01-01T00:00:00"),
         np.datetime64("2021-01-01T12:00:00"),
         np.datetime64("2021-01-02T00:00:00"),
         np.datetime64("2021-01-02T12:00:00"),
+        np.datetime64("2021-01-03T00:00:00"),
         np.datetime64("2021-01-03T12:00:00"),
     ]
 
@@ -67,11 +69,13 @@ def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSo
 
     assert dates.tolist() == [
         np.datetime64("2020-12-30T00:00:00"),
+        np.datetime64("2020-12-30T12:00:00"),
         np.datetime64("2020-12-31T00:00:00"),
         np.datetime64("2020-12-31T12:00:00"),
         np.datetime64("2021-01-01T00:00:00"),
         np.datetime64("2021-01-01T12:00:00"),
         np.datetime64("2021-01-02T00:00:00"),
         np.datetime64("2021-01-02T12:00:00"),
+        np.datetime64("2021-01-03T00:00:00"),
         np.datetime64("2021-01-03T12:00:00"),
     ]

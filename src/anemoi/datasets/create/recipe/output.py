@@ -13,7 +13,6 @@ import logging
 from math import prod
 from typing import Annotated
 from typing import Any
-from typing import ClassVar
 from typing import Literal
 from typing import Union
 
@@ -44,11 +43,6 @@ class OutputBase(BaseModel):
 class GriddedOutput(OutputBase):
     """Output configuration for gridded datasets."""
 
-    _DEFAULT_GRID_SPLITS: ClassVar[int] = 4
-    # Blosc and several other codecs use signed 32-bit buffer sizes.
-    _MAX_CHUNK_BYTES: ClassVar[int] = 2**31 - 1
-    _MIN_CHUNK_BYTES: ClassVar[int] = 2**25  # 32 MiB
-
     format: Literal["gridded"] = "gridded"
     """The format of the dataset."""
 
@@ -73,6 +67,15 @@ class GriddedOutput(OutputBase):
 
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
+
+    default_grid_splits: int = Field(default=4, gt=0)
+    """The default number of chunks into which the grid is split."""
+
+    max_chunk_bytes: int = Field(default=2**31 - 1, gt=0)
+    """The maximum chunk size in bytes. Blosc and several other codecs use signed 32-bit buffer sizes."""
+
+    min_chunk_bytes: int = Field(default=2**25, gt=0)  # 32 MiB
+    """The minimum target chunk size in bytes."""
 
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Kept in sync with ``SimpleGriddedContext.order_by``.
@@ -110,10 +113,11 @@ class GriddedOutput(OutputBase):
         """Returns the chunking configuration based on coordinates.
 
         Unless an explicit ``values`` chunk size is configured and the date
-        is larger than :attr:`_MIN_CHUNK_BYTES`, split the grid into four 
-        chunks. If the date is smaller than :attr:`_MIN_CHUNK_BYTES`, the grid
+        is larger than :attr:`min_chunk_bytes`, split the grid into
+        :attr:`default_grid_splits` chunks. If the date is smaller than
+        :attr:`min_chunk_bytes`, the grid
         is not split. If a chunk would exceed the codec buffer limit, the
-        grid chunking is doubled until it fits. 
+        grid chunking is doubled until it fits.
 
         Parameters
         ----------
@@ -140,24 +144,24 @@ class GriddedOutput(OutputBase):
         if "values" in coords and "values" not in self.chunking:
             grid_axis = list(coords).index("values")
             grid_size = len(coords["values"])
-            splits = self._DEFAULT_GRID_SPLITS
+            splits = self.default_grid_splits
 
             def set_grid_chunk_size() -> int:
                 chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
                 return prod(chunks) * np.dtype(self.dtype).itemsize
 
             chunk_bytes = set_grid_chunk_size()
-            while splits > 1 and chunk_bytes < self._MIN_CHUNK_BYTES:
+            while splits > 1 and chunk_bytes < self.min_chunk_bytes:
                 splits //= 2
                 chunk_bytes = set_grid_chunk_size()
 
             while True:
-                if chunk_bytes <= self._MAX_CHUNK_BYTES:
+                if chunk_bytes <= self.max_chunk_bytes:
                     break
                 if chunks[grid_axis] == 1:
                     raise ValueError(
                         f"A single-grid-point chunk requires {chunk_bytes:,} bytes, "
-                        f"exceeding the {self._MAX_CHUNK_BYTES:,}-byte codec limit."
+                        f"exceeding the {self.max_chunk_bytes:,}-byte codec limit."
                     )
                 splits *= 2
                 chunk_bytes = set_grid_chunk_size()
@@ -177,6 +181,15 @@ class TabularOutput(OutputBase):
 
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
+
+    rows_per_chunk: int | None = None
+    """The number of rows per chunk for tabular datasets. If None, the chunk size will be determined automatically based on the target fragment size and the row size."""
+
+    auto_rows_per_chunk: str | None = "1d"
+    """Iteration window (e.g. "1d", "6h") used by ``finalise --rows-per-chunk`` to choose ``rows_per_chunk`` automatically. When this is set and ``rows_per_chunk`` is None, finalise computes the chunk size that minimises read time for this window and re-chunks the data array. Set to null to disable and require an explicit ``rows_per_chunk``."""
+
+    bytes_per_chunk: int = 64 * 1024 * 1024  # 64 MiB
+    """The target size of each chunk in bytes for tabular datasets. This is used to determine the number of rows per chunk if rows_per_chunk is None."""
 
 
 class TrajectoriesOutput(OutputBase):

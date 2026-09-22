@@ -16,9 +16,7 @@ Subsetting is the action of filtering the dataset by its first dimension
 This option lets you subset the dataset by time. You can pass a date or
 a string:
 
-.. code:: python
-
-   open_dataset(dataset, start=1980)
+.. literalinclude:: code/subsetting_start_.py
 
 .. _end:
 
@@ -28,9 +26,7 @@ a string:
 
 As for the start option, you can pass a date or a string:
 
-.. code:: python
-
-   open_dataset(dataset, end="2020-12-31")
+.. literalinclude:: code/subsetting_end_.py
 
 The following are equivalent ways of describing ``start`` or ``end``:
 
@@ -42,10 +38,12 @@ Note that the ``start="2020"`` is equivalent to ``start="2020-01-01"``
 while ``end="2020"`` is equivalent to ``end="2020-12-31"``.
 
 Note also how the ``frequency`` of the dataset will change how the
-``end`` option is interpreted: - ``end="2020"`` with a ``frequency`` of
-one hour is equivalent to ``end="2020-12-31 23:00:00"`` - ``end="2020"``
-with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
-18:00:00"``
+``end`` option is interpreted:
+
+-  ``end="2020"`` with a ``frequency`` of one hour is equivalent to
+   ``end="2020-12-31 23:00:00"``
+-  ``end="2020"`` with a ``frequency`` of 6 hours is equivalent to
+   ``end="2020-12-31 18:00:00"``
 
 .. _frequency:
 
@@ -55,9 +53,7 @@ with a ``frequency`` of 6 hours is equivalent to ``end="2020-12-31
 
 You can change the frequency of the dataset by passing a string with:
 
-.. code:: python
-
-   ds = open_dataset(dataset, frequency="6h")
+.. literalinclude:: code/subsetting_frequency_.py
 
 The new frequency must be a multiple of the original frequency.
 
@@ -66,9 +62,63 @@ To artificially increase the frequency, you can use the
 dataset by linearly interpolating the data values between the original
 dates.
 
+.. literalinclude:: code/subsetting_interpolate_frequency_.py
+
+.. _extend:
+
+********
+ extend
+********
+
+You can extend the date range of a dataset backwards and/or forwards by
+using the ``extend_start`` and ``extend_end`` options. The new dates are
+added at the dataset's ``frequency`` and are marked as :ref:`missing
+<selecting-missing>`, so accessing them will raise a ``MissingDateError``
+unless you combine them with a :ref:`fill_missing_dates
+<selecting-missing>` method.
+
 .. code:: python
 
-   ds = open_dataset(dataset, interpolate_frequency="10m")
+   ds = open_dataset(dataset, extend_start="2019-01-01", extend_end="2021-12-31")
+
+The ``extend_start`` date must be before (or equal to) the first date of
+the dataset, and the ``extend_end`` date must be after (or equal to) the
+last date. Either option can be omitted to extend in only one direction:
+
+.. code:: python
+
+   # Extend only backwards
+   ds = open_dataset(dataset, extend_start="2019-01-01")
+
+   # Extend only forwards
+   ds = open_dataset(dataset, extend_end="2021-12-31")
+
+As with the :ref:`start` and :ref:`end` options, you can pass a partial
+date, and it will be expanded taking the dataset's ``frequency`` into
+account. The ``extend_start`` is expanded to the first time step of the
+period, while ``extend_end`` is expanded to the last time step:
+
+-  ``extend_start="2019"`` is equivalent to ``extend_start="2019-01-01
+   00:00:00"``
+-  ``extend_end="2021"`` is equivalent to ``extend_end="2021-12-31
+   18:00:00"`` for a 6-hourly dataset
+-  ``extend_end="2021-06"`` is equivalent to ``extend_end="2021-06-30
+   18:00:00"`` for a 6-hourly dataset
+
+Unlike ``start`` and ``end``, the added dates do not need to already
+exist in the dataset, so no reference dates are used when expanding.
+
+This is typically combined with a fill method so that the added dates
+hold artificial values instead of raising an error:
+
+.. code:: python
+
+   ds = open_dataset(
+       dataset,
+       extend_start="2019-01-01",
+       extend_end="2021-12-31",
+       fill_missing_dates="nans",
+   )
 
 .. _subsetting-trajectories:
 
@@ -85,19 +135,7 @@ kept iff ``[base + step_start, base + step_end] ⊂ [start, end]``).
 Step axis
 =========
 
-.. code:: python
-
-   # Select a single forecast step; returns a 4-D view
-   # (base_dates, variables, ensembles, cells) — shape-compatible
-   # with a gridded dataset at that lead time.
-   ds_t6 = open_dataset("traj.zarr", step=6)
-
-   # Select a list of steps; keeps the 5-D shape, narrows the step axis.
-   ds_subset = open_dataset("traj.zarr", steps=[6, 12, 18])
-
-   # Step range form (all three are optional).
-   ds_range = open_dataset("traj.zarr",
-                           step_start=6, step_end=24, step_frequency="6h")
+.. literalinclude:: code/subsetting_traj_step_.py
 
 Base-date axis
 ==============
@@ -105,8 +143,4 @@ Base-date axis
 ``base_start`` and ``base_end`` filter the base-date axis directly,
 without the envelope logic used by ``start`` / ``end``:
 
-.. code:: python
-
-   ds_jan = open_dataset("traj.zarr",
-                         base_start="2021-01-01",
-                         base_end="2021-01-31")
+.. literalinclude:: code/subsetting_traj_base_.py
