@@ -146,27 +146,26 @@ class GriddedOutput(OutputBase):
             grid_size = len(coords["values"])
             splits = self.default_grid_splits
 
-            def set_grid_chunk_size() -> int:
-                chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
-                return prod(chunks) * np.dtype(self.dtype).itemsize
-
-            chunk_bytes = set_grid_chunk_size()
+            chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
             while splits > 1 and chunk_bytes < self.min_chunk_bytes:
                 splits //= 2
-                chunk_bytes = set_grid_chunk_size()
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
 
-            while True:
-                if chunk_bytes <= self.max_chunk_bytes:
-                    break
+            while chunk_bytes > self.max_chunk_bytes:
                 if chunks[grid_axis] == 1:
                     raise ValueError(
                         f"A single-grid-point chunk requires {chunk_bytes:,} bytes, "
                         f"exceeding the {self.max_chunk_bytes:,}-byte codec limit."
                     )
                 splits *= 2
-                chunk_bytes = set_grid_chunk_size()
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
 
         return tuple(chunks)
+
+    def _set_grid_chunk_size(self, chunks, grid_axis, grid_size, splits) -> int:
+        chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
+        return prod(chunks) * np.dtype(self.dtype).itemsize
+
 
 
 class TabularOutput(OutputBase):
