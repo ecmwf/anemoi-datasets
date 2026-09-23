@@ -239,8 +239,10 @@ class Logs(list):
         for log in self:
             res.append(f"  {KEY_COLOR}{log[0]}{RESET_COLOR} {INTERVAL_COLOR}{log[2]}{RESET_COLOR}")
             res.append(f"       {KEY_COLOR}{log[1]}{RESET_COLOR}")
-            for d, acc_repr in zip(log[3], log[4]):
-                res.append(f"   used for date {d}: {acc_repr}")
+            if log[3]:
+                res.append("   used for " + ", ".join(str(d) for d in log[3]))
+            else:
+                res.append("   used for nothing")
 
         LOG.error("\n".join(res))
         res = ["More details below:"]

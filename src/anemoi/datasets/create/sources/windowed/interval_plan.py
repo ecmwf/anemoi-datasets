@@ -267,17 +267,19 @@ class IntervalPlan(WindowPlan):
         )
 
     def note(self, field: Any, identity: Any, used_by: list) -> None:
+        """Record that this field arrived, and which windows took it.
+
+        Runs for every field of every build and is thrown away unless something
+        fails, so it records only what cannot be recovered later: the field, what it
+        was taken to be, and where it went. It deliberately does *not* snapshot each
+        reducer -- one verbose repr per ``(field, window)`` pair is minutes of string
+        formatting and gigabytes retained on a large build, and
+        :meth:`~.reducer.Logs.raise_error` prints every reducer's state in full
+        anyway, at the moment it matters.
+        """
         meta = field.get(collections="metadata.mars")
         log = " ".join(f"{k}={v}" for k, v in meta.items())
-        self._logs.append(
-            [
-                str(field),
-                log,
-                identity,
-                [t for t, _ in used_by],
-                [r.__repr__(verbose=True) for _, r in used_by],
-            ]
-        )
+        self._logs.append([str(field), log, identity, [t for t, _ in used_by]])
 
     def unused_field(self, field: Any, identity: Any) -> None:
         self._logs.raise_error("Field not used for any accumulation", field=field, field_interval=identity)
