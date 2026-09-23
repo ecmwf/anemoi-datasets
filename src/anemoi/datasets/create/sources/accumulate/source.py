@@ -117,27 +117,27 @@ class AccumulateSource(WindowSourceBase):
 
         super().__init__(context, source=source, period=period, group_by=group_by)
 
-    def _finalise(self, reducers, fields):
-        """Clean empty reducers, validate completeness, and return the dataset."""
-        # some reducers may be empty, remove them
-        # this can happen when the source provides fields that not exactly the one requested (scda/oper)
-        empty = [k for k, reducer in reducers.items() if reducer.values is None]
+    def _discard_unusable(self, reducers: dict) -> set:
+        """Drop windows no field ever reached, rather than failing on them.
+
+        `accumulate` asks MARS for intervals, and MARS may answer with fields that do
+        not exactly match what was asked -- the `scda`/`oper` stream split is the
+        standing example. That leaves a reducer holding nothing at all, which is the
+        request being answered loosely rather than a window that came out short.
+
+        This is the one place the reductions are deliberately stricter: they raise
+        here instead, because a missing sample there means an average over fewer
+        fields than the recipe asked for.
+        """
+        empty = {k for k, reducer in reducers.items() if reducer.values is None}
         for k in empty:
-            LOG.warning(f"Removing empty accumulator for key {k}")
+            LOG.warning("%s: no field reached the window for %s; dropping it", self.name, k)
             del reducers[k]
+        return empty
 
-        for reducer in reducers.values():
-            if not reducer.is_complete():
-                raise ValueError(f"Reducer not complete: {reducer.__repr__(verbose=True)}")
-
-        LOG.info(f"Created {len(reducers)} accumulated fields")
-
-        if not reducers:
-            raise ValueError("No reducers were created, cannot produce accumulated datasource")
-
-        ds = apply_clip(FieldList.from_fields(fields), self.clip)
-
-        LOG.debug(f"Created {len(ds)} accumulated fields:")
+    def _as_fieldlist(self, fields: list) -> FieldList:
+        ds = apply_clip(super()._as_fieldlist(fields), self.clip)
+        LOG.debug("%s: created %d field(s):", self.name, len(ds))
         for f in ds:
             LOG.debug("  %s", f)
         return ds
@@ -195,22 +195,7 @@ class AccumulateSource(WindowSourceBase):
             source=self.source,
             field_to_interval=self._field_to_interval,
         )
-        targets = [(d, None) for d in dates]
-        reducers, fields = self._run(plan, targets, self._description_hash_part())
-
-        # Final checks
-        for date in dates:
-            count = sum(1 for k in reducers.keys() if k[0] == date)
-            LOG.debug(f"Date {date} has {count} reducers")
-            if count != len(reducers) // len(dates):
-                LOG.error(f"All requested dates: {dates}")
-                LOG.error(f"Date {date} has {count} reducers, expected {len(reducers) // len(dates)}")
-                for k in reducers.keys():
-                    if k[0] == date:
-                        LOG.error(f"  Reducer for key {k}")
-                raise ValueError(f"Date {date} has {count} reducers, expected {len(reducers) // len(dates)}")
-
-        return self._finalise(reducers, fields)
+        return self._run(plan, [(d, None) for d in dates], self._description_hash_part())
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations.
@@ -254,8 +239,7 @@ class AccumulateSource(WindowSourceBase):
             basetime=True,
             forecast_items=items,
         )
-        reducers, fields = self._run(plan, list(items), description.accumulation)
-        return self._finalise(reducers, fields)
+        return self._run(plan, list(items), description.accumulation)
 
     def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
         """Forecast accumulations reconstructed from a searched subsource covering.
@@ -276,12 +260,4 @@ class AccumulateSource(WindowSourceBase):
             field_to_interval=self._field_to_interval,
             basetime=True,
         )
-        targets = list(dates.items)
-        reducers, fields = self._run(plan, targets, self._description_hash_part())
-        return self._finalise(reducers, fields)
-
-    def _run(self, plan: IntervalPlan, targets: list, *hash_parts: Any) -> tuple:
-        """Resolve the coverings, fetch and reduce."""
-        parts = plan.parts_for(targets)
-        source_object = self._create_source_object(*hash_parts)
-        return self._reduce_fields(plan, source_object, plan.argument(targets, parts), targets, parts)
+        return self._run(plan, list(dates.items), self._description_hash_part())

@@ -84,7 +84,7 @@ class Reducer:
         """The window value so far; ``None`` until the first state completes."""
         return self._reduced
 
-    def is_complete(self, **kwargs) -> bool:
+    def is_complete(self) -> bool:
         """Whether every state has been filled and reduced in."""
         return self._done == len(self.states)
 

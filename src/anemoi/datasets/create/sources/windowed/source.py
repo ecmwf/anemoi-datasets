@@ -28,6 +28,7 @@ import logging
 from typing import Any
 
 from anemoi.transform import FieldList
+from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.source import Source
@@ -35,6 +36,7 @@ from anemoi.datasets.create.source import Source
 from .groupby import patch_groupby_keys
 from .plan import Target
 from .plan import WindowPlan
+from .reducer import describe
 
 LOG = logging.getLogger(__name__)
 
@@ -44,13 +46,6 @@ class WindowSourceBase(Source):
 
     #: The registered recipe key, for error messages.
     name: str = "window"
-
-    #: Backends this source can read, or ``None`` for no restriction.
-    SUPPORTED_SOURCES: tuple[str, ...] | None = None
-
-    #: MARS ``type`` assumed when the recipe does not say. A forecast for interval
-    #: data; the reductions override it per description.
-    MARS_TYPE_DEFAULT: str = "fc"
 
     def __init__(
         self,
@@ -65,12 +60,6 @@ class WindowSourceBase(Source):
         self.group_by = patch_groupby_keys(group_by, source_name=self.name)
         self._source_name = self._prepare_source()
 
-        if self.SUPPORTED_SOURCES is not None and self._source_name not in self.SUPPORTED_SOURCES:
-            raise ValueError(
-                f"Source {self._source_name!r} is not supported by {self.name!r}; "
-                f"expected one of {list(self.SUPPORTED_SOURCES)}."
-            )
-
     # ── subclass contract ────────────────────────────────────────────
 
     def _hash_parts(self) -> tuple:
@@ -78,7 +67,25 @@ class WindowSourceBase(Source):
         return ()
 
     def _mars_type_default(self) -> str:
-        return self.MARS_TYPE_DEFAULT
+        """MARS ``type`` to assume when the recipe does not say.
+
+        A forecast: interval-valued data is archived per step. The reductions override
+        this, because base-less instantaneous fields are indexed by validity time.
+        """
+        return "fc"
+
+    def _discard_unusable(self, reducers: dict) -> set:
+        """Reducer keys to drop rather than report as a failure.
+
+        The default is to drop nothing: a window that no field reached is an error,
+        because a reduction over part of a window is silently wrong rather than
+        merely incomplete. ``accumulate`` overrides this -- see its own docstring for
+        the one case where an empty window is expected.
+
+        Called before the completeness checks; the keys returned are also exempt from
+        the missing-``(target, variable)`` check, since they were deliberate.
+        """
+        return set()
 
     # ── shared helpers ───────────────────────────────────────────────
 
@@ -182,3 +189,47 @@ class WindowSourceBase(Source):
     def _as_fieldlist(self, fields: list) -> FieldList:
         """Wrap the reduced fields; a subclass may post-process them."""
         return FieldList.from_fields(fields)
+
+    def _run(self, plan: WindowPlan, targets: list[Target], *hash_parts: Any) -> FieldList:
+        """Resolve the windows, fetch the fields, reduce them and check the result."""
+        parts = plan.parts_for(targets)
+        source_object = self._create_source_object(*hash_parts)
+        reducers, fields = self._reduce_fields(plan, source_object, plan.argument(targets, parts), targets, parts)
+        return self._finalise(reducers, fields, targets)
+
+    def _finalise(self, reducers: dict, fields: list, targets: list[Target]) -> FieldList:
+        """Check every window came out whole, and return the reduced fields.
+
+        Two checks, because they catch different things. A reducer that exists but
+        never filled is an incomplete window. A ``(target, variable)`` pair that never
+        produced a reducer at all leaves nothing to be incomplete, so only comparing
+        against the targets finds it.
+        """
+        discarded = self._discard_unusable(reducers)
+
+        if not reducers:
+            raise ValueError(f"{self.name}: the source returned no usable field, cannot reduce anything")
+
+        incomplete = {k: r for k, r in reducers.items() if not r.is_complete()}
+        if incomplete:
+            raise ValueError(
+                f"{self.name}: {len(incomplete)} window(s) are missing source fields — a "
+                "reduction over an incomplete window would silently bias the result and its "
+                f"statistics:\n{describe(incomplete)}"
+            )
+
+        keys = {key for *_, key in reducers}
+        missing = [
+            (t, key) for t in targets for key in sorted(keys) if (*t, key) not in reducers and (*t, key) not in discarded
+        ]
+        if missing:
+            detail = "\n".join(
+                f"  {vdate}{f' (basetime {basetime})' if basetime is not None else ''}: {dict(key)}"
+                for (vdate, basetime), key in missing[:20]
+            )
+            raise ValueError(
+                f"{self.name}: no source data at all for {len(missing)} (date, variable) combination(s):\n{detail}"
+            )
+
+        LOG.info("%s: created %d field(s) over %s", self.name, len(fields), frequency_to_string(self.period))
+        return self._as_fieldlist(fields)

@@ -434,7 +434,7 @@ def test_a_window_missing_one_sample_is_an_error() -> None:
     fields = [_FakeField(datetime.datetime(2021, 1, 1, 12), "2t", 1.0)]  # 06:00 is missing
     source = _source("average", fields)
 
-    with pytest.raises(ValueError, match="missing source samples"):
+    with pytest.raises(ValueError, match="missing source fields"):
         source.execute_valid_dates(_dates(12))
 
 

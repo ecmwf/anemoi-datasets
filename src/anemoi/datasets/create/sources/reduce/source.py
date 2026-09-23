@@ -38,7 +38,6 @@ import logging
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.arguments import ForecastDates
@@ -53,7 +52,6 @@ from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.description.instants import FromInstants
 from ..windowed.description.instants import FromRun
 from ..windowed.covering import covering_from_description
-from ..windowed.reducer import describe
 from ..windowed.source import WindowSourceBase
 from ..windowed.interval_plan import IntervalPlan
 from ..windowed.sampling_plan import SamplingPlan
@@ -211,7 +209,7 @@ class ReduceSource(WindowSourceBase):
             if not isinstance(d, datetime.datetime):
                 raise TypeError(f"{self.name}: valid_date must be a datetime.datetime instance, got {type(d)}")
 
-        return self._run([(d, None) for d in dates], self._plan())
+        return self._run(self._plan(), [(d, None) for d in dates])
 
     def execute_forecast_dates(self, dates: ForecastDates) -> FieldList:
         """Reduce one window per ``(valid_time, basetime)`` row (trajectories layout).
@@ -228,45 +226,8 @@ class ReduceSource(WindowSourceBase):
             for valid_time, basetime in targets:
                 check_window_inside_run(valid_time, basetime, self.period, self.name)
 
-        return self._run(targets, self._plan(basetime=not self.is_instant_valued))
+        return self._run(self._plan(basetime=not self.is_instant_valued), targets)
 
-    def _run(self, targets: list[tuple], plan) -> FieldList:
-        """Resolve the windows, fetch, reduce and check."""
-        parts = plan.parts_for(targets)
-        reducers, fields = self._reduce_fields(
-            plan, self._create_source_object(), plan.argument(targets, parts), targets, parts
-        )
-        return self._finalise(reducers, fields, targets)
-
-    def _finalise(self, reducers: dict, fields: list, targets: list[tuple]) -> FieldList:
-        """Check that every window was complete and return the reduced fields."""
-        if not reducers:
-            raise ValueError(f"{self.name}: the source returned no usable field, cannot reduce anything")
-
-        incomplete = {k: r for k, r in reducers.items() if not r.is_complete()}
-        if incomplete:
-            raise ValueError(
-                f"{self.name}: {len(incomplete)} window(s) are missing source samples \u2014 a "
-                "reduction over an incomplete window would silently bias the result and its "
-                f"statistics:\n{describe(incomplete)}"
-            )
-
-        # A variable that is missing for a whole target creates no reducer at all, so
-        # completeness alone would not catch it.
-        keys = {key for *_, key in reducers}
-        missing = [(t, key) for t in targets for key in sorted(keys) if (*t, key) not in reducers]
-        if missing:
-            detail = "\n".join(
-                f"  {vdate}{f' (basetime {basetime})' if basetime is not None else ''}: {dict(key)}"
-                for (vdate, basetime), key in missing[:20]
-            )
-            raise ValueError(
-                f"{self.name}: no source data at all for {len(missing)} (date, variable) "
-                f"combination(s):\n{detail}"
-            )
-
-        LOG.info("%s: created %d reduced fields over %s", self.name, len(fields), frequency_to_string(self.period))
-        return self._as_fieldlist(fields)
 
 
 @source_registry.register("average")
