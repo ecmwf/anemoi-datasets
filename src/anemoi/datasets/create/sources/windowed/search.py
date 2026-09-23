@@ -7,10 +7,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-# This module implements an algorithm to cover a target time interval with a sequence of signed intervals
-# (which can be positive or negative in length)
-# It is general purpose but is mainly designed to support accumulation over variable periods,
-# e.g. to cover a 6h accumulation with available intervals of +/-3h,
+"""Find the archived intervals that cover a window.
+
+A Dijkstra over a graph whose nodes are ``(time, base, covered)`` and whose edges are
+the intervals the archive offers at that time -- forwards, or the negation of one that
+ends there, which is how a window is reached from a cumulative archive by way of the
+basetime.
+
+The walk returns a *chain*: each interval starts where the last one ended. What that
+chain reconstructs is recovered afterwards by
+:func:`..subwindows.group_intervals_into_subwindows`.
+"""
 
 import itertools
 import logging
@@ -78,6 +85,12 @@ def search_intervals(
 
     visited: dict[tuple[datetime, datetime | None, float], float] = {}
 
+    # Kept for the failure message: a search that gets nowhere and one that gets
+    # almost there are different problems, and the old message could not tell them
+    # apart. `closest` is the state that came nearest to covering the window.
+    offered_at_start: list[SignedInterval] = []
+    closest: HeapState | None = None
+
     while pq:
         state = heappop(pq)
         key = (state.current_time, state.current_base, state.covered)
@@ -97,7 +110,14 @@ def search_intervals(
             LOG.warning(msg)
             return None
 
-        for interval in candidates(state.current_time):
+        if closest is None or abs(target_length - state.covered) < abs(target_length - closest.covered):
+            closest = state
+
+        offered = list(candidates(state.current_time))
+        if state.current_time == start and not offered_at_start:
+            offered_at_start = offered
+
+        for interval in offered:
             if interval.start != state.current_time:
                 raise ValueError(
                     f"Candidate interval {interval} does not start or end at current_time {state.current_time}"
@@ -120,8 +140,58 @@ def search_intervals(
                 ),
             )
 
-    msg = f"Cannot find coverage of {start} → {end}"
+    msg = _no_coverage(start, end, target_length, offered_at_start, closest)
     if error_on_fail:
         raise ValueError(msg)
     LOG.warning(msg)
     return None
+
+
+def _no_coverage(
+    start: datetime,
+    end: datetime,
+    target_length: float,
+    offered_at_start: list[SignedInterval],
+    closest: "HeapState | None",
+) -> str:
+    """Explain a search that ran out of candidates.
+
+    Three things go wrong, and they want different fixes: nothing is archived at the
+    window's start at all; something is, but no combination reaches the end; or the
+    walk got most of the way and stalled. The old message said only the first line.
+    """
+    lines = [f"Cannot find coverage of {start} → {end}"]
+
+    if not offered_at_start:
+        lines.append(
+            f"  Nothing in the archive description starts or ends at {start}, so the window "
+            "cannot even be entered. Its start has to be a step boundary the source data "
+            "actually offers."
+        )
+        return "\n".join(lines)
+
+    lines.append(f"  Starting at {start}, the description offers {len(offered_at_start)} interval(s):")
+    for interval in offered_at_start[:8]:
+        lines.append(f"    {interval}")
+    if len(offered_at_start) > 8:
+        lines.append(f"    ... and {len(offered_at_start) - 8} more")
+
+    if closest is not None and closest.path:
+        covered = timedelta(seconds=closest.covered)
+        if closest.covered > target_length:
+            how = f"overshot it by {timedelta(seconds=closest.covered - target_length)}"
+        else:
+            how = f"fell {timedelta(seconds=target_length - closest.covered)} short"
+        lines.append(
+            f"  The closest route covered {covered} of the {end - start} needed -- it {how} -- "
+            f"reaching {closest.current_time}:"
+        )
+        for interval in closest.path[:8]:
+            lines.append(f"    {interval}")
+        if len(closest.path) > 8:
+            lines.append(f"    ... and {len(closest.path) - 8} more")
+        lines.append(
+            "  The window has to be a union of whole archived intervals; check that its "
+            "length and end time line up with the steps the source data actually holds."
+        )
+    return "\n".join(lines)

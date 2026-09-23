@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 from datetime import datetime
+from datetime import timedelta
 
 import pytest
 
@@ -403,3 +404,57 @@ def test_sub_hourly_availability_must_divide_a_day():
 def test_sub_minute_availability_rejected():
     with pytest.raises(ValueError, match="whole number of minutes"):
         interval_generator_factory("30s")
+
+
+# ── what a failed search says ────────────────────────────────────────
+
+
+def _gusts(steps):
+    """A per-step archive with the given step ranges, based at 00Z."""
+    from anemoi.datasets.create.sources.windowed.covering import covering_factory
+
+    return covering_factory([[0, list(steps)]])
+
+
+BASE = datetime(2020, 1, 1, 0)
+
+
+def _h(n):
+    return timedelta(hours=n)
+
+
+def test_a_window_starting_off_the_grid_says_so():
+    """Nothing is archived at the window's start, so it cannot even be entered."""
+    covering = _gusts(["0-1", "1-2", "2-3", "3-6", "6-9"])
+    with pytest.raises(ValueError) as excinfo:
+        covering.partition(BASE + timedelta(minutes=90), BASE + _h(6))
+
+    message = str(excinfo.value)
+    assert "cannot even be entered" in message
+    assert "step boundary" in message
+
+
+def test_a_window_that_cannot_be_completed_shows_how_far_it_got():
+    """The granularity case: 3-hourly beyond step 3, so [2,5] overshoots to 6."""
+    covering = _gusts(["0-1", "1-2", "2-3", "3-6"])
+    with pytest.raises(ValueError) as excinfo:
+        covering.partition(BASE + _h(2), BASE + _h(5))
+
+    message = str(excinfo.value)
+    assert "the description offers" in message, message
+    assert "overshot it by 1:00:00" in message, message
+    # and it names the route it tried
+    assert "[2-3]" in message, message
+    assert "[3-6]" in message, message
+
+
+def test_a_window_that_falls_short_says_short_rather_than_overshot():
+    covering = _gusts(["0-1", "1-2"])
+    with pytest.raises(ValueError) as excinfo:
+        covering.partition(BASE, BASE + _h(6))
+    assert "short" in str(excinfo.value)
+
+
+def test_a_covering_that_works_is_untouched():
+    covering = _gusts(["0-1", "1-2", "2-3", "3-6", "6-9"])
+    assert len(covering.partition(BASE, BASE + _h(3))) == 3

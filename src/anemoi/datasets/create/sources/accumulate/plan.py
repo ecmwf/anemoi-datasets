@@ -30,15 +30,23 @@ from anemoi.datasets.create.arguments import Intervals
 
 from ..windowed.plan import Target
 from ..windowed.plan import WindowPlan
-from ..windowed.reducer import Logs
 from ..windowed.operations import Operation
 from ..windowed.operations import operation_factory
+from ..windowed.reducer import Logs
 from ..windowed.reducer import Reducer
 from ..windowed.states import SubwindowState
 from ..windowed.states import field_statistic
 from ..windowed.subwindows import contributions_of
 
 LOG = logging.getLogger(__name__)
+
+
+def _unique(intervals) -> list:
+    """The intervals, in order, with repeats dropped."""
+    seen: dict = {}
+    for interval in intervals:
+        seen.setdefault(interval, None)
+    return list(seen)
 
 
 class IntervalPlan(WindowPlan):
@@ -54,7 +62,7 @@ class IntervalPlan(WindowPlan):
         The subsource config, for the diagnostics.
     field_to_interval : Any
         Maps an arriving field to the interval it spans.
-    basetime_from_target : bool
+    basetime : bool
         Whether the reducer should stamp its output with the target's basetime
         (a trajectory row) rather than the start of the window.
     operation : str or Operation, optional
@@ -136,19 +144,17 @@ class IntervalPlan(WindowPlan):
         )
 
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:
+        # Windows overlap whenever `period` exceeds the output frequency, so the same
+        # archived interval is wanted by several of them. Fetch each once: matching
+        # remaps it onto every window that needs it.
+        intervals = _unique(contributions_of(s for t in targets for s in parts[t]))
+
         if self.forecast_items is not None:
             return ForecastIntervals(
                 items=[(vt, bt, self.period) for vt, bt in self.forecast_items],
-                intervals=contributions_of(s for t in targets for s in parts[t]),
+                intervals=intervals,
             )
-
-        # Overlapping rows can request the same subsource window more than once; fetch
-        # each interval once, since matching remaps it onto every row that needs it.
-        seen: dict = {}
-        for target in targets:
-            for interval in contributions_of(parts[target]):
-                seen.setdefault(interval, None)
-        return Intervals(dates=sorted({vt for vt, _ in targets}), intervals=list(seen))
+        return Intervals(dates=sorted({vt for vt, _ in targets}), intervals=intervals)
 
     def new_reducer(self, target: Target, key: tuple, parts: list) -> Reducer:
         valid_date, basetime = target
