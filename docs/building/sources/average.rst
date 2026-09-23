@@ -58,6 +58,10 @@ each is written once.
 The window must be a whole number of source samples: ``from.frequency``
 must divide ``period``, or the recipe is rejected.
 
+This whole section is about instantaneous source data. For fields that each
+span an interval, the window is covered rather than sampled and there is no
+cadence to divide — see `Interval-valued source data`_.
+
 ***************
  Configuration
 ***************
@@ -75,14 +79,22 @@ must divide ``period``, or the recipe is rejected.
      - **Required.** The data source, as a single-key dictionary
        (``source: {mars: {...}}``).
    * - ``from``
-     - **Required.** What the source data is, recognised by whether
-       ``base_dates`` is present:
+     - **Required.** What the source data is. ``frequency:`` means a field
+       *exists every* cadence; ``accumulation:`` or an explicit ``steps:``
+       list means each field *spans* an interval. That distinction decides
+       everything else:
 
        -  ``{frequency: <cadence>}`` — **base-less**: instantaneous fields
           indexed by validity time, one every *cadence*. Works under either
           output layout.
        -  ``{base_dates: true, frequency: <cadence>}`` — the forecast run
           the trajectory layout imposes; see `Trajectories`_.
+       -  every interval-valued shape ``accumulate`` accepts — see
+          `Interval-valued source data`_.
+   * - ``over``
+     - The length of each subwindow, for interval-valued source data only.
+       Defaults to ``period``, i.e. the window is one piece. See
+       `Interval-valued source data`_.
 
 .. literalinclude:: yaml/reduce-average.yaml
    :language: yaml
@@ -92,6 +104,78 @@ of hourly 2 m temperature:
 
 .. literalinclude:: yaml/reduce-maximum.yaml
    :language: yaml
+
+*****************************
+ Interval-valued source data
+*****************************
+
+``from: {frequency: ...}`` says a field *exists every* cadence. Some archives
+are not like that: a gust archive stores the maximum since the previous field,
+so every field **spans** an interval. Those are described exactly as
+:ref:`accumulate <sources-accumulate>` describes them, and every ``from:``
+shape it accepts works here too.
+
+This is what makes an irregular archive expressible at all. ``rr/se-al-ec``
+stores gusts over ``0-1, 1-2, 2-3, 3-6, 6-9`` — hourly to step 3,
+three-hourly after — so there is no single ``frequency:`` to state, and the
+step pairs are written out instead:
+
+.. literalinclude:: yaml/reduce-maximum-gusts.yaml
+   :language: yaml
+
+The window is then covered by whole archived intervals rather than sampled,
+and the reduction is applied across them.
+
+Subwindows and ``over:``
+========================
+
+The pieces the window is cut into are **subwindows**, and ``over:`` is how
+long each one is. It defaults to ``period`` — the window is one piece — which
+is right whenever the archive already holds what you are asking for.
+
+It matters when it does not. A precipitation archive stores a running total
+from the start of the run, so a window is rebuilt by subtraction and a maximum
+over one such piece is just that piece. ``over: 1h`` cuts the window into
+hourly pieces and rebuilds each, which is the wettest hour in the window:
+
+.. literalinclude:: yaml/reduce-maximum-over.yaml
+   :language: yaml
+
+The length is part of what you are asking for, not a hint: the largest hourly
+total and the largest 3-hourly total are different numbers. That is why
+``over:`` has to be stated rather than inferred from whatever the archive
+happens to offer — and why stating it at the full ``period`` declares nothing
+and changes nothing.
+
+``accumulate`` does not take ``over:``. A sum of pieces is the same whatever
+length they are.
+
+What is refused
+===============
+
+Two checks, because a wrong reduction here is silent rather than loud.
+
+**Before anything is fetched**, from the recipe: ``maximum:`` over an archive
+whose window has to be rebuilt by subtraction is refused. Subtracting two
+cumulative maxima does not give the maximum over the difference of their
+intervals — if the extreme falls in the earlier part, both fields carry it and
+the difference is zero. The error names the fields it would have needed.
+``over:`` lifts this, because it declares the quantity is additive and says at
+what length.
+
+**When a field arrives**, from the field: one carrying a ``max``, ``min`` or
+``avg`` is never rebuilt by subtraction, whatever the recipe said. This is the
+check that catches ``accumulate`` over a gust archive, which declares no
+statistic at all.
+
+Neither can be dropped. The first reads a recipe, which can simply be wrong
+about what the archive holds; the second reads the data, but only once a
+retrieval has already happened.
+
+Nothing recovers a finer interval than the archive stores. If the shortest
+gust interval is ``[6,9]``, there is no ``[6,7]`` to be had — that information
+is not in the data, and achievable windows are unions of whole archived
+intervals.
 
 ***************
  Trajectories
@@ -161,8 +245,13 @@ before the start of the dataset, exactly as ``accumulate`` does; that data
 simply has to exist.
 
 A field returned by the source that belongs to no window is also an error —
-it usually means ``from.frequency`` does not match what the source actually
-provides.
+it usually means ``from:`` does not match what the source actually provides.
+
+This is stricter than ``accumulate``, deliberately. ``accumulate`` drops a
+window no field reached, because MARS may answer an interval request loosely
+(the ``scda``/``oper`` stream split). A missing sample under ``average:`` is a
+mean over fewer fields than you asked for, which is a biased field and biased
+dataset statistics behind it.
 
 ************
  Limitations
@@ -173,8 +262,10 @@ provides.
    It needs run selection ("which run serves this validity time"), and it is
    orthogonal to the output layout: it would apply to a gridded recipe just as
    much as to a trajectory one.
--  Reducing *accumulated* source data is not implemented either; it would
-   first have to be de-accumulated to increments.
+-  Differencing a from-start *mean* archive is refused. It is reconstructible
+   in principle — ``m(6,9) = (9·m(0,9) − 6·m(0,6)) / 3`` — but not by the plain
+   signed sum a subwindow performs; it needs length-weighted contributions and
+   a renormalisation. No archive known to us stores one.
 -  Summing over time is ``accumulate:``; there is no ``sum:`` block. The
    name ``sum`` already belongs to the anemoi-transform filter that sums
    *across variables*.
