@@ -31,6 +31,8 @@ from anemoi.datasets.create.arguments import Intervals
 from ..windowed.plan import Target
 from ..windowed.plan import WindowPlan
 from ..windowed.reducer import Logs
+from ..windowed.operations import Operation
+from ..windowed.operations import operation_factory
 from ..windowed.reducer import Reducer
 from ..windowed.states import SubwindowState
 from ..windowed.states import field_statistic
@@ -55,6 +57,8 @@ class IntervalPlan(WindowPlan):
     basetime_from_target : bool
         Whether the reducer should stamp its output with the target's basetime
         (a trajectory row) rather than the start of the window.
+    operation : str or Operation, optional
+        What reduces the subwindow values. Defaults to a sum.
     forecast_items : list, optional
         ``(valid_time, basetime)`` rows, when the subsource is the run the layout
         imposes; makes the argument a ``ForecastIntervals``.
@@ -67,6 +71,7 @@ class IntervalPlan(WindowPlan):
         source: dict,
         field_to_interval: Any,
         basetime: bool = False,
+        operation: Operation | str | None = None,
         forecast_items: list | None = None,
     ) -> None:
         self.period = period
@@ -74,6 +79,7 @@ class IntervalPlan(WindowPlan):
         self.source = source
         self.field_to_interval = field_to_interval
         self.basetime = basetime
+        self.operation = operation_factory(operation)
         self.forecast_items = forecast_items
         self._logs: Logs | None = None
         self._statistic: str | None = None
@@ -86,12 +92,48 @@ class IntervalPlan(WindowPlan):
             else:
                 covering = self.covering.partition(valid_date - self.period, valid_date)
             parts[(valid_date, basetime)] = covering
+            self._check_reducible(covering, valid_date - self.period, valid_date)
             LOG.debug("  Covering of %s to %s:", valid_date - self.period, valid_date)
             for subwindow in covering:
                 LOG.debug("    %s", subwindow)
                 for contribution in subwindow.contributions:
                     LOG.debug("       %s", contribution)
         return parts
+
+    def _check_reducible(self, subwindows, start, end) -> None:
+        """Reject a covering whose subwindows cannot carry the declared statistic.
+
+        The subwindow invariants are arithmetic about time spans: they accept
+        ``-max(0,6) +max(0,9)`` as a reconstruction of ``[6,9]``, because ``-6h + 9h``
+        really is ``3h``. Whether differencing *means* anything depends on what the
+        archive stores, which no invariant can see.
+
+        ``from:`` and the block name are the only declarations we have, and in the
+        ordinary case they agree: ``maximum:`` over a gust archive means the archived
+        fields are maxima. So a non-additive reduction needs every subwindow direct.
+        """
+        if self.operation.differenceable:
+            return
+
+        differenced = [s for s in subwindows if not s.is_direct]
+        if not differenced:
+            return
+
+        detail = "\n".join(
+            "    {} would be rebuilt from {}".format(
+                s, " ".join(f"{'+' if c.sign > 0 else '-'}{c}" for c in s.contributions)
+            )
+            for s in differenced
+        )
+        raise ValueError(
+            f"{self.operation.name!r} over the window {start} -> {end} needs subwindows the "
+            f"archive does not hold outright:\n{detail}\n"
+            f"This will not work: {self.operation.why_not_differenceable()}.\n"
+            "Achievable windows are unions of whole archived intervals. Check that 'from:' "
+            "describes how *this* parameter is stored -- a recognised description describes "
+            "precipitation-style layouts, and a parameter such as wind gust is often archived "
+            "with different step ranges in the very same class/stream."
+        )
 
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:
         if self.forecast_items is not None:
@@ -115,7 +157,7 @@ class IntervalPlan(WindowPlan):
             period=self.period,
             key=key,
             states=[SubwindowState(subwindow) for subwindow in parts],
-            operation="sum",
+            operation=self.operation,
             basetime=basetime if self.basetime else None,
         )
 

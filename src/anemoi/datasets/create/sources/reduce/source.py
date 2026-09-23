@@ -48,9 +48,13 @@ from ..windowed.description import ReduceSchema
 from ..windowed.description import check_window_inside_run
 from ..windowed.description import validate_from
 from ..windowed.description import window_samples
+from ..windowed.field_to_interval import FieldToInterval
+from ..windowed.description.instants import FromInstants
 from ..windowed.description.instants import FromRun
+from ..windowed.covering import covering_from_description
 from ..windowed.reducer import describe
 from ..windowed.source import WindowSourceBase
+from ..accumulate.plan import IntervalPlan
 from .plan import SamplingPlan
 
 LOG = logging.getLogger(__name__)
@@ -120,13 +124,24 @@ class ReduceSource(WindowSourceBase):
 
         super().__init__(context, source=source, period=period, group_by=group_by)
 
-        # Raises when the window is not a whole number of samples.
-        window_samples(datetime.datetime(2000, 1, 1), self.period, self.frequency)
+        if self.is_instant_valued:
+            # Raises when the window is not a whole number of samples.
+            window_samples(datetime.datetime(2000, 1, 1), self.period, self.frequency)
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """The cadence of the source data (``from.frequency``)."""
+        """The cadence of the source data (``from.frequency``); instant-valued only."""
         return self._from.frequency
+
+    @property
+    def is_instant_valued(self) -> bool:
+        """Whether ``from:`` describes fields that *exist every* frequency.
+
+        The alternative is interval-valued source data -- fields that each *span* an
+        interval -- which is reduced over the subwindows covering the window rather
+        than over samples inside it.
+        """
+        return isinstance(self._from, (FromInstants, FromRun))
 
     @property
     def is_run_anchored(self) -> bool:
@@ -134,20 +149,32 @@ class ReduceSource(WindowSourceBase):
         return isinstance(self._from, FromRun)
 
     def _mars_type_default(self) -> str:
-        # A run-anchored description reads a forecast; a base-less one reads fields
-        # indexed by validity time, i.e. an analysis.
-        return "fc" if self.is_run_anchored else "an"
+        # Base-less instantaneous fields are indexed by validity time, i.e. an
+        # analysis; everything else reads a forecast.
+        return "an" if (self.is_instant_valued and not self.is_run_anchored) else "fc"
 
     def _hash_parts(self) -> tuple:
-        return (str(self.frequency), self.is_run_anchored)
+        if self.is_instant_valued:
+            return (str(self.frequency), self.is_run_anchored)
+        return (self._from.model_dump_json(),)
 
-    def _plan(self) -> SamplingPlan:
-        return SamplingPlan(
+    def _plan(self, basetime: bool = False):
+        """The plan for this source data: samples inside the window, or subwindows of it."""
+        if self.is_instant_valued:
+            return SamplingPlan(
+                period=self.period,
+                frequency=self.frequency,
+                operation=self.operation,
+                run_anchored=self.is_run_anchored,
+                name=self.name,
+            )
+        return IntervalPlan(
             period=self.period,
-            frequency=self.frequency,
+            covering=covering_from_description(self._from, period=self.period, source_name=self.name),
+            source=self.source,
+            field_to_interval=FieldToInterval(),
             operation=self.operation,
-            run_anchored=self.is_run_anchored,
-            name=self.name,
+            basetime=basetime,
         )
 
     # ── dispatch branches ────────────────────────────────────────────
@@ -165,7 +192,7 @@ class ReduceSource(WindowSourceBase):
             if not isinstance(d, datetime.datetime):
                 raise TypeError(f"{self.name}: valid_date must be a datetime.datetime instance, got {type(d)}")
 
-        return self._run([(d, None) for d in dates])
+        return self._run([(d, None) for d in dates], self._plan())
 
     def execute_forecast_dates(self, dates: ForecastDates) -> FieldList:
         """Reduce one window per ``(valid_time, basetime)`` row (trajectories layout).
@@ -182,11 +209,10 @@ class ReduceSource(WindowSourceBase):
             for valid_time, basetime in targets:
                 check_window_inside_run(valid_time, basetime, self.period, self.name)
 
-        return self._run(targets)
+        return self._run(targets, self._plan(basetime=not self.is_instant_valued))
 
-    def _run(self, targets: list[tuple]) -> FieldList:
+    def _run(self, targets: list[tuple], plan) -> FieldList:
         """Resolve the windows, fetch, reduce and check."""
-        plan = self._plan()
         parts = plan.parts_for(targets)
         reducers, fields = self._reduce_fields(
             plan, self._create_source_object(), plan.argument(targets, parts), targets, parts

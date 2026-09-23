@@ -66,10 +66,19 @@ def test_schema_requires_from() -> None:
         ReduceSchema.model_validate({"period": "24h", "source": SOURCE})
 
 
-@pytest.mark.parametrize("from_", [{"accumulation": "6h"}, {"lookup-table": {}}])
-def test_schema_rejects_the_accumulate_vocabulary(from_: dict) -> None:
-    with pytest.raises(ValueError, match="belong to 'accumulate:'"):
-        ReduceSchema.model_validate({"period": "24h", "from": from_, "source": SOURCE})
+@pytest.mark.parametrize(
+    "from_,expected",
+    [
+        ({"accumulation": "1h"}, "FromBare"),
+        ({"lookup-table": {"start": "2021-01-01", "0-6": [0, "0-6"]}}, "FromLookupTable"),
+        ({"base_dates": {"times": [0, 12]}, "steps": ["0-1", "1-2", "2-3", "3-6"]}, "FromTrajectories"),
+    ],
+)
+def test_schema_accepts_interval_valued_source_data(from_: dict, expected: str) -> None:
+    """A reduction may also read fields that each span an interval, not only samples."""
+    schema = ReduceSchema.model_validate({"period": "6h", "from": from_, "source": SOURCE})
+    assert type(schema.from_).__name__ == expected
+    assert not schema.is_instant_valued
 
 
 def test_schema_accepts_the_run_anchored_shape() -> None:
@@ -573,3 +582,86 @@ def test_each_source_stamps_its_own_time_method(name: str, time_method: str) -> 
     from anemoi.datasets.create.sources.windowed.operations import operation_factory
 
     assert operation_factory(source_registry.lookup(name).operation).time_method == time_method
+
+
+# ── interval-valued source data: reducing subwindows, not samples ─────
+
+
+#: A from-zero forecast archive: the covering search can only reach a mid-run window
+#: by differencing, so it yields one differenced subwindow.
+FROM_ZERO_ARCHIVE = {
+    "base_dates": {"times": [0]},
+    "steps": {"start": "1h", "end": "24h", "frequency": "1h"},
+    "accumulation": "from-zero",
+}
+
+
+def _interval_source(name: str, fields, from_: dict, period: str = "6h", operation: str | None = None):
+    """A reduction whose ``from:`` describes fields that each span an interval."""
+    from anemoi.datasets.create.sources import source_registry
+
+    if operation is not None:
+        # a sum over the same covering, to show that only the reduction differs
+        from anemoi.datasets.create.sources.reduce.source import ReduceSource
+
+        cls = type("_SumSource", (ReduceSource,), {"name": "sum-for-test", "operation": operation})
+    else:
+        cls = source_registry.lookup(name)
+    source = cls(
+        context=_FakeContext(fields),
+        source={"mars": {"class": "rr", "param": ["10fg"], "levtype": "sfc"}},
+        period=period,
+        **{"from": from_},
+    )
+    return source
+
+
+def test_interval_valued_from_uses_subwindows_not_samples() -> None:
+    """``maximum:`` over per-step maxima: the window is partitioned, not sampled."""
+    source = _interval_source("maximum", [], {"accumulation": "1h"})
+    assert not source.is_instant_valued
+
+    plan = source._plan()
+    targets = [(datetime.datetime(2021, 1, 1, 6), None)]
+    parts = plan.parts_for(targets)
+
+    subwindows = parts[targets[0]]
+    assert len(subwindows) == 6, "a 6h window over 1h fields is six subwindows"
+    assert all(s.is_direct for s in subwindows)
+
+
+def test_an_irregular_archive_is_expressible() -> None:
+    """The wind-gust layout: hourly to step 3, then 3-hourly -- no single cadence.
+
+    This is the case ``from: {frequency: ...}`` cannot state, and the reason a
+    reduction has to accept interval-valued source data at all.
+    """
+    source = _interval_source(
+        "maximum",
+        [],
+        {"base_dates": {"times": [0]}, "steps": ["0-1", "1-2", "2-3", "3-6", "6-9", "9-12"]},
+    )
+    plan = source._plan()
+    targets = [(datetime.datetime(2021, 1, 1, 9), None)]
+    subwindows = plan.parts_for(targets)[targets[0]]
+
+    # [3,9] is the 3-6 and 6-9 fields; both held outright, so both direct
+    assert [int((s.interval.end - s.interval.start).total_seconds() // 3600) for s in subwindows] == [3, 3]
+    assert all(s.is_direct for s in subwindows)
+
+
+def test_a_non_additive_reduction_refuses_a_differenced_subwindow() -> None:
+    """The guard: a maximum cannot be rebuilt by subtracting two cumulative maxima."""
+    source = _interval_source("maximum", [], FROM_ZERO_ARCHIVE, period="6h")
+    targets = [(datetime.datetime(2021, 1, 1, 12), None)]
+
+    with pytest.raises(ValueError, match="does not hold outright"):
+        source._plan().parts_for(targets)
+
+
+def test_the_same_covering_is_fine_for_a_sum() -> None:
+    """Only the reduction differs: summing a differenced subwindow is what accumulate does."""
+    accumulating = _interval_source("accumulate_like", [], FROM_ZERO_ARCHIVE, period="6h", operation="sum")
+    targets = [(datetime.datetime(2021, 1, 1, 12), None)]
+    subwindows = accumulating._plan().parts_for(targets)[targets[0]]
+    assert len(subwindows) == 1 and not subwindows[0].is_direct

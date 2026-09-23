@@ -364,3 +364,48 @@ def covering_factory(
     # Legacy form: treat as the value of `auto`.
     availability = interval_generator_factory(config, source_name, source)
     return AutoCovering(availability)
+
+
+def covering_from_description(description, *, period, source_name: str = "accumulate") -> Covering:
+    """Build the :class:`Covering` a source-data description implies.
+
+    Shared by every window source, so the same ``from:`` resolves the same way
+    whatever reduction is applied over the window.
+
+    Parameters
+    ----------
+    description : Any
+        A validated interval-valued ``from:`` member.
+    period : datetime.timedelta
+        The requested window, needed to check a base-less increment source.
+    source_name : str
+        The recipe block, for error messages.
+
+    Returns
+    -------
+    Covering
+        The covering strategy.
+    """
+    # Imported here: the description package reads the interval generators, which
+    # this module also reads, so importing it at module level would close a cycle.
+    from .description import FromBare
+    from .description import FromLookupTable
+    from .description import FromTrajectories
+    from .description import TrajectoryIntervalGenerator
+    from .description import check_valid_time_source
+    from .interval_generators import LookupTableIntervalGenerator
+
+    if isinstance(description, FromTrajectories):
+        return AutoCovering(TrajectoryIntervalGenerator(description))
+
+    if isinstance(description, FromBare):
+        # A bare `from:` is base-less, validity-time-indexed source data; `accumulation`
+        # is a duration. The window is partitioned directly (no search, no midnight
+        # alignment), so the length need not divide 24h.
+        check_valid_time_source(description, period=period, source_name=source_name)
+        return ValidTimeCovering(description.duration)
+
+    if isinstance(description, FromLookupTable):
+        return AutoCovering(LookupTableIntervalGenerator(**description.entries()))
+
+    raise ValueError(f"Cannot build a covering from {description!r}")

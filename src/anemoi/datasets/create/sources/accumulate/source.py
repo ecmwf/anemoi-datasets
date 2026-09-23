@@ -24,6 +24,7 @@ from ..windowed.covering import AutoCovering
 from ..windowed.covering import ForecastCovering
 from ..windowed.covering import ValidTimeCovering
 from ..windowed.covering import covering_factory
+from ..windowed.covering import covering_from_description
 from ..windowed.description import AccumulateSchema
 from ..windowed.description import FromBare
 from ..windowed.description import FromLookupTable
@@ -154,21 +155,10 @@ class AccumulateSource(WindowSourceBase):
     def _searched_covering(self):
         """Build the Covering for the validity-date path from the description."""
         description = self._resolved_from()
+        if description is not None:
+            return covering_from_description(description, period=self.period)
 
-        if isinstance(description, FromTrajectories):
-            return AutoCovering(TrajectoryIntervalGenerator(description))
-
-        if isinstance(description, FromBare):
-            # A bare `from:` is base-less, validity-time-indexed source data;
-            # `accumulation` is a duration. The window is tiled directly (no
-            # search, no midnight alignment), so the length need not divide 24h.
-            check_valid_time_source(description, period=self.period)
-            return ValidTimeCovering(description.duration)
-
-        if isinstance(description, FromLookupTable):
-            return AutoCovering(LookupTableIntervalGenerator(**description.entries()))
-
-        # Deprecated 'covering:'/'availability:' — the legacy machinery.
+        # Deprecated 'covering:'/'availability:' -- the legacy machinery.
         return covering_factory(self.covering, self._source_name, self.source[self._source_name])
 
     def _description_hash_part(self) -> str:

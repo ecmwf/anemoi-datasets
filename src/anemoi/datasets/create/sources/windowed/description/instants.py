@@ -63,15 +63,17 @@ from pydantic import model_validator
 
 from anemoi.datasets.create.time_schemas import Frequency
 
-#: Keys belonging to ``accumulate``'s ``from:`` vocabulary.  They describe
-#: interval-valued source data, so they are meaningless here and are worth a
-#: better message than pydantic's "extra inputs are not permitted".
-#: ``base_dates`` is *not* in the list: it is this package's discriminator
-#: between the base-less and the run-anchored shape.
-_ACCUMULATE_ONLY_KEYS = (
+from .union import From as _IntervalValued
+
+#: The keys that mark interval-valued source data -- fields that each *span* an
+#: interval. Their presence routes a ``from:`` to the union ``accumulate`` uses.
+#: ``base_dates`` is deliberately absent: it appears in both shapes, as a bare flag
+#: for the run-anchored samples and as a table for a trajectory archive.
+_INTERVAL_VALUED_KEYS = (
     "accumulation",
     "lookup_table",
     "lookup-table",
+    "steps",
 )
 
 #: ``accumulate``'s spelling of the same idea.  Accepted on input and folded
@@ -148,8 +150,9 @@ class FromRun(BaseModel):
         return self
 
 
-#: Recognised structurally: ``base_dates`` present means run-anchored.
-From = FromRun | FromInstants
+#: Recognised structurally: ``frequency`` present means instant-valued, and
+#: ``base_dates`` then says whether it is run-anchored.
+Instants = FromRun | FromInstants
 
 
 def _check_frequency(frequency: datetime.timedelta) -> None:
@@ -161,20 +164,18 @@ def _check_frequency(frequency: datetime.timedelta) -> None:
 def _precheck_from(value: Any) -> Any:
     """Reject the shapes that would otherwise fail as an opaque union error.
 
-    A pydantic union reports "Field required" for every member it tried, which
-    tells a recipe author nothing.  These three cases are the ones worth
-    naming, so they are caught before the union is attempted.
+    A pydantic union reports "Field required" for every member it tried, which tells a
+    recipe author nothing, so the cases worth naming are caught before the union.
+
+    Only the instant-valued shape is checked here. A reduction may also read
+    interval-valued source data (``accumulation:``, ``lookup-table:``, ``base_dates`` +
+    ``steps``), which is validated by the same union ``accumulate`` uses.
     """
     if not isinstance(value, dict):
         return value
 
-    found = sorted(k for k in value if k in _ACCUMULATE_ONLY_KEYS)
-    if found:
-        raise ValueError(
-            f"'from:' does not accept {found} — those describe interval-valued source data "
-            "and belong to 'accumulate:'. A time reduction reads instantaneous fields; "
-            "state their cadence with 'from: {frequency: ...}'"
-        )
+    if not _is_instant_valued(value):
+        return value
 
     base_dates = value.get("base_dates", value.get("base-dates"))
     if base_dates is not None and base_dates is not True and base_dates != FROM_LAYOUT:
@@ -192,22 +193,42 @@ def _precheck_from(value: Any) -> Any:
 
     if "steps" in value:
         raise ValueError(
-            "'from:' does not take 'steps' — the sample lead times are derived from the "
-            "output 'steps' and 'period' (the window (s - period, s] needs the lead times "
-            "s - period + k*frequency), so they are denser than the output steps. State "
-            "only the cadence, with 'frequency:'"
+            "'from:' with a 'frequency:' does not take 'steps' — the sample lead times are "
+            "derived from the output 'steps' and 'period' (the window (s - period, s] needs "
+            "the lead times s - period + k*frequency), so they are denser than the output "
+            "steps. State only the cadence, with 'frequency:'"
         )
 
     if "frequency" not in value:
         raise ValueError(
-            "'from:' needs a 'frequency:' — the cadence of the source data, e.g. " "'from: {frequency: 6h}'"
+            "'from:' needs a 'frequency:' -- the cadence of the source data, e.g. "
+            "'from: {frequency: 6h}'. For fields that each span an interval rather than "
+            "existing every so often, say 'accumulation:' instead"
         )
 
     return value
 
 
-#: The ``from:`` field as it appears in the schema: pre-checked, then matched
-#: structurally against the union.
+def _is_instant_valued(value: dict) -> bool:
+    """Whether a ``from:`` mapping describes fields that *exist every* frequency.
+
+    ``frequency:`` decides it: no interval-valued shape carries one at the top level.
+    A mapping with neither a ``frequency:`` nor an interval-valued marker is treated as
+    instant-valued too, so a shape that *meant* to be one and forgot its cadence gets
+    the message about ``frequency:`` rather than a union error.
+
+    The fallback cannot simply be "no interval markers", because ``steps:`` appears in
+    both shapes: it is the description of a trajectory archive, and it is forbidden
+    alongside a ``frequency:`` because the sample lead times are derived.
+    """
+    return "frequency" in value or not any(k in value for k in _INTERVAL_VALUED_KEYS)
+
+
+#: Every shape a reduction accepts: instantaneous samples, or the interval-valued
+#: descriptions ``accumulate`` reads. Recognised structurally, pre-checked so that the
+#: instant-valued mistakes get a message instead of a union error.
+From = Instants | _IntervalValued
+
 FromField = Annotated[From, BeforeValidator(_precheck_from)]
 
 #: Built once — a per-call model would rebuild pydantic's validator every time.
@@ -267,6 +288,11 @@ class ReduceSchema(BaseModel):
         """Whether ``from:`` describes the run the trajectory layout imposes."""
         return isinstance(self.from_, FromRun)
 
+    @property
+    def is_instant_valued(self) -> bool:
+        """Whether ``from:`` describes instantaneous fields rather than intervals."""
+        return isinstance(self.from_, (FromInstants, FromRun))
+
     @model_validator(mode="before")
     @classmethod
     def _require_from(cls, data: Any) -> Any:
@@ -275,10 +301,11 @@ class ReduceSchema(BaseModel):
         # bare "Field required".
         if isinstance(data, dict) and data.get("from", data.get("from_")) is None:
             raise ValueError(
-                "'from:' is required — state the cadence of the source data, e.g. "
-                "'from: {frequency: 6h}'. It cannot be recognised from the source: the "
-                "archive table is param-blind, and reducing an instantaneous parameter as "
-                "if it were accumulated fails silently"
+                "'from:' is required — state what the source data is, e.g. "
+                "'from: {frequency: 6h}' for instantaneous fields every 6h, or "
+                "'from: {accumulation: 1h}' for fields each spanning 1h. It cannot be "
+                "recognised from the source: the archive table is param-blind, and reducing "
+                "an instantaneous parameter as if it were accumulated fails silently"
             )
         return data
 
@@ -287,7 +314,8 @@ class ReduceSchema(BaseModel):
         if not (isinstance(self.source, dict) and len(self.source) == 1):
             raise ValueError(f"'source' must have exactly one key, got {sorted(self.source)}")
 
-        check_period(self.period, self.from_.frequency)
+        if isinstance(self.from_, (FromInstants, FromRun)):
+            check_period(self.period, self.from_.frequency)
         return self
 
 
