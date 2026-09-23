@@ -155,6 +155,9 @@ class WindowSourceBase(Source):
 
         for field in input_fields:
             identity = plan.identify(field)
+            # Read once, not once per target: this field is offered to every window
+            # that might want it.
+            info = plan.field_info(field)
             key = self._group_key(field)
             values = field.values
 
@@ -165,7 +168,7 @@ class WindowSourceBase(Source):
                     reducers[reducer_key] = plan.new_reducer(target, key, parts[target])
 
                 reducer = reducers[reducer_key]
-                if plan.offer(reducer, values, identity):
+                if plan.offer(reducer, values, identity, info):
                     used_by.append((target, reducer))
                     if reducer.is_complete():
                         fields.append(reducer.as_field(template=field))

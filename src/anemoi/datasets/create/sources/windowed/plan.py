@@ -60,13 +60,30 @@ class WindowPlan(ABC):
     def identify(self, field: Any) -> Any:
         """What this field *is*, in whatever terms the parts are expressed."""
 
+    def field_info(self, field: Any) -> Any:
+        """Anything else about *field* that :meth:`offer` needs, read once per field.
+
+        A field is offered to every window that might want it, so whatever `offer`
+        needs to know about the field itself would otherwise be read once per
+        ``(field, target)`` pair, or -- worse -- stashed on the plan by an earlier
+        call and read back later. The loop reads this once and hands the result to
+        every `offer`, so a plan needs no per-field mutable state and no ordering
+        contract between its methods.
+
+        The default is ``None``: the identity is all most plans need.
+        """
+        return None
+
     @abstractmethod
     def new_reducer(self, target: Target, key: tuple, parts: list[Part]) -> Any:
         """A reducer for one ``(target, variable)``, expecting *parts*."""
 
     @abstractmethod
-    def offer(self, reducer: Any, values: Any, identity: Any) -> bool:
-        """Offer a field to a reducer; True if it was needed."""
+    def offer(self, reducer: Any, values: Any, identity: Any, info: Any) -> bool:
+        """Offer a field to a reducer; True if it was needed.
+
+        *info* is whatever :meth:`field_info` returned for this field.
+        """
 
     def candidates(self, identity: Any, targets: list[Target]) -> list[Target]:
         """The targets whose window might contain *identity*.

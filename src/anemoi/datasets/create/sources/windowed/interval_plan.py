@@ -106,7 +106,6 @@ class IntervalPlan(WindowPlan):
         self.over = over
         self.forecast_items = forecast_items
         self._logs: Logs | None = None
-        self._statistic: str | None = None
 
     def _cover(self, start, end, basetime):
         """One window's subwindows, as the covering resolves them."""
@@ -215,13 +214,15 @@ class IntervalPlan(WindowPlan):
             basetime=basetime if self.basetime else None,
         )
 
-    def offer(self, reducer: Reducer, values: Any, identity: Any) -> bool:
-        return reducer.compute(values, identity, statistic=self._statistic)
-
     def identify(self, field: Any) -> Any:
-        # cached per field, so the statistic is read once rather than per target
-        self._statistic = field_statistic(field)
         return self.field_to_interval(field)
+
+    def field_info(self, field: Any) -> str:
+        """What statistic the field carries, for the field-time guard."""
+        return field_statistic(field)
+
+    def offer(self, reducer: Reducer, values: Any, identity: Any, info: Any) -> bool:
+        return reducer.compute(values, identity, statistic=info)
 
     # ── diagnostics ──────────────────────────────────────────────────
 

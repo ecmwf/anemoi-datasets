@@ -34,7 +34,6 @@ from .operations import Operation
 from .operations import operation_factory
 from .states import NON_ADDITIVE
 from .states import State
-from .states import SubwindowState
 
 LOG = logging.getLogger(__name__)
 
@@ -120,19 +119,13 @@ class Reducer:
             if state.is_complete:
                 continue
 
-            if statistic in NON_ADDITIVE and isinstance(state, SubwindowState) and not state.subwindow.is_direct:
-                # The recipe cannot tell us this -- `accumulate` declares no statistic --
-                # but the field can. Subtracting two maxima does not give the maximum
-                # over the difference of their intervals; it gives nothing meaningful.
-                if state._match(identity) is not None:
-                    raise ValueError(
-                        f"{self!r}: field carrying a {statistic!r} is used to reconstruct "
-                        f"{state.subwindow} by differencing {len(state.subwindow.contributions)} "
-                        f"archived fields. A {statistic!r} is not additive, so the result would "
-                        "be meaningless. Either this parameter is stored per step and 'from:' "
-                        "describes a different layout, or this window cannot be built from this "
-                        "archive at all."
-                    )
+            # The recipe cannot tell us this -- `accumulate` declares no statistic --
+            # but the field can. Subtracting two maxima does not give the maximum over
+            # the difference of their intervals; it gives nothing meaningful. The state
+            # says whether it differences and whether it wants this field; the reducer
+            # does not need to know what kind of state it is holding.
+            if statistic in NON_ADDITIVE and state.differences and state.wants(identity):
+                raise ValueError(f"{self!r}: {state.why_not(statistic)}")
 
             if state.accept(values, identity):
                 used = True

@@ -52,7 +52,7 @@ from .subwindows import Subwindow
 NON_ADDITIVE = frozenset({"max", "min", "avg"})
 
 
-def field_statistic(field: Any) -> str | None:
+def field_statistic(field: Any) -> str:
     """What statistic *field* carries over its interval, if it says.
 
     Two sources, because GRIB1 cannot state it in the message: ``proc.time_method`` is
@@ -63,9 +63,11 @@ def field_statistic(field: Any) -> str | None:
 
     Returns
     -------
-    str or None
-        ``accum``, ``max``, ``min``, ``avg``, ``instant``, or ``None`` if neither
-        source says anything.
+    str
+        ``accum``, ``max``, ``min``, ``avg``, or ``instant`` when neither source says
+        anything useful. Never ``None``: "the field does not say" and "the field says
+        instant" are the same answer here, because GRIB1 spells the first as the
+        second, and both leave the field permitted.
     """
     for read in (lambda: field.get("proc.time_method"), lambda: field.metadata("stepTypeForConversion")):
         try:
@@ -85,10 +87,25 @@ class State(ABC):
     #: How much this state counts for in a weighted reduction.
     weight: float
 
+    #: Whether this state rebuilds its part by *subtracting* archived fields. A field
+    #: carrying a statistic in :data:`NON_ADDITIVE` may not fill such a state -- see
+    #: :meth:`why_not`. Declared by the state because only the state knows how its
+    #: part is put together; :class:`~.reducer.Reducer` must not have to ask what
+    #: kind of state it is holding.
+    differences: bool = False
+
     @property
     @abstractmethod
     def is_complete(self) -> bool:
         """Whether every field this state needs has arrived."""
+
+    @abstractmethod
+    def wants(self, identity: Any) -> bool:
+        """Whether this state is still waiting for a field with this identity.
+
+        The question :meth:`accept` answers on the way to taking the values, asked
+        on its own so a caller can test it without offering anything.
+        """
 
     @abstractmethod
     def accept(self, values: NDArray, identity: Any) -> bool:
@@ -97,6 +114,14 @@ class State(ABC):
     @abstractmethod
     def release(self) -> NDArray:
         """Hand over the state's value and drop the reference."""
+
+    def why_not(self, statistic: str) -> str:
+        """Why a field carrying *statistic* must not fill this state.
+
+        Only called when :attr:`differences` is true, so the base implementation is
+        never reached; a state that sets the flag owns the explanation.
+        """
+        raise NotImplementedError
 
 
 class SubwindowState(State):
@@ -111,6 +136,9 @@ class SubwindowState(State):
     def __init__(self, subwindow: Subwindow) -> None:
         self.subwindow = subwindow
         self.weight = subwindow.weight
+        # A direct subwindow is one archived field taken as it is; anything else is
+        # rebuilt by a signed sum, which only means something for an additive quantity.
+        self.differences = not subwindow.is_direct
         self.todo: list[SignedInterval] = list(subwindow.contributions)
         self.done: list[SignedInterval] = []
         self._values: NDArray | None = None
@@ -126,6 +154,18 @@ class SubwindowState(State):
             if candidate.start == interval.start and candidate.end == interval.end and candidate.base is None:
                 return candidate
         return None
+
+    def wants(self, identity: Any) -> bool:
+        return self._match(identity) is not None
+
+    def why_not(self, statistic: str) -> str:
+        return (
+            f"field carrying a {statistic!r} is used to reconstruct {self.subwindow} by "
+            f"differencing {len(self.subwindow.contributions)} archived fields. A "
+            f"{statistic!r} is not additive, so the result would be meaningless. Either "
+            "this parameter is stored per step and 'from:' describes a different layout, "
+            "or this window cannot be built from this archive at all."
+        )
 
     def accept(self, values: NDArray, identity: Any) -> bool:
         matching = self._match(identity)
@@ -173,8 +213,11 @@ class SampleState(State):
     def is_complete(self) -> bool:
         return self._seen
 
+    def wants(self, identity: Any) -> bool:
+        return not self._seen and identity[0] == self.sample.valid_datetime
+
     def accept(self, values: NDArray, identity: Any) -> bool:
-        if self._seen or identity[0] != self.sample.valid_datetime:
+        if not self.wants(identity):
             return False
         assert isinstance(values, np.ndarray), type(values)
         # shared between every window that needs this sample

@@ -148,7 +148,9 @@ class SamplingPlan(WindowPlan):
             basetime=target[1],
         )
 
-    def offer(self, reducer: Reducer, values: Any, identity: Any) -> bool:
+    def offer(self, reducer: Reducer, values: Any, identity: Any, info: Any) -> bool:
+        # No `info`: an instantaneous field is taken as it is, so there is no
+        # differencing for a non-additive statistic to be wrong about.
         return reducer.compute(values, identity)
 
     def unused_field(self, field: Any, identity: Any) -> None:
