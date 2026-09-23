@@ -87,6 +87,13 @@ class AccumulateSource(WindowSourceBase):
             return value
 
         group_by = _pop_hyphenated("group_by", group_by)
+        if "over" in kwargs:
+            raise ValueError(
+                "accumulate: 'over:' does not apply to a sum. It states how long each "
+                "subwindow is, which matters only when the reduction differs from what a "
+                "subwindow carries -- and a sum of subwindows is the same whatever length "
+                "they are. Use it on 'maximum:'/'minimum:'/'average:'"
+            )
         if kwargs:
             raise TypeError(f"accumulate: unknown argument(s) {sorted(kwargs)}")
 

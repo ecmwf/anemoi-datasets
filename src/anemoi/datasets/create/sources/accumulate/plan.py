@@ -37,16 +37,22 @@ from ..windowed.reducer import Reducer
 from ..windowed.states import SubwindowState
 from ..windowed.states import field_statistic
 from ..windowed.subwindows import contributions_of
+from ..windowed.subwindows import validate_partition
 
 LOG = logging.getLogger(__name__)
 
 
 def _unique(intervals) -> list:
-    """The intervals, in order, with repeats dropped."""
+    """The intervals, in order, with repeats dropped.
+
+    Keyed on the *field* rather than the signed interval: ``+a(0,7)`` and ``-a(0,7)``
+    are one retrieval, and neighbouring subwindows of a cumulative archive share an
+    endpoint, so both spellings routinely appear in one window set.
+    """
     seen: dict = {}
     for interval in intervals:
-        seen.setdefault(interval, None)
-    return list(seen)
+        seen.setdefault((interval.min, interval.max, interval.base), interval)
+    return list(seen.values())
 
 
 class IntervalPlan(WindowPlan):
@@ -67,6 +73,11 @@ class IntervalPlan(WindowPlan):
         (a trajectory row) rather than the start of the window.
     operation : str or Operation, optional
         What reduces the subwindow values. Defaults to a sum.
+    over : datetime.timedelta, optional
+        The subwindow length. When given, the window is cut into ``over``-long parts
+        and each is covered on its own, instead of letting the search cover the whole
+        window as cheaply as it can. That is what turns a cumulative archive into
+        per-``over`` values to reduce -- "the wettest hour in the window".
     forecast_items : list, optional
         ``(valid_time, basetime)`` rows, when the subsource is the run the layout
         imposes; makes the argument a ``ForecastIntervals``.
@@ -80,6 +91,7 @@ class IntervalPlan(WindowPlan):
         field_to_interval: Any,
         basetime: bool = False,
         operation: Operation | str | None = None,
+        over: datetime.timedelta | None = None,
         forecast_items: list | None = None,
     ) -> None:
         self.period = period
@@ -88,17 +100,41 @@ class IntervalPlan(WindowPlan):
         self.field_to_interval = field_to_interval
         self.basetime = basetime
         self.operation = operation_factory(operation)
+        self.over = over
         self.forecast_items = forecast_items
         self._logs: Logs | None = None
         self._statistic: str | None = None
 
+    def _cover(self, start, end, basetime):
+        """One window's subwindows, as the covering resolves them."""
+        if self.forecast_items is not None:
+            return list(self.covering.partition(start, end, basetime=basetime))
+        return list(self.covering.partition(start, end))
+
+    def _partition(self, start, end, basetime) -> list:
+        """The window's subwindows, cut to ``over`` when one is declared.
+
+        Without ``over:`` the search covers the whole window as cheaply as it can,
+        which for a cumulative archive is one subwindow and two fields -- right for a
+        sum, and useless for anything else. With it, each ``over``-long part is
+        covered on its own, so the window comes back as N subwindows each rebuilt by
+        differencing.
+        """
+        if self.over is None:
+            return self._cover(start, end, basetime)
+
+        subwindows: list = []
+        at = start
+        while at < end:
+            subwindows.extend(self._cover(at, at + self.over, basetime))
+            at += self.over
+        validate_partition(subwindows, start, end)
+        return subwindows
+
     def parts_for(self, targets: list[Target]) -> dict[Target, list]:
         parts = {}
         for valid_date, basetime in targets:
-            if self.forecast_items is not None:
-                covering = self.covering.partition(valid_date - self.period, valid_date, basetime=basetime)
-            else:
-                covering = self.covering.partition(valid_date - self.period, valid_date)
+            covering = self._partition(valid_date - self.period, valid_date, basetime)
             parts[(valid_date, basetime)] = covering
             self._check_reducible(covering, valid_date - self.period, valid_date)
             LOG.debug("  Covering of %s to %s:", valid_date - self.period, valid_date)
@@ -118,9 +154,15 @@ class IntervalPlan(WindowPlan):
 
         ``from:`` and the block name are the only declarations we have, and in the
         ordinary case they agree: ``maximum:`` over a gust archive means the archived
-        fields are maxima. So a non-additive reduction needs every subwindow direct.
+        fields are maxima. So a non-additive reduction needs every subwindow direct --
+        unless ``over:`` says otherwise, which is the recipe declaring that the
+        underlying quantity is additive and stating how long each subwindow is.
+
+        Declaring ``over:`` does not make differencing safe on its own; it makes the
+        *quantity* well defined. Whether the archive is really additive is settled when
+        a field arrives, by :func:`~..windowed.states.field_statistic`.
         """
-        if self.operation.differenceable:
+        if self.operation.differenceable or self.over is not None:
             return
 
         differenced = [s for s in subwindows if not s.is_direct]
@@ -140,7 +182,10 @@ class IntervalPlan(WindowPlan):
             "Achievable windows are unions of whole archived intervals. Check that 'from:' "
             "describes how *this* parameter is stored -- a recognised description describes "
             "precipitation-style layouts, and a parameter such as wind gust is often archived "
-            "with different step ranges in the very same class/stream."
+            "with different step ranges in the very same class/stream.\n"
+            "If this parameter is additive after all -- a cumulative total rather than a "
+            f"stored {self.operation.name} -- then say how long each subwindow should be with "
+            "'over:', e.g. 'over: 1h' for the largest hourly value in the window."
         )
 
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:

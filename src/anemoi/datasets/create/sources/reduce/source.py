@@ -39,6 +39,7 @@ from typing import Any
 
 from anemoi.transform import FieldList
 from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
@@ -75,6 +76,10 @@ class ReduceSource(WindowSourceBase):
         The subsource, as a single-key dictionary (``{mars: {...}}``).
     period : str or int or datetime.timedelta
         The reduction window, e.g. ``24h``.
+    over : str or int or datetime.timedelta, optional
+        The subwindow length, for interval-valued source data. Cuts the window into
+        parts and covers each on its own, so a cumulative archive yields per-part
+        values: ``over: 1h`` under ``maximum:`` is the largest hourly total.
     group_by : dict, optional
         Which metadata keys identify a variable; same meaning and defaults as in
         ``accumulate``.
@@ -92,6 +97,7 @@ class ReduceSource(WindowSourceBase):
         context: Any,
         source: Any,
         period: str | int | datetime.timedelta,
+        over: str | int | datetime.timedelta | None = None,
         group_by: dict | None = None,
         **kwargs: Any,
     ) -> None:
@@ -122,7 +128,19 @@ class ReduceSource(WindowSourceBase):
         # which needs the description to pick the MARS `type` default.
         self._from = validate_from(from_)
 
+        self.over = frequency_to_timedelta(over) if over is not None else None
+
         super().__init__(context, source=source, period=period, group_by=group_by)
+
+        # Validated through the same schema as the recipe, so the two cannot drift.
+        ReduceSchema.model_validate(
+            {
+                "period": self.period,
+                "from": self._from,
+                "source": self.source,
+                **({"over": self.over} if self.over is not None else {}),
+            }
+        )
 
         if self.is_instant_valued:
             # Raises when the window is not a whole number of samples.
@@ -156,7 +174,7 @@ class ReduceSource(WindowSourceBase):
     def _hash_parts(self) -> tuple:
         if self.is_instant_valued:
             return (str(self.frequency), self.is_run_anchored)
-        return (self._from.model_dump_json(),)
+        return (self._from.model_dump_json(), str(self.over))
 
     def _plan(self, basetime: bool = False):
         """The plan for this source data: samples inside the window, or subwindows of it."""
@@ -174,6 +192,7 @@ class ReduceSource(WindowSourceBase):
             source=self.source,
             field_to_interval=FieldToInterval(),
             operation=self.operation,
+            over=self.over,
             basetime=basetime,
         )
 

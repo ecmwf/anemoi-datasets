@@ -217,6 +217,64 @@ def test_a_direct_subwindow_accepts_any_statistic(statistic):
     assert reducer.compute(np.array([1.0]), _interval(0, 1), statistic=statistic) is True
 
 
+# ── over: reducing what differencing produced ────────────────────────
+
+
+def _hourly_from_cumulative(first_hour: int, hours: int):
+    """Subwindows [h, h+1] rebuilt as +a(0,h+1) - a(0,h), as ``over: 1h`` produces."""
+    return [
+        Subwindow(interval=_interval(h, h + 1), contributions=(_interval(0, h + 1), -_interval(0, h)))
+        for h in range(first_hour, first_hour + hours)
+    ]
+
+
+#: Cumulative totals at steps 1..5, i.e. hourly increments of 1, 6, 1, 1.
+CUMULATIVE = {1: 2.0, 2: 3.0, 3: 9.0, 4: 10.0, 5: 11.0}
+
+
+def _feed(reducer, statistic="accum"):
+    for step, total in CUMULATIVE.items():
+        reducer.compute(np.array([total]), _interval(0, step), statistic=statistic)
+
+
+def test_max_of_differenced_subwindows_is_the_wettest_hour():
+    """What ``over: 1h`` under ``maximum:`` computes, at the level it computes it.
+
+    Neither the maximum of the cumulative fields (11) nor the window total (9) is the
+    answer, which is the whole reason the subwindows exist.
+    """
+    reducer = _reducer(
+        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4)
+    )
+    _feed(reducer)
+
+    assert reducer.is_complete()
+    assert np.array_equal(reducer.values, [6.0]), "the wettest hour"
+
+
+def test_the_same_subwindows_summed_give_the_window_total():
+    """Only the reduction differs: summing them re-accumulates the window."""
+    reducer = _reducer(
+        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="sum", period=_hours(4)
+    )
+    _feed(reducer)
+
+    assert np.array_equal(reducer.values, [9.0]), "11 - 2, the total over [1,5]"
+
+
+def test_a_non_additive_field_is_still_refused_with_over():
+    """``over:`` says how long a subwindow is, not that differencing is safe.
+
+    A gust archive differenced into hourly parts is meaningless however the parts
+    are then reduced; the field's own statistic is what catches it.
+    """
+    reducer = _reducer(
+        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4)
+    )
+    with pytest.raises(ValueError, match="is not additive"):
+        reducer.compute(np.array([1.0]), _interval(0, 2), statistic="max")
+
+
 # ── a part carries its own weight ─────────────────────────────────────
 
 

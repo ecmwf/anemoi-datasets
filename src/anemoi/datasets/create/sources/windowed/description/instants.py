@@ -281,6 +281,11 @@ class ReduceSchema(BaseModel):
     source: dict[str, Any]
     from_: FromField = Field(alias="from")
 
+    #: The subwindow length. Only for interval-valued source data, and only needed
+    #: when the reduction differs from what a subwindow would otherwise carry -- see
+    #: :meth:`_check_over`.
+    over: Frequency | None = None
+
     group_by: dict[str, Any] | None = None
 
     @property
@@ -316,7 +321,44 @@ class ReduceSchema(BaseModel):
 
         if isinstance(self.from_, (FromInstants, FromRun)):
             check_period(self.period, self.from_.frequency)
+        self._check_over()
         return self
+
+    def _check_over(self) -> None:
+        """Validate ``over:``, the length of each subwindow.
+
+        ``over:`` cuts the window into parts and covers each on its own, so that a
+        cumulative archive yields per-part values to reduce -- "the largest hourly
+        total in the window". It is meaningless for source data that is already a
+        series of instants: there is nothing to de-accumulate, and the samples'
+        spacing is ``frequency:``.
+        """
+        if self.over is None:
+            return
+
+        if self.is_instant_valued:
+            raise ValueError(
+                "'over:' is for source data whose fields each span an interval, which is "
+                "cut into 'over'-long subwindows. This 'from:' describes instantaneous "
+                "fields; their spacing is 'frequency:', and there is nothing to subdivide"
+            )
+
+        if self.over <= datetime.timedelta(0):
+            raise ValueError(f"'over' must be positive, got {frequency_to_string(self.over)}")
+
+        if self.over > self.period:
+            raise ValueError(
+                f"'over' ({frequency_to_string(self.over)}) cannot exceed 'period' "
+                f"({frequency_to_string(self.period)}): it is the length of a subwindow *of* "
+                "the window"
+            )
+
+        if self.period % self.over != datetime.timedelta(0):
+            raise ValueError(
+                f"'over' ({frequency_to_string(self.over)}) must divide 'period' "
+                f"({frequency_to_string(self.period)}) -- the window is cut into whole "
+                "subwindows"
+            )
 
 
 def check_period(period: datetime.timedelta, frequency: datetime.timedelta) -> None:

@@ -665,3 +665,103 @@ def test_the_same_covering_is_fine_for_a_sum() -> None:
     targets = [(datetime.datetime(2021, 1, 1, 12), None)]
     subwindows = accumulating._plan().parts_for(targets)[targets[0]]
     assert len(subwindows) == 1 and not subwindows[0].is_direct
+
+
+# ── over: the subwindow length ───────────────────────────────────────
+
+#: A cumulative archive: every field is the total since the run started.
+CUMULATIVE = {
+    "base_dates": {"times": [0]},
+    "steps": {"start": "1h", "end": "24h", "frequency": "1h"},
+    "accumulation": "from-zero",
+}
+
+
+def _over_source(name: str, over: str | None = None, period: str = "6h"):
+    from anemoi.datasets.create.sources import source_registry
+
+    kwargs = {"over": over} if over is not None else {}
+    return source_registry.lookup(name)(
+        context=_FakeContext([]),
+        source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+        period=period,
+        **{"from": CUMULATIVE},
+        **kwargs,
+    )
+
+
+_TARGETS = [(datetime.datetime(2021, 1, 1, 12), None)]
+
+
+def test_without_over_a_cumulative_archive_cannot_be_maximised() -> None:
+    """One subwindow spanning the window carries a sum, and a max of one value is it."""
+    with pytest.raises(ValueError) as excinfo:
+        _over_source("maximum")._plan().parts_for(_TARGETS)
+
+    message = str(excinfo.value)
+    assert "does not hold outright" in message
+    assert "'over:'" in message, "the error should name the remedy"
+
+
+def test_over_cuts_the_window_into_subwindows() -> None:
+    """Each hour is covered on its own, so each is a differenced 1h total."""
+    from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
+
+    subwindows = _over_source("maximum", over="1h")._plan().parts_for(_TARGETS)[_TARGETS[0]]
+
+    assert len(subwindows) == 6
+    assert all(not s.is_direct for s in subwindows), "each is rebuilt by differencing"
+    assert all(s.interval.end - s.interval.start == datetime.timedelta(hours=1) for s in subwindows)
+    assert len(contributions_of(subwindows)) == 12
+
+
+def test_over_retrieves_each_field_once() -> None:
+    """Neighbouring subwindows share an endpoint: a(0,7) closes one and opens the next."""
+    from anemoi.datasets.create.sources.accumulate.plan import _unique
+    from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
+
+    plan = _over_source("maximum", over="1h")._plan()
+    subwindows = plan.parts_for(_TARGETS)[_TARGETS[0]]
+    assert len(_unique(contributions_of(subwindows))) == 7, "12 contributions, 7 fields"
+
+
+def test_over_does_not_change_a_window_it_already_matches() -> None:
+    """over: equal to period is the whole window, i.e. what the search would do anyway."""
+    subwindows = _over_source("maximum", over="6h")._plan().parts_for(_TARGETS)[_TARGETS[0]]
+    assert len(subwindows) == 1
+
+
+@pytest.mark.parametrize(
+    "over,match",
+    [("4h", "must divide"), ("12h", "cannot exceed"), ("0h", "must be positive")],
+)
+def test_over_must_be_a_whole_part_of_the_period(over: str, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        _over_source("maximum", over=over)
+
+
+def test_over_is_meaningless_for_instantaneous_source_data() -> None:
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match="nothing to subdivide"):
+        source_registry.lookup("average")(
+            context=_FakeContext([]),
+            source=dict(SOURCE),
+            period="6h",
+            over="1h",
+            **{"from": {"frequency": "1h"}},
+        )
+
+
+def test_accumulate_refuses_over() -> None:
+    """A sum of subwindows is the same whatever length they are."""
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match="does not apply to a sum"):
+        source_registry.lookup("accumulate")(
+            context=_FakeContext([]),
+            source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+            period="6h",
+            over="1h",
+            **{"from": {"accumulation": "1h"}},
+        )
