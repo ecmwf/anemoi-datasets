@@ -42,49 +42,13 @@ from anemoi.utils.dates import frequency_to_string
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from ..windowed.interval_generators import IntervalGenerator
-from ..windowed.interval_generators import interval_generator_factory
-
-
-def check_covering(
-    covering: Iterable[SignedInterval],
-    start: datetime.datetime,
-    end: datetime.datetime,
-) -> list[SignedInterval]:
-    """Assert a covering's signed lengths add up to ``[start, end]``.
-
-    The whole contract of this layer is that the accumulator can sum the
-    covering's fields — each multiplied by its interval's sign — and get
-    the accumulation over ``[start, end]``.  Nothing downstream re-checks
-    it: ``Reducer.is_complete()`` only verifies that every declared
-    interval turned up, so a covering that does not add up would silently
-    produce a wrong field.  Every :meth:`Covering.cover` implementation
-    passes its result through here.
-
-    Parameters
-    ----------
-    covering
-        The signed intervals produced for the window.
-    start, end
-        The requested accumulation window.
-
-    Returns
-    -------
-    list
-        The covering, unchanged.
-    """
-    covering = list(covering)
-    total = sum(i.length for i in covering)
-    wanted = (end - start).total_seconds()
-    if total != wanted:
-        detail = "\n".join(f"    {'+' if i.length >= 0 else '-'} {i}" for i in covering)
-        raise ValueError(
-            f"Covering of {start} → {end} does not add up: its signed lengths total "
-            f"{_signed_frequency_string(total)}, expected {_signed_frequency_string(wanted)}. "
-            f"The intervals were:\n{detail}\n"
-            "Summing these would produce a wrong accumulation, so the build is stopped."
-        )
-    return covering
+from .interval_generators import IntervalGenerator
+from .interval_generators import interval_generator_factory
+from .subwindows import Subwindow
+from .subwindows import direct
+from .subwindows import group_intervals_into_subwindows
+from .subwindows import validate_contributions
+from .subwindows import validate_partition
 
 
 def _signed_frequency_string(seconds: float) -> str:
@@ -96,20 +60,21 @@ def _signed_frequency_string(seconds: float) -> str:
 class Covering(ABC):
     """Strategy producing a covering of an accumulation window.
 
-    Subclasses implement :meth:`cover` to return the list of
-    ``SignedInterval`` objects whose signed sum equals
-    ``[start, end]`` — enforced by :func:`check_covering`.
+    Subclasses implement :meth:`partition` to return the :class:`Subwindow` objects
+    partitioning ``[start, end]``.  The signed freedom lives *inside* a subwindow,
+    where contributions are always summed; between subwindows there is only a
+    partition.
     """
 
     @abstractmethod
-    def cover(
+    def partition(
         self,
         start: datetime.datetime,
         end: datetime.datetime,
         *,
         basetime: datetime.datetime | None = None,
     ) -> Iterable[SignedInterval]:
-        """Return a covering of ``[start, end]``.
+        """Partition ``[start, end]`` into subwindows.
 
         Parameters
         ----------
@@ -123,8 +88,9 @@ class Covering(ABC):
 
         Returns
         -------
-        Iterable[SignedInterval]
-            The signed intervals covering ``[start, end]``.
+        Iterable[Subwindow]
+            Subwindows partitioning ``[start, end]`` exactly, each carrying the
+            archived intervals that reconstruct it.
         """
 
 
@@ -139,19 +105,19 @@ class AutoCovering(Covering):
     def __init__(self, availability: IntervalGenerator) -> None:
         self.availability = availability
 
-    def cover(
+    def partition(
         self,
         start: datetime.datetime,
         end: datetime.datetime,
         *,
         basetime: datetime.datetime | None = None,
-    ) -> Iterable[SignedInterval]:
+    ) -> Iterable[Subwindow]:
         if basetime is not None:
             raise NotImplementedError(
                 "AutoCovering does not honour an externally-imposed basetime; "
                 "use ForecastCovering for the trajectory case."
             )
-        return check_covering(self.availability.search_intervals(start, end), start, end)
+        return group_intervals_into_subwindows(self.availability.search_intervals(start, end), start, end)
 
 
 class ForecastCovering(Covering):
@@ -183,7 +149,7 @@ class ForecastCovering(Covering):
     """
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
-        from ..windowed.description import parse_accumulation
+        from .description import parse_accumulation
 
         # `_length` is the scheme's timedelta parameter: the reset frequency
         # for from-zero-reset, the increment length for a duration, else None.
@@ -191,15 +157,15 @@ class ForecastCovering(Covering):
         self.period = period
         self.accumulation = accumulation
 
-    def cover(
+    def partition(
         self,
         start: datetime.datetime,
         end: datetime.datetime,
         *,
         basetime: datetime.datetime | None = None,
-    ) -> list[SignedInterval]:
+    ) -> list[Subwindow]:
         if basetime is None:
-            raise ValueError("ForecastCovering.cover requires an explicit basetime.")
+            raise ValueError("ForecastCovering.partition requires an explicit basetime.")
 
         zero = datetime.timedelta(0)
         step_end = end - basetime
@@ -214,23 +180,23 @@ class ForecastCovering(Covering):
             raise ValueError(f"Window {start}..{end} has non-positive length relative to basetime {basetime}.")
 
         if self._kind == "from-zero":
-            covering: list[SignedInterval] = []
-            covering.append(
-                SignedInterval(
-                    start=basetime,
-                    end=basetime + step_end,
-                    base=basetime,
-                )
+            # Built explicitly rather than grouped: this is the one covering whose
+            # intervals are not a chain. It is a flat signed decomposition -- the
+            # whole accumulation minus the part before the window -- which was fine
+            # while the consumer only summed them, and says nothing about which
+            # part of the window they rebuild. There is exactly one: the window.
+            whole = SignedInterval(start=basetime, end=basetime + step_end, base=basetime)
+            if step_start == zero:
+                # the window starts at the basetime, so the archive holds it outright
+                return [direct(whole)]
+
+            subwindow = Subwindow(
+                interval=SignedInterval(start=start, end=end),
+                contributions=(whole, -SignedInterval(start=basetime, end=basetime + step_start, base=basetime)),
             )
-            if step_start > zero:
-                covering.append(
-                    -SignedInterval(
-                        start=basetime,
-                        end=basetime + step_start,
-                        base=basetime,
-                    )
-                )
-            return check_covering(covering, start, end)
+            validate_contributions(subwindow)
+            validate_partition([subwindow], start, end)
+            return [subwindow]
 
         if self._kind == "from-zero-reset":
             reset = self._length
@@ -257,7 +223,7 @@ class ForecastCovering(Covering):
                     )
                 )
                 cycle += reset
-            return check_covering(covering, start, end)
+            return group_intervals_into_subwindows(covering, start, end)
 
         # increment (a fixed per-step window of length ``L``): tile the
         # requested window with ``L``-long increments and sum them, so a
@@ -283,7 +249,7 @@ class ForecastCovering(Covering):
                 )
             )
             k += length
-        return check_covering(covering, start, end)
+        return group_intervals_into_subwindows(covering, start, end)
 
 
 class ValidTimeCovering(Covering):
@@ -310,13 +276,13 @@ class ValidTimeCovering(Covering):
     def __init__(self, length: datetime.timedelta) -> None:
         self.length = length
 
-    def cover(
+    def partition(
         self,
         start: datetime.datetime,
         end: datetime.datetime,
         *,
         basetime: datetime.datetime | None = None,
-    ) -> list[SignedInterval]:
+    ) -> list[Subwindow]:
         if basetime is not None:
             raise NotImplementedError(
                 "ValidTimeCovering describes base-less source data and does not honour "
@@ -335,7 +301,7 @@ class ValidTimeCovering(Covering):
         while t < end:
             covering.append(SignedInterval(start=t, end=t + self.length, base=None))
             t += self.length
-        return check_covering(covering, start, end)
+        return group_intervals_into_subwindows(covering, start, end)
 
 
 def covering_factory(

@@ -32,6 +32,7 @@ from ..windowed.plan import Target
 from ..windowed.plan import WindowPlan
 from ..windowed.reducer import Logs
 from ..windowed.reducer import Reducer
+from ..windowed.subwindows import contributions_of
 
 LOG = logging.getLogger(__name__)
 
@@ -78,27 +79,29 @@ class IntervalPlan(WindowPlan):
         parts = {}
         for valid_date, basetime in targets:
             if self.forecast_items is not None:
-                covering = self.covering.cover(valid_date - self.period, valid_date, basetime=basetime)
+                covering = self.covering.partition(valid_date - self.period, valid_date, basetime=basetime)
             else:
-                covering = self.covering.cover(valid_date - self.period, valid_date)
+                covering = self.covering.partition(valid_date - self.period, valid_date)
             parts[(valid_date, basetime)] = covering
-            LOG.debug("  Found covering intervals for %s to %s:", valid_date - self.period, valid_date)
-            for interval in covering:
-                LOG.debug("    %s", interval)
+            LOG.debug("  Covering of %s to %s:", valid_date - self.period, valid_date)
+            for subwindow in covering:
+                LOG.debug("    %s", subwindow)
+                for contribution in subwindow.contributions:
+                    LOG.debug("       %s", contribution)
         return parts
 
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:
         if self.forecast_items is not None:
             return ForecastIntervals(
                 items=[(vt, bt, self.period) for vt, bt in self.forecast_items],
-                intervals=[i for t in targets for i in parts[t]],
+                intervals=contributions_of(s for t in targets for s in parts[t]),
             )
 
         # Overlapping rows can request the same subsource window more than once; fetch
         # each interval once, since matching remaps it onto every row that needs it.
         seen: dict = {}
         for target in targets:
-            for interval in parts[target]:
+            for interval in contributions_of(parts[target]):
                 seen.setdefault(interval, None)
         return Intervals(dates=sorted({vt for vt, _ in targets}), intervals=list(seen))
 
@@ -111,7 +114,7 @@ class IntervalPlan(WindowPlan):
             valid_date,
             period=self.period,
             key=key,
-            coverage=parts,
+            coverage=contributions_of(parts),
             basetime=basetime if self.basetime else None,
         )
 
