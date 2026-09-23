@@ -13,6 +13,9 @@ A window is the sample times ``(valid - period, valid]`` on the source cadence, 
 field is identified by its validity time. Run-anchored source data identifies a field
 by ``(validity time, basetime)`` as well: the same validity time reached from two runs
 is two different fields and must never be reduced together.
+
+Used by ``average`` / ``minimum`` / ``maximum``; it lives here beside
+:mod:`.interval_plan` because a plan is shared machinery, not a recipe key's business.
 """
 
 from __future__ import annotations
@@ -27,11 +30,11 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
 
-from ..windowed.plan import Target
-from ..windowed.plan import WindowPlan
-from ..windowed.reducer import Reducer
-from ..windowed.samples import Sample
-from ..windowed.states import SampleState
+from .plan import Target
+from .plan import WindowPlan
+from .reducer import Reducer
+from .samples import Sample
+from .states import SampleState
 
 LOG = logging.getLogger(__name__)
 
@@ -99,7 +102,7 @@ class SamplingPlan(WindowPlan):
         return (valid_datetime, basetime if self.run_anchored else None)
 
     def parts_for(self, targets: list[Target]) -> dict[Target, list]:
-        from ..windowed.description import window_samples
+        from .description import window_samples
 
         parts = {t: [Sample(s) for s in window_samples(t[0], self.period, self.frequency)] for t in targets}
 

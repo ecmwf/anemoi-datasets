@@ -36,7 +36,7 @@ from ..windowed.description import normalise_from
 from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.interval_generators import LookupTableIntervalGenerator
 from ..windowed.source import WindowSourceBase
-from .plan import IntervalPlan
+from ..windowed.interval_plan import IntervalPlan
 
 LOG = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ class AccumulateSource(WindowSourceBase):
         """Build the Covering for the validity-date path from the description."""
         description = self._resolved_from()
         if description is not None:
-            return covering_from_description(description, period=self.period)
+            return covering_from_description(description, period=self.period, source_name=self.name)
 
         # Deprecated 'covering:'/'availability:' -- the legacy machinery.
         return covering_factory(self.covering, self._source_name, self.source[self._source_name])

@@ -14,9 +14,12 @@ spans. Unlike sample times those identities are not looked up but *matched*, on 
 endpoints and base, with a fallback for a base-less generator -- so every target is
 offered every field and the reducer decides.
 
-That is also why this plan carries :class:`~..windowed.reducer.Logs`: when a field fits
-no window there is nothing to point at, so `accumulate` keeps a running account of what
-arrived and where it went.
+That is also why this plan carries :class:`~.reducer.Logs`: when a field fits no window
+there is nothing to point at, so it keeps a running account of what arrived and where it
+went.
+
+Used by ``accumulate`` and by the reductions over interval-valued source data, which is
+why it lives here rather than beside either of them.
 """
 
 from __future__ import annotations
@@ -28,16 +31,16 @@ from typing import Any
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 
-from ..windowed.plan import Target
-from ..windowed.plan import WindowPlan
-from ..windowed.operations import Operation
-from ..windowed.operations import operation_factory
-from ..windowed.reducer import Logs
-from ..windowed.reducer import Reducer
-from ..windowed.states import SubwindowState
-from ..windowed.states import field_statistic
-from ..windowed.subwindows import contributions_of
-from ..windowed.subwindows import validate_partition
+from .plan import Target
+from .plan import WindowPlan
+from .operations import Operation
+from .operations import operation_factory
+from .reducer import Logs
+from .reducer import Reducer
+from .states import SubwindowState
+from .states import field_statistic
+from .subwindows import contributions_of
+from .subwindows import validate_partition
 
 LOG = logging.getLogger(__name__)
 
@@ -160,7 +163,7 @@ class IntervalPlan(WindowPlan):
 
         Declaring ``over:`` does not make differencing safe on its own; it makes the
         *quantity* well defined. Whether the archive is really additive is settled when
-        a field arrives, by :func:`~..windowed.states.field_statistic`.
+        a field arrives, by :func:`~.states.field_statistic`.
         """
         if self.operation.differenceable or self.over is not None:
             return

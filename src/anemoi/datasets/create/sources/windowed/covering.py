@@ -366,7 +366,7 @@ def covering_factory(
     return AutoCovering(availability)
 
 
-def covering_from_description(description, *, period, source_name: str = "accumulate") -> Covering:
+def covering_from_description(description, *, period, source_name: str) -> Covering:
     """Build the :class:`Covering` a source-data description implies.
 
     Shared by every window source, so the same ``from:`` resolves the same way
@@ -379,7 +379,8 @@ def covering_from_description(description, *, period, source_name: str = "accumu
     period : datetime.timedelta
         The requested window, needed to check a base-less increment source.
     source_name : str
-        The recipe block, for error messages.
+        The recipe block the description came from, for error messages. Required:
+        this is shared machinery, so it cannot assume one caller's identity.
 
     Returns
     -------

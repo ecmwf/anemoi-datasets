@@ -717,7 +717,7 @@ def test_over_cuts_the_window_into_subwindows() -> None:
 
 def test_over_retrieves_each_field_once() -> None:
     """Neighbouring subwindows share an endpoint: a(0,7) closes one and opens the next."""
-    from anemoi.datasets.create.sources.accumulate.plan import _unique
+    from anemoi.datasets.create.sources.windowed.interval_plan import _unique
     from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
 
     plan = _over_source("maximum", over="1h")._plan()

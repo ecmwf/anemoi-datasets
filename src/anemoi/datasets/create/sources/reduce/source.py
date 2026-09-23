@@ -55,8 +55,8 @@ from ..windowed.description.instants import FromRun
 from ..windowed.covering import covering_from_description
 from ..windowed.reducer import describe
 from ..windowed.source import WindowSourceBase
-from ..accumulate.plan import IntervalPlan
-from .plan import SamplingPlan
+from ..windowed.interval_plan import IntervalPlan
+from ..windowed.sampling_plan import SamplingPlan
 
 LOG = logging.getLogger(__name__)
 
