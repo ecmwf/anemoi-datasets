@@ -725,10 +725,32 @@ def test_over_retrieves_each_field_once() -> None:
     assert len(_unique(contributions_of(subwindows))) == 7, "12 contributions, 7 fields"
 
 
-def test_over_does_not_change_a_window_it_already_matches() -> None:
-    """over: equal to period is the whole window, i.e. what the search would do anyway."""
-    subwindows = _over_source("maximum", over="6h")._plan().parts_for(_TARGETS)[_TARGETS[0]]
-    assert len(subwindows) == 1
+def test_an_omitted_over_means_the_whole_window() -> None:
+    """`over` defaults to `period`: the window is one part, which is what the search gives."""
+    default = _over_source("maximum")._plan()
+    explicit = _over_source("maximum", over="6h")._plan()
+    start, end = _TARGETS[0][0] - default.period, _TARGETS[0][0]
+
+    assert default.over == default.period
+
+    # `_partition` rather than `parts_for`, so this tests the partition alone and not
+    # the guard that both of these then fail (see below).
+    whole = default._partition(start, end, None)
+    assert len(whole) == 1
+    assert [s.interval for s in explicit._partition(start, end, None)] == [s.interval for s in whole]
+
+
+def test_over_equal_to_period_does_not_lift_the_guard() -> None:
+    """Writing `over: 6h` on a 6h window declares nothing, so it excuses nothing.
+
+    `over:` lifts the covering guard by declaring that the quantity is additive *and*
+    how long each subwindow is. At the full period it states only what the default
+    already is, so a max over one differenced whole-window part stays refused -- which
+    is the original bug, and testing "was `over:` written" instead of "is it shorter
+    than the window" would have let it through on every recipe that mentions `over:`.
+    """
+    with pytest.raises(ValueError, match="does not hold outright"):
+        _over_source("maximum", over="6h")._plan().parts_for(_TARGETS)
 
 
 @pytest.mark.parametrize(

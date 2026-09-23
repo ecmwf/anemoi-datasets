@@ -28,6 +28,8 @@ import datetime
 import logging
 from typing import Any
 
+from anemoi.utils.dates import frequency_to_string
+
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 
@@ -77,10 +79,11 @@ class IntervalPlan(WindowPlan):
     operation : str or Operation, optional
         What reduces the subwindow values. Defaults to a sum.
     over : datetime.timedelta, optional
-        The subwindow length. When given, the window is cut into ``over``-long parts
-        and each is covered on its own, instead of letting the search cover the whole
-        window as cheaply as it can. That is what turns a cumulative archive into
-        per-``over`` values to reduce -- "the wettest hour in the window".
+        The subwindow length; defaults to *period*, i.e. the window is one part. A
+        shorter value cuts the window into ``over``-long parts and covers each on its
+        own, instead of letting the search cover the whole window as cheaply as it
+        can. That is what turns a cumulative archive into per-``over`` values to
+        reduce -- "the wettest hour in the window".
     forecast_items : list, optional
         ``(valid_time, basetime)`` rows, when the subsource is the run the layout
         imposes; makes the argument a ``ForecastIntervals``.
@@ -103,9 +106,35 @@ class IntervalPlan(WindowPlan):
         self.field_to_interval = field_to_interval
         self.basetime = basetime
         self.operation = operation_factory(operation)
-        self.over = over
+        # Unstated, the subwindow length is the whole window: the window is one part,
+        # so the reduction has one value to reduce and the result is that part.
+        self.over = over if over is not None else period
+        self._check_over()
         self.forecast_items = forecast_items
         self._logs: Logs | None = None
+
+    def _check_over(self) -> None:
+        """Validate the subwindow length against the window.
+
+        The recipe schema checks this too, but a plan can be built directly -- by the
+        reductions, by a test, by anything later -- and an unchecked ``over`` fails
+        much further on, inside :func:`~.subwindows.validate_partition`, complaining
+        about a covering that does not line up rather than about the length that made
+        it so.
+        """
+        if self.over <= datetime.timedelta(0):
+            raise ValueError(f"'over' must be positive, got {frequency_to_string(self.over)}")
+        if self.over > self.period:
+            raise ValueError(
+                f"'over' ({frequency_to_string(self.over)}) cannot exceed 'period' "
+                f"({frequency_to_string(self.period)}): a subwindow is part of the window."
+            )
+        if self.period % self.over != datetime.timedelta(0):
+            raise ValueError(
+                f"'over' ({frequency_to_string(self.over)}) must divide 'period' "
+                f"({frequency_to_string(self.period)}) exactly, or the subwindows would "
+                "not partition the window."
+            )
 
     def _cover(self, start, end, basetime):
         """One window's subwindows, as the covering resolves them."""
@@ -114,17 +143,15 @@ class IntervalPlan(WindowPlan):
         return list(self.covering.partition(start, end))
 
     def _partition(self, start, end, basetime) -> list:
-        """The window's subwindows, cut to ``over`` when one is declared.
+        """The window's subwindows: each ``over``-long slice, covered on its own.
 
-        Without ``over:`` the search covers the whole window as cheaply as it can,
-        which for a cumulative archive is one subwindow and two fields -- right for a
-        sum, and useless for anything else. With it, each ``over``-long part is
-        covered on its own, so the window comes back as N subwindows each rebuilt by
-        differencing.
+        ``over`` defaults to the whole period, so the default runs this loop exactly
+        once and asks the covering for ``[start, end]`` -- which is what the search
+        has always been asked. For a cumulative archive that is one subwindow and two
+        fields: right for a sum, and useless for anything else. A shorter ``over``
+        covers each slice separately, so the window comes back as N subwindows each
+        rebuilt by differencing.
         """
-        if self.over is None:
-            return self._cover(start, end, basetime)
-
         subwindows: list = []
         at = start
         while at < end:
@@ -157,14 +184,19 @@ class IntervalPlan(WindowPlan):
         ``from:`` and the block name are the only declarations we have, and in the
         ordinary case they agree: ``maximum:`` over a gust archive means the archived
         fields are maxima. So a non-additive reduction needs every subwindow direct --
-        unless ``over:`` says otherwise, which is the recipe declaring that the
-        underlying quantity is additive and stating how long each subwindow is.
+        unless the recipe asked for subwindows *shorter than the window*, which is it
+        declaring that the underlying quantity is additive and stating how long each
+        subwindow is.
+
+        Note the test is ``over < period``, not "was ``over:`` written". Since ``over``
+        defaults to the period, testing whether it was given would lift this guard on
+        every recipe and the check would never fire at all.
 
         Declaring ``over:`` does not make differencing safe on its own; it makes the
         *quantity* well defined. Whether the archive is really additive is settled when
         a field arrives, by :func:`~.states.field_statistic`.
         """
-        if self.operation.differenceable or self.over is not None:
+        if self.operation.differenceable or self.over < self.period:
             return
 
         differenced = [s for s in subwindows if not s.is_direct]
