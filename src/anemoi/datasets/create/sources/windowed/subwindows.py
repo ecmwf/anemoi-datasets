@@ -57,6 +57,15 @@ class Subwindow:
         return len(self.contributions) == 1 and self.contributions[0].sign > 0
 
     @property
+    def weight(self) -> float:
+        """How much this part counts for in a weighted reduction: its own length.
+
+        A sample weighs 1 instead; keeping the weight on the *part* is what lets one
+        ``Mean`` serve both, length-weighted where the partition mixes granularities.
+        """
+        return abs(self.interval.length)
+
+    @property
     def start(self) -> datetime.datetime:
         return self.interval.start
 

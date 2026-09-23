@@ -32,20 +32,28 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
+from .samples import Sample
+from .subwindows import Subwindow
+
 #: A build target: ``(valid_date, basetime)``, with *basetime* ``None`` outside a
 #: trajectory layout.
 Target = tuple
+
+#: One of the things a window is made of. The two are not alike: subwindows *partition*
+#: the window, samples are instants inside it and partition nothing. What they share is
+#: that each yields one value and one weight, which is all a reduction needs.
+Part = Subwindow | Sample
 
 
 class WindowPlan(ABC):
     """Resolve windows into parts, and match arriving fields to them."""
 
     @abstractmethod
-    def parts_for(self, targets: list[Target]) -> dict[Target, list]:
+    def parts_for(self, targets: list[Target]) -> dict[Target, list[Part]]:
         """The parts each target's window is made of, keyed by target."""
 
     @abstractmethod
-    def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:
+    def argument(self, targets: list[Target], parts: dict[Target, list[Part]]) -> Any:
         """What to ask the subsource for (a ``ValidDates``/``Intervals``/... argument)."""
 
     @abstractmethod
@@ -53,7 +61,7 @@ class WindowPlan(ABC):
         """What this field *is*, in whatever terms the parts are expressed."""
 
     @abstractmethod
-    def new_reducer(self, target: Target, key: tuple, parts: list) -> Any:
+    def new_reducer(self, target: Target, key: tuple, parts: list[Part]) -> Any:
         """A reducer for one ``(target, variable)``, expecting *parts*."""
 
     @abstractmethod

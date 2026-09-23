@@ -435,16 +435,24 @@ def test_a_variable_missing_for_a_whole_date_is_an_error() -> None:
     Completeness alone cannot see that — there is nothing to be incomplete —
     so the (date, variable) grid is checked separately.
     """
-    from anemoi.datasets.create.sources.reduce.reducer import AverageReducer
+    from anemoi.datasets.create.sources.windowed.reducer import Reducer
+    from anemoi.datasets.create.sources.windowed.samples import Sample
+    from anemoi.datasets.create.sources.windowed.states import SampleState
 
     source = _source("average", [])
     dates = _dates(12, 18)
 
-    def complete_reducer(date: datetime.datetime, param: str) -> AverageReducer:
+    def complete_reducer(date: datetime.datetime, param: str) -> Reducer:
         samples = window_samples(date, source.period, source.frequency)
-        reducer = AverageReducer(date, period=source.period, key=(("param", param),), samples=samples)
+        reducer = Reducer(
+            date,
+            period=source.period,
+            key=(("param", param),),
+            states=[SampleState(Sample(s)) for s in samples],
+            operation="average",
+        )
         for sample in samples:
-            reducer.compute(np.zeros(4), sample)
+            reducer.compute(np.zeros(4), (sample, None))
         assert reducer.is_complete()
         return reducer
 
@@ -562,5 +570,6 @@ def test_the_same_validity_time_from_two_runs_is_not_folded_together() -> None:
 def test_each_source_stamps_its_own_time_method(name: str, time_method: str) -> None:
     """``proc.time_method`` is what anemoi-transform reads back as the statistical process."""
     from anemoi.datasets.create.sources import source_registry
+    from anemoi.datasets.create.sources.windowed.operations import operation_factory
 
-    assert source_registry.lookup(name).reducer_class.time_method == time_method
+    assert operation_factory(source_registry.lookup(name).operation).time_method == time_method

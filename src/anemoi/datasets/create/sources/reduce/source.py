@@ -49,13 +49,9 @@ from ..windowed.description import check_window_inside_run
 from ..windowed.description import validate_from
 from ..windowed.description import window_samples
 from ..windowed.description.instants import FromRun
+from ..windowed.reducer import describe
 from ..windowed.source import WindowSourceBase
 from .plan import SamplingPlan
-from .reducer import AverageReducer
-from .reducer import MaximumReducer
-from .reducer import MinimumReducer
-from .reducer import SampleReducer
-from .reducer import describe
 
 LOG = logging.getLogger(__name__)
 
@@ -65,7 +61,7 @@ class ReduceSource(WindowSourceBase):
 
     Not registered itself: the registered sources are :class:`AverageSource`,
     :class:`MinimumSource` and :class:`MaximumSource`, which differ only in
-    :attr:`reducer_class`.
+    :attr:`operation`.
 
     Parameters
     ----------
@@ -84,8 +80,8 @@ class ReduceSource(WindowSourceBase):
 
     schema = ReduceSchema
 
-    #: The reduction this source performs.
-    reducer_class: type[SampleReducer]
+    #: The reduction this source performs, by name.
+    operation: str
 
     def __init__(
         self,
@@ -149,7 +145,7 @@ class ReduceSource(WindowSourceBase):
         return SamplingPlan(
             period=self.period,
             frequency=self.frequency,
-            reducer_class=self.reducer_class,
+            operation=self.operation,
             run_anchored=self.is_run_anchored,
             name=self.name,
         )
@@ -233,7 +229,7 @@ class AverageSource(ReduceSource):
     """Time-average of instantaneous source fields over ``period``."""
 
     name = "average"
-    reducer_class = AverageReducer
+    operation = "average"
 
 
 @source_registry.register("minimum")
@@ -241,7 +237,7 @@ class MinimumSource(ReduceSource):
     """Time-minimum of instantaneous source fields over ``period``."""
 
     name = "minimum"
-    reducer_class = MinimumReducer
+    operation = "minimum"
 
 
 @source_registry.register("maximum")
@@ -249,4 +245,4 @@ class MaximumSource(ReduceSource):
     """Time-maximum of instantaneous source fields over ``period``."""
 
     name = "maximum"
-    reducer_class = MaximumReducer
+    operation = "maximum"

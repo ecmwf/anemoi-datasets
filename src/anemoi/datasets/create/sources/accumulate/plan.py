@@ -32,6 +32,8 @@ from ..windowed.plan import Target
 from ..windowed.plan import WindowPlan
 from ..windowed.reducer import Logs
 from ..windowed.reducer import Reducer
+from ..windowed.states import SubwindowState
+from ..windowed.states import field_statistic
 from ..windowed.subwindows import contributions_of
 
 LOG = logging.getLogger(__name__)
@@ -74,6 +76,7 @@ class IntervalPlan(WindowPlan):
         self.basetime = basetime
         self.forecast_items = forecast_items
         self._logs: Logs | None = None
+        self._statistic: str | None = None
 
     def parts_for(self, targets: list[Target]) -> dict[Target, list]:
         parts = {}
@@ -105,21 +108,24 @@ class IntervalPlan(WindowPlan):
                 seen.setdefault(interval, None)
         return Intervals(dates=sorted({vt for vt, _ in targets}), intervals=list(seen))
 
-    def identify(self, field: Any) -> Any:
-        return self.field_to_interval(field)
-
     def new_reducer(self, target: Target, key: tuple, parts: list) -> Reducer:
         valid_date, basetime = target
         return Reducer(
             valid_date,
             period=self.period,
             key=key,
-            coverage=contributions_of(parts),
+            states=[SubwindowState(subwindow) for subwindow in parts],
+            operation="sum",
             basetime=basetime if self.basetime else None,
         )
 
     def offer(self, reducer: Reducer, values: Any, identity: Any) -> bool:
-        return reducer.compute(values, identity)
+        return reducer.compute(values, identity, statistic=self._statistic)
+
+    def identify(self, field: Any) -> Any:
+        # cached per field, so the statistic is read once rather than per target
+        self._statistic = field_statistic(field)
+        return self.field_to_interval(field)
 
     # ── diagnostics ──────────────────────────────────────────────────
 

@@ -29,7 +29,9 @@ from anemoi.datasets.create.arguments import ValidDates
 
 from ..windowed.plan import Target
 from ..windowed.plan import WindowPlan
-from .reducer import SampleReducer
+from ..windowed.reducer import Reducer
+from ..windowed.samples import Sample
+from ..windowed.states import SampleState
 
 LOG = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ class SamplingPlan(WindowPlan):
         The reduction window.
     frequency : datetime.timedelta
         The cadence of the source data.
-    reducer_class : type
+    operation : str
         The reduction to perform.
     run_anchored : bool
         Whether the source data is the run the trajectory layout imposes.
@@ -80,10 +82,10 @@ class SamplingPlan(WindowPlan):
         The recipe key, for error messages.
     """
 
-    def __init__(self, period, frequency, reducer_class, run_anchored: bool, name: str) -> None:
+    def __init__(self, period, frequency, operation: str, run_anchored: bool, name: str) -> None:
         self.period = period
         self.frequency = frequency
-        self.reducer_class = reducer_class
+        self.operation = operation
         self.run_anchored = run_anchored
         self.name = name
         self._needed_by: dict = {}
@@ -99,14 +101,14 @@ class SamplingPlan(WindowPlan):
     def parts_for(self, targets: list[Target]) -> dict[Target, list]:
         from ..windowed.description import window_samples
 
-        parts = {t: window_samples(t[0], self.period, self.frequency) for t in targets}
+        parts = {t: [Sample(s) for s in window_samples(t[0], self.period, self.frequency)] for t in targets}
 
         # Windows overlap whenever `period` exceeds the output frequency, so one field
         # commonly feeds several of them.
         self._needed_by = defaultdict(list)
         for target in targets:
             for sample in parts[target]:
-                self._needed_by[self._sample_id(sample, target[1])].append(target)
+                self._needed_by[self._sample_id(sample.valid_datetime, target[1])].append(target)
 
         LOG.debug(
             "%s: %d target(s) x %s / %s -> %d source sample(s)",
@@ -122,9 +124,9 @@ class SamplingPlan(WindowPlan):
         if self.run_anchored:
             # Each sample belongs to the run of its own row.
             return ForecastDates(
-                sorted({(sample, t[1]) for t in targets for sample in parts[t]})
+                sorted({(sample.valid_datetime, t[1]) for t in targets for sample in parts[t]})
             )
-        return ValidDates(sorted({sample for t in targets for sample in parts[t]}))
+        return ValidDates(sorted({sample.valid_datetime for t in targets for sample in parts[t]}))
 
     def identify(self, field: Any) -> Any:
         basetime = base_datetime_of(field) if self.run_anchored else None
@@ -133,15 +135,26 @@ class SamplingPlan(WindowPlan):
     def candidates(self, identity: Any, targets: list[Target]) -> list[Target]:
         return self._needed_by.get(identity, ())
 
-    def new_reducer(self, target: Target, key: tuple, parts: list) -> SampleReducer:
-        return self.reducer_class(
-            target[0], period=self.period, key=key, samples=parts, basetime=target[1]
+    def new_reducer(self, target: Target, key: tuple, parts: list) -> Reducer:
+        return Reducer(
+            target[0],
+            period=self.period,
+            key=key,
+            states=[SampleState(sample) for sample in parts],
+            operation=self.operation,
+            basetime=target[1],
         )
 
-    def offer(self, reducer: SampleReducer, values: Any, identity: Any) -> bool:
-        return reducer.compute(values, identity[0])
+    def offer(self, reducer: Reducer, values: Any, identity: Any) -> bool:
+        return reducer.compute(values, identity)
 
     def unused_field(self, field: Any, identity: Any) -> None:
+        if self._needed_by.get(identity):
+            # Some window wanted this sample, so every one of them already has it.
+            raise ValueError(
+                f"{self.name}: sample {identity[0]} was already reduced into every window "
+                f"that needs it; the source returned {field} twice"
+            )
         run = f" of the run based at {identity[1]}" if self.run_anchored else ""
         raise ValueError(
             f"{self.name}: field {field} (valid {identity[0]}{run}) is not part of any "
