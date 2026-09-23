@@ -20,6 +20,12 @@ class LoadSource:
     def __init__(self, get_test_data_func) -> None:
         self._get_test_data = get_test_data_func
 
+        #: Every MARS request this instance was asked for, in order, as
+        #: ``{"md5": ..., "request": [args, kwargs]}``.  The fixtures are keyed by
+        #: that md5, so this is the record of what the recipe asked the archive
+        #: for -- see ``test_create._check_mars_requests``.
+        self.requests: list[dict] = []
+
     def filename(self, args: tuple, kwargs: dict) -> str:
         """Generate a filename based on the arguments and keyword arguments.
 
@@ -37,6 +43,7 @@ class LoadSource:
         """
         string = json.dumps([args, kwargs], sort_keys=True, default=str)
         h = hashlib.md5(string.encode("utf8")).hexdigest()
+        self.requests.append({"md5": h, "request": json.loads(string)})
         return h + ".grib"
 
     def get_data(self, args: tuple, kwargs: dict, path: str) -> None:

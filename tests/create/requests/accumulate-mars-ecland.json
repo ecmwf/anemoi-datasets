@@ -1,0 +1,68 @@
+[
+  {
+    "md5": "62cafdf9d7679f91829f40770d238fbd",
+    "count": 4,
+    "request": [
+      [],
+      {
+        "class": "rd",
+        "date": "20191231",
+        "expver": "isc8",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": [
+          "e",
+          "ro",
+          "sf",
+          "slhf",
+          "sshf",
+          "ssr",
+          "ssrd",
+          "str",
+          "strd",
+          "tp"
+        ],
+        "step": 24,
+        "time": "0000",
+        "type": "fc"
+      }
+    ]
+  },
+  {
+    "md5": "7e671b384820dc2861e34fe39a48b563",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "rd",
+        "date": [
+          "20200101",
+          "20200102"
+        ],
+        "expver": "isc8",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": [
+          "e",
+          "ro",
+          "sf",
+          "slhf",
+          "sshf",
+          "ssr",
+          "ssrd",
+          "str",
+          "strd",
+          "tp"
+        ],
+        "step": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "time": "0000",
+        "type": "fc"
+      }
+    ]
+  }
+]

@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import glob
+import json
 import logging
 import os
 from unittest.mock import patch
@@ -60,6 +61,92 @@ def load_source(get_test_data: GetTestData) -> LoadSource:
     return LoadSource(get_test_data)
 
 
+
+MARS_REQUESTS = os.path.join(HERE, "requests")
+
+#: Set to 1 to rewrite the recorded requests instead of checking them.
+UPDATE_MARS_REQUESTS = os.environ.get("ANEMOI_UPDATE_MARS_REQUESTS") == "1"
+
+
+def _tally(requests: list) -> dict:
+    """Collapse recorded requests to ``md5 -> {count, request}``.
+
+    Counting rather than de-duplicating on purpose: retrieving the same field
+    twice is a real defect, not a detail, so it has to show up in the diff.
+    """
+    tally: dict = {}
+    for entry in requests:
+        seen = tally.setdefault(entry["md5"], {"count": 0, "request": entry["request"]})
+        seen["count"] += 1
+    return tally
+
+
+def _check_mars_requests(name: str, requests: list) -> None:
+    """Assert the recipe asked MARS for exactly what it asked for last time.
+
+    The mock fixtures are keyed by an md5 of the request, so any change to which
+    fields a recipe retrieves makes the lookup miss -- and ``LoadSource.get_data``
+    then calls ``exit(1)``, killing the whole run with nothing useful said. Checking
+    the requests first turns that into a readable diff.
+
+    This runs *before* the reference-dataset comparison below, deliberately: "did we
+    ask the archive for the right things" is the more fundamental question, and it
+    keeps working while a reference is stale.
+
+    Parameters
+    ----------
+    name : str
+        The recipe name; names the file the requests are recorded in.
+    requests : list
+        What ``LoadSource`` recorded during the build.
+
+    Raises
+    ------
+    AssertionError
+        If the requests differ from the recorded ones.
+    """
+    path = os.path.join(MARS_REQUESTS, name + ".json")
+    tally = _tally(requests)
+
+    if UPDATE_MARS_REQUESTS:
+        if tally:
+            os.makedirs(MARS_REQUESTS, exist_ok=True)
+            with open(path, "w") as f:
+                json.dump([dict(md5=k, **v) for k, v in sorted(tally.items())], f, indent=2)
+                f.write("\n")
+        elif os.path.exists(path):
+            os.remove(path)
+        return
+
+    if not os.path.exists(path):
+        assert not tally, (
+            f"{name} issued {len(tally)} MARS request(s) but has no recorded baseline.\n"
+            "Regenerate with ANEMOI_UPDATE_MARS_REQUESTS=1"
+        )
+        return
+
+    with open(path) as f:
+        expected = {e["md5"]: {"count": e["count"], "request": e["request"]} for e in json.load(f)}
+
+    errors = []
+    for md5 in sorted(set(expected) | set(tally)):
+        was, now = expected.get(md5), tally.get(md5)
+        if was is None:
+            errors.append(f"  + asked for something new: {json.dumps(now['request'])}")
+        elif now is None:
+            errors.append(f"  - no longer asked for:     {json.dumps(was['request'])}")
+        elif was["count"] != now["count"]:
+            errors.append(
+                f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}"
+            )
+
+    assert not errors, (
+        f"{name} no longer asks MARS for the same fields:\n"
+        + "\n".join(errors)
+        + "\n\nIf the change is intended, regenerate with ANEMOI_UPDATE_MARS_REQUESTS=1"
+    )
+
+
 SKIPPED_TESTS = ["recentre"]
 
 
@@ -97,6 +184,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         output = os.path.join(HERE, name + ".zarr")
 
         create_dataset(recipe=recipe, output=output, delta=["12h"])
+
+        _check_mars_requests(name, load_source.requests)
 
         missing_reference = False
         try:
