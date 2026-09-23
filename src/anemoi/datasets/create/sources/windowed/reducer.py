@@ -49,7 +49,18 @@ class Reducer:
         self.values = None  # will hold accumulated values array
 
     def is_complete(self, **kwargs) -> bool:
-        """Check whether the accumulation is complete (all intervals have been processed)"""
+        """Per-window state: fill each part of the window, then reduce the parts.
+
+One :class:`Reducer` per ``(valid_date, basetime, variable)``. It holds one
+:class:`~.states.State` per part -- a subwindow or a sample -- and works at two levels:
+
+- a **state** gathers the fields its part needs and makes one value; for a subwindow
+  that is a signed sum, which is where differencing happens;
+- the **operation** reduces each completed value into the window value, and the state's
+  array is released.
+
+Peak memory is therefore bounded by the parts still incomplete, not by the window.
+"""
         return not self.todo
 
     def compute(self, values: NDArray, interval: SignedInterval) -> None:

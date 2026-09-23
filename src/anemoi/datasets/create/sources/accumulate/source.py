@@ -8,19 +8,14 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import hashlib
 import json
 import logging
 from typing import Any
 
 from anemoi.transform import FieldList
-from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ForecastIntervals
-from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
 from ..windowed.clip import apply_clip
@@ -38,10 +33,9 @@ from ..windowed.description import check_valid_time_source
 from ..windowed.description import infer_from_trajectories
 from ..windowed.description import normalise_from
 from ..windowed.field_to_interval import FieldToInterval
-from ..windowed.groupby import patch_groupby_keys
 from ..windowed.interval_generators import LookupTableIntervalGenerator
-from ..windowed.reducer import Logs
-from ..windowed.reducer import Reducer
+from ..windowed.source import WindowSourceBase
+from .plan import IntervalPlan
 
 LOG = logging.getLogger(__name__)
 
@@ -55,8 +49,9 @@ LOG = logging.getLogger(__name__)
 
 
 @source_registry.register("accumulate")
-class AccumulateSource(Source):
+class AccumulateSource(WindowSourceBase):
 
+    name = "accumulate"
     schema = AccumulateSchema
 
     def __init__(
@@ -72,8 +67,6 @@ class AccumulateSource(Source):
         clip: Any = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(context)
-
         # `from` is a Python keyword, so it can only arrive through kwargs.
         # A raw recipe spells it `from:`; a recipe that has been through the
         # pydantic schema is dumped by field name and spells it `from_`.
@@ -110,48 +103,11 @@ class AccumulateSource(Source):
             warn=False,
         )
 
-        self.source = source
-        self.period = frequency_to_timedelta(period)
         self.patch = patch
-        self.group_by = patch_groupby_keys(group_by)
         self.clip = normalise_clip(clip)
         self._field_to_interval = FieldToInterval(patch)
-        self._source_name = self._prepare_source()
 
-    # ── shared helpers ───────────────────────────────────────────────
-
-    def _prepare_source(self):
-        """Validate source config and apply MARS defaults."""
-        source = self.source
-        assert (
-            isinstance(source, dict) and len(source) == 1
-        ), f"Source must have exactly one key, got {list(source.keys())}"
-        source_name, source_config = next(iter(source.items()))
-        if source_name == "mars":
-            if "type" not in source_config:
-                source_config["type"] = "fc"
-                LOG.warning("Assuming 'type: fc' for mars source as it was not specified in the recipe")
-            if "levtype" not in source_config:
-                source_config["levtype"] = "sfc"
-                LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
-        return source_name
-
-    def _create_source_object(self, *extra_hash_parts):
-        """Create a cached source object keyed by content hash."""
-        h = hashlib.md5(
-            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True, default=str).encode()
-        ).hexdigest()
-        return self.context.create_source(self.source, "data_sources", h)
-
-    def _extract_field_info(self, field):
-        """Extract values, grouping key, time interval, and log string from a field."""
-        values = field.values.copy()
-        meta = field.get(collections=f"metadata.{self.group_by['namespace']}")
-        key = {k: v for k, v in meta.items() if k not in self.group_by["ignore"]}
-        key = tuple(sorted(key.items()))
-        log = " ".join(f"{k}={v}" for k, v in meta.items())
-        field_interval = self._field_to_interval(field)
-        return values, key, field_interval, log
+        super().__init__(context, source=source, period=period, group_by=group_by)
 
     def _finalise(self, reducers, fields):
         """Clean empty reducers, validate completeness, and return the dataset."""
@@ -177,76 +133,6 @@ class AccumulateSource(Source):
         for f in ds:
             LOG.debug("  %s", f)
         return ds
-
-    def _accumulate_fields(self, source_object, intervals, targets, coverages) -> tuple:
-        """Process fields from source and fill reducers.
-
-        Parameters
-        ----------
-        source_object
-            Source factory callable (called as ``source_object(context, intervals)``).
-        intervals
-            ``Intervals`` or ``ForecastIntervals`` to pass to *source_object*.
-        targets
-            List of ``(vdate, basetime)`` tuples.  For the valid-date path
-            *basetime* is ``None``.
-        coverages
-            Dict mapping each target tuple to its list of covering intervals.
-
-        Returns
-        -------
-        tuple
-            ``(reducers, fields)``.
-        """
-        fields = []
-        reducers = {}
-        # Execute the inner source once; the same FieldList feeds the main
-        # loop and, on failure, the diagnostic dump in Logs.
-        input_fields = source_object(self.context, intervals)
-        logs = Logs(
-            reducers=reducers,
-            source=self.source,
-            source_object=input_fields,
-            field_to_interval=self._field_to_interval,
-        )
-        for field in input_fields:
-            # for each field provided by the catalogue, find which reducers need it and perform accumulation
-            values, key, field_interval, log = self._extract_field_info(field)
-            logs.append([str(field), log, field_interval, [], []])
-
-            field_used = False
-            for target in targets:
-                # The target defines the accumulation we want to produce,
-                # A target is a tuple:
-                #    - (validity_date, None) for valid-date accumulations
-                #    - (validity_date, basetime) for forecast accumulations (trajectories)
-                # The covering intervals coverage[target] defines which intervals are needed.
-                vdate, basetime = target
-                accumulator_key = (*target, key)
-                if accumulator_key not in reducers:
-                    reducers[accumulator_key] = Reducer(
-                        vdate,
-                        period=self.period,
-                        key=key,
-                        coverage=coverages[target],
-                        basetime=basetime,
-                    )
-
-                reducer = reducers[accumulator_key]
-
-                if reducer.compute(values, field_interval):
-                    # actual computation happened in this .compute() method
-                    field_used = True
-                    logs[-1][3].append(target)
-                    logs[-1][4].append(reducer.__repr__(verbose=True))
-
-                    if reducer.is_complete():
-                        fields.append(reducer.as_field(template=field))
-
-            if not field_used:
-                logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
-
-        return reducers, fields
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -302,23 +188,18 @@ class AccumulateSource(Source):
         recognition of a non-well-known source fails loudly at that point.
         """
         LOG.debug("💬 source for accumulations: %s", self.source)
-        source_object = self._create_source_object(self._description_hash_part())
-        covering_obj = self._searched_covering()
-
-        # generate the interval coverage for every date
-        coverages = {}
         for d in dates:
             if not isinstance(d, datetime.datetime):
                 raise TypeError("valid_date must be a datetime.datetime instance")
-            coverages[(d, None)] = covering_obj.cover(d - self.period, d)
-            LOG.debug(f"  Found covering intervals: for {d - self.period} to {d}:")
-            for c in coverages[(d, None)]:
-                LOG.debug(f"    {c}")
 
-        intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
+        plan = IntervalPlan(
+            period=self.period,
+            covering=self._searched_covering(),
+            source=self.source,
+            field_to_interval=self._field_to_interval,
+        )
         targets = [(d, None) for d in dates]
-
-        reducers, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
+        reducers, fields = self._run(plan, targets, self._description_hash_part())
 
         # Final checks
         for date in dates:
@@ -367,24 +248,16 @@ class AccumulateSource(Source):
         signed decomposition of :class:`ForecastCovering` — no search over the
         source data.
         """
-        source_object = self._create_source_object(description.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=description.accumulation)
-
-        coverages: dict = {}
-        for vt, bt in dates.items:
-            coverages[(vt, bt)] = covering.cover(vt - self.period, vt, basetime=bt)
-            LOG.debug("  Forecast covering for (vt=%s, bt=%s):", vt, bt)
-            for c in coverages[(vt, bt)]:
-                LOG.debug("    %s", c)
-
-        forecast_intervals = ForecastIntervals(
-            items=[(vt, bt, self.period) for vt, bt in dates.items],
-            intervals=[i for vt, bt in dates.items for i in coverages[(vt, bt)]],
+        items = list(dates.items)
+        plan = IntervalPlan(
+            period=self.period,
+            covering=ForecastCovering(period=self.period, accumulation=description.accumulation),
+            source=self.source,
+            field_to_interval=self._field_to_interval,
+            basetime=True,
+            forecast_items=items,
         )
-        targets = [(vt, bt) for vt, bt in dates.items]
-
-        reducers, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
-
+        reducers, fields = self._run(plan, list(items), description.accumulation)
         return self._finalise(reducers, fields)
 
     def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
@@ -399,26 +272,19 @@ class AccumulateSource(Source):
         stamped as a forecast field at the layout's ``(basetime, step)`` because
         the accumulator is given that basetime.
         """
-        source_object = self._create_source_object(self._description_hash_part())
-        covering_obj = self._searched_covering()
-
-        items = list(dates.items)
-        coverages: dict = {}
-        for vt, bt in items:
-            coverages[(vt, bt)] = covering_obj.cover(vt - self.period, vt)
-            LOG.debug("  Reconstructed covering for (vt=%s, bt=%s):", vt, bt)
-            for c in coverages[(vt, bt)]:
-                LOG.debug("    %s", c)
-
-        # Overlapping trajectory rows can request the same subsource window more
-        # than once; fetch each interval once (matching remaps it to every row).
-        seen: dict = {}
-        for vt, bt in items:
-            for i in coverages[(vt, bt)]:
-                seen.setdefault(i, None)
-        intervals = Intervals(dates=sorted({vt for vt, _ in items}), intervals=list(seen))
-        targets = [(vt, bt) for vt, bt in items]
-
-        reducers, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
-
+        plan = IntervalPlan(
+            period=self.period,
+            covering=self._searched_covering(),
+            source=self.source,
+            field_to_interval=self._field_to_interval,
+            basetime=True,
+        )
+        targets = list(dates.items)
+        reducers, fields = self._run(plan, targets, self._description_hash_part())
         return self._finalise(reducers, fields)
+
+    def _run(self, plan: IntervalPlan, targets: list, *hash_parts: Any) -> tuple:
+        """Resolve the coverings, fetch and reduce."""
+        parts = plan.parts_for(targets)
+        source_object = self._create_source_object(*hash_parts)
+        return self._reduce_fields(plan, source_object, plan.argument(targets, parts), targets, parts)
