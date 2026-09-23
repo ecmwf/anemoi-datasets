@@ -42,8 +42,8 @@ from anemoi.utils.dates import frequency_to_string
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .interval_generators import IntervalGenerator
-from .interval_generators import interval_generator_factory
+from ..windowed.interval_generators import IntervalGenerator
+from ..windowed.interval_generators import interval_generator_factory
 
 
 def check_covering(
@@ -56,7 +56,7 @@ def check_covering(
     The whole contract of this layer is that the accumulator can sum the
     covering's fields — each multiplied by its interval's sign — and get
     the accumulation over ``[start, end]``.  Nothing downstream re-checks
-    it: ``Accumulator.is_complete()`` only verifies that every declared
+    it: ``Reducer.is_complete()`` only verifies that every declared
     interval turned up, so a covering that does not add up would silently
     produce a wrong field.  Every :meth:`Covering.cover` implementation
     passes its result through here.
@@ -131,7 +131,7 @@ class Covering(ABC):
 class AutoCovering(Covering):
     """Search-based covering over an :class:`IntervalGenerator`.
 
-    Wraps the existing ``IntervalGenerator.covering_intervals`` search.
+    Wraps the existing ``IntervalGenerator.search_intervals`` search.
     ``basetime`` is not honoured (passing a non-``None`` basetime raises
     ``NotImplementedError``).
     """
@@ -151,7 +151,7 @@ class AutoCovering(Covering):
                 "AutoCovering does not honour an externally-imposed basetime; "
                 "use ForecastCovering for the trajectory case."
             )
-        return check_covering(self.availability.covering_intervals(start, end), start, end)
+        return check_covering(self.availability.search_intervals(start, end), start, end)
 
 
 class ForecastCovering(Covering):
@@ -183,7 +183,7 @@ class ForecastCovering(Covering):
     """
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
-        from .description import parse_accumulation
+        from ..windowed.description import parse_accumulation
 
         # `_length` is the scheme's timedelta parameter: the reset frequency
         # for from-zero-reset, the increment length for a duration, else None.

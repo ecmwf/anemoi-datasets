@@ -18,8 +18,8 @@ from anemoi.utils.testing import skip_if_offline
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.recipe import Recipe
-from anemoi.datasets.create.sources.reduce_support import ReduceSchema
-from anemoi.datasets.create.sources.reduce_support import window_samples
+from anemoi.datasets.create.sources.reduce import ReduceSchema
+from anemoi.datasets.create.sources.reduce import window_samples
 
 from .utils.create import create_dataset
 
@@ -435,7 +435,7 @@ def test_a_variable_missing_for_a_whole_date_is_an_error() -> None:
     Completeness alone cannot see that — there is nothing to be incomplete —
     so the (date, variable) grid is checked separately.
     """
-    from anemoi.datasets.create.sources.reduce_support.reducer import AverageReducer
+    from anemoi.datasets.create.sources.reduce.reducer import AverageReducer
 
     source = _source("average", [])
     dates = _dates(12, 18)

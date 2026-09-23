@@ -20,7 +20,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.datasets.create.intervals import SignedInterval
 from anemoi.datasets.create.intervals import step_to_timedelta
 
-from .covering_intervals import covering_intervals
+from .search import search_intervals
 
 LOG = logging.getLogger(__name__)
 
@@ -52,11 +52,11 @@ def build_interval(
 
 class IntervalGenerator:
     """Abstract base class to generate intervals.
-    Call to IntervalGenerator will provide candidate intervals to be selected by the covering_intervals method
+    Call to IntervalGenerator will provide candidate intervals to be selected by the search_intervals method
     """
 
     @abstractmethod
-    def covering_intervals(self, start: datetime, end: datetime) -> Iterable[SignedInterval]:
+    def search_intervals(self, start: datetime, end: datetime) -> Iterable[SignedInterval]:
         pass
 
     @abstractmethod
@@ -114,12 +114,12 @@ class SearchableIntervalGenerator(IntervalGenerator):
 
         self.patterns: list[Pattern] = patterns
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+    def search_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
         """Perform interval search among candidates with minimal base switches and length.
         Candidates are given by self call
         Return available SignedIntervals covering the period start->end (where start>end is possible)
         """
-        return covering_intervals(start, end, self)
+        return search_intervals(start, end, self)
 
     def __call__(
         self,
@@ -174,7 +174,7 @@ class LookupTableIntervalGenerator(SearchableIntervalGenerator):
 
         self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
+    def search_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
         """Cover ``[start, end]`` using only the intervals its table entry declares.
 
         The table pins *which* archived intervals may be used (that is the
@@ -195,7 +195,7 @@ class LookupTableIntervalGenerator(SearchableIntervalGenerator):
                         out.append(oriented)
             return out
 
-        return covering_intervals(start, end, candidates)
+        return search_intervals(start, end, candidates)
 
     def _entry_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
         """Return the intervals declared by the table entry covering ``[start, end]``."""
@@ -350,9 +350,9 @@ def _interval_generator_factory(
             raise NotImplementedError(f"Unknown availability config {config}")
 
         case {"mars": mars_config}:
-            from .description import FromTrajectories
-            from .description import TrajectoryIntervalGenerator
-            from .description import _mars_archive_description
+            from ..windowed.description import FromTrajectories
+            from ..windowed.description import TrajectoryIntervalGenerator
+            from ..windowed.description import _mars_archive_description
 
             _class = mars_config.get("class")
             _stream = mars_config.get("stream")

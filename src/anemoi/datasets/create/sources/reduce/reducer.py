@@ -9,10 +9,10 @@
 
 """The reduction strategies — one window of samples collapsed to one field.
 
-:class:`Reducer` is to the time-reduction sources what ``Accumulator`` is to
+:class:`SampleReducer` is to the time-reduction sources what ``SampleReducer`` is to
 ``accumulate``: one object per ``(valid_date, grouping key)``, holding the
 samples it still expects and the running reduction of those it has seen.  The
-subclasses differ only in how a sample is folded in (:meth:`Reducer._combine`)
+subclasses differ only in how a sample is folded in (:meth:`SampleReducer._combine`)
 and in the ``proc.time_method`` they stamp on the output.
 """
 
@@ -55,7 +55,7 @@ def _register_min_time_method() -> None:
 _register_min_time_method()
 
 
-class Reducer(ABC):
+class SampleReducer(ABC):
     """Reduce the source samples of one window to a single field.
 
     Parameters
@@ -210,7 +210,7 @@ class Reducer(ABC):
         return default
 
 
-class AverageReducer(Reducer):
+class AverageReducer(SampleReducer):
     """Arithmetic mean of the window's samples."""
 
     time_method = "avg"
@@ -222,7 +222,7 @@ class AverageReducer(Reducer):
         return self.values / len(self.done)
 
 
-class MinimumReducer(Reducer):
+class MinimumReducer(SampleReducer):
     """Pointwise minimum of the window's samples."""
 
     time_method = "min"
@@ -231,7 +231,7 @@ class MinimumReducer(Reducer):
         self.values = np.minimum(self.values, values)
 
 
-class MaximumReducer(Reducer):
+class MaximumReducer(SampleReducer):
     """Pointwise maximum of the window's samples."""
 
     time_method = "max"
@@ -240,7 +240,7 @@ class MaximumReducer(Reducer):
         self.values = np.maximum(self.values, values)
 
 
-def describe(reducers: dict[Any, Reducer], limit: int = 20) -> str:
+def describe(reducers: dict[Any, SampleReducer], limit: int = 20) -> str:
     """Render reducers for an error message, most incomplete first."""
     ordered = sorted(reducers.values(), key=lambda r: (-len(r.todo), r.valid_date))
     lines = [f"  {r.__repr__(verbose=True)}" for r in ordered[:limit]]

@@ -12,8 +12,8 @@ import datetime
 import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate.covering import ForecastCovering
-from anemoi.datasets.create.sources.accumulate.covering import ValidTimeCovering
+from anemoi.datasets.create.sources.windowed.covering import ForecastCovering
+from anemoi.datasets.create.sources.windowed.covering import ValidTimeCovering
 
 
 def _hours(n):

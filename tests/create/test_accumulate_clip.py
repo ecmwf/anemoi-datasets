@@ -31,10 +31,10 @@ from anemoi.transform import FieldList
 from pydantic import ValidationError
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.create.sources.accumulate.clip import ClipSpec
-from anemoi.datasets.create.sources.accumulate.clip import apply_clip
-from anemoi.datasets.create.sources.accumulate.clip import normalise_clip
-from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
+from anemoi.datasets.create.sources.windowed.clip import ClipSpec
+from anemoi.datasets.create.sources.windowed.clip import apply_clip
+from anemoi.datasets.create.sources.windowed.clip import normalise_clip
+from anemoi.datasets.create.sources.windowed.description import AccumulateSchema
 
 from .utils.create import create_dataset
 

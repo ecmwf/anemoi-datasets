@@ -13,8 +13,8 @@ import datetime
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
-from anemoi.datasets.create.sources.accumulate.covering import covering_factory
+from anemoi.datasets.create.sources.windowed.covering import AutoCovering
+from anemoi.datasets.create.sources.windowed.covering import covering_factory
 
 
 def test_discriminator_auto():
@@ -82,8 +82,8 @@ def test_migrate_rewrites_availability():
 
 
 def _lookup(**table):
-    from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
-    from anemoi.datasets.create.sources.accumulate.interval_generators import LookupTableIntervalGenerator
+    from anemoi.datasets.create.sources.windowed.covering import AutoCovering
+    from anemoi.datasets.create.sources.windowed.interval_generators import LookupTableIntervalGenerator
 
     return AutoCovering(LookupTableIntervalGenerator(start="1970-01-01", **table))
 
@@ -130,7 +130,7 @@ def test_lookup_table_single_archived_window_still_works():
 def test_check_covering_rejects_a_mismatched_sum():
     """No Covering may return intervals whose signed lengths miss the window."""
     from anemoi.datasets.create.intervals import SignedInterval
-    from anemoi.datasets.create.sources.accumulate.covering import check_covering
+    from anemoi.datasets.create.sources.windowed.covering import check_covering
 
     bt = datetime.datetime(2024, 1, 1, 0)
     start, end = _window(6, 12)

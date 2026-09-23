@@ -49,16 +49,16 @@ from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from ..accumulate.source import patch_groupby_keys
-from .description import FromRun
-from .description import ReduceSchema
-from .description import check_window_inside_run
-from .description import validate_from
-from .description import window_samples
+from ..windowed.groupby import patch_groupby_keys
+from ..windowed.description import FromRun
+from ..windowed.description import ReduceSchema
+from ..windowed.description import check_window_inside_run
+from ..windowed.description import validate_from
+from ..windowed.description import window_samples
 from .reducer import AverageReducer
 from .reducer import MaximumReducer
 from .reducer import MinimumReducer
-from .reducer import Reducer
+from .reducer import SampleReducer
 from .reducer import describe
 
 LOG = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ class ReduceSource(Source):
     schema = ReduceSchema
 
     #: The reduction this source performs.
-    reducer_class: type[Reducer]
+    reducer_class: type[SampleReducer]
 
     #: The registered recipe spelling, for error messages.
     name: str
@@ -356,7 +356,7 @@ class ReduceSource(Source):
         source_object = self._create_source_object()
         input_fields = source_object(self.context, argument)
 
-        reducers: dict[tuple, Reducer] = {}
+        reducers: dict[tuple, SampleReducer] = {}
         fields = []
 
         for field in input_fields:
@@ -393,7 +393,7 @@ class ReduceSource(Source):
 
         return self._finalise(reducers, fields, targets)
 
-    def _finalise(self, reducers: dict[tuple, Reducer], fields: list, targets: list[tuple]) -> FieldList:
+    def _finalise(self, reducers: dict[tuple, SampleReducer], fields: list, targets: list[tuple]) -> FieldList:
         """Check that every window was complete and return the reduced fields."""
         if not reducers:
             raise ValueError(f"{self.name}: the source returned no usable field, cannot reduce anything")

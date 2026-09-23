@@ -12,8 +12,8 @@ from datetime import datetime
 import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate.covering_intervals import covering_intervals
-from anemoi.datasets.create.sources.accumulate.interval_generators import interval_generator_factory
+from anemoi.datasets.create.sources.windowed.search import search_intervals
+from anemoi.datasets.create.sources.windowed.interval_generators import interval_generator_factory
 
 
 def build_signed_interval(x: str) -> SignedInterval:
@@ -226,7 +226,7 @@ class _Tester:
         start = target.start
         end = target.end
         print("=" * 60)
-        actual = covering_intervals(start, end, self.candidates, error_on_fail=False)
+        actual = search_intervals(start, end, self.candidates, error_on_fail=False)
 
         print("Target interval:", start, "→", end)
         if expected is None:

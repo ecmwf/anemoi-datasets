@@ -342,7 +342,7 @@ class GribSource(Source):
         combine the field, not which field it is, so a covering that both adds
         and subtracts the same archive interval (``from-zero`` does exactly
         that — ``+a(base→step) − a(base→step−period)``) must still fetch it
-        only once. This is the same identity ``Accumulator.compute`` matches
+        only once. This is the same identity ``Reducer.compute`` matches
         on; returning a second copy would leave it without a consumer and
         raise "Field not used for any accumulation".
         """

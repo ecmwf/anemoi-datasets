@@ -37,7 +37,7 @@ class HeapState:
     path: list[SignedInterval] = field(compare=False)
 
 
-def covering_intervals(
+def search_intervals(
     start: datetime,
     end: datetime,
     candidates: Callable,

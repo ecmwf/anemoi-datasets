@@ -21,7 +21,7 @@ from anemoi.datasets.create.intervals import SignedInterval
 LOG = logging.getLogger(__name__)
 
 
-class Accumulator:
+class Reducer:
     values: NDArray | None = None
     locked: bool = False
 
@@ -34,7 +34,7 @@ class Accumulator:
         basetime: datetime.datetime | None = None,
     ):
         # The accumulator only accumulates fields and does not know about the rest
-        # Accumulator object for a given param/member/valid_date
+        # Reducer object for a given param/member/valid_date
 
         self.valid_date = valid_date
         self.period = period
@@ -81,11 +81,11 @@ class Accumulator:
 
         if not matching:
             # interval not needed for this accumulator
-            # this happens when multiple accumulators have the same key but different valid_date
+            # this happens when multiple reducers have the same key but different valid_date
             return False
 
         def raise_error(msg):
-            LOG.error(f"Accumulator {self.__repr__(verbose=True)} state:")
+            LOG.error(f"Reducer {self.__repr__(verbose=True)} state:")
             LOG.error(f"Received interval: {interval}")
             LOG.error(f"Matching interval: {matching}")
             raise ValueError(msg)
@@ -95,13 +95,13 @@ class Accumulator:
             raise_error(f"SignedInterval {matching} already done for accumulator")
 
         if self.locked:
-            raise_error(f"Accumulator already used, cannot process interval {interval}")
+            raise_error(f"Reducer already used, cannot process interval {interval}")
 
         assert isinstance(values, np.ndarray), type(values)
 
         # actual accumulation computation
         # negative accumulation if interval is reversed
-        # copy is mandatory since value is shared between accumulators
+        # copy is mandatory since value is shared between reducers
         local_values = matching.sign * values.copy()
         if self.values is None:
             self.values = local_values
@@ -177,9 +177,9 @@ class Accumulator:
 
 
 class Logs(list):
-    def __init__(self, *args, accumulators, source, source_object, field_to_interval, **kwargs):
+    def __init__(self, *args, reducers, source, source_object, field_to_interval, **kwargs):
         super().__init__(*args, **kwargs)
-        self.accumulators = accumulators
+        self.reducers = reducers
         self.source = source
         self.source_object = source_object
         self.field_to_interval = field_to_interval
@@ -196,9 +196,9 @@ class Logs(list):
         res.append("💬 Current field:")
         res.append(f" {FIELD_COLOR}{field}{RESET_COLOR}")
         res.append(f" {INTERVAL_COLOR}{field_interval}{RESET_COLOR}")
-        if self.accumulators:
-            res.append(f"💬 Existing accumulators ({len(self.accumulators)}) :")
-            for a in self.accumulators.values():
+        if self.reducers:
+            res.append(f"💬 Existing reducers ({len(self.reducers)}) :")
+            for a in self.reducers.values():
                 res.append(f"  {a.__repr__(verbose=True)}")
         res.append(f"💬 Received fields ({len(self)}):")
         for log in self:

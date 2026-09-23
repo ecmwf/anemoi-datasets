@@ -23,24 +23,25 @@ from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulator import Accumulator
-from .accumulator import Logs
-from .clip import apply_clip
-from .clip import normalise_clip
-from .covering import AutoCovering
-from .covering import ForecastCovering
-from .covering import ValidTimeCovering
-from .covering import covering_factory
-from .description import AccumulateSchema
-from .description import FromBare
-from .description import FromLookupTable
-from .description import FromTrajectories
-from .description import TrajectoryIntervalGenerator
-from .description import check_valid_time_source
-from .description import infer_from_trajectories
-from .description import normalise_from
-from .field_to_interval import FieldToInterval
-from .interval_generators import LookupTableIntervalGenerator
+from ..windowed.clip import apply_clip
+from ..windowed.clip import normalise_clip
+from ..windowed.covering import AutoCovering
+from ..windowed.covering import ForecastCovering
+from ..windowed.covering import ValidTimeCovering
+from ..windowed.covering import covering_factory
+from ..windowed.description import AccumulateSchema
+from ..windowed.description import FromBare
+from ..windowed.description import FromLookupTable
+from ..windowed.description import FromTrajectories
+from ..windowed.description import TrajectoryIntervalGenerator
+from ..windowed.description import check_valid_time_source
+from ..windowed.description import infer_from_trajectories
+from ..windowed.description import normalise_from
+from ..windowed.field_to_interval import FieldToInterval
+from ..windowed.groupby import patch_groupby_keys
+from ..windowed.interval_generators import LookupTableIntervalGenerator
+from ..windowed.reducer import Logs
+from ..windowed.reducer import Reducer
 
 LOG = logging.getLogger(__name__)
 
@@ -51,31 +52,6 @@ LOG = logging.getLogger(__name__)
 #    request["stream"] = "scda"
 # else:
 #    request["stream"] = "oper"
-
-
-def patch_groupby_keys(group_by: dict | None = None, *, source_name: str = "accumulate"):
-    """Validate a recipe ``group_by:`` block, filling in the default.
-
-    Shared with the time-reduction sources (``average``/``minimum``/``maximum``),
-    which use the same key with the same meaning; *source_name* only names the
-    caller in the error messages.
-    """
-    if group_by is None:
-        return {"namespace": "mars", "ignore": ["date", "time", "step"]}
-    else:
-        namespace = group_by.get("namespace", None)
-        if namespace is None:
-            raise ValueError("No namespace in group_by (set namespace: mars for default)")
-        if namespace != "mars":
-            raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
-        ignore = group_by.get("ignore", [])
-        for key in ["date", "time", "step"]:
-            if key not in ignore:
-                raise ValueError(
-                    f"{source_name} group_by: '{key}' absent in ignore list {ignore}; "
-                    "at least 'date', 'time', 'step' are required"
-                )
-        return group_by
 
 
 @source_registry.register("accumulate")
@@ -177,23 +153,23 @@ class AccumulateSource(Source):
         field_interval = self._field_to_interval(field)
         return values, key, field_interval, log
 
-    def _finalise(self, accumulators, fields):
-        """Clean empty accumulators, validate completeness, and return the dataset."""
-        # some accumulators may be empty, remove them
+    def _finalise(self, reducers, fields):
+        """Clean empty reducers, validate completeness, and return the dataset."""
+        # some reducers may be empty, remove them
         # this can happen when the source provides fields that not exactly the one requested (scda/oper)
-        empty = [k for k, acc in accumulators.items() if acc.values is None]
+        empty = [k for k, reducer in reducers.items() if reducer.values is None]
         for k in empty:
             LOG.warning(f"Removing empty accumulator for key {k}")
-            del accumulators[k]
+            del reducers[k]
 
-        for acc in accumulators.values():
-            if not acc.is_complete():
-                raise ValueError(f"Accumulator not complete: {acc.__repr__(verbose=True)}")
+        for reducer in reducers.values():
+            if not reducer.is_complete():
+                raise ValueError(f"Reducer not complete: {reducer.__repr__(verbose=True)}")
 
-        LOG.info(f"Created {len(accumulators)} accumulated fields")
+        LOG.info(f"Created {len(reducers)} accumulated fields")
 
-        if not accumulators:
-            raise ValueError("No accumulators were created, cannot produce accumulated datasource")
+        if not reducers:
+            raise ValueError("No reducers were created, cannot produce accumulated datasource")
 
         ds = apply_clip(FieldList.from_fields(fields), self.clip)
 
@@ -203,7 +179,7 @@ class AccumulateSource(Source):
         return ds
 
     def _accumulate_fields(self, source_object, intervals, targets, coverages) -> tuple:
-        """Process fields from source and fill accumulators.
+        """Process fields from source and fill reducers.
 
         Parameters
         ----------
@@ -220,21 +196,21 @@ class AccumulateSource(Source):
         Returns
         -------
         tuple
-            ``(accumulators, fields)``.
+            ``(reducers, fields)``.
         """
         fields = []
-        accumulators = {}
+        reducers = {}
         # Execute the inner source once; the same FieldList feeds the main
         # loop and, on failure, the diagnostic dump in Logs.
         input_fields = source_object(self.context, intervals)
         logs = Logs(
-            accumulators=accumulators,
+            reducers=reducers,
             source=self.source,
             source_object=input_fields,
             field_to_interval=self._field_to_interval,
         )
         for field in input_fields:
-            # for each field provided by the catalogue, find which accumulators need it and perform accumulation
+            # for each field provided by the catalogue, find which reducers need it and perform accumulation
             values, key, field_interval, log = self._extract_field_info(field)
             logs.append([str(field), log, field_interval, [], []])
 
@@ -247,8 +223,8 @@ class AccumulateSource(Source):
                 # The covering intervals coverage[target] defines which intervals are needed.
                 vdate, basetime = target
                 accumulator_key = (*target, key)
-                if accumulator_key not in accumulators:
-                    accumulators[accumulator_key] = Accumulator(
+                if accumulator_key not in reducers:
+                    reducers[accumulator_key] = Reducer(
                         vdate,
                         period=self.period,
                         key=key,
@@ -256,21 +232,21 @@ class AccumulateSource(Source):
                         basetime=basetime,
                     )
 
-                acc = accumulators[accumulator_key]
+                reducer = reducers[accumulator_key]
 
-                if acc.compute(values, field_interval):
+                if reducer.compute(values, field_interval):
                     # actual computation happened in this .compute() method
                     field_used = True
                     logs[-1][3].append(target)
-                    logs[-1][4].append(acc.__repr__(verbose=True))
+                    logs[-1][4].append(reducer.__repr__(verbose=True))
 
-                    if acc.is_complete():
-                        fields.append(acc.as_field(template=field))
+                    if reducer.is_complete():
+                        fields.append(reducer.as_field(template=field))
 
             if not field_used:
                 logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
-        return accumulators, fields
+        return reducers, fields
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -342,21 +318,21 @@ class AccumulateSource(Source):
         intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
         targets = [(d, None) for d in dates]
 
-        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
+        reducers, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
 
         # Final checks
         for date in dates:
-            count = sum(1 for k in accumulators.keys() if k[0] == date)
-            LOG.debug(f"Date {date} has {count} accumulators")
-            if count != len(accumulators) // len(dates):
+            count = sum(1 for k in reducers.keys() if k[0] == date)
+            LOG.debug(f"Date {date} has {count} reducers")
+            if count != len(reducers) // len(dates):
                 LOG.error(f"All requested dates: {dates}")
-                LOG.error(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
-                for k in accumulators.keys():
+                LOG.error(f"Date {date} has {count} reducers, expected {len(reducers) // len(dates)}")
+                for k in reducers.keys():
                     if k[0] == date:
-                        LOG.error(f"  Accumulator for key {k}")
-                raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
+                        LOG.error(f"  Reducer for key {k}")
+                raise ValueError(f"Date {date} has {count} reducers, expected {len(reducers) // len(dates)}")
 
-        return self._finalise(accumulators, fields)
+        return self._finalise(reducers, fields)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations.
@@ -407,9 +383,9 @@ class AccumulateSource(Source):
         )
         targets = [(vt, bt) for vt, bt in dates.items]
 
-        accumulators, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
+        reducers, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
 
-        return self._finalise(accumulators, fields)
+        return self._finalise(reducers, fields)
 
     def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
         """Forecast accumulations reconstructed from a searched subsource covering.
@@ -443,6 +419,6 @@ class AccumulateSource(Source):
         intervals = Intervals(dates=sorted({vt for vt, _ in items}), intervals=list(seen))
         targets = [(vt, bt) for vt, bt in items]
 
-        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
+        reducers, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
 
-        return self._finalise(accumulators, fields)
+        return self._finalise(reducers, fields)
