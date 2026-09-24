@@ -186,11 +186,16 @@ def test_the_shared_values_array_is_never_mutated(operation):
 # ── the guard: a non-additive field may not be differenced ───────────
 
 
-@pytest.mark.parametrize("statistic", ["max", "min", "avg"])
-def test_differencing_a_non_additive_field_is_rejected(statistic):
-    """What `accumulate` on a wind-gust archive would otherwise compute silently."""
+@pytest.mark.parametrize("statistic,operation", [("max", "max"), ("min", "min"), ("avg", "average")])
+def test_differencing_a_non_additive_field_is_rejected(statistic, operation):
+    """A stored extremum cannot be rebuilt by subtraction, even by its own reduction.
+
+    The reduction here *matches* the archived statistic, so it is the reduction the
+    archive supports -- the covering is what is wrong. `rr/se-al-ec` described as
+    cumulative maxima and reduced with `maximum: over: 1h` is exactly this.
+    """
     subwindow = Subwindow(interval=_interval(6, 9), contributions=(_interval(0, 9), -_interval(0, 6)))
-    reducer = _reducer([SubwindowState(subwindow)], period=_hours(3), param="10fg")
+    reducer = _reducer([SubwindowState(subwindow)], operation=operation, period=_hours(3), param="10fg")
 
     with pytest.raises(ValueError, match="is not additive"):
         reducer.compute(np.array([1.0]), _interval(0, 9), statistic=statistic)
@@ -210,11 +215,51 @@ def test_an_ambiguous_statistic_is_left_alone(statistic):
     assert reducer.compute(np.array([1.0]), _interval(0, 12), statistic=statistic) is True
 
 
-@pytest.mark.parametrize("statistic", ["max", "min", "avg"])
-def test_a_direct_subwindow_accepts_any_statistic(statistic):
+def test_a_direct_subwindow_accepts_its_own_statistic():
     """A max field is exactly what a direct subwindow of a gust archive holds."""
     reducer = _reducer([SubwindowState(direct(_interval(0, 1)))], operation="max", period=_hours(1), param="10fg")
+    assert reducer.compute(np.array([1.0]), _interval(0, 1), statistic="max") is True
+
+
+# ── the guard: the reduction must suit what the archive stores ───────
+
+
+@pytest.mark.parametrize(
+    "statistic,operation",
+    [
+        ("max", "sum"),      # the sum of block maxima
+        ("max", "average"),  # the mean of block maxima
+        ("min", "max"),      # the largest block minimum
+        ("avg", "sum"),      # the sum of block means
+        ("accum", "average"),  # the window total over however many blocks there were
+    ],
+)
+def test_a_reduction_that_does_not_suit_the_archive_is_refused(statistic, operation):
+    """Each of these is well defined only once the block length is stated.
+
+    They are refused rather than computed with a caveat: the value would come from the
+    archive's granularity rather than from the recipe, and an archive whose granularity
+    changes with lead time would put two different quantities in one dataset. Directness
+    is irrelevant -- these are refused whether or not anything is differenced.
+    """
+    reducer = _reducer([SubwindowState(direct(_interval(0, 1)))], operation=operation, period=_hours(1))
+
+    with pytest.raises(ValueError, match="is not implemented"):
+        reducer.compute(np.array([1.0]), _interval(0, 1), statistic=statistic)
+
+
+@pytest.mark.parametrize("statistic,operation", [("accum", "sum"), ("max", "max"), ("avg", "average")])
+def test_a_matching_reduction_is_allowed(statistic, operation):
+    """The reduction produces what the parts already carry, so the partition cannot matter."""
+    reducer = _reducer([SubwindowState(direct(_interval(0, 1)))], operation=operation, period=_hours(1))
     assert reducer.compute(np.array([1.0]), _interval(0, 1), statistic=statistic) is True
+
+
+@pytest.mark.parametrize("operation", ["max", "min"])
+def test_an_extremum_over_an_additive_archive_is_allowed(operation):
+    """"The wettest hour in the window" -- partition-dependent, which is what `over:` states."""
+    reducer = _reducer([SubwindowState(direct(_interval(0, 1)))], operation=operation, period=_hours(1))
+    assert reducer.compute(np.array([1.0]), _interval(0, 1), statistic="accum") is True
 
 
 # ── over: reducing what differencing produced ────────────────────────

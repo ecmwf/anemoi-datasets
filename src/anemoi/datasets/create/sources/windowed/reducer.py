@@ -116,6 +116,12 @@ class Reducer:
         bool
             True if some state needed this field.
         """
+        # What the archive stores has to be something this reduction can be applied to,
+        # whatever the partition looks like. Checked before the states, because it is a
+        # property of the source data and the recipe rather than of any one part.
+        if statistic is not None and not self.operation.reduces_archived(statistic):
+            raise ValueError(f"{self!r}: {self.operation.why_not_archived(statistic)}")
+
         # No guard on `locked` here: once every state is complete none of them accepts
         # anything, so a repeat simply reports "not needed". Overlapping windows make
         # repeats ordinary -- the same field is offered once per window that wants it.

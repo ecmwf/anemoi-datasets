@@ -60,6 +60,10 @@ def _register_min_time_method() -> None:
 _register_min_time_method()
 
 
+#: The recipe block that produces each archived statistic, for error messages.
+_BLOCK_FOR = {"accum": "'accumulate:'", "max": "'maximum:'", "min": "'minimum:'", "avg": "'average:'"}
+
+
 class Operation(ABC):
     """Reduce the part values of a window to one value."""
 
@@ -115,6 +119,57 @@ class Operation(ABC):
             The values to write.
         """
         return reduced
+
+    def reduces_archived(self, statistic: str | None) -> bool:
+        """Whether this reduction may be applied to parts carrying *statistic*.
+
+        Three cases are allowed and everything else is refused as not implemented:
+
+        - the field does not say (``instant``, unknown) -- most archives cannot state
+          it, so refusing here would reject nearly everything;
+        - the statistic matches what this reduction produces (:attr:`time_method`), so
+          the result is independent of how the window was partitioned;
+        - the parts are **additive** and the reduction is an extremum -- "the wettest
+          hour in the window". This one *is* partition-dependent, which is why
+          ``over:`` exists to state the length.
+
+        What is refused is a reduction over parts carrying a *different* statistic:
+        the mean of block maxima, the sum of block maxima, the mean of block totals.
+        Each is well defined only once the block length is stated, and producing it
+        for a length the archive does not hold would mean combining stored values
+        with their own operator -- which is a level of reconstruction this model does
+        not have. See :meth:`why_not_archived`.
+        """
+        if statistic in (None, "instant", "unknown"):
+            return True
+        if statistic == self.time_method:
+            return True
+        return statistic == "accum" and self.name in ("max", "min")
+
+    def why_not_archived(self, statistic: str) -> str:
+        """Why this reduction may not be applied to parts carrying *statistic*."""
+        block = _BLOCK_FOR.get(statistic, f"a {statistic!r} block")
+        lines = [
+            f"{self.name!r} over source data whose fields carry a {statistic!r} is not "
+            "implemented.",
+            f"The result would be the {self.name} of whatever blocks the archive happens to "
+            "store, so its value would come from the archive's granularity rather than from "
+            "the recipe -- and an archive whose granularity changes with lead time would "
+            "give two different quantities inside one dataset.",
+        ]
+        if statistic == "accum" and self.name == "mean":
+            lines.append(
+                "For a mean *rate* over the window, accumulate and divide by the period; "
+                "averaging the blocks gives the total divided by however many there were."
+            )
+        else:
+            lines.append(
+                f"Making it well defined needs both a way to state the block length and a way "
+                f"to build blocks the archive does not hold, by combining stored values with "
+                f"{statistic!r} -- and this model reconstructs a part only by a signed sum."
+            )
+        lines.append(f"Reduce this source data with {block}, which does not depend on the partition.")
+        return " ".join(lines)
 
     def why_not_differenceable(self) -> str:
         """Why a part carrying this statistic cannot be rebuilt by differencing.

@@ -204,6 +204,12 @@ class IntervalPlan(WindowPlan):
         *quantity* well defined. Whether the archive is really additive is settled when
         a field arrives, by :func:`~.states.field_statistic`.
         """
+        # `from:` states the archived statistic whenever it declares an accumulation
+        # scheme, so that case is decidable here rather than on the first field. It is
+        # independent of the partition and of `over:`, so it comes before both.
+        if self.accumulating and not self.operation.reduces_archived("accum"):
+            raise ValueError(self.operation.why_not_archived("accum"))
+
         if self.operation.differenceable or self.over < self.period:
             return
 
