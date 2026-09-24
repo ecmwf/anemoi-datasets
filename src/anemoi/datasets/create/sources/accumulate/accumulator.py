@@ -17,6 +17,8 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
 
+from .operations import Operation
+from .operations import operation_factory
 from .writers import write_accumulated_field_with_valid_time
 from .writers import write_accumulated_forecast_field
 
@@ -34,6 +36,7 @@ class Accumulator:
         key: dict[str, Any],
         coverage,
         basetime: datetime.datetime | None = None,
+        operation: Operation | str | None = None,
     ):
         # The accumulator only accumulates fields and does not know about the rest
         # Accumulator object for a given param/member/valid_date
@@ -42,11 +45,14 @@ class Accumulator:
         self.period = period
         self.key = key
         self.basetime = basetime
+        self.operation = operation_factory(operation)
 
         self.coverage = coverage
 
         self.todo = [v for v in coverage]
         self.done = []
+        # sum of the contributing interval lengths, for length-weighted operations
+        self.total_weight = 0.0
 
         self.values = None  # will hold accumulated values array
 
@@ -54,21 +60,25 @@ class Accumulator:
         """Check whether the accumulation is complete (all intervals have been processed)"""
         return not self.todo
 
-    def compute(self, values: NDArray, interval: SignedInterval) -> None:
-        """Perform accumulation with the values array on this interval and record the operation.
+    def compute(self, values: NDArray, interval: SignedInterval) -> bool:
+        """Fold the values array into this accumulator if it needs this interval.
+
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
 
-        Parameters:
+        Parameters
         ----------
-        field: Any
-            An earthkit-data-like field
         values: NDArray
-            Values from the field, will be added to the held values array
+            Values from the field, combined into the held values array according
+            to ``self.operation``.  The array is shared with the other
+            accumulators this field contributes to and is never mutated here.
+        interval: SignedInterval
+            The interval the field covers.
 
         Return
         ------
-        None
+        bool
+            True if the interval was needed and consumed, False otherwise.
         """
 
         def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
@@ -101,14 +111,16 @@ class Accumulator:
 
         assert isinstance(values, np.ndarray), type(values)
 
-        # actual accumulation computation
-        # negative accumulation if interval is reversed
-        # copy is mandatory since value is shared between accumulators
-        local_values = matching.sign * values.copy()
-        if self.values is None:
-            self.values = local_values
-        else:
-            self.values += local_values
+        if matching.sign < 0 and not self.operation.invertible:
+            # The covering layer rejects reversed intervals up front for these
+            # operations; reaching here means something slipped through.
+            raise_error(f"Operation {self.operation.name!r} cannot consume the reversed interval {matching}")
+
+        # `values` is shared between all the accumulators this field feeds, so the
+        # operation must neither alias nor mutate it.
+        weight = abs(matching.length)
+        self.values = self.operation.combine(self.values, values, matching.sign, weight)
+        self.total_weight += weight
 
         self.todo.remove(matching)
         self.done.append(matching)
@@ -118,29 +130,40 @@ class Accumulator:
         assert self.is_complete(), (self.todo, self.done, self)
         assert not self.locked  # prevent double writing
 
+        # some operations cannot be expressed in the template's own GRIB edition
+        edition = self.operation.output_edition(template)
+
+        # some operations only produce their result once the window is complete
+        values = self.operation.finalize(self.values, self.total_weight)
+
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
-        for k, v in self.key:
-            if k == "param" and v == "tp":
-                if np.any(self.values < 0):
-                    LOG.warning(
-                        f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
-                    )
+        # (only meaningful for a sum: an extremum of non-negative fields cannot go negative)
+        is_total_precipitation = any(k == "param" and v == "tp" for k, v in self.key)
+        if self.operation.name == "sum" and is_total_precipitation:
+            if np.any(values < 0):
+                LOG.warning(
+                    f"Negative values when computing accumutation for {self}): min={np.nanmin(values)} max={np.nanmax(values)}"
+                )
         if self.basetime is not None:
             write_accumulated_forecast_field(
                 template=template,
-                values=self.values,
+                values=values,
                 basetime=self.basetime,
                 valid_date=self.valid_date,
                 period=self.period,
                 output=output,
+                step_type=self.operation.grib_step_type,
+                edition=edition,
             )
         else:
             write_accumulated_field_with_valid_time(
                 template=template,
-                values=self.values,
+                values=values,
                 valid_date=self.valid_date,
                 period=self.period,
                 output=output,
+                step_type=self.operation.grib_step_type,
+                edition=edition,
             )
         # lock the accumulator to prevent further use
         self.locked = True
@@ -148,7 +171,8 @@ class Accumulator:
     def __repr__(self, verbose: bool = False) -> str:
         key = ", ".join(f"{k}={v}" for k, v in self.key)
         period = frequency_to_string(self.period)
-        default = f"{self.__class__.__name__}(valid_date={self.valid_date}, {period}, key={{ {key} }})"
+        operation = "" if self.operation.name == "sum" else f", operation={self.operation.name}"
+        default = f"{self.__class__.__name__}(valid_date={self.valid_date}, {period}{operation}, key={{ {key} }})"
         if verbose:
             extra = []
             if self.locked:

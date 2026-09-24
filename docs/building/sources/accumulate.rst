@@ -47,6 +47,7 @@ The ``accumulate`` source requires the following parameters:
   ``from-previous-step``; see `Forecast accumulations (trajectory recipes)`_.
 - **patch** (optional): Patches to apply to fields returned by the source to fix metadata issues.
   Default patching is to set ``startStep`` to ``0`` when ``startStep==endStep``.
+  See `Fixing mis-encoded step metadata`_ for the available patches.
 
   .. warning::
 
@@ -188,6 +189,75 @@ For full control, provide an explicit list of ``(basetime, steps)`` pairs.
           :language: yaml
 
 These two examples are equivalent to those shown in Option 1 above.
+
+Fixing mis-encoded step metadata
+================================
+
+The source works out which window each returned field covers from its
+``startStep``/``endStep`` metadata, and refuses a field it cannot place —
+*"Field not used for any accumulation"*. Some archives encode those keys
+incorrectly, and ``patch:`` repairs them before the field is placed:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Patch
+     - Effect
+   * - ``set_start_step_to_zero``
+     - Force ``startStep`` to ``0``, keeping ``endStep``. For archives whose
+       fields are accumulated from the start of the forecast but carry a
+       non-zero ``startStep``.
+   * - ``reset_24h_accumulations``
+     - Set ``startStep`` to the previous 24-hour boundary
+       (``25-25`` → ``24-25``). For archives that reset accumulations daily but
+       encode only ``endStep`` correctly.
+   * - ``start_step_from_covering``
+     - Take ``startStep`` from the interval declared in ``covering:`` that ends
+       at this field's ``endStep``.
+
+``start_step_from_covering`` addresses archives that stamp ``startStep=0`` on
+every field even when the value is a *per-interval* statistic. For example, in
+``class: rr`` / ``origin: se-al-ec``, a field at step 9 covers ``[6, 9]`` but is
+encoded as ``[0, 9]``. ``endStep`` is correct, so the recipe's own ``covering:``
+declaration says where the window really starts:
+
+.. code:: yaml
+
+   accumulate:
+     period: 6h
+     patch:
+       - start_step_from_covering
+     covering:
+       auto:
+         - [0,  "0-1/1-2/2-3/3-4/4-5/5-6/6-9/9-12/12-15/15-18/18-21/21-24"]
+         - [12, "0-1/1-2/2-3/3-4/4-5/5-6/6-9/9-12/12-15/15-18/18-21/21-24"]
+     source:
+       mars:
+         class: rr
+         expver: prod
+         origin: se-al-ec
+         stream: oper
+         type: fc
+         levtype: sfc
+         param: [tp]
+
+With that declaration the patch maps ``endStep=9`` to ``startStep=6`` and
+``endStep=12`` to ``startStep=9``. A field whose ``endStep`` is not declared in
+``covering:`` is an error rather than a guess, and declaring one end step with
+two different start steps is rejected as ambiguous.
+
+.. warning::
+
+   Only use this patch when the encoded ``startStep`` is genuinely wrong. If an
+   archive really does store values accumulated from the start of the forecast,
+   the encoding is correct and this patch would silently reinterpret the data.
+   A quick check: a field accumulated (or maximised) from the start of the
+   forecast is pointwise non-decreasing in ``endStep``, so its mean cannot fall
+   as the step grows. If it does, the fields are per-interval and mis-encoded.
+
+The patch is not available in trajectory recipes, which ignore ``covering:``.
+It applies equally to the :ref:`reduce <sources-reduce>` source.
 
 Controlling the fields regrouped within accumulation
 ====================================================
