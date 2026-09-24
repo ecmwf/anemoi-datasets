@@ -22,6 +22,10 @@ To create a tabular dataset, the ``layout`` entry in the recipe's
 
 .. literalinclude:: code/tabular.yaml
 
+See :ref:`building-tabular-cli` for a step-by-step guide to building a
+tabular dataset with the command line tool, including how to split the
+``finalise`` step across processes.
+
 .. _tabular-using:
 
 *******

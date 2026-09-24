@@ -589,6 +589,17 @@ def _open_dataset(*args: Any, options: Options = None, **kwargs: Any) -> "Datase
     assert len(sets) > 0, (args, kwargs)
 
     if len(sets) > 1:
+        from anemoi.datasets.usage.trajectories.join import is_trajectory
+
+        if any(is_trajectory(d) for d in sets):
+            # A mix containing at least one trajectories dataset is overlaid
+            # along the variable axis: gridded members are broadcast onto the
+            # trajectory layout by valid-time lookup. The result behaves like a
+            # trajectories dataset.
+            from anemoi.datasets.usage.trajectories.join import trajectory_join
+
+            return trajectory_join(sets, options)._subset(**kwargs)
+
         dataset, kwargs = _concat_or_join(sets, kwargs, options)
         return dataset._subset(**kwargs)
 
@@ -665,11 +676,11 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
-        root.create_dataset("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
+        root.create_array("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
 
     if "data" not in root:
         dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
-        root.create_dataset(
+        root.create_array(
             "data",
             shape=dims,
             dtype=np.float64,
@@ -678,16 +689,16 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
 
     for k, v in big_dataset.statistics.items():
         if k not in root:
-            root.create_dataset(
+            root.create_array(
                 k,
                 data=v,
-                compressor=None,
+                compressors=None,
             )
 
     # Create spatial coordinate datasets if missing.
     if "latitudes" not in root or "longitudes" not in root:
-        root.create_dataset("latitudes", data=big_dataset.latitudes, compressor=None)
-        root.create_dataset("longitudes", data=big_dataset.longitudes, compressor=None)
+        root.create_array("latitudes", data=big_dataset.latitudes, compressors=None)
+        root.create_array("longitudes", data=big_dataset.longitudes, compressors=None)
     for k, v in big_dataset.metadata().items():
         if k not in root.attrs:
             root.attrs[k] = v

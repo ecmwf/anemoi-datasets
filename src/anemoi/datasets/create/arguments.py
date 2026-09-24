@@ -43,6 +43,8 @@ import datetime
 from typing import Any
 from typing import Callable
 
+from anemoi.datasets.create.intervals import timedelta_to_step
+
 # ---------------------------------------------------------------------------
 # Base class
 # ---------------------------------------------------------------------------
@@ -212,7 +214,7 @@ class Intervals(ValidDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int]:
+    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet
@@ -231,7 +233,7 @@ class Intervals(ValidDates):
         Returns
         -------
         tuple
-            ``(valid_time, adjusted_request, step_hours)``
+            ``(valid_time, adjusted_request, step)``
         """
         assert interval.base is not None, (
             f"Intervals.adjust_request requires a basetime; got {interval!r}. "
@@ -239,7 +241,7 @@ class Intervals(ValidDates):
             "and not call this helper."
         )
         r = request.copy()
-        step = int((interval.max - interval.base).total_seconds() / 3600)
+        step = timedelta_to_step(interval.max - interval.base)
         r["date"] = interval.base.strftime("%Y%m%d")
         r["time"] = interval.base.strftime("%H%M")
         r["step"] = step
@@ -319,7 +321,7 @@ class ForecastIntervals(ForecastDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int]:
+    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet
@@ -335,10 +337,10 @@ class ForecastIntervals(ForecastDates):
         Returns
         -------
         tuple
-            ``(valid_time, adjusted_request, step_hours)``
+            ``(valid_time, adjusted_request, step)``
         """
         r = request.copy()
-        step = int((interval.max - interval.base).total_seconds() / 3600)
+        step = timedelta_to_step(interval.max - interval.base)
         r["date"] = interval.base.strftime("%Y%m%d")
         r["time"] = interval.base.strftime("%H%M")
         r["step"] = step

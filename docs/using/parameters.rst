@@ -63,8 +63,8 @@ as follows:
       -  ✅
       -  ❌
       -  🧪
-      -  Spatial cropping area as a list [lon_min, lat_min, lon_max,
-         lat_max].
+      -  Spatial cropping area as a list ``(north, west, south, east)``.
+         See :ref:`the area option <using-grids>`.
 
    -  -  base_end
       -  ❌
@@ -89,7 +89,7 @@ as follows:
       -  🗑️
 
       -  Experimental chain operation. Same behaviour as `concat`, but
-         does not check that the dates are continous. Will be removed in
+         does not check that the dates are continuous. Will be removed in
          the future.
 
    -  -  concat
@@ -100,7 +100,7 @@ as follows:
 
       -  🧪
 
-      -  Concatanate two or more datasets along the time dimension. That
+      -  Concatenate two or more datasets along the time dimension. That
          may work, but the behaviour of the windowing at the seam is not
          well defined. So it should be skipped for now.
 
@@ -149,12 +149,27 @@ as follows:
       -  List of datasets forming an ensemble (e.g. ``ensemble=[d1,
          d2]``).
 
+   -  -  extend_start
+      -  ✅
+      -  ❌
+      -  ❌
+      -  Extend the date range backwards with missing dates up to the
+         given date. See :ref:`extend`.
+
+   -  -  extend_end
+      -  ✅
+      -  ❌
+      -  ❌
+      -  Extend the date range forwards with missing dates up to the
+         given date. See :ref:`extend`.
+
    -  -  fill_missing_dates
       -  ✅
       -  ❌
       -  ❌
-      -  Method to fill missing dates ("interpolate" or "closest").
-         Trajectories have no missing-date concept.
+      -  Method to fill missing dates ("interpolate", "closest",
+         "nans", "mean", "maximum" or "minimum"). Trajectories have no
+         missing-date concept.
 
    -  -  fill_missing_gaps
       -  ✅

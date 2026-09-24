@@ -76,6 +76,7 @@ def create_ds(var_name, standard_name, long_name, units, coord_length=5):
         # level
         ("lev", "atmosphere_hybrid_sigma_pressure_coordinate", None, None, LevelCoordinate),
         ("h", None, "height", "m", LevelCoordinate),
+        ("h", "height", None, "m", LevelCoordinate),
         ("level", "air_pressure", None, "hPa", LevelCoordinate),
         ("pressure_0", None, "pressure", "hPa", LevelCoordinate),
         ("pressure_0", None, "pressure", "Pa", LevelCoordinate),

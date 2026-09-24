@@ -1,29 +1,14 @@
 .. _synthetic-datasets:
 
-#################
+#####################
  Synthetic datasets
-#################
+#####################
 
 A *synthetic dataset* is an in-memory synthetic dataset. It builds no Zarr store on
 disk and is intended for testing and prototyping training and inference
 pipelines. Open one by passing a ``synthetic`` dictionary to ``open_dataset``:
 
-.. code:: python
-
-   from anemoi.datasets import open_dataset
-
-   ds = open_dataset(
-      synthetic={
-         "geography": {"bbox": [60, -10, 30, 20], "resolution": 0.25},
-         "dates": {"start": "2020-01-01", "end": "2020-01-31", "frequency": "6h"},
-         "layout": "gridded",
-         "variables": [
-            {"name": "2t", "values": {"constant": 273.15}},
-            "msl",
-            "insolation",
-         ],
-      }
-   )
+.. literalinclude:: code/synthetic_open.py
 
 The dataset itself is described entirely by the ``synthetic`` dictionary, which
 accepts the following keys. ``synthetic`` is a drop-in replacement for ``dataset``:

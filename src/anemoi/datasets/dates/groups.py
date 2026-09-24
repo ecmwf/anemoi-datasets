@@ -10,6 +10,7 @@
 
 import datetime
 import itertools
+import logging
 from abc import ABC
 from abc import abstractmethod
 from collections.abc import Callable
@@ -18,9 +19,12 @@ from functools import cached_property
 from typing import Any
 
 from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.recipe.dates import DatesProvider
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
+
+LOG = logging.getLogger(__name__)
 
 
 def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
@@ -259,7 +263,11 @@ class Grouper(ABC):
             "weekly": lambda dt: (dt.weekday(),),
             "yearly": lambda dt: (dt.year,),
             "MMDD": lambda dt: (dt.month, dt.day),
-        }[group_by]
+        }.get(group_by)
+
+        if key is None:
+            delta = frequency_to_timedelta(group_by)
+            return GrouperByTimedelta(delta)
 
         return GrouperByKey(key)
 
@@ -314,6 +322,35 @@ class GrouperOneGroup(Grouper):
         assert isinstance(dates, DatesProvider), type(dates)
 
         yield GroupOfDates(dates.values, dates)
+
+
+class GrouperByTimedelta(Grouper):
+    """Group dates by a fixed timedelta."""
+
+    def __init__(self, delta: datetime.timedelta) -> None:
+        self.delta = delta
+
+    def __call__(self, dates: DatesProvider) -> Iterator[GroupOfDates]:
+        """Group all dates into a single group.
+
+        Args:
+            dates (DatesProvider): The dates provider.
+
+        Returns:
+            Iterator[GroupOfDates]: The iterator over the groups of dates.
+        """
+        batch = []
+
+        for d in dates:
+
+            if len(batch) > 0 and (d - batch[0]) >= self.delta:
+                yield GroupOfDates(batch, dates)
+                batch = []
+
+            batch.append(d)
+
+        if batch:
+            yield GroupOfDates(batch, dates)
 
 
 class GrouperByKey(Grouper):
