@@ -73,7 +73,6 @@ class LoadSource:
         name = os.path.basename(upload_path).replace(".to_upload", "")
         print(f"scp {path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}")
         print()
-        exit(1)
         raise ValueError("Test data is missing")
 
     def mars(self, args: tuple, kwargs: dict) -> object:
