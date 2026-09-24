@@ -155,13 +155,29 @@ What is refused
 
 Two checks, because a wrong reduction here is silent rather than loud.
 
-**Before anything is fetched**, from the recipe: ``maximum:`` over an archive
-whose window has to be rebuilt by subtraction is refused. Subtracting two
-cumulative maxima does not give the maximum over the difference of their
-intervals — if the extreme falls in the earlier part, both fields carry it and
-the difference is zero. The error names the fields it would have needed.
-``over:`` lifts this, because it declares the quantity is additive and says at
-what length.
+**Before anything is fetched**, from the recipe, in two forms.
+
+``maximum:`` over an archive whose window has to be rebuilt by subtraction is
+refused. Subtracting two cumulative maxima does not give the maximum over the
+difference of their intervals — if the extreme falls in the earlier part, both
+fields carry it and the difference is zero. The error names the fields it would
+have needed.
+
+``maximum:`` over an archive that holds the whole window outright *as an
+accumulation* is also refused, even though nothing is being subtracted. The
+window is then one piece, and a maximum over one piece is that piece — so the
+result would be the window's total with a ``max`` label on it. This is not a
+corner case: ``od-oper`` runs 12 h apart with a 6 h ``period`` gives a window
+held outright every other row, and a differenced one in between, so a recipe
+without ``over:`` would be wrong in two different ways on alternating rows.
+
+The same shape is accepted when the archive stores *maxima* — one field really
+is the answer there. ``from:`` is what separates them: an ``accumulation``
+scheme says the fields add up, while explicit step pairs describe an archive of
+stored statistics.
+
+``over:`` resolves both, because it declares the quantity is additive and says
+at what length.
 
 **When a field arrives**, from the field: one carrying a ``max``, ``min`` or
 ``avg`` is never rebuilt by subtraction, whatever the recipe said. This is the

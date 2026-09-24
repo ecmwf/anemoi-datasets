@@ -87,6 +87,12 @@ class IntervalPlan(WindowPlan):
     forecast_items : list, optional
         ``(valid_time, basetime)`` rows, when the subsource is the run the layout
         imposes; makes the argument a ``ForecastIntervals``.
+    accumulating : bool, optional
+        Whether the archive stores *accumulations*, so a subwindow carries a total
+        rather than a statistic of its own. True when ``from:`` states an
+        ``accumulation`` scheme; false for an explicit list of step pairs, which is
+        how an archive of stored maxima is described. Only used by
+        :meth:`_check_reducible`.
     """
 
     def __init__(
@@ -99,6 +105,7 @@ class IntervalPlan(WindowPlan):
         operation: Operation | str | None = None,
         over: datetime.timedelta | None = None,
         forecast_items: list | None = None,
+        accumulating: bool = False,
     ) -> None:
         self.period = period
         self.covering = covering
@@ -111,6 +118,7 @@ class IntervalPlan(WindowPlan):
         self.over = over if over is not None else period
         self._check_over()
         self.forecast_items = forecast_items
+        self.accumulating = accumulating
         self._logs: Logs | None = None
 
     def _check_over(self) -> None:
@@ -200,8 +208,6 @@ class IntervalPlan(WindowPlan):
             return
 
         differenced = [s for s in subwindows if not s.is_direct]
-        if not differenced:
-            return
 
         detail = "\n".join(
             "    {} would be rebuilt from {}".format(
@@ -209,6 +215,10 @@ class IntervalPlan(WindowPlan):
             )
             for s in differenced
         )
+        if not differenced:
+            self._check_not_degenerate(subwindows, start, end)
+            return
+
         raise ValueError(
             f"{self.operation.name!r} over the window {start} -> {end} needs subwindows the "
             f"archive does not hold outright:\n{detail}\n"
@@ -220,6 +230,38 @@ class IntervalPlan(WindowPlan):
             "If this parameter is additive after all -- a cumulative total rather than a "
             f"stored {self.operation.name} -- then say how long each subwindow should be with "
             "'over:', e.g. 'over: 1h' for the largest hourly value in the window."
+        )
+
+    def _check_not_degenerate(self, subwindows, start, end) -> None:
+        """Reject a non-additive reduction over a single accumulated subwindow.
+
+        The covering guard above catches differencing. This catches the case where
+        nothing is differenced and the reduction is still meaningless: the archive
+        holds the whole window outright, so the partition is one part, and a max over
+        one part is that part. When the part is an *accumulation* the result is the
+        window's total, stamped as a maximum.
+
+        It happens on an ordinary archive. `od-oper` stores `a(0,s)` from runs at 00Z
+        and 12Z, so a 6 h window starting at a basetime is held outright while the
+        next one has to be differenced -- the guard above fires on the second and this
+        one on the first, and without both, half the rows of one recipe would come out
+        silently wrong.
+
+        Only for an accumulating archive. A gust archive that holds `[0,6]` outright
+        really does answer "the maximum over that window" with one field, and it is
+        described by explicit step pairs, which carry no ``accumulation``.
+        """
+        if not (self.accumulating and len(subwindows) == 1):
+            return
+
+        raise ValueError(
+            f"{self.operation.name!r} over the window {start} -> {end} would reduce a single "
+            f"value, because the archive holds that whole window outright as {subwindows[0]}.\n"
+            f"A {self.operation.name} over one part is that part, and 'from:' says the part is "
+            f"an accumulation -- so the result would be the window's total with a "
+            f"{self.operation.name!r} label on it, not a {self.operation.name} of anything.\n"
+            "Say how long each subwindow should be with 'over:', e.g. 'over: 1h' for the "
+            "largest hourly total in the window."
         )
 
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:

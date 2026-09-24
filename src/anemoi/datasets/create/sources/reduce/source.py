@@ -192,6 +192,9 @@ class ReduceSource(WindowSourceBase):
             operation=self.operation,
             over=self.over,
             basetime=basetime,
+            # An `accumulation` scheme means the fields accumulate; an explicit list of
+            # step pairs (the only way to describe a stored-extremum archive) has none.
+            accumulating=getattr(self._from, "accumulation", None) is not None,
         )
 
     # ── dispatch branches ────────────────────────────────────────────

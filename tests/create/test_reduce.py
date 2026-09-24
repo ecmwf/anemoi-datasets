@@ -740,6 +740,53 @@ def test_an_omitted_over_means_the_whole_window() -> None:
     assert [s.interval for s in explicit._partition(start, end, None)] == [s.interval for s in whole]
 
 
+#: A window that starts *on* a basetime: `CUMULATIVE` runs from 00Z, so (00,06] is
+#: held outright as a(0,6) while (06,12] has to be differenced.
+_AT_BASETIME = [(datetime.datetime(2021, 1, 1, 6), None)]
+
+
+def test_one_accumulated_subwindow_is_refused_even_though_nothing_is_differenced() -> None:
+    """A max over one part is that part, and here the part is a 6h total.
+
+    The differencing guard cannot catch this: the archive holds the whole window
+    outright, so there is nothing to difference. Without this check the recipe is
+    accepted and the output is the accumulated total wearing a 'max' label -- and on
+    `od-oper`, where runs are 12h apart and windows 6h, that is every other row.
+    """
+    with pytest.raises(ValueError) as excinfo:
+        _over_source("maximum")._plan().parts_for(_AT_BASETIME)
+
+    message = str(excinfo.value)
+    assert "would reduce a single value" in message
+    assert "'over:'" in message, "the error should name the remedy"
+
+
+def test_over_resolves_the_single_subwindow_case() -> None:
+    subwindows = _over_source("maximum", over="1h")._plan().parts_for(_AT_BASETIME)[_AT_BASETIME[0]]
+    assert len(subwindows) == 6
+
+
+def test_one_stored_extremum_subwindow_is_accepted() -> None:
+    """The same shape is correct when the archive stores maxima rather than totals.
+
+    An archive holding `[0,6]` outright answers "the maximum over that window" with a
+    single field, so one subwindow is the right answer and not a degenerate one. The
+    discriminator is `from:`: explicit step pairs carry no `accumulation` scheme.
+    """
+    from anemoi.datasets.create.sources import source_registry
+
+    source = source_registry.lookup("maximum")(
+        context=_FakeContext([]),
+        source={"mars": {"class": "rr", "param": ["10fg"], "levtype": "sfc"}},
+        period="6h",
+        **{"from": {"base_dates": {"times": [0, 12]}, "steps": ["0-6", "6-12", "12-18", "18-24"]}},
+    )
+    subwindows = source._plan().parts_for(_AT_BASETIME)[_AT_BASETIME[0]]
+
+    assert len(subwindows) == 1
+    assert subwindows[0].is_direct
+
+
 def test_over_equal_to_period_does_not_lift_the_guard() -> None:
     """Writing `over: 6h` on a 6h window declares nothing, so it excuses nothing.
 
