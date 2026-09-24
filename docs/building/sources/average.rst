@@ -188,6 +188,44 @@ Neither can be dropped. The first reads a recipe, which can simply be wrong
 about what the archive holds; the second reads the data, but only once a
 retrieval has already happened.
 
+The reduction must also suit what the archive stores
+====================================================
+
+``maximum:`` over an archive of maxima is independent of how the window was cut, so it
+is accepted whatever the archive's granularity. ``average:`` over that same archive is
+not: it would average the maxima of whatever blocks the archive happens to hold, and
+3-hourly maxima average higher than hourly ones over the same window. An archive whose
+granularity changes with lead time would then put two different quantities into one
+dataset.
+
+Those combinations are **refused as not implemented**:
+
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - the fields carry
+     - the block says
+     - result
+   * - accumulations
+     - ``accumulate``
+     - accepted
+   * - accumulations
+     - ``maximum`` / ``minimum``
+     - accepted — "the wettest hour"; see ``over:``
+   * - accumulations
+     - ``average``
+     - **refused** — for a mean rate, accumulate and divide by ``period``
+   * - maxima
+     - ``maximum``
+     - accepted
+   * - maxima
+     - ``accumulate`` / ``average``
+     - **refused**
+
+A field that does not state its statistic is accepted — most archives cannot state it,
+and refusing there would reject nearly everything.
+
 Nothing recovers a finer interval than the archive stores. If the shortest
 gust interval is ``[6,9]``, there is no ``[6,7]`` to be had — that information
 is not in the data, and achievable windows are unions of whole archived
