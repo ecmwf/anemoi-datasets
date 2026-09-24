@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import re
 from datetime import datetime
 from datetime import timedelta
 
@@ -458,3 +459,54 @@ def test_a_window_that_falls_short_says_short_rather_than_overshot():
 def test_a_covering_that_works_is_untouched():
     covering = _gusts(["0-1", "1-2", "2-3", "3-6", "6-9"])
     assert len(covering.partition(BASE, BASE + _h(3))) == 3
+
+
+def test_a_window_whose_end_is_not_a_boundary_says_so():
+    """Every covering ends on its last archived interval, so `end` must be one.
+
+    `covered` and `current_time` advance by the same amount on every edge, so the goal
+    is reached exactly when the walk stands on `end`. If nothing starts or ends there,
+    no route can exist -- and saying that is more use than describing the route that
+    came closest.
+    """
+    covering = _gusts(["0-1", "1-2", "2-3", "3-6"])
+    with pytest.raises(ValueError) as excinfo:
+        covering.partition(BASE + _h(2), BASE + _h(5))
+
+    assert "nothing can close the window" in str(excinfo.value)
+
+
+def test_a_doomed_search_over_a_recurring_description_does_not_wander():
+    """A description generating runs for ever has no natural end to the walk.
+
+    There is always another edge, so the search does not run out of candidates -- it
+    runs until its state budget trips. Knowing the window is unreachable caps that, so
+    the failure arrives after days rather than weeks, with the diagnosis intact.
+    """
+    from anemoi.datasets.create.sources.windowed.covering import AutoCovering
+    from anemoi.datasets.create.sources.windowed.description import FromTrajectories
+    from anemoi.datasets.create.sources.windowed.description import TrajectoryIntervalGenerator
+
+    covering = AutoCovering(
+        TrajectoryIntervalGenerator(
+            FromTrajectories.model_validate(
+                {
+                    "base_dates": {"times": [0]},
+                    "steps": ["0-1", "1-2", "2-3", "3-6", "6-9", "9-12", "12-15", "15-18", "18-21", "21-24"],
+                }
+            )
+        )
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        covering.partition(BASE + _h(1), BASE + _h(7))
+
+    message = str(excinfo.value)
+    assert "nothing can close the window" in message, message
+    assert "fell 1:00:00 short" in message, "the closest route is still reported"
+
+    reached = re.search(r"having reached (\d{4}-\d{2}-\d{2})", message)
+    assert reached, message
+    days = (datetime.fromisoformat(reached.group(1)) - BASE).days
+    assert days < 14, f"wandered {days} days past a window that was doomed from the start"
+

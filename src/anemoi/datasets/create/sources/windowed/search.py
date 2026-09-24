@@ -76,6 +76,23 @@ def search_intervals(
     """
     target_length = (end - start).total_seconds()
 
+    # Both ends of the window must be boundaries the archive offers, and this is
+    # decidable before searching. Every edge sets `current_time = interval.end` and adds
+    # the same `interval.length` to `covered`, and every candidate starts at
+    # `current_time` -- so `covered == current_time - start` at every reachable state,
+    # and the goal `covered == target_length` is reached exactly when
+    # `current_time == end`. The last edge of any successful walk therefore lands on
+    # `end`, so if nothing starts or ends there, no route exists however long we look.
+    #
+    # A description with recurring base dates generates runs for ever, so such a search
+    # does not fail, it *wanders*: there is always another edge, and the walk runs on
+    # until the state budget trips -- weeks past a window that was unreachable from the
+    # first call. Knowing the window is doomed lets us cap that cheaply, while still
+    # searching far enough for the message to say how close the archive gets.
+    offered_at_start = list(candidates(start))
+    offered_at_end = offered_at_start if end == start else list(candidates(end))
+    budget = 200 if (not offered_at_start or not offered_at_end) else 1000
+
     pq: list[HeapState] = []  # pq: priority queue
     counter = itertools.count()
     heappush(
@@ -88,7 +105,6 @@ def search_intervals(
     # Kept for the failure message: a search that gets nowhere and one that gets
     # almost there are different problems, and the old message could not tell them
     # apart. `closest` is the state that came nearest to covering the window.
-    offered_at_start: list[SignedInterval] = []
     closest: HeapState | None = None
 
     while pq:
@@ -103,8 +119,18 @@ def search_intervals(
         if state.covered == target_length:
             return state.path
 
-        if (len(visited) > 1000) and (state.current_time > end + max_delta or state.current_time < start - max_delta):
-            msg = f"Exceeded search limits: visited={len(visited)}, current_time={state.current_time}, target=({start} → {end}), max_delta={max_delta}"
+        if (len(visited) > budget) and (state.current_time > end + max_delta or state.current_time < start - max_delta):
+            # Same failure as running out of candidates, reached a different way, so it
+            # gets the same explanation rather than a bare state count.
+            msg = _no_coverage(
+                start,
+                end,
+                target_length,
+                offered_at_start,
+                offered_at_end,
+                closest,
+                gave_up=(len(visited), state.current_time),
+            )
             if error_on_fail:
                 raise ValueError(msg)
             LOG.warning(msg)
@@ -113,9 +139,7 @@ def search_intervals(
         if closest is None or abs(target_length - state.covered) < abs(target_length - closest.covered):
             closest = state
 
-        offered = list(candidates(state.current_time))
-        if state.current_time == start and not offered_at_start:
-            offered_at_start = offered
+        offered = offered_at_start if state.current_time == start else list(candidates(state.current_time))
 
         for interval in offered:
             if interval.start != state.current_time:
@@ -140,7 +164,7 @@ def search_intervals(
                 ),
             )
 
-    msg = _no_coverage(start, end, target_length, offered_at_start, closest)
+    msg = _no_coverage(start, end, target_length, offered_at_start, offered_at_end, closest)
     if error_on_fail:
         raise ValueError(msg)
     LOG.warning(msg)
@@ -152,13 +176,21 @@ def _no_coverage(
     end: datetime,
     target_length: float,
     offered_at_start: list[SignedInterval],
+    offered_at_end: list[SignedInterval],
     closest: "HeapState | None",
+    gave_up: tuple[int, datetime] | None = None,
 ) -> str:
-    """Explain a search that ran out of candidates.
+    """Explain a search that could not close the window.
 
-    Three things go wrong, and they want different fixes: nothing is archived at the
-    window's start at all; something is, but no combination reaches the end; or the
-    walk got most of the way and stalled. The old message said only the first line.
+    Four things go wrong and they want different fixes: the window's start is not a
+    boundary the archive offers, so it cannot even be entered; its *end* is not one, so
+    nothing can close it however the walk goes; something is offered at both but no
+    combination connects them; or a route got most of the way and stalled.
+
+    The end case is worth naming explicitly. Every edge advances ``current_time`` and
+    ``covered`` by the same amount, so ``covered == current_time - start`` throughout and
+    the goal is reached exactly when ``current_time == end`` -- the last edge of any
+    successful walk lands on ``end``. If nothing starts or ends there, no route exists.
     """
     lines = [f"Cannot find coverage of {start} → {end}"]
 
@@ -169,6 +201,13 @@ def _no_coverage(
             "actually offers."
         )
         return "\n".join(lines)
+
+    if not offered_at_end:
+        lines.append(
+            f"  Nothing in the archive description starts or ends at {end}, so nothing can "
+            "close the window: every covering ends on its last archived interval, and none "
+            "of them ends there."
+        )
 
     lines.append(f"  Starting at {start}, the description offers {len(offered_at_start)} interval(s):")
     for interval in offered_at_start[:8]:
@@ -193,5 +232,12 @@ def _no_coverage(
         lines.append(
             "  The window has to be a union of whole archived intervals; check that its "
             "length and end time line up with the steps the source data actually holds."
+        )
+
+    if gave_up is not None:
+        visited, reached = gave_up
+        lines.append(
+            f"  The search gave up after {visited} states, having reached {reached}: the "
+            "description keeps offering intervals, but none of them closes the window."
         )
     return "\n".join(lines)
