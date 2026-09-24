@@ -118,18 +118,27 @@ class AccumulateSource(WindowSourceBase):
         super().__init__(context, source=source, period=period, group_by=group_by)
 
     def _discard_unusable(self, reducers: dict) -> set:
-        """Drop windows no field ever reached, rather than failing on them.
+        """Drop windows that no field reached at all, rather than failing on them.
 
         `accumulate` asks MARS for intervals, and MARS may answer with fields that do
-        not exactly match what was asked -- the `scda`/`oper` stream split is the
-        standing example. That leaves a reducer holding nothing at all, which is the
-        request being answered loosely rather than a window that came out short.
+        not exactly match what was asked -- the `scda`/`oper` stream split above is
+        the standing example: runs at 06Z and 18Z live in `scda`, the request says
+        `oper`, and the windows anchored on them come back with nothing. That is the
+        request being answered loosely, not a window that came out short.
 
-        This is the one place the reductions are deliberately stricter: they raise
-        here instead, because a missing sample there means an average over fewer
-        fields than the recipe asked for.
+        The test is deliberately "no field arrived", not "no value was produced".
+        Those are different, and the difference is the ordinary case rather than a
+        corner: a from-zero archive with no `over:` gives one subwindow rebuilt from
+        two fields, so a window holding `a(0,12)` and still waiting for `a(0,6)` has
+        produced no value at all. Dropping that would turn half a window into a
+        warning and a silently absent field. It falls through to the completeness
+        check instead, which says exactly what is outstanding.
+
+        This is the one place the reductions are deliberately stricter: they drop
+        nothing, because a missing sample there means an average over fewer fields
+        than the recipe asked for.
         """
-        empty = {k for k, reducer in reducers.items() if reducer.values is None}
+        empty = {k for k, reducer in reducers.items() if reducer.fields_used == 0}
         for k in empty:
             LOG.warning("%s: no field reached the window for %s; dropping it", self.name, k)
             del reducers[k]

@@ -787,3 +787,98 @@ def test_accumulate_refuses_over() -> None:
             over="1h",
             **{"from": {"accumulation": "1h"}},
         )
+
+
+# ---------------------------------------------------------------------------
+# accumulate: an empty window versus a half-filled one
+# ---------------------------------------------------------------------------
+
+
+def _accumulate_source():
+    from anemoi.datasets.create.sources import source_registry
+
+    return source_registry.lookup("accumulate")(
+        context=_FakeContext([]),
+        source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+        period="6h",
+        **{"from": {"accumulation": "1h"}},
+    )
+
+
+def _differenced_window(valid_date):
+    """One subwindow rebuilt from two fields -- a from-zero archive with no `over:`.
+
+    The window is the last 6h of a 12h run: ``[v-6h, v] = a(0,12) - a(0,6)``.
+    """
+    from anemoi.datasets.create.intervals import SignedInterval
+    from anemoi.datasets.create.sources.windowed.reducer import Reducer
+    from anemoi.datasets.create.sources.windowed.states import SubwindowState
+    from anemoi.datasets.create.sources.windowed.subwindows import Subwindow
+
+    hours = lambda n: datetime.timedelta(hours=n)  # noqa: E731
+    base = valid_date - hours(12)
+    whole = SignedInterval(start=base, end=valid_date, base=base)
+    before = SignedInterval(start=base, end=valid_date - hours(6), base=base)
+
+    reducer = Reducer(
+        valid_date,
+        period=hours(6),
+        key=(("param", "tp"),),
+        states=[
+            SubwindowState(
+                Subwindow(
+                    interval=SignedInterval(start=valid_date - hours(6), end=valid_date),
+                    contributions=(whole, -before),
+                )
+            )
+        ],
+    )
+    return reducer, whole, before
+
+
+def test_a_window_no_field_reached_is_dropped() -> None:
+    """MARS may answer an interval request loosely (the scda/oper split)."""
+    import numpy as np
+
+    kept_date = datetime.datetime(2021, 1, 1, 12)
+    empty_date = datetime.datetime(2021, 1, 2, 12)
+
+    kept, whole, before = _differenced_window(kept_date)
+    kept.compute(np.ones(4), whole)
+    kept.compute(np.zeros(4), before)
+    assert kept.is_complete()
+
+    empty, *_ = _differenced_window(empty_date)
+    assert empty.fields_used == 0
+
+    key = (("param", "tp"),)
+    reducers = {(kept_date, None, key): kept, (empty_date, None, key): empty}
+    targets = [(kept_date, None), (empty_date, None)]
+
+    _accumulate_source()._finalise(reducers, [], targets)
+
+    assert (empty_date, None, key) not in reducers, "the untouched window is dropped"
+    assert (kept_date, None, key) in reducers
+
+
+def test_a_half_filled_window_is_an_error_not_a_drop() -> None:
+    """Half a window is a window that came out short, which is never silently dropped.
+
+    It produces no value -- a differenced subwindow yields nothing until every
+    contribution has arrived -- so testing "no value" rather than "no field" would
+    drop it, and this is the ordinary accumulate layout rather than a corner.
+    """
+    import numpy as np
+
+    valid_date = datetime.datetime(2021, 1, 1, 12)
+    reducer, whole, _before = _differenced_window(valid_date)
+    reducer.compute(np.ones(4), whole)  # one of the two fields
+
+    assert reducer.values is None, "no part of the window has completed"
+    assert reducer.fields_used == 1, "but a field did arrive"
+
+    key = (("param", "tp"),)
+    reducers = {(valid_date, None, key): reducer}
+
+    with pytest.raises(ValueError, match="missing source fields"):
+        _accumulate_source()._finalise(reducers, [], [(valid_date, None)])

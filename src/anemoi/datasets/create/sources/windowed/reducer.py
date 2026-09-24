@@ -76,6 +76,11 @@ class Reducer:
         self.states = list(states)
         self._reduced: np.ndarray | None = None
         self._done = 0
+        #: How many arriving fields some state took. Distinct from the reduced value
+        #: being set, which needs a whole *part* to complete: a subwindow rebuilt by
+        #: differencing takes several fields before it yields anything. "Nothing
+        #: arrived" and "nothing finished" are different failures.
+        self.fields_used = 0
         self.total_weight = 0.0
         self.locked = False
 
@@ -133,6 +138,8 @@ class Reducer:
                     self._reduced = self.operation.reduce(self._reduced, state.release(), state.weight)
                     self.total_weight += state.weight
                     self._done += 1
+        if used:
+            self.fields_used += 1
         return used
 
     def as_field(self, template: Field) -> Field:
@@ -195,7 +202,7 @@ class Reducer:
             extra = []
             if self.locked:
                 extra.append("(locked)")
-            extra.append(f"    reduced {self._done} of {len(self.states)}:")
+            extra.append(f"    reduced {self._done} of {len(self.states)}, from {self.fields_used} field(s):")
             for state in self.states:
                 extra.append(f"    {state}")
             default += "\n" + "\n".join(extra)
