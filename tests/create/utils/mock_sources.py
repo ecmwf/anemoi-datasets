@@ -17,14 +17,21 @@ from earthkit.data import from_source as original_from_source
 class LoadSource:
     """Class to load data sources and handle mockup data."""
 
-    def __init__(self, get_test_data_func) -> None:
+    def __init__(self, get_test_data_func, *, fetch_missing: bool = False) -> None:
         self._get_test_data = get_test_data_func
+
+        #: Whether a request with no test data may be retrieved from the live archive.
+        #: Off by default: a missing fixture usually means the recipe changed what it
+        #: asks for, and fetching would spend a real retrieval on a change nobody has
+        #: looked at. Recording the change is what turns this on.
+        self._fetch_missing = fetch_missing
 
         #: Every MARS request this instance was asked for, in order, as
         #: ``{"md5": ..., "request": [args, kwargs]}``.  The fixtures are keyed by
         #: that md5, so this is the record of what the recipe asked the archive
         #: for -- see ``test_create._check_mars_requests``.
         self.requests: list[dict] = []
+
 
     def filename(self, args: tuple, kwargs: dict) -> str:
         """Generate a filename based on the arguments and keyword arguments.
@@ -98,6 +105,19 @@ class LoadSource:
         except RuntimeError:
             raise  # If offline
         except Exception:
+            # A miss almost always means the recipe now asks for different fields --
+            # which, while refactoring the covering or the search, is the defect we are
+            # looking for. Refusing to fetch keeps a changed request from costing a real
+            # retrieval and leaving a file inviting you to bless it unseen. Recording
+            # the change is what authorises the download.
+            if not self._fetch_missing:
+                raise AssertionError(
+                    "no test data for this MARS request, and fetching is off:\n"
+                    f"  {json.dumps([args, kwargs], sort_keys=True, default=str)}\n"
+                    "If the recipe now retrieves different fields, that is the change to "
+                    "look at; the recorded requests are in tests/create/requests/.\n"
+                    "To record it and fetch the data, re-run with ANEMOI_UPDATE_MARS_REQUESTS=1"
+                ) from None
             self.get_data(args, kwargs, name)
 
     def __call__(self, name: str, *args: tuple, **kwargs: dict) -> object:

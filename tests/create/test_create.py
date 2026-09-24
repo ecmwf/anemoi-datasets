@@ -56,16 +56,18 @@ class FilterForTesting(Filter):
         return data.sel(**self.kwargs)
 
 
-@pytest.fixture
-def load_source(get_test_data: GetTestData) -> LoadSource:
-    return LoadSource(get_test_data)
-
-
-
 MARS_REQUESTS = os.path.join(HERE, "requests")
 
-#: Set to 1 to rewrite the recorded requests instead of checking them.
+#: Set to 1 to rewrite the recorded requests instead of checking them -- which also
+#: allows a request with no test data to be fetched from the live archive.
 UPDATE_MARS_REQUESTS = os.environ.get("ANEMOI_UPDATE_MARS_REQUESTS") == "1"
+
+
+@pytest.fixture
+def load_source(get_test_data: GetTestData) -> LoadSource:
+    # Fetching a request with no test data is allowed only while re-recording, so a
+    # recipe that quietly changes what it retrieves fails instead of downloading it.
+    return LoadSource(get_test_data, fetch_missing=UPDATE_MARS_REQUESTS)
 
 
 def _tally(requests: list) -> dict:
@@ -218,3 +220,41 @@ if __name__ == "__main__":
 
     # Then run pytest
     pytest.main([__file__, "-v", "-k", "nan"])
+
+
+@pytest.mark.parametrize(
+    "fetch_missing,raises,retrieves",
+    [(False, AssertionError, False), (True, ValueError, True)],
+)
+def test_missing_test_data_is_fetched_only_while_re_recording(
+    monkeypatch, fetch_missing: bool, raises: type, retrieves: bool
+) -> None:
+    """Nothing reaches the live archive unless the run is re-recording the baselines.
+
+    A recipe that changes what it retrieves used to have its new request fetched and an
+    scp line printed inviting you to upload it -- treating the change as legitimate by
+    default. While refactoring the covering or the search it is far more often a defect.
+
+    No end-to-end test can cover this: in a passing run every fixture exists, so the
+    branch never executes, and it would stay silent if someone moved the check.
+    """
+    from .utils import mock_sources
+
+    retrieved = []
+
+    class _Fetched:
+        def save(self, path: str) -> None:
+            retrieved.append(path)
+
+    monkeypatch.setattr(mock_sources, "original_from_source", lambda *a, **k: _Fetched())
+
+    def not_uploaded(_path: str) -> str:
+        raise FileNotFoundError("no such fixture")
+
+    source = LoadSource(not_uploaded, fetch_missing=fetch_missing)
+
+    with pytest.raises(raises):
+        source("mars", param="2t")
+
+    assert bool(retrieved) is retrieves
+    assert len(source.requests) == 1, "the request is recorded either way, so it shows in the diff"
