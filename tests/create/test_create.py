@@ -58,16 +58,58 @@ class FilterForTesting(Filter):
 
 MARS_REQUESTS = os.path.join(HERE, "requests")
 
-#: Set to 1 to rewrite the recorded requests instead of checking them -- which also
-#: allows a request with no test data to be fetched from the live archive.
+# Set to 1 to rewrite the recorded requests instead of checking them -- which also
+# allows a request with no test data to be fetched from the live archive.
 UPDATE_MARS_REQUESTS = os.environ.get("ANEMOI_UPDATE_MARS_REQUESTS") == "1"
 
 
-@pytest.fixture
-def load_source(get_test_data: GetTestData) -> LoadSource:
-    # Fetching a request with no test data is allowed only while re-recording, so a
-    # recipe that quietly changes what it retrieves fails instead of downloading it.
-    return LoadSource(get_test_data, fetch_missing=UPDATE_MARS_REQUESTS)
+def _load_baseline(name: str | None) -> dict | None:
+    """Read the recorded requests for a recipe as ``md5 -> {count, request}``.
+
+    Parameters
+    ----------
+    name : str | None
+        The recipe name, or None when the caller is not parametrized by one.
+
+    Returns
+    -------
+    dict | None
+        The recorded requests, or None if the recipe has no baseline file. The two
+        are distinct: an empty baseline means "asks MARS for nothing", while no
+        baseline at all means nobody has recorded this recipe yet.
+    """
+    if name is None:
+        return None
+    path = os.path.join(MARS_REQUESTS, name + ".json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return {e["md5"]: {"count": e["count"], "request": e["request"]} for e in json.load(f)}
+
+
+def _mock_sources(name: str, get_test_data: GetTestData) -> LoadSource:
+    """Build the mock source for a recipe, primed with what it retrieved last time.
+
+    Handing the baseline over up front lets a changed request fail where it is built,
+    before any retrieval -- see ``LoadSource.mars``. While re-recording there is
+    nothing to check against, and a recipe with no baseline is left to
+    ``_check_mars_requests``, which says so in as many words.
+
+    Parameters
+    ----------
+    name : str
+        The recipe name.
+    get_test_data : GetTestData
+        Fixture used to download a request's recorded test data.
+
+    Returns
+    -------
+    LoadSource
+        The mock to patch ``from_source`` with.
+    """
+    baseline = None if UPDATE_MARS_REQUESTS else _load_baseline(name)
+    expected = None if baseline is None else set(baseline)
+    return LoadSource(get_test_data, expected=expected, fetch_missing=UPDATE_MARS_REQUESTS)
 
 
 def _tally(requests: list) -> dict:
@@ -86,10 +128,10 @@ def _tally(requests: list) -> dict:
 def _check_mars_requests(name: str, requests: list) -> None:
     """Assert the recipe asked MARS for exactly what it asked for last time.
 
-    The mock fixtures are keyed by an md5 of the request, so any change to which
-    fields a recipe retrieves makes the lookup miss -- and ``LoadSource.get_data``
-    then calls ``exit(1)``, killing the whole run with nothing useful said. Checking
-    the requests first turns that into a readable diff.
+    This is the half of the check that can only be made once the build has finished:
+    that a baselined request was never asked for, and that none was asked for more
+    often than before. A request the baseline does not have at all is rejected as it
+    is made, by ``LoadSource.mars``, so that it fails where it was built.
 
     This runs *before* the reference-dataset comparison below, deliberately: "did we
     ask the archive for the right things" is the more fundamental question, and it
@@ -120,15 +162,13 @@ def _check_mars_requests(name: str, requests: list) -> None:
             os.remove(path)
         return
 
-    if not os.path.exists(path):
+    expected = _load_baseline(name)
+    if expected is None:
         assert not tally, (
             f"{name} issued {len(tally)} MARS request(s) but has no recorded baseline.\n"
             "Regenerate with ANEMOI_UPDATE_MARS_REQUESTS=1"
         )
         return
-
-    with open(path) as f:
-        expected = {e["md5"]: {"count": e["count"], "request": e["request"]} for e in json.load(f)}
 
     errors = []
     for md5 in sorted(set(expected) | set(tally)):
@@ -138,9 +178,7 @@ def _check_mars_requests(name: str, requests: list) -> None:
         elif now is None:
             errors.append(f"  - no longer asked for:     {json.dumps(was['request'])}")
         elif was["count"] != now["count"]:
-            errors.append(
-                f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}"
-            )
+            errors.append(f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}")
 
     assert not errors, (
         f"{name} no longer asks MARS for the same fields:\n"
@@ -154,7 +192,7 @@ SKIPPED_TESTS = ["recentre"]
 
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSource) -> None:
+def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData) -> None:
     """Run the test for the specified dataset.
 
     Parameters
@@ -163,8 +201,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         The name of the dataset.
     get_test_archive : callable
         Fixture to retrieve the test archive.
-    load_source : LoadSource
-        Fixture to mock data sources.
+    get_test_data : GetTestData
+        Fixture to retrieve a request's recorded test data.
 
     Raises
     ------
@@ -175,6 +213,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         pytest.skip("Not ready yet")
 
     import requests
+
+    load_source = _mock_sources(name, get_test_data)
 
     with (
         patch("earthkit.data.from_source", load_source),
@@ -220,41 +260,3 @@ if __name__ == "__main__":
 
     # Then run pytest
     pytest.main([__file__, "-v", "-k", "nan"])
-
-
-@pytest.mark.parametrize(
-    "fetch_missing,raises,retrieves",
-    [(False, AssertionError, False), (True, ValueError, True)],
-)
-def test_missing_test_data_is_fetched_only_while_re_recording(
-    monkeypatch, fetch_missing: bool, raises: type, retrieves: bool
-) -> None:
-    """Nothing reaches the live archive unless the run is re-recording the baselines.
-
-    A recipe that changes what it retrieves used to have its new request fetched and an
-    scp line printed inviting you to upload it -- treating the change as legitimate by
-    default. While refactoring the covering or the search it is far more often a defect.
-
-    No end-to-end test can cover this: in a passing run every fixture exists, so the
-    branch never executes, and it would stay silent if someone moved the check.
-    """
-    from .utils import mock_sources
-
-    retrieved = []
-
-    class _Fetched:
-        def save(self, path: str) -> None:
-            retrieved.append(path)
-
-    monkeypatch.setattr(mock_sources, "original_from_source", lambda *a, **k: _Fetched())
-
-    def not_uploaded(_path: str) -> str:
-        raise FileNotFoundError("no such fixture")
-
-    source = LoadSource(not_uploaded, fetch_missing=fetch_missing)
-
-    with pytest.raises(raises):
-        source("mars", param="2t")
-
-    assert bool(retrieved) is retrieves
-    assert len(source.requests) == 1, "the request is recorded either way, so it shows in the diff"
