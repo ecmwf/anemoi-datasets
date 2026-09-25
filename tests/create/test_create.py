@@ -88,12 +88,10 @@ def _load_baseline(name: str | None) -> dict | None:
 
 
 def _mock_sources(name: str, get_test_data: GetTestData) -> LoadSource:
-    """Build the mock source for a recipe, primed with what it retrieved last time.
+    """Build the mock source for a recipe.
 
-    Handing the baseline over up front lets a changed request fail where it is built,
-    before any retrieval -- see ``LoadSource.mars``. While re-recording there is
-    nothing to check against, and a recipe with no baseline is left to
-    ``_check_mars_requests``, which says so in as many words.
+    Handing the baseline mars requests over up front lets a changed request fail where it is built,
+    before any retrieval.
 
     Parameters
     ----------
@@ -116,7 +114,7 @@ def _tally(requests: list) -> dict:
     """Collapse recorded requests to ``md5 -> {count, request}``.
 
     Counting rather than de-duplicating on purpose: retrieving the same field
-    twice is a real defect, not a detail, so it has to show up in the diff.
+    twice is a real defect.
     """
     tally: dict = {}
     for entry in requests:
@@ -130,13 +128,8 @@ def _check_mars_requests(name: str, requests: list) -> None:
 
     This is the half of the check that can only be made once the build has finished:
     that a baselined request was never asked for, and that none was asked for more
-    often than before. A request the baseline does not have at all is rejected as it
-    is made, by ``LoadSource.mars``, so that it fails where it was built.
-
-    This runs *before* the reference-dataset comparison below, deliberately: "did we
-    ask the archive for the right things" is the more fundamental question, and it
-    keeps working while a reference is stale.
-
+    often than before. 
+    
     Parameters
     ----------
     name : str
@@ -170,13 +163,16 @@ def _check_mars_requests(name: str, requests: list) -> None:
         )
         return
 
+    # Only the baselined md5s are worth walking: ``LoadSource`` was handed this same
+    # set and refuses anything outside it, so the build cannot have reached here
+    # having asked for something new.
+    assert not set(tally) - set(expected), "LoadSource.mars should have rejected an unbaselined request"
+
     errors = []
-    for md5 in sorted(set(expected) | set(tally)):
-        was, now = expected.get(md5), tally.get(md5)
-        if was is None:
-            errors.append(f"  + asked for something new: {json.dumps(now['request'])}")
-        elif now is None:
-            errors.append(f"  - no longer asked for:     {json.dumps(was['request'])}")
+    for md5 in sorted(expected):
+        was, now = expected[md5], tally.get(md5)
+        if now is None:
+            errors.append(f"  - no longer asked for:  {json.dumps(was['request'])}")
         elif was["count"] != now["count"]:
             errors.append(f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}")
 

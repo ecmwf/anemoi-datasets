@@ -111,9 +111,7 @@ class LoadSource:
         h = self.record(args, kwargs)
 
         # Asked for before the lookup: a request the baseline never recorded has no
-        # fixture by construction, so trying to download one only turns a known answer
-        # into a round-trip -- and, on a re-recording run, into a real retrieval of a
-        # change nobody has looked at yet.
+        # fixture by construction.
         if self._expected is not None and h not in self._expected:
             raise AssertionError(
                 "this recipe asked MARS for a request that is not in its baseline:\n"
