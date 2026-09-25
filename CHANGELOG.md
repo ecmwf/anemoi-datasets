@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.45](https://github.com/ecmwf/anemoi-datasets/compare/0.5.44...0.5.45) (2026-09-24)
+
+
+### Features
+
+* Close issue 735 scda ([#772](https://github.com/ecmwf/anemoi-datasets/issues/772)) ([d7140d1](https://github.com/ecmwf/anemoi-datasets/commit/d7140d19d803037094395086a5b209c9945d799c))
+
+
+### Performance Improvements
+
+* Chunk along grid dimension by default ([#732](https://github.com/ecmwf/anemoi-datasets/issues/732)) ([12f7374](https://github.com/ecmwf/anemoi-datasets/commit/12f7374e897cd222ffca75288f80cacbeb637196))
+
 ## [0.5.44](https://github.com/ecmwf/anemoi-datasets/compare/0.5.43...0.5.44) (2026-09-14)
 
 
