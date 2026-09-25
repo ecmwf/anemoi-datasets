@@ -180,12 +180,16 @@ class Subset(Forwards):
 
         if n < 0:
             n += len(self.indices)
+        if n < 0 or n >= len(self.indices):
+            raise IndexError(f"index {n} is out of range for subset of length {len(self.indices)}")
         n = self.indices[n]
         return self.dataset[n]
 
-    def get_aux(self, n: FullIndex) -> NDArray[Any]:
+    def get_aux(self, n: int) -> NDArray[Any]:
         if n < 0:
             n += len(self.indices)
+        if n < 0 or n >= len(self.indices):
+            raise IndexError(f"index {n} is out of range for subset of length {len(self.indices)}")
         n = self.indices[n]
         return self.dataset.get_aux(n)
 
