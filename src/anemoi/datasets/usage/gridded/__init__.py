@@ -80,7 +80,11 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
     Returns
     -------
     Dataset
-        The opened dataset.
+        The opened dataset. When ``sharding=N`` is given (tabular datasets
+        only), a ``ShardedTabular`` collection of ``N`` shard datasets is
+        returned instead: each shard behaves like the dataset but every window
+        yields only ``1/N`` of the rows, with boundaries adjusted accordingly.
+        With ``sharding=N, shard=i`` a single shard ``i`` is returned.
     """
 
     trace = int(os.environ.get("ANEMOI_DATASETS_TRACE", 0))
@@ -89,10 +93,41 @@ def open_dataset(*args: Any, **kwargs: Any) -> "Dataset":
 
     args, kwargs = _convert(args), _convert(kwargs)
 
+    # `sharding`/`shard` are handled here, after the dataset is fully built,
+    # because they turn a single dataset into a collection of shards (or pick
+    # one). They are not `_subset` options.
+    sharding = kwargs.pop("sharding", None)
+    shard = kwargs.pop("shard", None)
+
+    if shard is not None and sharding is None:
+        raise ValueError("`shard` requires `sharding` to be set")
+
     ds = _open_dataset(*args, **kwargs)
     ds = ds.mutate()
     ds.arguments = {"args": args, "kwargs": kwargs}
     ds._check()
+
+    if sharding is not None:
+        from anemoi.datasets.usage.tabular.sharding import shard_dataset
+        from anemoi.datasets.usage.tabular.sharding import single_shard
+
+        wrap = None
+        if trace:
+            from anemoi.datasets.testing import Trace
+
+            wrap = Trace
+
+        if shard is not None:
+            one = single_shard(ds, sharding, shard, wrap=wrap)
+            one.arguments = {"args": args, "kwargs": {**kwargs, "sharding": sharding, "shard": shard}}
+            one._check()
+            return one
+
+        shards = shard_dataset(ds, sharding, wrap=wrap)
+        for s in shards:
+            s.arguments = {"args": args, "kwargs": {**kwargs, "sharding": sharding}}
+            s._check()
+        return shards
 
     if trace:
         from anemoi.datasets.testing import Trace
