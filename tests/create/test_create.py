@@ -128,8 +128,8 @@ def _check_mars_requests(name: str, requests: list) -> None:
 
     This is the half of the check that can only be made once the build has finished:
     that a baselined request was never asked for, and that none was asked for more
-    often than before. 
-    
+    often than before.
+
     Parameters
     ----------
     name : str
