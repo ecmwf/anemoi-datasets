@@ -157,3 +157,7 @@ prof/
 # (see docs/build_trees.py); these must be tracked despite the *.json rule.
 !docs/using/code/*.json
 !docs/using/yaml/*.json
+
+# Recorded MARS requests per test recipe (see tests/create/test_create.py);
+# these must be tracked despite the *.json rule.
+!tests/create/requests/*.json

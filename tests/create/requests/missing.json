@@ -1,0 +1,88 @@
+[
+  {
+    "md5": "5c470534e85768ad20ff02912b352925",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "ea",
+        "date": "20201230",
+        "expver": "0001",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": "2t",
+        "step": 0,
+        "stream": "oper",
+        "time": "0000",
+        "type": "an"
+      }
+    ]
+  },
+  {
+    "md5": "97172e3c5446344173fb926b8af60372",
+    "count": 1,
+    "request": [
+      [],
+      {
+        "class": "ea",
+        "date": [
+          "20210101",
+          "20210102"
+        ],
+        "expver": "0001",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": "2t",
+        "step": 0,
+        "stream": "oper",
+        "time": "0000",
+        "type": "an"
+      }
+    ]
+  },
+  {
+    "md5": "d7bd2e9a7aab11afd6f3a6dbf255d54d",
+    "count": 1,
+    "request": [
+      [],
+      {
+        "class": "ea",
+        "date": "20201231",
+        "expver": "0001",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": "2t",
+        "step": 0,
+        "stream": "oper",
+        "time": [
+          "0000",
+          "1200"
+        ],
+        "type": "an"
+      }
+    ]
+  },
+  {
+    "md5": "ea311de66f65a03acec561622f973ad1",
+    "count": 1,
+    "request": [
+      [],
+      {
+        "class": "ea",
+        "date": [
+          "20210101",
+          "20210102",
+          "20210103"
+        ],
+        "expver": "0001",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "param": "2t",
+        "step": 0,
+        "stream": "oper",
+        "time": "1200",
+        "type": "an"
+      }
+    ]
+  }
+]

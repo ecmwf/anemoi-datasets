@@ -17,11 +17,29 @@ from earthkit.data import from_source as original_from_source
 class LoadSource:
     """Class to load data sources and handle mockup data."""
 
-    def __init__(self, get_test_data_func) -> None:
+    def __init__(self, get_test_data_func, *, expected: set | None = None, fetch_missing: bool = False) -> None:
         self._get_test_data = get_test_data_func
 
-    def filename(self, args: tuple, kwargs: dict) -> str:
-        """Generate a filename based on the arguments and keyword arguments.
+        # The md5s the baseline recorded for this recipe, or None to skip the check.
+        # Checking membership here rather than letting the fixture lookup miss means a
+        # changed request fails where it was built -- the traceback then names the
+        # source and the interval that produced it -- and costs no retrieval.
+        self._expected = expected
+
+        # Whether a request with no test data may be retrieved from the live archive.
+        # Off by default: a missing fixture usually means the recipe changed what it
+        # asks for. Typically in that case only a Raise is needed
+        # and a fetch is not necessary
+        self._fetch_missing = fetch_missing
+
+        # Every MARS request this instance was asked for, in order, as
+        # ``{"md5": ..., "request": [args, kwargs]}``.  The fixtures are keyed by
+        # that md5, so this is the record of what the recipe asked the archive
+        # for -- see ``test_create._check_mars_requests``.
+        self.requests: list[dict] = []
+
+    def record(self, args: tuple, kwargs: dict) -> str:
+        """Hash a MARS request and append it to :attr:`requests`.
 
         Parameters
         ----------
@@ -33,11 +51,12 @@ class LoadSource:
         Returns
         -------
         str
-            The generated filename.
+            The md5 of the request, which is how the fixtures are keyed.
         """
         string = json.dumps([args, kwargs], sort_keys=True, default=str)
         h = hashlib.md5(string.encode("utf8")).hexdigest()
-        return h + ".grib"
+        self.requests.append({"md5": h, "request": json.loads(string)})
+        return h
 
     def get_data(self, args: tuple, kwargs: dict, path: str) -> None:
         """Retrieve data and save it to the specified path.
@@ -66,7 +85,6 @@ class LoadSource:
         name = os.path.basename(upload_path).replace(".to_upload", "")
         print(f"scp {path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}")
         print()
-        exit(1)
         raise ValueError("Test data is missing")
 
     def mars(self, args: tuple, kwargs: dict) -> object:
@@ -83,16 +101,43 @@ class LoadSource:
         -------
         object
             The loaded data source.
-        """
 
-        name = self.filename(args, kwargs)
+        Raises
+        ------
+        AssertionError
+            If the request is not in the baseline, or has no uploaded test data
+            while fetching is off.
+        """
+        h = self.record(args, kwargs)
+
+        # Asked for before the lookup: a request the baseline never recorded has no
+        # fixture by construction.
+        if self._expected is not None and h not in self._expected:
+            raise AssertionError(
+                "this recipe asked MARS for a request that is not in its baseline:\n"
+                f"  {json.dumps([args, kwargs], sort_keys=True, default=str)}\n"
+                "Nothing was retrieved. If the recipe now retrieves different fields, "
+                "that is the change to look at; the baseline is in tests/create/requests/.\n"
+                "To re-record it, re-run with ANEMOI_UPDATE_MARS_REQUESTS=1"
+            )
 
         try:
-            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{name}"))
+            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{h}.grib"))
         except RuntimeError:
             raise  # If offline
         except Exception:
-            self.get_data(args, kwargs, name)
+            # Distinct from the check above: the request is one we expect, but its
+            # GRIB was never uploaded. Fetching it is a real retrieval, so it stays
+            # behind the same flag that authorises re-recording.
+            if not self._fetch_missing:
+                raise AssertionError(
+                    "no test data for this MARS request, and fetching is off:\n"
+                    f"  {json.dumps([args, kwargs], sort_keys=True, default=str)}\n"
+                    f"The request is baselined, so its fixture ({h}.grib) is probably "
+                    "not uploaded yet.\n"
+                    "To fetch the data, re-run with ANEMOI_UPDATE_MARS_REQUESTS=1"
+                ) from None
+            self.get_data(args, kwargs, f"{h}.grib")
 
     def __call__(self, name: str, *args: tuple, **kwargs: dict) -> object:
         """Call the appropriate method based on the data source name.

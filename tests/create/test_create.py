@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import glob
+import json
 import logging
 import os
 from unittest.mock import patch
@@ -55,9 +56,131 @@ class FilterForTesting(Filter):
         return data.sel(**self.kwargs)
 
 
-@pytest.fixture
-def load_source(get_test_data: GetTestData) -> LoadSource:
-    return LoadSource(get_test_data)
+MARS_REQUESTS = os.path.join(HERE, "requests")
+
+# Set to 1 to rewrite the recorded requests instead of checking them -- which also
+# allows a request with no test data to be fetched from the live archive.
+UPDATE_MARS_REQUESTS = os.environ.get("ANEMOI_UPDATE_MARS_REQUESTS") == "1"
+
+
+def _load_baseline(name: str | None) -> dict | None:
+    """Read the recorded requests for a recipe as ``md5 -> {count, request}``.
+
+    Parameters
+    ----------
+    name : str | None
+        The recipe name, or None when the caller is not parametrized by one.
+
+    Returns
+    -------
+    dict | None
+        The recorded requests, or None if the recipe has no baseline file. The two
+        are distinct: an empty baseline means "asks MARS for nothing", while no
+        baseline at all means nobody has recorded this recipe yet.
+    """
+    if name is None:
+        return None
+    path = os.path.join(MARS_REQUESTS, name + ".json")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return {e["md5"]: {"count": e["count"], "request": e["request"]} for e in json.load(f)}
+
+
+def _mock_sources(name: str, get_test_data: GetTestData) -> LoadSource:
+    """Build the mock source for a recipe.
+
+    Handing the baseline mars requests over up front lets a changed request fail where it is built,
+    before any retrieval.
+
+    Parameters
+    ----------
+    name : str
+        The recipe name.
+    get_test_data : GetTestData
+        Fixture used to download a request's recorded test data.
+
+    Returns
+    -------
+    LoadSource
+        The mock to patch ``from_source`` with.
+    """
+    baseline = None if UPDATE_MARS_REQUESTS else _load_baseline(name)
+    expected = None if baseline is None else set(baseline)
+    return LoadSource(get_test_data, expected=expected, fetch_missing=UPDATE_MARS_REQUESTS)
+
+
+def _tally(requests: list) -> dict:
+    """Collapse recorded requests to ``md5 -> {count, request}``.
+
+    Counting rather than de-duplicating on purpose: retrieving the same field
+    twice is a real defect.
+    """
+    tally: dict = {}
+    for entry in requests:
+        seen = tally.setdefault(entry["md5"], {"count": 0, "request": entry["request"]})
+        seen["count"] += 1
+    return tally
+
+
+def _check_mars_requests(name: str, requests: list) -> None:
+    """Assert the recipe asked MARS for exactly what it asked for last time.
+
+    This is the half of the check that can only be made once the build has finished:
+    that a baselined request was never asked for, and that none was asked for more
+    often than before.
+
+    Parameters
+    ----------
+    name : str
+        The recipe name; names the file the requests are recorded in.
+    requests : list
+        What ``LoadSource`` recorded during the build.
+
+    Raises
+    ------
+    AssertionError
+        If the requests differ from the recorded ones.
+    """
+    path = os.path.join(MARS_REQUESTS, name + ".json")
+    tally = _tally(requests)
+
+    if UPDATE_MARS_REQUESTS:
+        if tally:
+            os.makedirs(MARS_REQUESTS, exist_ok=True)
+            with open(path, "w") as f:
+                json.dump([dict(md5=k, **v) for k, v in sorted(tally.items())], f, indent=2)
+                f.write("\n")
+        elif os.path.exists(path):
+            os.remove(path)
+        return
+
+    expected = _load_baseline(name)
+    if expected is None:
+        assert not tally, (
+            f"{name} issued {len(tally)} MARS request(s) but has no recorded baseline.\n"
+            "Regenerate with ANEMOI_UPDATE_MARS_REQUESTS=1"
+        )
+        return
+
+    # Only the baselined md5s are worth walking: ``LoadSource`` was handed this same
+    # set and refuses anything outside it, so the build cannot have reached here
+    # having asked for something new.
+    assert not set(tally) - set(expected), "LoadSource.mars should have rejected an unbaselined request"
+
+    errors = []
+    for md5 in sorted(expected):
+        was, now = expected[md5], tally.get(md5)
+        if now is None:
+            errors.append(f"  - no longer asked for:  {json.dumps(was['request'])}")
+        elif was["count"] != now["count"]:
+            errors.append(f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}")
+
+    assert not errors, (
+        f"{name} no longer asks MARS for the same fields:\n"
+        + "\n".join(errors)
+        + "\n\nIf the change is intended, regenerate with ANEMOI_UPDATE_MARS_REQUESTS=1"
+    )
 
 
 SKIPPED_TESTS = ["recentre"]
@@ -65,7 +188,7 @@ SKIPPED_TESTS = ["recentre"]
 
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSource) -> None:
+def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData) -> None:
     """Run the test for the specified dataset.
 
     Parameters
@@ -74,8 +197,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         The name of the dataset.
     get_test_archive : callable
         Fixture to retrieve the test archive.
-    load_source : LoadSource
-        Fixture to mock data sources.
+    get_test_data : GetTestData
+        Fixture to retrieve a request's recorded test data.
 
     Raises
     ------
@@ -87,6 +210,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
 
     import requests
 
+    load_source = _mock_sources(name, get_test_data)
+
     with (
         patch("earthkit.data.from_source", load_source),
         patch("anemoi.datasets.create.sources.mars.retrieval.from_source", load_source),
@@ -97,6 +222,8 @@ def test_run(name: str, get_test_archive: GetTestArchive, load_source: LoadSourc
         output = os.path.join(HERE, name + ".zarr")
 
         create_dataset(recipe=recipe, output=output, delta=["12h"])
+
+        _check_mars_requests(name, load_source.requests)
 
         missing_reference = False
         try:
