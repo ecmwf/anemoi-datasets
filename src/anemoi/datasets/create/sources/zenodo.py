@@ -11,7 +11,6 @@
 from typing import Any
 
 import earthkit.data as ekd
-from earthkit.data.core.fieldlist import MultiFieldList
 from earthkit.data.sources.url import download_and_cache
 
 from . import source_registry
@@ -44,7 +43,7 @@ class ZenodoSource(LegacySource):
 
         Returns
         -------
-        MultiFieldList
+        ekd.FieldList
             A list of fields loaded from the downloaded files.
         """
         import requests
@@ -68,4 +67,4 @@ class ZenodoSource(LegacySource):
             path = download_and_cache(urls[url])
             result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
 
-        return MultiFieldList(result)
+        return ekd.concat(*result)

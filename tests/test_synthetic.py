@@ -440,7 +440,7 @@ def test_computed_forcing_generator_matches_earthkit() -> None:
         longitudes=lon,
         date=[d.astype("datetime64[s]").astype(datetime.datetime) for d in dates],
         param=["insolation"],
-    )
+    ).to_fieldlist()
     expected = np.stack([f.to_numpy(flatten=True) for f in fl])  # (2, 4)
     np.testing.assert_allclose(out[:, 0, :], expected)
 

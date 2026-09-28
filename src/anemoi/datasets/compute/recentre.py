@@ -48,14 +48,17 @@ def check_compatible(
     ensemble_field_as_mars : Dict[str, Any]
         Metadata of the ensemble field.
     """
-    assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
-    assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
+    assert f1.geography.unique_grid_id() == f2.geography.unique_grid_id(), (
+        f1.geography.unique_grid_id(),
+        f2.geography.unique_grid_id(),
+    )
+    assert f1.geography.area() == f2.geography.area(), (f1.geography.area(), f2.geography.area())
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
 
     # Not in *_as_mars
-    assert f1.metadata("valid_datetime") == f2.metadata("valid_datetime"), (
-        f1.metadata("valid_datetime"),
-        f2.metadata("valid_datetime"),
+    assert f1.get("time.valid_datetime") == f2.get("time.valid_datetime"), (
+        f1.get("time.valid_datetime"),
+        f2.get("time.valid_datetime"),
     )
 
     for k in set(centre_field_as_mars.keys()) | set(ensemble_field_as_mars.keys()):
@@ -96,9 +99,9 @@ def recentre(
     Any
         The recentred dataset or output path.
     """
-    keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
+    keys = ["parameter.variable", "vertical.level", "time.valid_datetime", "date", "time", "step", "ensemble.member"]
 
-    number_list = members.unique_values("number", progress_bar=False)["number"]
+    number_list = members.unique("ensemble.member", progress_bar=False)["ensemble.member"]
     n_numbers = len(number_list)
 
     assert None not in number_list
@@ -129,8 +132,8 @@ def recentre(
     seen = set()
 
     for i, centre_field in enumerate(centre):
-        param = centre_field.metadata("param")
-        centre_field_as_mars = centre_field.metadata(namespace="mars")
+        param = centre_field.get("parameter.variable")
+        centre_field_as_mars = centre_field.get(collections="metadata.mars")
 
         # load the centre field
         centre_np = centre_field.to_numpy()
@@ -140,7 +143,7 @@ def recentre(
 
         for j in range(n_numbers):
             ensemble_field = members[i * n_numbers + j]
-            ensemble_field_as_mars = ensemble_field.metadata(namespace="mars")
+            ensemble_field_as_mars = ensemble_field.get(collections="metadata.mars")
             check_compatible(
                 centre_field,
                 ensemble_field,
@@ -190,7 +193,7 @@ def recentre(
 
     from earthkit.data import from_source
 
-    ds = from_source("file", path)
+    ds = from_source("file", path).to_fieldlist()
 
     # save a reference to the tmp file so it is deleted
     # only when the dataset is not used anymore
