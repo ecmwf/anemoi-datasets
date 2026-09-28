@@ -318,7 +318,25 @@ class Join(Combined):
 
         raise ValueError(f"Invalid index {index} {[d.shape for d in self.datasets]}")
 
-    def project(self, projection):
+    def project(self, projection) -> Any:
+        """Fan the projection out into the joined datasets.
+
+        A ``join`` partitions the *variables* across its constituents:
+        each occupies a contiguous block along the variable axis (axis
+        1), so the projection is shifted by minus the block's offset to
+        land in that dataset's own variable coordinates. Variables
+        outside a constituent compose to an empty selection there.
+
+        Parameters
+        ----------
+        projection : ProjectionBase
+            The projection, in the joined dataset's coordinates.
+
+        Returns
+        -------
+        ProjectionBase
+            The resolved projections of all constituents.
+        """
         result = []
         offset = 0
 

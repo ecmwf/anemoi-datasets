@@ -12,8 +12,8 @@ import logging
 from typing import Any
 
 import numpy as np
-from earthkit.data.core.temporary import temp_file
-from earthkit.data.readers.grib.output import new_grib_output
+from anemoi.transform import Field
+from anemoi.transform import FieldList
 
 LOG = logging.getLogger(__name__)
 
@@ -48,14 +48,17 @@ def check_compatible(
     ensemble_field_as_mars : Dict[str, Any]
         Metadata of the ensemble field.
     """
-    assert f1.mars_grid == f2.mars_grid, (f1.mars_grid, f2.mars_grid)
-    assert f1.mars_area == f2.mars_area, (f1.mars_area, f2.mars_area)
+    assert f1.geography.unique_grid_id() == f2.geography.unique_grid_id(), (
+        f1.geography.unique_grid_id(),
+        f2.geography.unique_grid_id(),
+    )
+    assert f1.geography.area() == f2.geography.area(), (f1.geography.area(), f2.geography.area())
     assert f1.shape == f2.shape, (f1.shape, f2.shape)
 
     # Not in *_as_mars
-    assert f1.metadata("valid_datetime") == f2.metadata("valid_datetime"), (
-        f1.metadata("valid_datetime"),
-        f2.metadata("valid_datetime"),
+    assert f1.valid_datetime == f2.valid_datetime, (
+        f1.valid_datetime,
+        f2.valid_datetime,
     )
 
     for k in set(centre_field_as_mars.keys()) | set(ensemble_field_as_mars.keys()):
@@ -89,16 +92,18 @@ def recentre(
     alpha : float, optional
         Scaling factor. Defaults to 1.0.
     output : Optional[str], optional
-        Output path. Defaults to None.
+        Output path. When given, the recentred fields are encoded to this
+        GRIB file and the path is returned; otherwise the fields are built
+        in memory and returned as a :class:`FieldList`.
 
     Returns
     -------
     Any
-        The recentred dataset or output path.
+        The recentred fieldlist (``output=None``) or the output path.
     """
-    keys = ["param", "level", "valid_datetime", "date", "time", "step", "number"]
+    keys = ["parameter.variable", "vertical.level", "time.valid_datetime", "date", "time", "step", "ensemble.member"]
 
-    number_list = members.unique_values("number", progress_bar=False)["number"]
+    number_list = members.unique("ensemble.member", progress_bar=False)["ensemble.member"]
     n_numbers = len(number_list)
 
     assert None not in number_list
@@ -116,21 +121,12 @@ def recentre(
             LOG.error("centre: %r", f)
         raise ValueError(f"Inconsistent number of fields: {len(centre)} * {n_numbers} != {len(members)}")
 
-    if output is None:
-        # prepare output tmp file so we can read it back
-        tmp = temp_file()
-        path = tmp.path
-    else:
-        tmp = None
-        path = output
-
-    out = new_grib_output(path)
-
+    result = []
     seen = set()
 
     for i, centre_field in enumerate(centre):
-        param = centre_field.metadata("param")
-        centre_field_as_mars = centre_field.metadata(namespace="mars")
+        param = centre_field.param
+        centre_field_as_mars = centre_field.get(collections="metadata.mars")
 
         # load the centre field
         centre_np = centre_field.to_numpy()
@@ -140,7 +136,7 @@ def recentre(
 
         for j in range(n_numbers):
             ensemble_field = members[i * n_numbers + j]
-            ensemble_field_as_mars = ensemble_field.metadata(namespace="mars")
+            ensemble_field_as_mars = ensemble_field.get(collections="metadata.mars")
             check_compatible(
                 centre_field,
                 ensemble_field,
@@ -178,24 +174,18 @@ def recentre(
 
             assert x.shape == e.shape, (x.shape, e.shape)
 
-            out.write(x, template=template)
-            template = None
+            result.append(Field.from_numpy(x, template=template))
 
     assert len(seen) == len(members), (len(seen), len(members))
-
-    out.close()
+    assert len(result) == len(members), (len(result), len(members))
 
     if output is not None:
-        return path
+        from anemoi.transform.grib import new_grib_output
 
-    from earthkit.data import from_source
+        out = new_grib_output(output)
+        for field in result:
+            out.write(field.to_numpy(), template=field)
+        out.close()
+        return output
 
-    ds = from_source("file", path)
-
-    # save a reference to the tmp file so it is deleted
-    # only when the dataset is not used anymore
-    ds._tmp = tmp
-
-    assert len(ds) == len(members), (len(ds), len(members))
-
-    return ds
+    return FieldList.from_fields(result)

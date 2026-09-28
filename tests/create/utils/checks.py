@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import fnmatch
 import os
 from typing import Any
 
@@ -86,6 +87,13 @@ class CompareToReferenceCheck(_Check):
                 "metadata.recipe.input.join.2.accumulations",  # expected to change because we renamed the key
                 "metadata.variables_metadata.tp.period",  # expected to change because the metadata is now better ('0d' instead of 0)
                 "metadata.variables_metadata.cp.period",  # expected to change because the metadata is now better ('0d' instead of 0)
+                # The 'variable/1' serialisation schema adds per-variable
+                # schema/parameter/vertical keys and moves units under
+                # parameter.units; references predate it.
+                "metadata.variables_metadata.*.schema",
+                "metadata.variables_metadata.*.parameter",
+                "metadata.variables_metadata.*.vertical",
+                "metadata.variables_metadata.*.units",
             }
         )
 
@@ -166,11 +174,15 @@ class CompareToReferenceCheck(_Check):
             assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
             assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
+    def _ignored(self, name: str) -> bool:
+        """Check a dotted attribute path against the ignore list (fnmatch patterns allowed)."""
+        return name in self.ignore_keys or any(fnmatch.fnmatch(name, pattern) for pattern in self.ignore_keys)
+
     def compare_dot_zattrs(self, a: dict, b: dict, errors: list, *path) -> None:
         """Compare the attributes of two Zarr datasets."""
 
         name = ".".join(path)
-        if name in self.ignore_keys:
+        if self._ignored(name):
             return
 
         if type(a) is not type(b):
@@ -185,7 +197,7 @@ class CompareToReferenceCheck(_Check):
 
                 name = ".".join(path + (k,))
 
-                if name in self.ignore_keys:
+                if self._ignored(name):
                     continue
 
                 if k not in a_keys:

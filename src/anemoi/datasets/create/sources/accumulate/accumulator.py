@@ -12,13 +12,11 @@ import logging
 from typing import Any
 
 import numpy as np
+from anemoi.transform.fields import Field
 from anemoi.utils.dates import frequency_to_string
 from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
-
-from .writers import write_accumulated_field_with_valid_time
-from .writers import write_accumulated_forecast_field
 
 LOG = logging.getLogger(__name__)
 
@@ -114,9 +112,30 @@ class Accumulator:
         self.done.append(matching)
         return True
 
-    def write_to_output(self, output, template) -> None:
+    def as_field(self, template: Field) -> Field:
+        """Build the accumulated field once the accumulation is complete.
+
+        The result is an in-memory field carrying the accumulation in its
+        components: the time component gives the base time and the step to
+        the validity time, and the processing component records an
+        accumulation over the last ``period`` of that step. For valid-date
+        accumulations (no basetime) the base time is the start of the
+        accumulation window, so the whole step is accumulated; for forecast
+        accumulations the base time is the model-run basetime (so trajectory
+        loaders can recover ``(basetime, step)``).
+
+        Parameters
+        ----------
+        template : Field
+            Field providing all other components (parameter, geography, ...).
+
+        Returns
+        -------
+        Field
+            The accumulated field.
+        """
         assert self.is_complete(), (self.todo, self.done, self)
-        assert not self.locked  # prevent double writing
+        assert not self.locked  # prevent building the field twice
 
         # negative values may be an anomaly (e.g precipitation), but this is user's choice
         for k, v in self.key:
@@ -125,25 +144,21 @@ class Accumulator:
                     LOG.warning(
                         f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
                     )
-        if self.basetime is not None:
-            write_accumulated_forecast_field(
-                template=template,
-                values=self.values,
-                basetime=self.basetime,
-                valid_date=self.valid_date,
-                period=self.period,
-                output=output,
-            )
-        else:
-            write_accumulated_field_with_valid_time(
-                template=template,
-                values=self.values,
-                valid_date=self.valid_date,
-                period=self.period,
-                output=output,
-            )
+
+        basetime = self.basetime if self.basetime is not None else self.valid_date - self.period
+        field = Field.from_numpy(
+            self.values,
+            template=template,
+            **{
+                "time.base_datetime": basetime,
+                "time.step": self.valid_date - basetime,
+                "proc.time_method": "accum",
+                "proc.time_value": self.period,
+            },
+        )
         # lock the accumulator to prevent further use
         self.locked = True
+        return field
 
     def __repr__(self, verbose: bool = False) -> str:
         key = ", ".join(f"{k}={v}" for k, v in self.key)

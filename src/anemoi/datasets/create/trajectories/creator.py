@@ -85,7 +85,15 @@ class TrajectoryGriddedCreator(GriddedCreator):
         return base_dates[0] + step_start, base_dates[-1] + step_end
 
     def collect_metadata(self, metadata: dict):
-        """Collect metadata for the trajectories dataset."""
+        """Collect metadata for the trajectories dataset.
+
+        ``super().collect_metadata`` (the gridded creator) writes
+        ``metadata["origins"]`` from ``self.minimal_input`` — a one-date
+        selection of the input. For trajectories that selection is one
+        ``(basetime, step)`` group, which retrieves every variable through
+        the same sources and filters as the full dataset, so the collected
+        per-variable origins are representative of all trajectory points.
+        """
         super().collect_metadata(metadata)
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
@@ -247,16 +255,10 @@ class TrajectoryGriddedCreator(GriddedCreator):
         variables = list(dataset.get_metadata("variables"))
         var_to_idx = {v: i for i, v in enumerate(variables)}
 
-        # Use the same remapping (``build.variable_naming``) that named the
-        # variables at init time, so e.g. wave spectra are recovered as
-        # ``{param}_{directionNumber}_{frequencyNumber}`` rather than bare
-        # ``param``/``param_levelist``.
-        remapping = result.context.remapping
-
         # Map GRIB member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
-        numbers = cube.user_coords.get("number")
+        numbers = cube.user_coords.get("metadata.number")
         number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
@@ -316,13 +318,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
             )
             step_td = datetime.timedelta(hours=int(field.metadata("step")))
 
-            # Recover variable name via the build.variable_naming remapping
-            # (param_level pattern), matching the names declared at init.
-            var_name = remapping(field.metadata)("param_level", default=None)
-            if var_name is None:
-                var_name = str(field.metadata("param"))
+            var_name = field.name
+            number = field.number
 
-            number = field.metadata("number", default=0) or 0
             if number_to_index is None:
                 ens_idx = 0
             else:

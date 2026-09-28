@@ -10,7 +10,7 @@
 from datetime import datetime
 from typing import Any
 
-from earthkit.data import from_source
+from anemoi.transform import FieldList
 
 from anemoi.datasets.create.sources import source_registry
 
@@ -44,4 +44,4 @@ class GenericSource(LegacySource):
             kwargs["date"] = list({d.strftime("%Y%m%d") for d in dates})
         if kwargs["time"] == "$from_dates":
             kwargs["time"] = list({d.strftime("%H%M") for d in dates})
-        return from_source(name, **kwargs)
+        return FieldList.from_source(name, **kwargs)
