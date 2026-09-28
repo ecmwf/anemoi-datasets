@@ -64,6 +64,62 @@ dates.
 
 .. literalinclude:: code/subsetting_interpolate_frequency_.py
 
+.. _extend:
+
+********
+ extend
+********
+
+You can extend the date range of a dataset backwards and/or forwards by
+using the ``extend_start`` and ``extend_end`` options. The new dates are
+added at the dataset's ``frequency`` and are marked as :ref:`missing
+<selecting-missing>`, so accessing them will raise a ``MissingDateError``
+unless you combine them with a :ref:`fill_missing_dates
+<selecting-missing>` method.
+
+.. code:: python
+
+   ds = open_dataset(dataset, extend_start="2019-01-01", extend_end="2021-12-31")
+
+The ``extend_start`` date must be before (or equal to) the first date of
+the dataset, and the ``extend_end`` date must be after (or equal to) the
+last date. Either option can be omitted to extend in only one direction:
+
+.. code:: python
+
+   # Extend only backwards
+   ds = open_dataset(dataset, extend_start="2019-01-01")
+
+   # Extend only forwards
+   ds = open_dataset(dataset, extend_end="2021-12-31")
+
+As with the :ref:`start` and :ref:`end` options, you can pass a partial
+date, and it will be expanded taking the dataset's ``frequency`` into
+account. The ``extend_start`` is expanded to the first time step of the
+period, while ``extend_end`` is expanded to the last time step:
+
+-  ``extend_start="2019"`` is equivalent to ``extend_start="2019-01-01
+   00:00:00"``
+-  ``extend_end="2021"`` is equivalent to ``extend_end="2021-12-31
+   18:00:00"`` for a 6-hourly dataset
+-  ``extend_end="2021-06"`` is equivalent to ``extend_end="2021-06-30
+   18:00:00"`` for a 6-hourly dataset
+
+Unlike ``start`` and ``end``, the added dates do not need to already
+exist in the dataset, so no reference dates are used when expanding.
+
+This is typically combined with a fill method so that the added dates
+hold artificial values instead of raising an error:
+
+.. code:: python
+
+   ds = open_dataset(
+       dataset,
+       extend_start="2019-01-01",
+       extend_end="2021-12-31",
+       fill_missing_dates="nans",
+   )
+
 .. _subsetting-trajectories:
 
 **************************
