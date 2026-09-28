@@ -181,6 +181,11 @@ class Forwards(Dataset):
         """Returns the statistics of the forward dataset."""
         return self.forward.statistics
 
+    @property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Returns the residual statistics of the forward dataset."""
+        return self.forward.residual_statistics
+
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Returns the statistics tendencies of the forward dataset.
 

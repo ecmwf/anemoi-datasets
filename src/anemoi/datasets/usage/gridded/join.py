@@ -237,6 +237,18 @@ class Join(Combined):
             k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
         }
 
+    @property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Get the residual statistics of the joined dataset.
+
+        Every joined dataset must carry residual statistics, since the join
+        concatenates their variables.
+        """
+        return {
+            k: np.concatenate([d.residual_statistics[k] for d in self.datasets], axis=0)
+            for k in self.datasets[0].residual_statistics
+        }
+
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies of the joined dataset.
 
