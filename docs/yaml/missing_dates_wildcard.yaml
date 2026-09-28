@@ -1,0 +1,10 @@
+dates:
+  start: 2015-01-01 00:00:00
+  end: 2020-12-31 23:00:00
+  frequency: 1h
+
+  missing:
+  # every 2 January at 00:00, in every year of the range
+  - ????-01-02 00:00
+  # every time step on 1 September, in every year of the range
+  - ????-09-01

@@ -1,0 +1,20 @@
+base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
+steps: {start: 6h, end: 90h, frequency: 6h}
+
+input:
+  maximum:
+    period: 6h
+    from:
+      base_dates: true          # the run the layout imposes
+      frequency: 1h             # its instantaneous fields exist hourly
+    source:
+      mars:
+        class: od
+        type: fc
+        stream: oper
+        grid: 20./20.
+        levtype: sfc
+        param: [2t]
+
+output:
+  layout: trajectories

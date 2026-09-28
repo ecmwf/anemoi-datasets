@@ -1,10 +1,5 @@
 accumulate:
   period: 6h
-  availability:
-    type: accumulated-from-previous-step
-    basetime: [6, 18]
-    frequency: 1h
-    last_step: 18
   source:
     mars:
       expver: "0001"

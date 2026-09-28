@@ -22,6 +22,7 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import nested_store
 from anemoi.datasets.compat import zarr_append_mode
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
@@ -154,9 +155,7 @@ class ZarrCopier:
             Storage path.
         """
         if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
+            return nested_store(path)
         return path
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:

@@ -11,15 +11,30 @@ import re
 from datetime import datetime
 from datetime import timedelta
 
+# A step written in the archive's syntax: an optional hour part and an optional
+# minute part, e.g. "24h", "10m", "10h10m".  A bare number means hours.
+_STEP_RE = re.compile(r"^(?:(\d+)h)?(?:(\d+)m)?$")
+
 
 def step_to_timedelta(step: str | int | timedelta) -> timedelta:
-    """Parse a step into a timedelta.
+    """Parse a step written in the archive's syntax into a timedelta.
 
-    Inverse of `timedelta_to_step`. A bare number means hours, so hour-based
-    configs (``frequency: 1``, ``last_step: 24``) keep working
+    Inverse of :func:`timedelta_to_step`.  A bare number means hours, so
+    hour-based configurations (``frequency: 1``, ``last_step: 24``) keep
+    their meaning::
 
         12 -> 12h, "12" -> 12h, "24h" -> 24h
         "10m" -> 10min, "10h10m" -> 10h10min
+
+    Parameters
+    ----------
+    step : str or int or datetime.timedelta
+        The step to parse.  A timedelta is returned unchanged.
+
+    Returns
+    -------
+    datetime.timedelta
+        The lead time the step denotes.
 
     Raises
     ------
@@ -28,14 +43,17 @@ def step_to_timedelta(step: str | int | timedelta) -> timedelta:
     """
     if isinstance(step, timedelta):
         return step
+    if isinstance(step, bool):
+        # bool is an int subclass; a boolean step is always a mistake.
+        raise ValueError(f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'.")
     if isinstance(step, int):
         return timedelta(hours=step)
 
-    step = str(step).strip()
-    if step.isdigit():
-        return timedelta(hours=int(step))
+    text = str(step).strip()
+    if text.isdigit():
+        return timedelta(hours=int(text))
 
-    match = re.match(r"^(?:(\d+)h)?(?:(\d+)m)?$", step)
+    match = _STEP_RE.match(text)
     if not match or not any(match.groups()):
         raise ValueError(f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'.")
     hours, minutes = match.groups()
@@ -43,14 +61,26 @@ def step_to_timedelta(step: str | int | timedelta) -> timedelta:
 
 
 def timedelta_to_step(offset: timedelta) -> int | str:
-    """Format a lead time as a step.
+    """Format a lead time in the archive's step syntax.
 
     Whole hours stay plain integers, so that requests built from hour-based
-    recipes are byte-for-byte what they have always been. Only sub-hourly
-    offsets need the string form, carrying a minute suffix:
+    recipes are byte-for-byte what they have always been (the cached test
+    fixtures are named after the hash of the request).  Only sub-hourly
+    offsets take the string form, carrying a minute suffix::
 
         0:00  -> 0        12:00 -> 12
         0:10  -> "10m"    10:10 -> "10h10m"
+
+    Parameters
+    ----------
+    offset : datetime.timedelta
+        The lead time to format.
+
+    Returns
+    -------
+    int or str
+        The step: an ``int`` number of hours when the offset is a whole
+        number of hours, otherwise a string with a minute suffix.
 
     Raises
     ------
@@ -147,6 +177,8 @@ class SignedInterval:
                     timedelta_to_step(self.end - self.base),
                 ]
             else:
+                # The negated interval runs backwards; show the earlier
+                # endpoint with a minus sign (but not "-0").
                 earlier = self.end - self.base
                 steps = [
                     timedelta_to_step(earlier) if not earlier else f"-{timedelta_to_step(earlier)}",

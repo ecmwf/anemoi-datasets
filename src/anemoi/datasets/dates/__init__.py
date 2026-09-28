@@ -23,6 +23,8 @@ from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 
+from anemoi.datasets.create.intervals import step_to_timedelta
+
 _WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
 
 
@@ -409,7 +411,7 @@ class HindcastsDates(DatesProvider):
     Args:
         start (Union[str, List[str]]): Start date(s).
         end (Union[str, List[str]]): End date(s).
-        steps (List[int]): List of step values.
+        steps (List[Union[int, str]]): List of steps; a bare number means hours.
         years (int): Number of years.
         **kwargs (Any): Additional arguments.
     """
@@ -418,7 +420,7 @@ class HindcastsDates(DatesProvider):
         self,
         start: str | list[str],
         end: str | list[str],
-        steps: list[int] = [0],
+        steps: list[int | str] = [0],
         years: int = 20,
         **kwargs: Any,
     ) -> None:
@@ -427,7 +429,8 @@ class HindcastsDates(DatesProvider):
         Args:
             start (Union[str, List[str]]): Start date(s).
             end (Union[str, List[str]]): End date(s).
-            steps (List[int]): List of step values.
+            steps (List[Union[int, str]]): List of steps; a bare number means
+                hours, a suffixed string is honoured ("6h", "30m").
             years (int): Number of years.
             **kwargs (Any): Additional arguments.
         """
@@ -447,7 +450,7 @@ class HindcastsDates(DatesProvider):
             assert refdate - hdate >= datetime.timedelta(days=365), (refdate - hdate, refdate, hdate)
             for step in steps:
 
-                date = hdate + datetime.timedelta(hours=step)
+                date = hdate + step_to_timedelta(step)
 
                 if date in seen:
                     raise ValueError(f"Duplicate date {date}={hdate}+{step} for {refdate} and {seen[date]}")

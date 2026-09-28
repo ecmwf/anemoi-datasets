@@ -1,0 +1,18 @@
+base_dates: {start: 2021-01-01, end: 2021-01-03, frequency: 12h}
+steps: {start: 6h, end: 30h, frequency: 6h}
+
+input:
+  average:
+    period: 24h
+    from:
+      frequency: 6h        # base-less: analyses every 6h
+    source:
+      mars:
+        class: ea
+        type: an
+        grid: 20./20.
+        levtype: sfc
+        param: [2t]
+
+output:
+  layout: trajectories

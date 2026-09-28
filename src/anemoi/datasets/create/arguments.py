@@ -233,7 +233,9 @@ class Intervals(ValidDates):
         Returns
         -------
         tuple
-            ``(valid_time, adjusted_request, step)``
+            ``(valid_time, adjusted_request, step)`` -- the step in the
+            archive syntax: an ``int`` number of hours, or a string with a
+            minute suffix for a sub-hourly lead time.
         """
         assert interval.base is not None, (
             f"Intervals.adjust_request requires a basetime; got {interval!r}. "
@@ -337,7 +339,9 @@ class ForecastIntervals(ForecastDates):
         Returns
         -------
         tuple
-            ``(valid_time, adjusted_request, step)``
+            ``(valid_time, adjusted_request, step)`` -- the step in the
+            archive syntax: an ``int`` number of hours, or a string with a
+            minute suffix for a sub-hourly lead time.
         """
         r = request.copy()
         step = timedelta_to_step(interval.max - interval.base)

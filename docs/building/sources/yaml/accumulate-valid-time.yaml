@@ -1,0 +1,9 @@
+accumulate:
+  period: 6h
+  from:
+    accumulation: 1h       # base-less: the archive stores hourly increments
+  source:
+    grib-index:
+      indexdb: /path/to/grib/index.db
+      param: [tp, cp, sf]
+      levtype: sfc

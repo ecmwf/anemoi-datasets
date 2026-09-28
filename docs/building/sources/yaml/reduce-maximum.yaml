@@ -1,0 +1,11 @@
+maximum:
+  period: 24h
+  from:
+    frequency: 1h
+  source:
+    mars:
+      class: ea
+      type: an
+      grid: 20./20.
+      levtype: sfc
+      param: [2t]

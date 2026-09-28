@@ -25,6 +25,7 @@ The following `sources` are currently available:
 
    sources/accumulate
    sources/anemoi-dataset
+   sources/average
    sources/cds
    sources/eccc-fstd
    sources/forcings

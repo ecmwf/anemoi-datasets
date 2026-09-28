@@ -11,6 +11,7 @@
 import logging
 from typing import Any
 
+from anemoi.datasets.create.ensembles import ENSEMBLE_KEY
 from anemoi.datasets.create.gridded.result import SimpleGriddedResult
 from anemoi.datasets.create.input.context import Context
 from anemoi.datasets.dates.groups import GroupOfDates
@@ -34,9 +35,11 @@ class SimpleGriddedContext(Context):
     # Use ``time.valid_datetime`` (the time component path) rather than
     # ``metadata.valid_datetime`` (raw GRIB metadata path): the time-component
     # path survives field.set() wrapping (e.g. new_field_with_metadata) whereas
-    # the raw-metadata path does not. ``labels.name`` is the field name
+    # the raw-metadata path does not. For the same reason the ensemble member is
+    # the ``ensemble.member`` component path and not ``metadata.number`` (see
+    # ``anemoi.datasets.create.ensembles``). ``labels.name`` is the field name
     # attached by the naming scheme (see ``anemoi.transform.naming``).
-    order_by: list[str] = ["time.valid_datetime", "labels.name", "metadata.number"]
+    order_by: list[str] = ["time.valid_datetime", "labels.name", ENSEMBLE_KEY]
 
     def __init__(self, recipe: Any) -> None:
         """Initialise a SimpleGriddedContext instance.

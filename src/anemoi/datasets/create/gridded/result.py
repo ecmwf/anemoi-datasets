@@ -25,6 +25,10 @@ from anemoi.utils.humanize import shorten_list
 # earthkit-data 1.0 build_remapping compatibility shim (see that module).
 from earthkit.data.core.order import build_remapping
 
+from anemoi.datasets.create.ensembles import ENSEMBLE_KEY
+from anemoi.datasets.create.ensembles import ENSEMBLE_PATCH
+from anemoi.datasets.create.ensembles import ensemble_member
+from anemoi.datasets.create.ensembles import ensemble_order
 from anemoi.datasets.create.input.result import Result
 
 LOG = logging.getLogger(__name__)
@@ -358,7 +362,9 @@ class GriddedResult(Result):
             if o is None:
                 raise ValueError(f"Field {fs} carries no origin (labels.anemoi_origin)")
             name = fs.name
-            number = fs.number
+            # The member comes from the ``ensemble.member`` component: a
+            # computed field (accumulation, forcing, ...) has no raw metadata.
+            number = ensemble_member(fs)
 
             assert name not in origins_per_number[number][o], name
             origins_per_number[number][o].add(name)
@@ -399,13 +405,22 @@ class GriddedResult(Result):
         LOG.info("Sorting dataset %s", self.order_by)
         assert self.order_by, self.order_by
 
-        self.patches: dict[str, Any] = {
-            "metadata.number": {None: 0},
-        }
+        # Normalise the ensemble axis: earthkit stores the member as a string
+        # and leaves it unset for deterministic data, the dataset wants ints
+        # (and member 0 when there is no ensemble information).
+        self.patches: dict[str, Any] = dict(ENSEMBLE_PATCH)
+
+        # ... and order the members as numbers, which the patch alone does not
+        # achieve (see ``anemoi.datasets.create.ensembles``). The keys are
+        # unchanged, so ``cube.user_coords`` still matches ``order_by``.
+        members: Any = ensemble_order(ds)
+        order_by: Any = self.order_by
+        if members is not None:
+            order_by = [{ENSEMBLE_KEY: members} if key == ENSEMBLE_KEY else key for key in order_by]
 
         try:
             cube: Any = ds.to_cube(
-                self.order_by,
+                order_by,
                 remapping=self.remapping,
                 flatten_values=True,
                 patch=self.patches,
