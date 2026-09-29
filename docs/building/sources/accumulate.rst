@@ -255,5 +255,9 @@ Example (extracted from ``tests/create/trajectories_accumulation.yaml``):
 
 .. [1]
 
-   For ECMWF forecasts, the forecasts at 00Z and 12Z are from the stream
-   ``oper`` while the forecasts at 06Z and 18Z are from the stream ``scda``.
+   For ECMWF forecasts before IFS cycle 50r1 (operational from the
+   2026-05-12 06 UTC run), the forecasts at 00Z and 12Z are from the
+   stream ``oper`` while the forecasts at 06Z and 18Z are from the
+   stream ``scda``. From the cycle change onwards, all four runs are archived
+   under ``oper`` and the automatic ``oper`` → ``scda`` substitution is no
+   longer applied.

@@ -10,11 +10,13 @@
 from __future__ import annotations
 
 import logging
+from math import prod
 from typing import Annotated
 from typing import Any
 from typing import Literal
 from typing import Union
 
+import numpy as np
 from pydantic import BaseModel
 from pydantic import Discriminator
 from pydantic import Field
@@ -66,6 +68,15 @@ class GriddedOutput(OutputBase):
     chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
 
+    default_grid_splits: int = Field(default=4, gt=0)
+    """The default number of chunks into which the grid is split."""
+
+    max_chunk_bytes: int = Field(default=2**31 - 1, gt=0)
+    """The maximum chunk size in bytes. Blosc and several other codecs use signed 32-bit buffer sizes."""
+
+    min_chunk_bytes: int = Field(default=2**25, gt=0)  # 32 MiB
+    """The minimum target chunk size in bytes."""
+
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Kept in sync with ``SimpleGriddedContext.order_by``.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
@@ -101,6 +112,13 @@ class GriddedOutput(OutputBase):
     def get_chunking(self, coords: dict) -> tuple:
         """Returns the chunking configuration based on coordinates.
 
+        Unless an explicit ``values`` chunk size is configured and the date
+        is larger than :attr:`min_chunk_bytes`, split the grid into
+        :attr:`default_grid_splits` chunks. If the date is smaller than
+        :attr:`min_chunk_bytes`, the grid
+        is not split. If a chunk would exceed the codec buffer limit, the
+        grid chunking is doubled until it fits.
+
         Parameters
         ----------
         coords : dict
@@ -122,7 +140,31 @@ class GriddedOutput(OutputBase):
             raise ValueError(
                 f"Unused chunking keys from config: {list(user.keys())}, not in known keys : {list(coords.keys())}"
             )
+
+        if "values" in coords and "values" not in self.chunking:
+            grid_axis = list(coords).index("values")
+            grid_size = len(coords["values"])
+            splits = self.default_grid_splits
+
+            chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
+            while splits > 1 and chunk_bytes < self.min_chunk_bytes:
+                splits //= 2
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
+
+            while chunk_bytes > self.max_chunk_bytes:
+                if chunks[grid_axis] == 1:
+                    raise ValueError(
+                        f"A single-grid-point chunk requires {chunk_bytes:,} bytes, "
+                        f"exceeding the {self.max_chunk_bytes:,}-byte codec limit."
+                    )
+                splits *= 2
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
+
         return tuple(chunks)
+
+    def _set_grid_chunk_size(self, chunks, grid_axis, grid_size, splits) -> int:
+        chunks[grid_axis] = max(1, (grid_size + splits - 1) // splits)
+        return prod(chunks) * np.dtype(self.dtype).itemsize
 
 
 class TabularOutput(OutputBase):
