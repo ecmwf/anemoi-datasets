@@ -231,5 +231,14 @@ class WindowSourceBase(Source):
                 f"{self.name}: no source data at all for {len(missing)} (date, variable) combination(s):\n{detail}"
             )
 
-        LOG.info("%s: created %d field(s) over %s", self.name, len(fields), frequency_to_string(self.period))
+        # The bounds, not just the length: the window is end-anchored and half-open, and a
+        # reader who assumes a centred one is wrong by half the period in a way that looks
+        # entirely plausible. This line is in every build log, so it is where the
+        # convention costs nothing to state.
+        LOG.info(
+            "%s: created %d field(s), each over (date - %s, date]",
+            self.name,
+            len(fields),
+            frequency_to_string(self.period),
+        )
         return self._as_fieldlist(fields)
