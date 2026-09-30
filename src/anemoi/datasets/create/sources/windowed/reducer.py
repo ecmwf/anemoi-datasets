@@ -201,9 +201,7 @@ class Reducer:
         period = frequency_to_string(self.period)
         run = f", basetime={self.basetime}" if self.basetime is not None else ""
         operation = "" if self.operation.name == "sum" else f", {self.operation.name}"
-        default = (
-            f"{type(self).__name__}(valid_date={self.valid_date}{run}, {period}{operation}, key={{ {key} }})"
-        )
+        default = f"{type(self).__name__}(valid_date={self.valid_date}{run}, {period}{operation}, key={{ {key} }})"
         if verbose:
             extra = []
             if self.locked:

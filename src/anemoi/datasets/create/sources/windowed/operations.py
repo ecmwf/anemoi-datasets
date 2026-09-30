@@ -150,8 +150,7 @@ class Operation(ABC):
         """Why this reduction may not be applied to parts carrying *statistic*."""
         block = _BLOCK_FOR.get(statistic, f"a {statistic!r} block")
         lines = [
-            f"{self.name!r} over source data whose fields carry a {statistic!r} is not "
-            "implemented.",
+            f"{self.name!r} over source data whose fields carry a {statistic!r} is not " "implemented.",
             f"The result would be the {self.name} of whatever blocks the archive happens to "
             "store, so its value would come from the archive's granularity rather than from "
             "the recipe -- and an archive whose granularity changes with lead time would "

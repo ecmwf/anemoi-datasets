@@ -227,10 +227,10 @@ def test_a_direct_subwindow_accepts_its_own_statistic():
 @pytest.mark.parametrize(
     "statistic,operation",
     [
-        ("max", "sum"),      # the sum of block maxima
+        ("max", "sum"),  # the sum of block maxima
         ("max", "average"),  # the mean of block maxima
-        ("min", "max"),      # the largest block minimum
-        ("avg", "sum"),      # the sum of block means
+        ("min", "max"),  # the largest block minimum
+        ("avg", "sum"),  # the sum of block means
         ("accum", "average"),  # the window total over however many blocks there were
     ],
 )
@@ -288,9 +288,7 @@ def test_max_of_differenced_subwindows_is_the_wettest_hour():
     Neither the maximum of the cumulative fields (11) nor the window total (9) is the
     answer, which is the whole reason the subwindows exist.
     """
-    reducer = _reducer(
-        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4)
-    )
+    reducer = _reducer([SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4))
     _feed(reducer)
 
     assert reducer.is_complete()
@@ -299,9 +297,7 @@ def test_max_of_differenced_subwindows_is_the_wettest_hour():
 
 def test_the_same_subwindows_summed_give_the_window_total():
     """Only the reduction differs: summing them re-accumulates the window."""
-    reducer = _reducer(
-        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="sum", period=_hours(4)
-    )
+    reducer = _reducer([SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="sum", period=_hours(4))
     _feed(reducer)
 
     assert np.array_equal(reducer.values, [9.0]), "11 - 2, the total over [1,5]"
@@ -313,9 +309,7 @@ def test_a_non_additive_field_is_still_refused_with_over():
     A gust archive differenced into hourly parts is meaningless however the parts
     are then reduced; the field's own statistic is what catches it.
     """
-    reducer = _reducer(
-        [SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4)
-    )
+    reducer = _reducer([SubwindowState(s) for s in _hourly_from_cumulative(1, 4)], operation="max", period=_hours(4))
     with pytest.raises(ValueError, match="is not additive"):
         reducer.compute(np.array([1.0]), _interval(0, 2), statistic="max")
 

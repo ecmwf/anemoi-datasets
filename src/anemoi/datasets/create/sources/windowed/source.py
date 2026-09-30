@@ -220,7 +220,10 @@ class WindowSourceBase(Source):
 
         keys = {key for *_, key in reducers}
         missing = [
-            (t, key) for t in targets for key in sorted(keys) if (*t, key) not in reducers and (*t, key) not in discarded
+            (t, key)
+            for t in targets
+            for key in sorted(keys)
+            if (*t, key) not in reducers and (*t, key) not in discarded
         ]
         if missing:
             detail = "\n".join(

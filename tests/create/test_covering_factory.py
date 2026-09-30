@@ -17,6 +17,7 @@ from anemoi.datasets.create.sources.windowed.covering import AutoCovering
 from anemoi.datasets.create.sources.windowed.covering import covering_factory
 from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
 
+
 def _intervals(covering, *args, **kwargs):
     """The archived intervals a covering asks for, flattened out of its subwindows.
 
@@ -128,8 +129,10 @@ def test_lookup_table_rejects_entries_that_cannot_cover_the_window():
 def test_lookup_table_single_archived_window_still_works():
     """The documented form: the archive natively stores the requested windows."""
     start, end = _window(6, 12)
-    cover = _intervals(_lookup(**{"0-6": [18, "6-12"], "6-12": [18, "12-18"], "12-18": [18, "18-24"], "18-24": [18, "0-6"]}), 
-        start, end
+    cover = _intervals(
+        _lookup(**{"0-6": [18, "6-12"], "6-12": [18, "12-18"], "12-18": [18, "18-24"], "18-24": [18, "0-6"]}),
+        start,
+        end,
     )
     assert len(cover) == 1
     assert cover[0].sign == 1

@@ -16,6 +16,7 @@ from anemoi.datasets.create.sources.windowed.covering import ForecastCovering
 from anemoi.datasets.create.sources.windowed.covering import ValidTimeCovering
 from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
 
+
 def _intervals(covering, *args, **kwargs):
     """The archived intervals a covering asks for, flattened out of its subwindows.
 

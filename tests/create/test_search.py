@@ -14,8 +14,8 @@ from datetime import timedelta
 import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.windowed.search import search_intervals
 from anemoi.datasets.create.sources.windowed.interval_generators import interval_generator_factory
+from anemoi.datasets.create.sources.windowed.search import search_intervals
 
 
 def build_signed_interval(x: str) -> SignedInterval:
@@ -509,4 +509,3 @@ def test_a_doomed_search_over_a_recurring_description_does_not_wander():
     assert reached, message
     days = (datetime.fromisoformat(reached.group(1)) - BASE).days
     assert days < 14, f"wandered {days} days past a window that was doomed from the start"
-

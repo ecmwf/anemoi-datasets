@@ -126,9 +126,7 @@ class SamplingPlan(WindowPlan):
     def argument(self, targets: list[Target], parts: dict[Target, list]) -> Any:
         if self.run_anchored:
             # Each sample belongs to the run of its own row.
-            return ForecastDates(
-                sorted({(sample.valid_datetime, t[1]) for t in targets for sample in parts[t]})
-            )
+            return ForecastDates(sorted({(sample.valid_datetime, t[1]) for t in targets for sample in parts[t]}))
         return ValidDates(sorted({sample.valid_datetime for t in targets for sample in parts[t]}))
 
     def identify(self, field: Any) -> Any:

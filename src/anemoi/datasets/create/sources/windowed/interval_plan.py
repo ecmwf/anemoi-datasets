@@ -33,10 +33,10 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 
-from .plan import Target
-from .plan import WindowPlan
 from .operations import Operation
 from .operations import operation_factory
+from .plan import Target
+from .plan import WindowPlan
 from .reducer import Logs
 from .reducer import Reducer
 from .states import SubwindowState

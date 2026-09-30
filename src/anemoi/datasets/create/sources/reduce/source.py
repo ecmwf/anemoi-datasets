@@ -44,17 +44,17 @@ from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.sources import source_registry
 
+from ..windowed.covering import covering_from_description
 from ..windowed.description import ReduceSchema
 from ..windowed.description import check_window_inside_run
 from ..windowed.description import validate_from
 from ..windowed.description import window_samples
-from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.description.instants import FromInstants
 from ..windowed.description.instants import FromRun
-from ..windowed.covering import covering_from_description
-from ..windowed.source import WindowSourceBase
+from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.interval_plan import IntervalPlan
 from ..windowed.sampling_plan import SamplingPlan
+from ..windowed.source import WindowSourceBase
 
 LOG = logging.getLogger(__name__)
 
@@ -230,7 +230,6 @@ class ReduceSource(WindowSourceBase):
                 check_window_inside_run(valid_time, basetime, self.period, self.name)
 
         return self._run(self._plan(basetime=not self.is_instant_valued), targets)
-
 
 
 @source_registry.register("average")

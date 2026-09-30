@@ -20,23 +20,16 @@ from anemoi.datasets.create.sources import source_registry
 
 from ..windowed.clip import apply_clip
 from ..windowed.clip import normalise_clip
-from ..windowed.covering import AutoCovering
 from ..windowed.covering import ForecastCovering
-from ..windowed.covering import ValidTimeCovering
 from ..windowed.covering import covering_factory
 from ..windowed.covering import covering_from_description
 from ..windowed.description import AccumulateSchema
-from ..windowed.description import FromBare
-from ..windowed.description import FromLookupTable
 from ..windowed.description import FromTrajectories
-from ..windowed.description import TrajectoryIntervalGenerator
-from ..windowed.description import check_valid_time_source
 from ..windowed.description import infer_from_trajectories
 from ..windowed.description import normalise_from
 from ..windowed.field_to_interval import FieldToInterval
-from ..windowed.interval_generators import LookupTableIntervalGenerator
-from ..windowed.source import WindowSourceBase
 from ..windowed.interval_plan import IntervalPlan
+from ..windowed.source import WindowSourceBase
 
 LOG = logging.getLogger(__name__)
 

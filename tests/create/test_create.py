@@ -77,7 +77,6 @@ def load_source(get_test_data: GetTestData) -> LoadSource:
     return LoadSource(get_test_data)
 
 
-
 MARS_REQUESTS = os.path.join(HERE, "requests")
 
 #: Set to 1 to rewrite the recorded requests instead of checking them.
@@ -152,9 +151,7 @@ def _check_mars_requests(name: str, requests: list) -> None:
         elif now is None:
             errors.append(f"  - no longer asked for:     {json.dumps(was['request'])}")
         elif was["count"] != now["count"]:
-            errors.append(
-                f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}"
-            )
+            errors.append(f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}")
 
     assert not errors, (
         f"{name} no longer asks MARS for the same fields:\n"
