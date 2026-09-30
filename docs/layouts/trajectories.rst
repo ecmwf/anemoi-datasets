@@ -77,13 +77,15 @@ can be used at the leaves of a trajectory recipe. Today this means:
 
 -  :ref:`mars <sources-mars>` — full forecast and forecast-accumulation
    support.
+-  ``grib-index`` — forecast and forecast-accumulation support for
+   indexed GRIB data.
 -  :ref:`accumulate <sources-accumulate>` — forecast accumulations via
    the ``accumulation: from-zero | from-previous-step`` flag; see below.
 
-``grib-index``, ``fdb``, ``hindcasts`` and ``recentre`` are not
-trajectory-aware in this release. ``from-trajectories:`` is the reverse
-bridge: it lets a regular :ref:`gridded <layouts-gridded>` recipe pull
-fields from a forecast archive; see :ref:`sources-from-trajectories`.
+``fdb``, ``hindcasts`` and ``recentre`` are not trajectory-aware in this
+release. ``from-trajectories:`` is the reverse bridge: it lets a regular
+:ref:`gridded <layouts-gridded>` recipe pull fields from a forecast
+archive; see :ref:`sources-from-trajectories`.
 
 Forecast accumulations
 ======================

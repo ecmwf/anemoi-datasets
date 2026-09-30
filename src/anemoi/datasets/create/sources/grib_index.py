@@ -24,6 +24,8 @@ from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ForecastIntervals
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
 
@@ -611,9 +613,93 @@ class GribIndexSource(Source):
         self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
         self.request = kwargs
 
+    @staticmethod
+    def _time_filter(basetime: Any) -> str | list[str]:
+        """Return time values compatible with common GRIB-index encodings.
+
+        Some indexes store 00 UTC as ``0`` while others may store it as
+        ``0000``. ``GribIndex.retrieve`` accepts list values and turns them
+        into SQL ``IN (...)`` filters, so trying both is safe when they differ.
+        """
+        hhmm = basetime.strftime("%H%M")
+        compact = str(int(hhmm))
+
+        if compact == hhmm:
+            return compact
+
+        return [compact, hhmm]
+
+    def _forecast_request(self, valid_time: Any, basetime: Any) -> dict[str, Any]:
+        """Build a grib-index request from a trajectory pair.
+
+        Trajectory recipes provide ``(valid_time, basetime)`` pairs. The GRIB
+        index is queried using ``valid_datetime=valid_time`` plus forecast
+        keys derived from the basetime and lead time.
+        """
+        step_seconds = (valid_time - basetime).total_seconds()
+
+        if step_seconds % 3600:
+            raise ValueError(
+                "grib-index forecast requests only support whole-hour steps, "
+                f"got step={valid_time - basetime} "
+                f"(valid_time={valid_time}, basetime={basetime})."
+            )
+
+        request = self.request.copy()
+        request["date"] = basetime.strftime("%Y%m%d")
+        request["time"] = self._time_filter(basetime)
+        request["step"] = int(step_seconds // 3600)
+
+        return request
+
     def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
         """Retrieve grib-indexed fields for a list of validity times."""
         full_requests = [(list(dates), self.request)]
+        return self._run_requests(full_requests)
+
+    def execute_forecast_dates(self, dates: ForecastDates) -> FieldArray:
+        """Retrieve grib-indexed forecast fields for trajectory recipes.
+
+        The trajectory pipeline provides ``(valid_time, basetime)`` pairs.
+        ``valid_time`` is still used as the validity key, while ``date``,
+        ``time`` and ``step`` are added to the request to select the intended
+        forecast run.
+        """
+        full_requests = []
+
+        for valid_time, basetime in dates.items:
+            request = self._forecast_request(valid_time, basetime)
+            full_requests.append(([valid_time], request))
+
+        return self._run_requests(full_requests)
+
+    def execute_forecast_intervals(self, dates: ForecastIntervals) -> FieldArray:
+        """Retrieve grib-indexed fields for trajectory accumulation intervals.
+
+        Used by ``accumulate`` inside trajectory recipes. Each interval carries
+        a forecast basetime in ``interval.base``.
+        """
+        full_requests = []
+
+        for interval in dates.intervals:
+            assert interval.base is not None, (
+                f"GribIndexSource received a forecast interval without a basetime: " f"{interval!r}."
+            )
+
+            self.context.trace(
+                self.emoji,
+                "forecast interval:",
+                interval,
+                "vt=",
+                interval.valid_time,
+                "bt=",
+                interval.base,
+            )
+
+            request = self._forecast_request(interval.max, interval.base)
+            self.context.trace(self.emoji, "  request =", request)
+            full_requests.append(([interval.max], request))
+
         return self._run_requests(full_requests)
 
     def execute_intervals(self, dates: Intervals) -> FieldArray:
