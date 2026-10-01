@@ -1,0 +1,17 @@
+# The archive stores the maximum gust over each step range, so every field
+# *spans* an interval rather than existing at an instant.  The ranges are
+# irregular -- hourly to step 3, three-hourly after -- so there is no single
+# `frequency:` to state and the pairs are written out instead.
+maximum:
+  period: 6h
+  from:
+    base_dates: {times: [0, 12]}
+    steps: ["0-1", "1-2", "2-3", "3-6", "6-9", "9-12", "12-15", "15-18"]
+  source:
+    mars:
+      class: rr
+      type: fc
+      stream: oper
+      grid: 20./20.
+      levtype: sfc
+      param: [10fg]

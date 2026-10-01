@@ -18,8 +18,8 @@ from anemoi.utils.testing import skip_if_offline
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.recipe import Recipe
-from anemoi.datasets.create.sources.reduce_support import ReduceSchema
-from anemoi.datasets.create.sources.reduce_support import window_samples
+from anemoi.datasets.create.sources.reduce import ReduceSchema
+from anemoi.datasets.create.sources.reduce import window_samples
 
 from .utils.create import create_dataset
 
@@ -66,10 +66,19 @@ def test_schema_requires_from() -> None:
         ReduceSchema.model_validate({"period": "24h", "source": SOURCE})
 
 
-@pytest.mark.parametrize("from_", [{"accumulation": "6h"}, {"lookup-table": {}}])
-def test_schema_rejects_the_accumulate_vocabulary(from_: dict) -> None:
-    with pytest.raises(ValueError, match="belong to 'accumulate:'"):
-        ReduceSchema.model_validate({"period": "24h", "from": from_, "source": SOURCE})
+@pytest.mark.parametrize(
+    "from_,expected",
+    [
+        ({"accumulation": "1h"}, "FromBare"),
+        ({"lookup-table": {"start": "2021-01-01", "0-6": [0, "0-6"]}}, "FromLookupTable"),
+        ({"base_dates": {"times": [0, 12]}, "steps": ["0-1", "1-2", "2-3", "3-6"]}, "FromTrajectories"),
+    ],
+)
+def test_schema_accepts_interval_valued_source_data(from_: dict, expected: str) -> None:
+    """A reduction may also read fields that each span an interval, not only samples."""
+    schema = ReduceSchema.model_validate({"period": "6h", "from": from_, "source": SOURCE})
+    assert type(schema.from_).__name__ == expected
+    assert not schema.is_instant_valued
 
 
 def test_schema_accepts_the_run_anchored_shape() -> None:
@@ -425,7 +434,7 @@ def test_a_window_missing_one_sample_is_an_error() -> None:
     fields = [_FakeField(datetime.datetime(2021, 1, 1, 12), "2t", 1.0)]  # 06:00 is missing
     source = _source("average", fields)
 
-    with pytest.raises(ValueError, match="missing source samples"):
+    with pytest.raises(ValueError, match="missing source fields"):
         source.execute_valid_dates(_dates(12))
 
 
@@ -435,16 +444,24 @@ def test_a_variable_missing_for_a_whole_date_is_an_error() -> None:
     Completeness alone cannot see that — there is nothing to be incomplete —
     so the (date, variable) grid is checked separately.
     """
-    from anemoi.datasets.create.sources.reduce_support.reducer import AverageReducer
+    from anemoi.datasets.create.sources.windowed.reducer import Reducer
+    from anemoi.datasets.create.sources.windowed.samples import Sample
+    from anemoi.datasets.create.sources.windowed.states import SampleState
 
     source = _source("average", [])
     dates = _dates(12, 18)
 
-    def complete_reducer(date: datetime.datetime, param: str) -> AverageReducer:
+    def complete_reducer(date: datetime.datetime, param: str) -> Reducer:
         samples = window_samples(date, source.period, source.frequency)
-        reducer = AverageReducer(date, period=source.period, key=(("param", param),), samples=samples)
+        reducer = Reducer(
+            date,
+            period=source.period,
+            key=(("param", param),),
+            states=[SampleState(Sample(s)) for s in samples],
+            operation="average",
+        )
         for sample in samples:
-            reducer.compute(np.zeros(4), sample)
+            reducer.compute(np.zeros(4), (sample, None))
         assert reducer.is_complete()
         return reducer
 
@@ -562,5 +579,353 @@ def test_the_same_validity_time_from_two_runs_is_not_folded_together() -> None:
 def test_each_source_stamps_its_own_time_method(name: str, time_method: str) -> None:
     """``proc.time_method`` is what anemoi-transform reads back as the statistical process."""
     from anemoi.datasets.create.sources import source_registry
+    from anemoi.datasets.create.sources.windowed.operations import operation_factory
 
-    assert source_registry.lookup(name).reducer_class.time_method == time_method
+    assert operation_factory(source_registry.lookup(name).operation).time_method == time_method
+
+
+# ── interval-valued source data: reducing subwindows, not samples ─────
+
+
+#: A from-zero forecast archive: the covering search can only reach a mid-run window
+#: by differencing, so it yields one differenced subwindow.
+FROM_ZERO_ARCHIVE = {
+    "base_dates": {"times": [0]},
+    "steps": {"start": "1h", "end": "24h", "frequency": "1h"},
+    "accumulation": "from-zero",
+}
+
+
+def _interval_source(name: str, fields, from_: dict, period: str = "6h", operation: str | None = None):
+    """A reduction whose ``from:`` describes fields that each span an interval."""
+    from anemoi.datasets.create.sources import source_registry
+
+    if operation is not None:
+        # a sum over the same covering, to show that only the reduction differs
+        from anemoi.datasets.create.sources.reduce.source import ReduceSource
+
+        cls = type("_SumSource", (ReduceSource,), {"name": "sum-for-test", "operation": operation})
+    else:
+        cls = source_registry.lookup(name)
+    source = cls(
+        context=_FakeContext(fields),
+        source={"mars": {"class": "rr", "param": ["10fg"], "levtype": "sfc"}},
+        period=period,
+        **{"from": from_},
+    )
+    return source
+
+
+def test_interval_valued_from_uses_subwindows_not_samples() -> None:
+    """``maximum:`` over per-step maxima: the window is partitioned, not sampled."""
+    source = _interval_source("maximum", [], {"accumulation": "1h"})
+    assert not source.is_instant_valued
+
+    plan = source._plan()
+    targets = [(datetime.datetime(2021, 1, 1, 6), None)]
+    parts = plan.parts_for(targets)
+
+    subwindows = parts[targets[0]]
+    assert len(subwindows) == 6, "a 6h window over 1h fields is six subwindows"
+    assert all(s.is_direct for s in subwindows)
+
+
+def test_an_irregular_archive_is_expressible() -> None:
+    """The wind-gust layout: hourly to step 3, then 3-hourly -- no single cadence.
+
+    This is the case ``from: {frequency: ...}`` cannot state, and the reason a
+    reduction has to accept interval-valued source data at all.
+    """
+    source = _interval_source(
+        "maximum",
+        [],
+        {"base_dates": {"times": [0]}, "steps": ["0-1", "1-2", "2-3", "3-6", "6-9", "9-12"]},
+    )
+    plan = source._plan()
+    targets = [(datetime.datetime(2021, 1, 1, 9), None)]
+    subwindows = plan.parts_for(targets)[targets[0]]
+
+    # [3,9] is the 3-6 and 6-9 fields; both held outright, so both direct
+    assert [int((s.interval.end - s.interval.start).total_seconds() // 3600) for s in subwindows] == [3, 3]
+    assert all(s.is_direct for s in subwindows)
+
+
+def test_a_non_additive_reduction_refuses_a_differenced_subwindow() -> None:
+    """The guard: a maximum cannot be rebuilt by subtracting two cumulative maxima."""
+    source = _interval_source("maximum", [], FROM_ZERO_ARCHIVE, period="6h")
+    targets = [(datetime.datetime(2021, 1, 1, 12), None)]
+
+    with pytest.raises(ValueError, match="does not hold outright"):
+        source._plan().parts_for(targets)
+
+
+def test_the_same_covering_is_fine_for_a_sum() -> None:
+    """Only the reduction differs: summing a differenced subwindow is what accumulate does."""
+    accumulating = _interval_source("accumulate_like", [], FROM_ZERO_ARCHIVE, period="6h", operation="sum")
+    targets = [(datetime.datetime(2021, 1, 1, 12), None)]
+    subwindows = accumulating._plan().parts_for(targets)[targets[0]]
+    assert len(subwindows) == 1 and not subwindows[0].is_direct
+
+
+# ── over: the subwindow length ───────────────────────────────────────
+
+#: A cumulative archive: every field is the total since the run started.
+CUMULATIVE = {
+    "base_dates": {"times": [0]},
+    "steps": {"start": "1h", "end": "24h", "frequency": "1h"},
+    "accumulation": "from-zero",
+}
+
+
+def _over_source(name: str, over: str | None = None, period: str = "6h"):
+    from anemoi.datasets.create.sources import source_registry
+
+    kwargs = {"over": over} if over is not None else {}
+    return source_registry.lookup(name)(
+        context=_FakeContext([]),
+        source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+        period=period,
+        **{"from": CUMULATIVE},
+        **kwargs,
+    )
+
+
+_TARGETS = [(datetime.datetime(2021, 1, 1, 12), None)]
+
+
+def test_without_over_a_cumulative_archive_cannot_be_maximised() -> None:
+    """One subwindow spanning the window carries a sum, and a max of one value is it."""
+    with pytest.raises(ValueError) as excinfo:
+        _over_source("maximum")._plan().parts_for(_TARGETS)
+
+    message = str(excinfo.value)
+    assert "does not hold outright" in message
+    assert "'over:'" in message, "the error should name the remedy"
+
+
+def test_over_cuts_the_window_into_subwindows() -> None:
+    """Each hour is covered on its own, so each is a differenced 1h total."""
+    from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
+
+    subwindows = _over_source("maximum", over="1h")._plan().parts_for(_TARGETS)[_TARGETS[0]]
+
+    assert len(subwindows) == 6
+    assert all(not s.is_direct for s in subwindows), "each is rebuilt by differencing"
+    assert all(s.interval.end - s.interval.start == datetime.timedelta(hours=1) for s in subwindows)
+    assert len(contributions_of(subwindows)) == 12
+
+
+def test_over_retrieves_each_field_once() -> None:
+    """Neighbouring subwindows share an endpoint: a(0,7) closes one and opens the next."""
+    from anemoi.datasets.create.sources.windowed.interval_plan import _unique
+    from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
+
+    plan = _over_source("maximum", over="1h")._plan()
+    subwindows = plan.parts_for(_TARGETS)[_TARGETS[0]]
+    assert len(_unique(contributions_of(subwindows))) == 7, "12 contributions, 7 fields"
+
+
+def test_an_omitted_over_means_the_whole_window() -> None:
+    """`over` defaults to `period`: the window is one part, which is what the search gives."""
+    default = _over_source("maximum")._plan()
+    explicit = _over_source("maximum", over="6h")._plan()
+    start, end = _TARGETS[0][0] - default.period, _TARGETS[0][0]
+
+    assert default.over == default.period
+
+    # `_partition` rather than `parts_for`, so this tests the partition alone and not
+    # the guard that both of these then fail (see below).
+    whole = default._partition(start, end, None)
+    assert len(whole) == 1
+    assert [s.interval for s in explicit._partition(start, end, None)] == [s.interval for s in whole]
+
+
+#: A window that starts *on* a basetime: `CUMULATIVE` runs from 00Z, so (00,06] is
+#: held outright as a(0,6) while (06,12] has to be differenced.
+_AT_BASETIME = [(datetime.datetime(2021, 1, 1, 6), None)]
+
+
+def test_one_accumulated_subwindow_is_refused_even_though_nothing_is_differenced() -> None:
+    """A max over one part is that part, and here the part is a 6h total.
+
+    The differencing guard cannot catch this: the archive holds the whole window
+    outright, so there is nothing to difference. Without this check the recipe is
+    accepted and the output is the accumulated total wearing a 'max' label -- and on
+    `od-oper`, where runs are 12h apart and windows 6h, that is every other row.
+    """
+    with pytest.raises(ValueError) as excinfo:
+        _over_source("maximum")._plan().parts_for(_AT_BASETIME)
+
+    message = str(excinfo.value)
+    assert "would reduce a single value" in message
+    assert "'over:'" in message, "the error should name the remedy"
+
+
+def test_over_resolves_the_single_subwindow_case() -> None:
+    subwindows = _over_source("maximum", over="1h")._plan().parts_for(_AT_BASETIME)[_AT_BASETIME[0]]
+    assert len(subwindows) == 6
+
+
+def test_one_stored_extremum_subwindow_is_accepted() -> None:
+    """The same shape is correct when the archive stores maxima rather than totals.
+
+    An archive holding `[0,6]` outright answers "the maximum over that window" with a
+    single field, so one subwindow is the right answer and not a degenerate one. The
+    discriminator is `from:`: explicit step pairs carry no `accumulation` scheme.
+    """
+    from anemoi.datasets.create.sources import source_registry
+
+    source = source_registry.lookup("maximum")(
+        context=_FakeContext([]),
+        source={"mars": {"class": "rr", "param": ["10fg"], "levtype": "sfc"}},
+        period="6h",
+        **{"from": {"base_dates": {"times": [0, 12]}, "steps": ["0-6", "6-12", "12-18", "18-24"]}},
+    )
+    subwindows = source._plan().parts_for(_AT_BASETIME)[_AT_BASETIME[0]]
+
+    assert len(subwindows) == 1
+    assert subwindows[0].is_direct
+
+
+def test_over_equal_to_period_does_not_lift_the_guard() -> None:
+    """Writing `over: 6h` on a 6h window declares nothing, so it excuses nothing.
+
+    `over:` lifts the covering guard by declaring that the quantity is additive *and*
+    how long each subwindow is. At the full period it states only what the default
+    already is, so a max over one differenced whole-window part stays refused -- which
+    is the original bug, and testing "was `over:` written" instead of "is it shorter
+    than the window" would have let it through on every recipe that mentions `over:`.
+    """
+    with pytest.raises(ValueError, match="does not hold outright"):
+        _over_source("maximum", over="6h")._plan().parts_for(_TARGETS)
+
+
+@pytest.mark.parametrize(
+    "over,match",
+    [("4h", "must divide"), ("12h", "cannot exceed"), ("0h", "must be positive")],
+)
+def test_over_must_be_a_whole_part_of_the_period(over: str, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        _over_source("maximum", over=over)
+
+
+def test_over_is_meaningless_for_instantaneous_source_data() -> None:
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match="nothing to subdivide"):
+        source_registry.lookup("average")(
+            context=_FakeContext([]),
+            source=dict(SOURCE),
+            period="6h",
+            over="1h",
+            **{"from": {"frequency": "1h"}},
+        )
+
+
+def test_accumulate_refuses_over() -> None:
+    """A sum of subwindows is the same whatever length they are."""
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match="does not apply to a sum"):
+        source_registry.lookup("accumulate")(
+            context=_FakeContext([]),
+            source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+            period="6h",
+            over="1h",
+            **{"from": {"accumulation": "1h"}},
+        )
+
+
+# ---------------------------------------------------------------------------
+# accumulate: an empty window versus a half-filled one
+# ---------------------------------------------------------------------------
+
+
+def _accumulate_source():
+    from anemoi.datasets.create.sources import source_registry
+
+    return source_registry.lookup("accumulate")(
+        context=_FakeContext([]),
+        source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+        period="6h",
+        **{"from": {"accumulation": "1h"}},
+    )
+
+
+def _differenced_window(valid_date):
+    """One subwindow rebuilt from two fields -- a from-zero archive with no `over:`.
+
+    The window is the last 6h of a 12h run: ``[v-6h, v] = a(0,12) - a(0,6)``.
+    """
+    from anemoi.datasets.create.intervals import SignedInterval
+    from anemoi.datasets.create.sources.windowed.reducer import Reducer
+    from anemoi.datasets.create.sources.windowed.states import SubwindowState
+    from anemoi.datasets.create.sources.windowed.subwindows import Subwindow
+
+    hours = lambda n: datetime.timedelta(hours=n)  # noqa: E731
+    base = valid_date - hours(12)
+    whole = SignedInterval(start=base, end=valid_date, base=base)
+    before = SignedInterval(start=base, end=valid_date - hours(6), base=base)
+
+    reducer = Reducer(
+        valid_date,
+        period=hours(6),
+        key=(("param", "tp"),),
+        states=[
+            SubwindowState(
+                Subwindow(
+                    interval=SignedInterval(start=valid_date - hours(6), end=valid_date),
+                    contributions=(whole, -before),
+                )
+            )
+        ],
+    )
+    return reducer, whole, before
+
+
+def test_a_window_no_field_reached_is_dropped() -> None:
+    """MARS may answer an interval request loosely (the scda/oper split)."""
+    import numpy as np
+
+    kept_date = datetime.datetime(2021, 1, 1, 12)
+    empty_date = datetime.datetime(2021, 1, 2, 12)
+
+    kept, whole, before = _differenced_window(kept_date)
+    kept.compute(np.ones(4), whole)
+    kept.compute(np.zeros(4), before)
+    assert kept.is_complete()
+
+    empty, *_ = _differenced_window(empty_date)
+    assert empty.fields_used == 0
+
+    key = (("param", "tp"),)
+    reducers = {(kept_date, None, key): kept, (empty_date, None, key): empty}
+    targets = [(kept_date, None), (empty_date, None)]
+
+    _accumulate_source()._finalise(reducers, [], targets)
+
+    assert (empty_date, None, key) not in reducers, "the untouched window is dropped"
+    assert (kept_date, None, key) in reducers
+
+
+def test_a_half_filled_window_is_an_error_not_a_drop() -> None:
+    """Half a window is a window that came out short, which is never silently dropped.
+
+    It produces no value -- a differenced subwindow yields nothing until every
+    contribution has arrived -- so testing "no value" rather than "no field" would
+    drop it, and this is the ordinary accumulate layout rather than a corner.
+    """
+    import numpy as np
+
+    valid_date = datetime.datetime(2021, 1, 1, 12)
+    reducer, whole, _before = _differenced_window(valid_date)
+    reducer.compute(np.ones(4), whole)  # one of the two fields
+
+    assert reducer.values is None, "no part of the window has completed"
+    assert reducer.fields_used == 1, "but a field did arrive"
+
+    key = (("param", "tp"),)
+    reducers = {(valid_date, None, key): reducer}
+
+    with pytest.raises(ValueError, match="missing source fields"):
+        _accumulate_source()._finalise(reducers, [], [(valid_date, None)])

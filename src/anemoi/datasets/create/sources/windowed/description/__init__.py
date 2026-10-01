@@ -41,6 +41,12 @@ accepted spelling into the single ``from:`` union and is the *one*
 implementation shared by recipe-time validation (:class:`AccumulateSchema`)
 and the runtime source, so the two cannot drift apart.
 
+Instant-valued source data -- ``from: {frequency: ...}``, for the ``average`` /
+``minimum`` / ``maximum`` sources -- lives in :mod:`.instants`. It describes fields
+that *exist every* ``frequency``, where the descriptions above describe fields that
+each *span* an interval. Both unions are re-exported here; they are still separate
+unions, and joining them is phase 1b's work.
+
 This package also hosts the table of factorised descriptions for
 well-known MARS archives used when ``from:`` is omitted.
 
@@ -59,6 +65,13 @@ from .accumulation import parse_accumulation
 from .base_dates import WEEKDAY_NAMES
 from .base_dates import WEEKDAYS
 from .base_dates import RecurringBaseDates
+from .instants import FromInstants
+from .instants import FromRun
+from .instants import ReduceSchema
+from .instants import check_period
+from .instants import check_window_inside_run
+from .instants import validate_from
+from .instants import window_samples
 from .mars_archives import _mars_archive_description
 from .mars_archives import infer_from_trajectories
 from .normalise import MIGRATE_HINT
@@ -77,9 +90,12 @@ __all__ = [
     "AccumulateSchema",
     "From",
     "FromBare",
+    "FromInstants",
     "FromLookupTable",
+    "FromRun",
     "FromTrajectories",
     "MIGRATE_HINT",
+    "ReduceSchema",
     "RecurringBaseDates",
     "TrajectoryIntervalGenerator",
     "WEEKDAYS",
@@ -87,8 +103,12 @@ __all__ = [
     # underscore-prefixed but part of the compat surface (migrate + tests import them)
     "_mars_archive_description",
     "_validate_from",
+    "check_period",
     "check_valid_time_source",
+    "check_window_inside_run",
     "infer_from_trajectories",
     "normalise_from",
     "parse_accumulation",
+    "validate_from",
+    "window_samples",
 ]

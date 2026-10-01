@@ -28,10 +28,10 @@ the forecast run a trajectory layout imposes (``{base_dates: true,
 frequency: ...}``).
 """
 
-from .description import FromInstants  # noqa: F401
-from .description import FromRun  # noqa: F401
-from .description import ReduceSchema  # noqa: F401
-from .description import window_samples  # noqa: F401
+from ..windowed.description import FromInstants  # noqa: F401
+from ..windowed.description import FromRun  # noqa: F401
+from ..windowed.description import ReduceSchema  # noqa: F401
+from ..windowed.description import window_samples  # noqa: F401
 from .source import AverageSource  # noqa: F401
 from .source import MaximumSource  # noqa: F401
 from .source import MinimumSource  # noqa: F401

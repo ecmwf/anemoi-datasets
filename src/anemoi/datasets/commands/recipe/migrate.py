@@ -295,7 +295,7 @@ def _factorise_pairs(
 
 def _factorise_entries(entries, day_of_month=None) -> dict | None:
     """Factorise legacy (base_time, steps) entries into a ``base_dates`` / ``steps`` payload."""
-    from anemoi.datasets.create.sources.accumulate.interval_generators import normalise_steps
+    from anemoi.datasets.create.sources.windowed.interval_generators import normalise_steps
 
     groups: dict = {}
     for base_time, steps in entries:
@@ -367,7 +367,7 @@ def _convert_legacy_description(value) -> tuple[str, object] | None:
             return _convert_sugar("from-previous-step", {k: v for k, v in value.items() if k != "type"})
 
         if "mars" in value and len(value) == 1:
-            from anemoi.datasets.create.sources.accumulate.description import _mars_archive_description
+            from anemoi.datasets.create.sources.windowed.description import _mars_archive_description
 
             mars = value["mars"]
             try:
@@ -511,9 +511,9 @@ def _migrate_accumulate_block(block: dict, trajectories: bool) -> dict:
         return block
 
     if result != block:
-        from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
-        from anemoi.datasets.create.sources.accumulate.description import FromBare
-        from anemoi.datasets.create.sources.accumulate.description import check_valid_time_source
+        from anemoi.datasets.create.sources.windowed.description import AccumulateSchema
+        from anemoi.datasets.create.sources.windowed.description import FromBare
+        from anemoi.datasets.create.sources.windowed.description import check_valid_time_source
 
         try:
             with warnings.catch_warnings():

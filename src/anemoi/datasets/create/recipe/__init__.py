@@ -43,7 +43,7 @@ def _iter_accumulate_blocks(node: Any):
     models carry them directly; raw dicts (e.g. under ``concat``) are
     validated on the fly.
     """
-    from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
+    from anemoi.datasets.create.sources.windowed.description import AccumulateSchema
 
     if node is None:
         return
@@ -70,7 +70,7 @@ def _iter_accumulate_blocks(node: Any):
 
 
 #: The recipe spellings of the time-reduction sources (see
-#: ``create/sources/reduce_support/``).  They share one schema, so one iterator finds
+#: ``create/sources/reduce/``).  They share one schema, so one iterator finds
 #: every block whatever the verb.
 REDUCE_NAMES = ("average", "minimum", "maximum")
 
@@ -82,7 +82,7 @@ def _iter_reduce_blocks(node: Any):
     models carry the schema directly; raw dicts (e.g. under ``concat``) are
     validated on the fly.
     """
-    from anemoi.datasets.create.sources.reduce_support import ReduceSchema
+    from anemoi.datasets.create.sources.reduce import ReduceSchema
 
     if node is None:
         return
@@ -175,9 +175,9 @@ class Recipe(BaseModel):
         """
         from anemoi.utils.dates import frequency_to_string
 
-        from ..sources.accumulate.description import FromBare
-        from ..sources.accumulate.description import FromTrajectories
-        from ..sources.accumulate.description import check_valid_time_source
+        from ..sources.windowed.description import FromBare
+        from ..sources.windowed.description import FromTrajectories
+        from ..sources.windowed.description import check_valid_time_source
 
         is_traj = isinstance(self.output, TrajectoriesOutput)
         blocks = list(_iter_accumulate_blocks(self.input))

@@ -19,7 +19,7 @@ With basetime     ForecastDates             ForecastIntervals
 - ForecastDates   — list of (valid_time, basetime) pairs (NWP instant forecasts)
 - Intervals       — archive-resolved accumulation windows; subclass of ValidDates.
                     Replaces IntervalsDatesProvider.  Each date maps to a list of
-                    SignedInterval objects from covering_intervals.py.
+                    SignedInterval objects from search_intervals.py.
 - ForecastIntervals — list of (valid_time, basetime, period) triples;
                     subclass of ForecastDates.
 

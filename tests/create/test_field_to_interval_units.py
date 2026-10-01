@@ -25,7 +25,7 @@ import datetime
 import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate.field_to_interval import FieldToInterval
+from anemoi.datasets.create.sources.windowed.field_to_interval import FieldToInterval
 
 
 def _minutes(n):

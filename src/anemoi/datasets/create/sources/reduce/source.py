@@ -1,0 +1,256 @@
+# (C) Copyright 2026- Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""The windowed time-reduction sources: ``average``, ``minimum`` and ``maximum``.
+
+They share :class:`ReduceSource`; each registered spelling only names the
+reduction it performs.  There is deliberately no ``reduce:`` source and no
+``operation:`` key in a recipe — the reduction is the verb, so it is the name
+of the block.
+
+The recipe keys mirror ``accumulate``: ``source:`` is where the data comes
+from, ``period:`` is the window wanted, and ``from:`` is what the source data
+is (see :mod:`.description`).
+
+.. code:: yaml
+
+   average:
+     period: 24h
+     from: {frequency: 6h}
+     source: {mars: {class: ea, type: an, param: [2t], ...}}
+
+Under a trajectory layout, ``from:`` also decides what the subsource is asked
+for: a base-less ``{frequency: ...}`` is fetched by validity time and the row's
+basetime only stamps the output, while ``{base_dates: true, frequency: ...}``
+fetches lead times of the run the layout imposes.
+"""
+
+from __future__ import annotations
+
+import datetime
+import logging
+from typing import Any
+
+from anemoi.transform import FieldList
+from anemoi.utils.dates import frequency_to_timedelta
+
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.sources import source_registry
+
+from ..windowed.covering import covering_from_description
+from ..windowed.description import ReduceSchema
+from ..windowed.description import check_window_inside_run
+from ..windowed.description import validate_from
+from ..windowed.description import window_samples
+from ..windowed.description.instants import FromInstants
+from ..windowed.description.instants import FromRun
+from ..windowed.field_to_interval import FieldToInterval
+from ..windowed.interval_plan import IntervalPlan
+from ..windowed.sampling_plan import SamplingPlan
+from ..windowed.source import WindowSourceBase
+
+LOG = logging.getLogger(__name__)
+
+
+class ReduceSource(WindowSourceBase):
+    """Reduce a window of instantaneous source fields to one field per date.
+
+    Not registered itself: the registered sources are :class:`AverageSource`,
+    :class:`MinimumSource` and :class:`MaximumSource`, which differ only in
+    :attr:`operation`.
+
+    Parameters
+    ----------
+    context : Any
+        The build context.
+    source : dict
+        The subsource, as a single-key dictionary (``{mars: {...}}``).
+    period : str or int or datetime.timedelta
+        The reduction window, e.g. ``24h``.
+    over : str or int or datetime.timedelta, optional
+        The subwindow length, for interval-valued source data. Cuts the window into
+        parts and covers each on its own, so a cumulative archive yields per-part
+        values: ``over: 1h`` under ``maximum:`` is the largest hourly total.
+    group_by : dict, optional
+        Which metadata keys identify a variable; same meaning and defaults as in
+        ``accumulate``.
+    **kwargs : Any
+        ``from:`` arrives here because ``from`` is a Python keyword.
+    """
+
+    schema = ReduceSchema
+
+    #: The reduction this source performs, by name.
+    operation: str
+
+    def __init__(
+        self,
+        context: Any,
+        source: Any,
+        period: str | int | datetime.timedelta,
+        over: str | int | datetime.timedelta | None = None,
+        group_by: dict | None = None,
+        **kwargs: Any,
+    ) -> None:
+        # `from` is a Python keyword, so it can only arrive through kwargs.
+        # A raw recipe spells it `from:`; a recipe that has been through the
+        # pydantic schema is dumped by field name and spells it `from_`.
+        from_keys = [k for k in ("from", "from_") if k in kwargs]
+        if len(from_keys) > 1:
+            raise ValueError(f"{self.name}: specify 'from' once, not both 'from' and 'from_'")
+        from_ = kwargs.pop(from_keys[0], None) if from_keys else None
+
+        # Raw (non-pydantic-validated) configs may spell keys with hyphens.
+        if "group-by" in kwargs:
+            if group_by is not None:
+                raise ValueError(f"{self.name}: cannot specify both 'group_by' and 'group-by'")
+            group_by = kwargs.pop("group-by")
+        if kwargs:
+            raise TypeError(f"{self.name}: unknown argument(s) {sorted(kwargs)}")
+
+        if from_ is None:
+            raise ValueError(
+                f"{self.name}: 'from:' is required \u2014 state the cadence of the source data, "
+                "e.g. 'from: {frequency: 6h}'"
+            )
+
+        # Validated through the same helper as the recipe schema, so recipe-time and
+        # build-time validation cannot drift apart.  Set before super().__init__,
+        # which needs the description to pick the MARS `type` default.
+        self._from = validate_from(from_)
+
+        self.over = frequency_to_timedelta(over) if over is not None else None
+
+        super().__init__(context, source=source, period=period, group_by=group_by)
+
+        # Validated through the same schema as the recipe, so the two cannot drift.
+        ReduceSchema.model_validate(
+            {
+                "period": self.period,
+                "from": self._from,
+                "source": self.source,
+                **({"over": self.over} if self.over is not None else {}),
+            }
+        )
+
+        if self.is_instant_valued:
+            # Raises when the window is not a whole number of samples.
+            window_samples(datetime.datetime(2000, 1, 1), self.period, self.frequency)
+
+    @property
+    def frequency(self) -> datetime.timedelta:
+        """The cadence of the source data (``from.frequency``); instant-valued only."""
+        return self._from.frequency
+
+    @property
+    def is_instant_valued(self) -> bool:
+        """Whether ``from:`` describes fields that *exist every* frequency.
+
+        The alternative is interval-valued source data -- fields that each *span* an
+        interval -- which is reduced over the subwindows covering the window rather
+        than over samples inside it.
+        """
+        return isinstance(self._from, (FromInstants, FromRun))
+
+    @property
+    def is_run_anchored(self) -> bool:
+        """Whether ``from:`` describes the run the trajectory layout imposes."""
+        return isinstance(self._from, FromRun)
+
+    def _mars_type_default(self) -> str:
+        # Base-less instantaneous fields are indexed by validity time, i.e. an
+        # analysis; everything else reads a forecast.
+        return "an" if (self.is_instant_valued and not self.is_run_anchored) else "fc"
+
+    def _hash_parts(self) -> tuple:
+        if self.is_instant_valued:
+            return (str(self.frequency), self.is_run_anchored)
+        return (self._from.model_dump_json(), str(self.over))
+
+    def _plan(self, basetime: bool = False):
+        """The plan for this source data: samples inside the window, or subwindows of it."""
+        if self.is_instant_valued:
+            return SamplingPlan(
+                period=self.period,
+                frequency=self.frequency,
+                operation=self.operation,
+                run_anchored=self.is_run_anchored,
+                name=self.name,
+            )
+        return IntervalPlan(
+            period=self.period,
+            covering=covering_from_description(self._from, period=self.period, source_name=self.name),
+            source=self.source,
+            field_to_interval=FieldToInterval(),
+            operation=self.operation,
+            over=self.over,
+            basetime=basetime,
+            # An `accumulation` scheme means the fields accumulate; an explicit list of
+            # step pairs (the only way to describe a stored-extremum archive) has none.
+            accumulating=getattr(self._from, "accumulation", None) is not None,
+        )
+
+    # ── dispatch branches ────────────────────────────────────────────
+
+    def execute_valid_dates(self, dates: ValidDates) -> FieldList:
+        """Reduce one window per requested validity date (gridded layout)."""
+        if self.is_run_anchored:
+            raise ValueError(
+                f"{self.name}: 'from: {{base_dates: true, ...}}' inherits the run from the "
+                "output layout, which only 'layout: trajectories' imposes. In any other "
+                "layout describe base-less source data with 'from: {frequency: ...}'"
+            )
+
+        for d in dates:
+            if not isinstance(d, datetime.datetime):
+                raise TypeError(f"{self.name}: valid_date must be a datetime.datetime instance, got {type(d)}")
+
+        return self._run(self._plan(), [(d, None) for d in dates])
+
+    def execute_forecast_dates(self, dates: ForecastDates) -> FieldList:
+        """Reduce one window per ``(valid_time, basetime)`` row (trajectories layout).
+
+        A base-less ``from:`` reads an analysis archive by validity time and the row's
+        basetime only stamps the output; a run-anchored one reads lead times of the run
+        the layout imposes.
+        """
+        targets = [(valid_time, basetime) for valid_time, basetime in dates.items]
+
+        if self.is_run_anchored:
+            # The window has to lie inside the run; a base-less source has no such
+            # restriction (analyses exist before the basetime too).
+            for valid_time, basetime in targets:
+                check_window_inside_run(valid_time, basetime, self.period, self.name)
+
+        return self._run(self._plan(basetime=not self.is_instant_valued), targets)
+
+
+@source_registry.register("average")
+class AverageSource(ReduceSource):
+    """Time-average of instantaneous source fields over ``period``."""
+
+    name = "average"
+    operation = "average"
+
+
+@source_registry.register("minimum")
+class MinimumSource(ReduceSource):
+    """Time-minimum of instantaneous source fields over ``period``."""
+
+    name = "minimum"
+    operation = "minimum"
+
+
+@source_registry.register("maximum")
+class MaximumSource(ReduceSource):
+    """Time-maximum of instantaneous source fields over ``period``."""
+
+    name = "maximum"
+    operation = "maximum"
