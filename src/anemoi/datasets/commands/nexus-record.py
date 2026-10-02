@@ -24,9 +24,7 @@ LOG = logging.getLogger(__name__)
 STATISTICS = ("mean", "stdev", "minimum", "maximum")
 
 
-def dataset_nexus_record(
-    path: str, attributes: dict[str, Any] | None = None
-) -> dict[str, Any]:
+def dataset_nexus_record(path: str, attributes: dict[str, Any] | None = None) -> dict[str, Any]:
     """The Nexus record of the zarr dataset at *path*: its name (the
     directory name without ``.zarr``), its ``uuid``, and as ``metadata`` its
     zarr attributes with the statistics and the ``data`` array's shape, dtype
@@ -79,9 +77,7 @@ class NexusRecord(Command):
         command_parser : Any
             The command parser.
         """
-        command_parser.add_argument(
-            "path", metavar="DATASET", help="Path of the dataset (a .zarr directory)."
-        )
+        command_parser.add_argument("path", metavar="DATASET", help="Path of the dataset (a .zarr directory).")
         add_nexus_record_arguments(command_parser)
 
     def run(self, args: Any) -> None:
@@ -92,9 +88,7 @@ class NexusRecord(Command):
         args : Any
             The command arguments.
         """
-        write_nexus_record(
-            dataset_nexus_record(args.path, record_attributes(args)), args.output
-        )
+        write_nexus_record(dataset_nexus_record(args.path, record_attributes(args)), args.output)
 
 
 command = NexusRecord

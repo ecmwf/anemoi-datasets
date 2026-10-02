@@ -22,32 +22,19 @@ nexus_record = importlib.import_module("anemoi.datasets.commands.nexus-record")
 def _dataset(path, uuid="5b0d7b2e-1111-4c6d-9e7f-0a1b2c3d4e5f"):
     z = zarr.open_group(str(path), mode="w")
     z.attrs.update({"uuid": uuid, "variables": ["2t", "10u"]})
-    z.create_dataset(
-        "data", data=np.zeros((4, 2, 1, 3), dtype="f4"), chunks=(1, 2, 1, 3)
-    )
+    z.create_dataset("data", data=np.zeros((4, 2, 1, 3), dtype="f4"), chunks=(1, 2, 1, 3))
     z.create_dataset("mean", data=np.array([1.0, 2.0]))
     return path
 
 
 def test_dataset_nexus_record(tmp_path) -> None:
     path = _dataset(tmp_path / "my-ds.zarr")
-    record = nexus_record.dataset_nexus_record(
-        str(path) + "/", {"owner": "alice", "projects": ["MLP"]}
-    )
-    assert (
-        record["name"] == "my-ds"
-        and record["uuid"] == "5b0d7b2e-1111-4c6d-9e7f-0a1b2c3d4e5f"
-    )
+    record = nexus_record.dataset_nexus_record(str(path) + "/", {"owner": "alice", "projects": ["MLP"]})
+    assert record["name"] == "my-ds" and record["uuid"] == "5b0d7b2e-1111-4c6d-9e7f-0a1b2c3d4e5f"
     assert record["owner"] == "alice" and record["projects"] == ["MLP"]
     meta = record["metadata"]
-    assert meta["variables"] == ["2t", "10u"] and meta["statistics"] == {
-        "mean": [1.0, 2.0]
-    }
-    assert (
-        meta["shape"] == [4, 2, 1, 3]
-        and meta["dtype"] == "float32"
-        and meta["chunks"] == [1, 2, 1, 3]
-    )
+    assert meta["variables"] == ["2t", "10u"] and meta["statistics"] == {"mean": [1.0, 2.0]}
+    assert meta["shape"] == [4, 2, 1, 3] and meta["dtype"] == "float32" and meta["chunks"] == [1, 2, 1, 3]
     with pytest.raises(ValueError, match="must end in .zarr"):
         nexus_record.dataset_nexus_record(str(tmp_path / "x"))
 
@@ -74,9 +61,5 @@ def test_nexus_record_command(tmp_path, capsys, monkeypatch) -> None:
         main()
     assert exit.value.code in (0, None)
     record = json.loads(out.read_text())
-    assert (
-        record["projects"] == ["MLP"]
-        and record["licenses"] == ["CC-BY-4.0"]
-        and record["owner"] == "bob"
-    )
+    assert record["projects"] == ["MLP"] and record["licenses"] == ["CC-BY-4.0"] and record["owner"] == "bob"
     assert record["name"] == "my-ds" and record["metadata"]["shape"] == [4, 2, 1, 3]
