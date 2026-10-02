@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.46](https://github.com/ecmwf/anemoi-datasets/compare/0.5.45...0.5.46) (2026-10-02)
+
+
+### Features
+
+* Test mars-requests against baseline ([#774](https://github.com/ecmwf/anemoi-datasets/issues/774)) ([f7e4a3e](https://github.com/ecmwf/anemoi-datasets/commit/f7e4a3e164191122c3889e7022080dd40a758ebd))
+
+
+### Bug Fixes
+
+* **deps:** Pin xarray to last version with zarr2 support ([#777](https://github.com/ecmwf/anemoi-datasets/issues/777)) ([86b1f31](https://github.com/ecmwf/anemoi-datasets/commit/86b1f31d8a70ebea5053ef237f4f7c3b8c8639ba))
+
 ## [0.5.45](https://github.com/ecmwf/anemoi-datasets/compare/0.5.44...0.5.45) (2026-09-24)
 
 
