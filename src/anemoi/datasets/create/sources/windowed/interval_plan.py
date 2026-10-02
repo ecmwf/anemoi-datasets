@@ -79,11 +79,12 @@ class IntervalPlan(WindowPlan):
     operation : str or Operation, optional
         What reduces the subwindow values. Defaults to a sum.
     over : datetime.timedelta, optional
-        The subwindow length; defaults to *period*, i.e. the window is one part. A
-        shorter value cuts the window into ``over``-long parts and covers each on its
-        own, instead of letting the search cover the whole window as cheaply as it
-        can. That is what turns a cumulative archive into per-``over`` values to
-        reduce -- "the wettest hour in the window".
+        The subwindow length; defaults to *period*, i.e. the window is covered in
+        one search rather than sliced -- which leaves the granularity to the archive.
+        A shorter value cuts the window into ``over``-long slices and covers each on
+        its own. That is what turns a cumulative archive, which holds no part of the
+        window outright, into per-``over`` values to reduce -- "the wettest hour in
+        the window".
     forecast_items : list, optional
         ``(valid_time, basetime)`` rows, when the subsource is the run the layout
         imposes; makes the argument a ``ForecastIntervals``.
@@ -113,8 +114,9 @@ class IntervalPlan(WindowPlan):
         self.field_to_interval = field_to_interval
         self.basetime = basetime
         self.operation = operation_factory(operation)
-        # Unstated, the subwindow length is the whole window: the window is one part,
-        # so the reduction has one value to reduce and the result is that part.
+        # Unstated, the slice is the whole window: it is covered in one search, and
+        # how many parts that yields is the archive's -- one per archived field where
+        # it holds them outright, a single differenced part where it holds none.
         self.over = over if over is not None else period
         self._check_over()
         self.forecast_items = forecast_items

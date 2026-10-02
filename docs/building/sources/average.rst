@@ -144,8 +144,9 @@ The same three keys, plus ``over:``:
        Unlike ``accumulate``, it cannot be omitted: there is no recognition
        from the ``mars`` source here.
    * - ``over``
-     - *Optional.* How long each subwindow is. Defaults to ``period`` —
-       the window is one subwindow. See :ref:`reduce-over`.
+     - *Optional.* How long each subwindow is, where subwindows have to be
+       constructed. Omitted, the window is covered in one go and the
+       archive's own granularity decides. See :ref:`reduce-over`.
    * - ``group_by``
      - *Optional.* As above.
 
@@ -190,8 +191,14 @@ gives six differenced 1 h subwindows: the wettest hour in the window.
 
 The length is part of what you are asking for — the largest hourly total and
 the largest 3-hourly total are different numbers — so where subwindows are
-*constructed*, the recipe states how long they are. ``over:`` defaults to
-``period``: one subwindow, the whole window.
+*constructed*, the recipe states how long they are.
+
+Omitted, ``over:`` is the whole ``period``, which means the window is covered
+in one go rather than that it becomes one subwindow. How many subwindows that
+gives is the archive's business: one per archived field where it holds them
+outright, or a single differenced one where it holds none. That is why the
+same omitted ``over:`` is right on an increment archive and refused on a
+cumulative one.
 
 Where subwindows are taken from the archive directly, ``over:`` cannot
 coarsen them. It pins the slice boundaries, and each slice is then covered by
