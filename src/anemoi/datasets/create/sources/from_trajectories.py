@@ -38,8 +38,7 @@ import fnmatch
 import logging
 from typing import Any
 
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import ForecastDates, ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
@@ -143,9 +142,7 @@ class FromTrajectoriesSource(Source):
     def _as_forecast_dates(self, argument: Any) -> ForecastDates:
         """Convert a ``ValidDates``-like argument into a ``ForecastDates``."""
 
-        if isinstance(argument, ValidDates):
-            valid_times = list(argument.dates)
-        elif hasattr(argument, "dates"):
+        if isinstance(argument, ValidDates) or hasattr(argument, "dates"):
             valid_times = list(argument.dates)
         else:
             valid_times = list(argument)

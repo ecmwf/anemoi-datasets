@@ -18,16 +18,15 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
 from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import length_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    length_to_slices,
+    update_tuple,
+)
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -277,7 +276,6 @@ class Forwards(Dataset):
     @abstractmethod
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the subclass."""
-        pass
 
     def get_dataset_names(self, names: set[str]) -> None:
         """Collects the names of the datasets.

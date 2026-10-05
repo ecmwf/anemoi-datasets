@@ -17,19 +17,12 @@ import numpy as np
 from anemoi.transform.spatial import nearest_grid_points
 from numpy.typing import NDArray
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..dataset import Shape
-from ..dataset import TupleIndex
+from ..dataset import Dataset, FullIndex, Shape, TupleIndex
 from ..debug import Node
 from ..forwards import Combined
-from ..misc import _auto_adjust
-from ..misc import _open_dataset
+from ..misc import _auto_adjust, _open_dataset
 from ..options import Options
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from .indexing import apply_index_to_slices_changes, expand_list_indexing, index_to_slices, update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -139,7 +132,6 @@ class Complement(Combined):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the units in two datasets are the same.
@@ -151,7 +143,6 @@ class Complement(Combined):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     @cached_property
     def missing(self) -> set[int]:
@@ -201,7 +192,6 @@ class Complement(Combined):
         NDArray[Any]
             The data at the specified tuple index.
         """
-        pass
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
@@ -296,7 +286,6 @@ class ComplementNearest(Complement):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:

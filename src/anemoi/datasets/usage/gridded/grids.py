@@ -22,21 +22,17 @@ from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
 from anemoi.datasets import __version__
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.forwards import GivenAxis
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import length_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.forwards import Combined, GivenAxis
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    length_to_slices,
+    update_tuple,
+)
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -153,7 +149,6 @@ class Concat(Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the first axis
-        pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the dates of two datasets are the same.
@@ -166,7 +161,6 @@ class Concat(Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the dates axis
-        pass
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
@@ -219,7 +213,6 @@ class GridsBase(GivenAxis):
             The second dataset.
         """
         # We don't check the grid, because we want to be able to combine
-        pass
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the resolutions of two datasets are the same.
@@ -232,7 +225,6 @@ class GridsBase(GivenAxis):
             The second dataset.
         """
         # We don't check the resolution, because we want to be able to combine
-        pass
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the GridsBase object.
@@ -702,7 +694,6 @@ class Cutout(GridsBase):
             The second dataset.
         """
         # Turned off because we are combining different resolutions
-        pass
 
     @property
     def grids(self) -> TupleIndex:

@@ -12,11 +12,9 @@ import logging
 
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
-from anemoi.datasets.usage.misc import as_first_date
-from anemoi.datasets.usage.misc import as_last_date
+from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
 LOG = logging.getLogger(__name__)
 
