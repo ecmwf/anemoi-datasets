@@ -12,8 +12,7 @@ import itertools
 import logging
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
@@ -147,7 +146,7 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
     half_memory = max_memory // 2
     itemsize = a.dtype.itemsize
     chunk_size = math.prod(a.chunks) * itemsize  # Preferred buffer size if fits in memory
-    buffer_size = chunk_size if chunk_size < half_memory else half_memory
+    buffer_size = min(half_memory, chunk_size)
 
     # The first (chunk) axis is often 1, so subdivide also other dimensions as needed
     # to bring the buffer shape down to buffer_size.

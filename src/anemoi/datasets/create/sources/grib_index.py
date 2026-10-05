@@ -24,8 +24,7 @@ from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from anemoi.datasets.create.arguments import Intervals
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import Intervals, ValidDates
 
 from ..source import Source
 from . import source_registry
@@ -204,7 +203,7 @@ class GribIndex:
 
             self.cursor.execute(
                 f"""
-            INSERT INTO grib_index ({', '.join(self._quote_column(k) for k in kwargs.keys())})
+            INSERT INTO grib_index ({', '.join(self._quote_column(k) for k in kwargs)})
             VALUES ({', '.join('?' for _ in kwargs)})
             """,
                 tuple(kwargs.values()),
@@ -218,7 +217,7 @@ class GribIndex:
                 kwargs.pop(n)
             self.cursor.execute(
                 "SELECT * FROM grib_index WHERE "
-                + " AND ".join(f"{self._quote_column(key)} = ?" for key in kwargs.keys()),
+                + " AND ".join(f"{self._quote_column(key)} = ?" for key in kwargs),
                 tuple(kwargs.values()),
             )
             existing_record = self.cursor.fetchone()
@@ -675,6 +674,6 @@ def factorise(lst):
 
     res = []
     for key, dates in d.items():
-        dates = list(sorted(set(dates)))
+        dates = sorted(set(dates))
         res.append((dates, content[key]))
     return res

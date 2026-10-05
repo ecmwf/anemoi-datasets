@@ -10,6 +10,6 @@
 # Import the compatibility layer for its import side effect: under zarr2 it
 # monkey-patches ``zarr.Group.create_array`` so tests can build stores using
 # the zarr3 API regardless of the installed zarr version.
-import anemoi.datasets.compat  # noqa: F401,E402
+import anemoi.datasets.compat  # noqa: F401
 
 pytest_plugins = "anemoi.utils.testing"

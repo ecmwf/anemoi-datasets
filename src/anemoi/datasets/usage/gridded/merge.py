@@ -17,18 +17,16 @@ import numpy as np
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
 from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +59,7 @@ class Merge(Combined):
                 if date in dates:
 
                     d1 = datasets[dates[date][0]]  # Selected
-                    d2 = datasets[i]  # The new one
+                    d2 = d  # The new one
 
                     if j in d2.missing:
                         # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
@@ -153,7 +151,6 @@ class Merge(Combined):
             Second dataset.
         """
         # Turned off because we are concatenating along the first axis
-        pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the dates of two datasets are the same. (Disabled for merging).
@@ -166,7 +163,6 @@ class Merge(Combined):
             Second dataset.
         """
         # Turned off because we are concatenating along the dates axis
-        pass
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Check if two datasets are compatible for merging.

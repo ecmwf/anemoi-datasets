@@ -18,10 +18,8 @@ from lru import LRU
 
 from anemoi.datasets.epochs import epoch_to_date
 
-from ..buffering import RandomReadBuffer
-from ..buffering import WriteBehindBuffer
-from . import DateIndexing
-from . import date_indexing_registry
+from ..buffering import RandomReadBuffer, WriteBehindBuffer
+from . import DateIndexing, date_indexing_registry
 from .ranges import DateRange
 
 LOG = logging.getLogger(__name__)

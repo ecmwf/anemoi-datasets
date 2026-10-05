@@ -11,8 +11,7 @@
 import datetime
 import logging
 
-from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.intervals import step_to_timedelta
+from anemoi.datasets.create.intervals import SignedInterval, step_to_timedelta
 
 LOG = logging.getLogger(__name__)
 

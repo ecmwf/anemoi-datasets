@@ -13,13 +13,14 @@ from typing import Any
 
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.dataset import FullIndex, TupleIndex
 from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
 
 from ..common.select import SelectBase
 
