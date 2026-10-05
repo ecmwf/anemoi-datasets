@@ -103,6 +103,11 @@ class SelectBase(Forwards):
         """Get the statistics of the dataset."""
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
+    @cached_property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Get the residual statistics of the dataset."""
+        return {k: v[self.indices] for k, v in self.dataset.residual_statistics.items()}
+
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistical tendencies of the dataset.
 

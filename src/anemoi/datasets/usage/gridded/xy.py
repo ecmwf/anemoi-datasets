@@ -191,6 +191,11 @@ class ZipBase(Combined):
         return tuple(d.statistics for d in self.datasets)
 
     @property
+    def residual_statistics(self) -> tuple[Any, ...]:
+        """Get the residual statistics of all datasets."""
+        return tuple(d.residual_statistics for d in self.datasets)
+
+    @property
     def resolution(self) -> tuple[Any, ...]:
         """Get the resolution of all datasets."""
         return tuple(d.resolution for d in self.datasets)

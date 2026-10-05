@@ -188,6 +188,12 @@ class Unchecked(Combined):
         """Get the statistics of the dataset."""
         raise NotImplementedError()
 
+    @property
+    @check("check_same_variables")
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Get the residual statistics of the dataset."""
+        raise NotImplementedError()
+
     @check("check_same_variables")
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies of the dataset.
