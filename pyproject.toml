@@ -106,7 +106,7 @@ optional-dependencies.xarray = [
   "planetary-computer",
   "pystac-client",
   "s3fs",
-  "xarray<2026.10",      # last version to support zarr2, TODO: remove when we support zarr3
+  "xarray<2026.10",     # last version to support zarr2, TODO: remove when we support zarr3
 ]
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
