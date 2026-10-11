@@ -15,6 +15,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from anemoi.datasets.create.recipe.statistics import Statistics
 from anemoi.datasets.create.recipe.statistics import StatisticsFilter
 from anemoi.datasets.create.statistics import StatisticsCollector
 
@@ -532,6 +533,25 @@ def compare_constants(actual, expected):
     print(f"   Expected: {expected}")
     print(f"   Actual:   {actual}")
     assert set(actual) == set(expected), "Constant variables do not match!"
+
+
+def test_trajectory_statistics_filter_timedelta_steps():
+    """Trajectory statistics must support numpy timedelta64 forecast steps."""
+    statistics = Statistics()
+
+    base_dates = np.array(
+        [
+            "2025-03-01T00:00:00",
+            "2025-03-01T06:00:00",
+        ],
+        dtype="datetime64[s]",
+    )
+    steps = np.array([6, 12, 18], dtype="timedelta64[h]")
+
+    result = statistics.trajectory_statistics_filter(base_dates, steps)
+
+    assert result.statistics_start_date == np.datetime64("2025-03-01T06:00:00")
+    assert result.statistics_end_date == np.datetime64("2025-03-01T18:00:00")
 
 
 if __name__ == "__main__":
