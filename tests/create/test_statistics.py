@@ -553,6 +553,7 @@ def test_trajectory_statistics_filter_timedelta_steps():
     assert result.statistics_start_date == np.datetime64("2025-03-01T06:00:00")
     assert result.statistics_end_date == np.datetime64("2025-03-01T18:00:00")
 
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("RUNNING STATISTICS COLLECTOR TEST SUITE")
