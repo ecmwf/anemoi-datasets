@@ -34,6 +34,7 @@ import tqdm
 
 from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.compat import blosc_compressor
+from anemoi.datasets.compat import get_zarr_format
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
 from anemoi.datasets.epochs import array_to_epoch
@@ -1064,7 +1065,7 @@ def _create_data_array(store: Any, shape: tuple[int, int], chunking: tuple[int, 
         shape=shape,
         chunks=chunking,
         dtype=np.float32,
-        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2),
+        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2, zarr_format=get_zarr_format(store)),
     )
 
 

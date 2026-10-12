@@ -20,7 +20,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+from anemoi.datasets.compat import zarr_open
 
 from .locking import Locking
 
@@ -78,9 +78,9 @@ class Dataset:
             mode = "w"
 
         if update:
-            mode = "a"
+            mode = "r+"
 
-        self.store = zarr.open(self.path, mode=mode)
+        self.store = zarr_open(self.path, mode)
         self.synchronizer = Locking(self.path + ".lock")
 
     def add_array(

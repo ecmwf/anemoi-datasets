@@ -25,6 +25,7 @@ from anemoi.datasets.compat import DebugStore
 from anemoi.datasets.compat import HTTPStore
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
@@ -92,7 +93,7 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
         if cache is not None:
             store = zarr.LRUStoreCache(store, max_size=cache)
 
-        return zarr.open(store, mode="r")
+        return zarr_open(store, "r")
     except ZarrFileNotFoundError:
         if not dont_fail:
             raise zarr.errors.PathNotFoundError(path)

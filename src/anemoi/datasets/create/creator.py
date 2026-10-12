@@ -19,10 +19,10 @@ from typing import Any
 
 import numpy as np
 import tqdm
-import zarr
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
@@ -420,5 +420,5 @@ class Creator(ABC):
     @cached_property
     def variables_names(self) -> list[str]:
         """Get the variable names."""
-        z = zarr.open(self.path, mode="r")
+        z = zarr_open(self.path, "r")
         return z.attrs["variables"]

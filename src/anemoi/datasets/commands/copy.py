@@ -22,7 +22,8 @@ from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import zarr_append_mode
+from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.misc.check import check_zarr
@@ -537,14 +538,14 @@ class ZarrCopier:
 
         def target_exists() -> bool:
             try:
-                zarr.open(self._store(self.target), mode="r")
+                zarr_open(self._store(self.target), "r")
                 return True
             except (ValueError, ZarrFileNotFoundError):
                 return False
 
         def target_finished() -> bool:
-            target = zarr.open(self._store(self.target), mode="r")
-            source = zarr.open(self._store(self.source), mode="r")
+            target = zarr_open(self._store(self.target), "r")
+            source = zarr_open(self._store(self.source), "r")
             last_key = self.children(source)[-1]
             if "_copy" in target:
                 done = sum(1 if x else 0 for x in target["_copy"])
@@ -560,14 +561,23 @@ class ZarrCopier:
                 return True
             return False
 
+        if self.verbosity > 0:
+            LOG.info(f"Open source: {self.source}")
+
+        source = open_zarr_store(self.source)
+        # zarr.consolidate_metadata(source)
+
+        # Sharding requires Zarr format 3, otherwise keep the format of the source
+        target_format = 3 if self.resharding else get_zarr_format(source)
+
         def open_target() -> Any:
 
             if not target_exists():
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr_open(self._store(self.target, self.nested), "w", zarr_format=target_format)
 
             if self.overwrite:
                 LOG.error("Target already exists, overwriting.")
-                return zarr.open(self._store(self.target, self.nested), mode="w")
+                return zarr_open(self._store(self.target, self.nested), "w", zarr_format=target_format)
 
             if self.resume:
                 if target_finished():
@@ -575,7 +585,7 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr.open(self._store(self.target, self.nested), mode=zarr_append_mode)
+                return zarr_open(self._store(self.target, self.nested), "r+")
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
@@ -586,12 +596,6 @@ class ZarrCopier:
         target = open_target()
 
         assert target is not None, target
-
-        if self.verbosity > 0:
-            LOG.info(f"Open source: {self.source}")
-
-        source = open_zarr_store(self.source)
-        # zarr.consolidate_metadata(source)
 
         self.copy(source, target, self.verbosity)
         if os.path.exists(self.target) and os.path.isdir(self.target):

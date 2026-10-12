@@ -20,6 +20,7 @@ import zarr
 from anemoi.utils.config import load_config as load_settings
 from numpy.typing import NDArray
 
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.usage.options import Options
 
 if TYPE_CHECKING:
@@ -625,7 +626,7 @@ def append_to_zarr(new_data: np.ndarray, new_dates: np.ndarray, zarr_path: str) 
     """
     print("Appending data for", new_dates, flush=True)
     # Re-open the zarr store to avoid root object accumulating memory.
-    root = zarr.open(zarr_path, mode="a")
+    root = zarr_open(zarr_path, "a")
     # Convert new dates to strings (using str) regardless of input dtype.
     new_dates = np.array(new_dates, dtype="datetime64[s]")
     dates_ds = root["dates"]
@@ -739,7 +740,7 @@ def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> Non
 
     # Use ProcessPoolExecutor for parallel data extraction.
     # Workers return (date, subset) tuples.
-    root = zarr.open(zarr_path, mode="a")
+    root = zarr_open(zarr_path, "a")
     initialize_zarr_store(root, full_ds)
     print("Zarr store initialised.", flush=True)
 

@@ -276,9 +276,9 @@ def loader_recipe_from_zarr(path: str) -> dict:
     dict
         The dataset recipe.
     """
-    import zarr
+    from anemoi.datasets.compat import zarr_open
 
-    z = zarr.open(path, mode="r")
+    z = zarr_open(path, "r")
 
     for name in ("_recipe", "recipe"):
         if name not in z.attrs:
