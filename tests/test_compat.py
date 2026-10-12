@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 import anemoi.datasets
+from anemoi.datasets.commands.copy import ZarrCopier
 from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import blosc_compressor
@@ -159,9 +160,41 @@ def test_dataset_writes_default_format(tmp_path: Path) -> None:
         assert _format_on_disk(node) == DEFAULT_ZARR_FORMAT
 
 
+@zarr3_only
+def test_dataset_writes_format_3(tmp_path: Path) -> None:
+    path = tmp_path / "test.zarr"
+
+    dataset = Dataset(str(path), create=True, zarr_format=3)
+    dataset.add_array(name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",))
+
+    for node in (path, path / "_build", path / "_build" / "flags"):
+        assert _format_on_disk(node) == 3
+
+    # Updating detects the format of the existing store
+    assert get_zarr_format(Dataset(str(path), update=True).store) == 3
+
+
 def test_dataset_update_requires_existing_store(tmp_path: Path) -> None:
     with pytest.raises(ZarrFileNotFoundError):
         Dataset(str(tmp_path / "missing.zarr"), update=True)
+
+
+def test_copy_resharding_requires_zarr_format_3() -> None:
+    with pytest.raises(ValueError, match="Resharding requires Zarr format 3"):
+        ZarrCopier(
+            source="source.zarr",
+            target="target.zarr",
+            transfers=1,
+            block_size=None,
+            overwrite=False,
+            resume=False,
+            verbosity=0,
+            nested=False,
+            obfuscate=False,
+            rechunk=None,
+            reshard="10",
+            zarr_format=2,
+        )
 
 
 # Module-level zarr functions that open or create stores, bypassing ``zarr_open``

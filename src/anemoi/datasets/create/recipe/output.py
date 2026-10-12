@@ -21,6 +21,9 @@ from pydantic import BaseModel
 from pydantic import Discriminator
 from pydantic import Field
 from pydantic import Tag
+from pydantic import field_validator
+
+from anemoi.datasets.compat import zarr_version
 
 LOG = logging.getLogger(__name__)
 
@@ -38,6 +41,17 @@ class OutputBase(BaseModel):
 
     sanitise: bool = True
     """Whether to sanitise the metadata to remove sensitive information like paths, URLs..."""
+
+    zarr_format: Literal[2, 3] = 2
+    """The on-disk Zarr format of the dataset. Format 3 is experimental: it requires zarr-python>=3,
+    and the dataset cannot be read with zarr-python 2 (e.g. by current anemoi-training/inference)."""
+
+    @field_validator("zarr_format")
+    @classmethod
+    def _check_zarr_format(cls, zarr_format: int) -> int:
+        if zarr_format == 3 and zarr_version < 3:
+            raise ValueError("'output.zarr_format: 3' requires zarr-python>=3")
+        return zarr_format
 
 
 class GriddedOutput(OutputBase):

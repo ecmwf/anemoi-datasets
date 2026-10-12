@@ -71,6 +71,8 @@ class ZarrCopier:
         Rechunk size for the target data array.
     reshard : str
         Reshard size for the target data array.
+    zarr_format : int, optional
+        Zarr format of the target. Defaults to the format of the source, or 3 when resharding.
     """
 
     def __init__(
@@ -86,6 +88,7 @@ class ZarrCopier:
         obfuscate: bool,
         rechunk: str,
         reshard: str = None,
+        zarr_format: int | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the ZarrCopier.
@@ -114,6 +117,8 @@ class ZarrCopier:
             Rechunk size for the target data array.
         reshard : str
             Reshard size for the target data array.
+        zarr_format : int, optional
+            Zarr format of the target. Defaults to the format of the source, or 3 when resharding.
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -130,6 +135,10 @@ class ZarrCopier:
 
         self.rechunking = rechunk.split(",") if rechunk else []
         self.resharding = reshard.split(",") if reshard else []
+        self.zarr_format = zarr_format
+
+        if self.resharding and zarr_format == 2:
+            raise ValueError("Resharding requires Zarr format 3, it cannot be used with --zarr-format 2.")
 
         source_is_ssh = self.source.startswith("ssh://")
         target_is_ssh = self.target.startswith("ssh://")
@@ -568,7 +577,7 @@ class ZarrCopier:
         # zarr.consolidate_metadata(source)
 
         # Sharding requires Zarr format 3, otherwise keep the format of the source
-        target_format = 3 if self.resharding else get_zarr_format(source)
+        target_format = self.zarr_format or (3 if self.resharding else get_zarr_format(source))
 
         def open_target() -> Any:
 
@@ -585,7 +594,13 @@ class ZarrCopier:
                     sys.exit(0)
 
                 LOG.error("Target already exists, resuming copy.")
-                return zarr_open(self._store(self.target, self.nested), "r+")
+                target = zarr_open(self._store(self.target, self.nested), "r+")
+                if self.zarr_format is not None and get_zarr_format(target) != self.zarr_format:
+                    raise ValueError(
+                        f"Cannot resume, the target is in Zarr format {get_zarr_format(target)},"
+                        f" not {self.zarr_format}. Use --overwrite instead."
+                    )
+                return target
 
             LOG.error("Target already exists, use either --overwrite or --resume.")
             sys.exit(1)
@@ -655,6 +670,12 @@ class CopyMixin:
                 "--reshard",
                 help="Reshard the target data array. This option will adjust --block-size to that it is divisible by the reshard size. Zarr 3 only.",
             )
+            command_parser.add_argument(
+                "--zarr-format",
+                type=int,
+                choices=[2, 3],
+                help="Zarr format of the target. Defaults to the format of the source, or 3 with --reshard. Format 3 is experimental. Zarr 3 only.",
+            )
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
 
@@ -680,7 +701,8 @@ class CopyMixin:
                 raise ValueError(f"{name} path must match '*.zarr' pattern: {path!r}")
 
         if zarr_version >= 3:
-            reshaping_requested = args.rechunk or getattr(args, "reshard", None)
+            # Converting the Zarr format requires rewriting the data, so it cannot use the file transfer
+            reshaping_requested = args.rechunk or getattr(args, "reshard", None) or getattr(args, "zarr_format", None)
         else:
             reshaping_requested = args.rechunk
 

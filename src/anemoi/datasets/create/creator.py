@@ -22,6 +22,7 @@ import tqdm
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
+from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -131,7 +132,19 @@ class Creator(ABC):
     def task_init(self) -> Dataset:
         """Run the initialisation process for the dataset."""
 
-        dataset = Dataset(self.path, overwrite=self.kwargs.get("overwrite", False), create=True)
+        zarr_format = self.recipe.output.zarr_format
+        if zarr_format != DEFAULT_ZARR_FORMAT:
+            LOG.warning(
+                f"Writing the dataset in Zarr format {zarr_format} is experimental:"
+                " it cannot be read with zarr-python 2 (e.g. by current anemoi-training/inference)."
+            )
+
+        dataset = Dataset(
+            self.path,
+            overwrite=self.kwargs.get("overwrite", False),
+            create=True,
+            zarr_format=zarr_format,
+        )
         self._cleanup_temporary_directories()
 
         LOG.info("Initialising dataset creation.")
