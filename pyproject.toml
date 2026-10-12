@@ -47,7 +47,7 @@ dependencies = [
   "glom",
   "jsonschema",
   "lru-dict",
-  "numcodecs<0.16",           # Until we move to zarr3
+  "numcodecs",
   "numpy",
   "pint",
   "psutil",
@@ -58,7 +58,7 @@ dependencies = [
   "ruamel-yaml>=0.16",
   "semantic-version",
   "tqdm",
-  "zarr<=2.18.7",
+  "zarr",
 ]
 optional-dependencies.all = [
   "anemoi-datasets[comparelam,create,remote,xarray]",
@@ -106,7 +106,7 @@ optional-dependencies.xarray = [
   "planetary-computer",
   "pystac-client",
   "s3fs",
-  "xarray<2026.9",      # last version to support zarr2, TODO: remove when we support zarr3
+  "xarray",
 ]
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
