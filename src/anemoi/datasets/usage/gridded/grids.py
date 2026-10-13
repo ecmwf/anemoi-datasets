@@ -205,8 +205,47 @@ class GridsBase(GivenAxis):
             Options for the combined dataset.
         """
         super().__init__(datasets, axis, options)
-        # Shape: (dates, variables, ensemble, 1d-values)
-        assert len(datasets[0].shape) == 4, "Grids must be 1D for now"
+
+        # Supports 4D gridded and 5D trajectory datasets.
+        assert len(datasets[0].shape) in (4, 5), "Grids must be 1D for now"
+
+    def check_same_frequency(
+        self,
+        d1: Dataset,
+        d2: Dataset,
+    ) -> None:
+        if len(d1.shape) == 5 and len(d2.shape) == 5:
+            if d1.base_frequency != d2.base_frequency:
+                raise ValueError(
+                    f"{self.__class__.__name__}: "
+                    f"Incompatible base frequencies: "
+                    f"{d1.base_frequency} and {d2.base_frequency}"
+                )
+
+            if d1.step_frequency != d2.step_frequency:
+                raise ValueError(
+                    f"{self.__class__.__name__}: "
+                    f"Incompatible step frequencies: "
+                    f"{d1.step_frequency} and {d2.step_frequency}"
+                )
+            return
+
+        super().check_same_frequency(d1, d2)
+
+    def check_same_dates(
+        self,
+        d1: Dataset,
+        d2: Dataset,
+    ) -> None:
+        if len(d1.shape) == 5 and len(d2.shape) == 5:
+            if not np.array_equal(d1.base_dates, d2.base_dates):
+                raise ValueError(f"{self.__class__.__name__}: " "Incompatible base dates")
+
+            if not np.array_equal(d1.steps, d2.steps):
+                raise ValueError(f"{self.__class__.__name__}: " "Incompatible forecast steps")
+            return
+
+        super().check_same_dates(d1, d2)
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the grids of two datasets are the same.
@@ -313,7 +352,7 @@ class Cutout(GridsBase):
         self,
         datasets: list[Any],
         options: Options,
-        axis: int = 3,
+        axis: int | None = None,
         cropping_distance: float = 2.0,
         neighbours: int = 5,
         min_distance_km: float | None = None,
@@ -331,7 +370,7 @@ class Cutout(GridsBase):
         options : Options
             Options for the combined dataset.
         axis : int
-            Concatenation axis, must be set to 3.
+            Spatial axis (3 for gridded, 4 for trajectories).
         cropping_distance : float
             Distance threshold in degrees for cropping cutouts.
         neighbours : int
@@ -349,9 +388,12 @@ class Cutout(GridsBase):
             location. ``True`` is reserved for a future default cache location and
             currently raises ``NotImplementedError``.
         """
+        if axis is None:
+            axis = len(datasets[0].shape) - 1
+
         super().__init__(datasets, axis, options)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
-        assert axis == 3, "CutoutGrids requires axis=3"
+        assert axis == len(datasets[0].shape) - 1, "CutoutGrids requires the grid to be the last axis"
         assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
         if min_distance_km is not None:
             assert min_distance_km >= 0, "min_distance_km must be a non-negative number"
@@ -593,7 +635,7 @@ class Cutout(GridsBase):
             Data array from the masked datasets based on the index.
         """
         if isinstance(index, (int, slice)):
-            index = (index, slice(None), slice(None), slice(None))
+            index = (index,) + (slice(None),) * (len(self.shape) - 1)
         return self._get_tuple(index)
 
     @cached_property
@@ -647,7 +689,7 @@ class Cutout(GridsBase):
             # read only the contiguous native-grid range spanning the selected points,
             # instead of loading the whole grid and slicing in memory
             window = slice(int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1)
-            part = dataset[index[:3] + (window,)]
+            part = dataset[update_tuple(index, self.axis, window)[0]]
             if len(selected_source_indices) != window.stop - window.start:
                 # the mask has gaps (or the index has a step) inside the window: drop the extra points
                 part = part[..., selected_source_indices - window.start]
@@ -818,7 +860,7 @@ def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Optio
         raise NotImplementedError("Cannot use both 'ensemble' and 'cutout'")
 
     cutout = kwargs.pop("cutout")
-    axis = kwargs.pop("axis", 3)
+    axis = kwargs.pop("axis", None)
     plot = kwargs.pop("plot", None)
     min_distance_km = kwargs.pop("min_distance_km", None)
     max_distance_km = kwargs.pop("max_distance_km", None)

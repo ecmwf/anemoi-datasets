@@ -141,6 +141,10 @@ considered to be a global model or boundary conditions. It is therefore
 expected that the bounding box of the first dataset is contained within
 the bounding box of the second dataset.
 
+The same ``cutout`` syntax also supports 5D trajectory datasets.
+With ``adjust="all"``, common base dates and variables can be aligned,
+but forecast steps and their frequencies must already match.
+
 The image below shows the global dataset:
 
 .. image:: ../_static/cutout-1.png
