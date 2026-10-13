@@ -1,3 +1,12 @@
+# (C) Copyright 2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
 """Regression tests for cutout with 5D trajectory datasets."""
 
 from types import SimpleNamespace
@@ -45,9 +54,7 @@ def make_trajectory_cutout():
         np.array([True, False, True, False, True, True]),
         np.array([True, True, False, True, False]),
     ]
-    obj.global_mask = np.array(
-        [False, True, False, True, True, False, False, True]
-    )
+    obj.global_mask = np.array([False, True, False, True, True, False, False, True])
 
     masks = [*obj.masks, obj.global_mask]
 
@@ -150,19 +157,14 @@ def test_trajectory_cutout_real_constructor(monkeypatch):
     shape_lam = (2, 1, 1, 2, 3)
     shape_global = (2, 1, 1, 2, 4)
 
-    lam_values = np.arange(
-        np.prod(shape_lam), dtype=np.float32
-    ).reshape(shape_lam)
+    lam_values = np.arange(np.prod(shape_lam), dtype=np.float32).reshape(shape_lam)
 
-    global_values = (
-        np.arange(np.prod(shape_global), dtype=np.float32)
-        .reshape(shape_global) + 1000
-    )
+    global_values = np.arange(np.prod(shape_global), dtype=np.float32).reshape(shape_global) + 1000
 
     def make_source(data, latitudes, longitudes):
         ds = MagicMock()
         ds.shape = data.shape
-        ds.sub_shape.side_effect = lambda axis: data.shape[:axis] + data.shape[axis + 1:]
+        ds.sub_shape.side_effect = lambda axis: data.shape[:axis] + data.shape[axis + 1 :]
         ds.dtype = data.dtype
         ds.__len__.return_value = data.shape[0]
         ds._len = data.shape[0]
@@ -183,9 +185,7 @@ def test_trajectory_cutout_real_constructor(monkeypatch):
             ["2025-01-01", "2025-01-02"],
             dtype="datetime64[h]",
         )
-        ds.steps = np.array(
-            [0, 1], dtype="timedelta64[h]"
-        )
+        ds.steps = np.array([0, 1], dtype="timedelta64[h]")
         ds.base_frequency = "24h"
         ds.step_frequency = "1h"
         ds.frequency = "24h"
@@ -205,16 +205,12 @@ def test_trajectory_cutout_real_constructor(monkeypatch):
         [-10.0, -5.0, -4.0, 5.0],
     )
 
-    def fake_cutout_mask(
-        lam_lats, lam_lons, global_lats, global_lons, **kwargs
-    ):
+    def fake_cutout_mask(lam_lats, lam_lons, global_lats, global_lons, **kwargs):
         assert len(lam_lats) == 3
         assert len(global_lats) == 4
         return np.array([True, False, True, True])
 
-    monkeypatch.setattr(
-        spatial, "cutout_mask", fake_cutout_mask
-    )
+    monkeypatch.setattr(spatial, "cutout_mask", fake_cutout_mask)
 
     # This exercises the real constructor and compatibility checks.
     combined = Cutout(
@@ -233,10 +229,6 @@ def test_trajectory_cutout_real_constructor(monkeypatch):
     assert combined.shape == expected.shape
 
     index = (slice(None),) * 5
-    np.testing.assert_array_equal(
-        combined[index], expected
-    )
+    np.testing.assert_array_equal(combined[index], expected)
 
-    np.testing.assert_array_equal(
-        combined[0], expected[0]
-    )
+    np.testing.assert_array_equal(combined[0], expected[0])

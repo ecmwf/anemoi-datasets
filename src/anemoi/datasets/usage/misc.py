@@ -428,10 +428,7 @@ def _auto_adjust(
 
     is_trajectory = [len(d.shape) == 5 for d in datasets]
     if any(is_trajectory) and not all(is_trajectory):
-        raise ValueError(
-            "Automatic adjustment of mixed gridded/trajectory "
-            "datasets is not supported"
-        )
+        raise ValueError("Automatic adjustment of mixed gridded/trajectory " "datasets is not supported")
 
     trajectory_layout = all(is_trajectory)
 
@@ -456,10 +453,7 @@ def _auto_adjust(
     # Trajectories have two independent time axes:
     # base_dates and steps. They intentionally do not expose .dates.
     if trajectory_layout:
-        datasets = [
-            d._subset(**subset_kwargs[i])
-            for i, d in enumerate(datasets)
-        ]
+        datasets = [d._subset(**subset_kwargs[i]) for i, d in enumerate(datasets)]
 
         if adjust_set & {"start", "end", "frequency"}:
             common = datasets[0].base_dates
@@ -470,9 +464,7 @@ def _auto_adjust(
             if len(common) == 0:
                 raise ValueError("No common trajectory base dates")
 
-            from anemoi.datasets.usage.trajectories.subset import (
-                Subset as TrajectorySubset,
-            )
+            from anemoi.datasets.usage.trajectories.subset import Subset as TrajectorySubset
 
             adjusted = []
 
@@ -481,9 +473,7 @@ def _auto_adjust(
                     adjusted.append(d)
                     continue
 
-                indices = np.nonzero(
-                    np.isin(d.base_dates, common)
-                )[0].tolist()
+                indices = np.nonzero(np.isin(d.base_dates, common))[0].tolist()
 
                 adjusted.append(
                     TrajectorySubset(

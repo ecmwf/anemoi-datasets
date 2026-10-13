@@ -239,16 +239,10 @@ class GridsBase(GivenAxis):
     ) -> None:
         if len(d1.shape) == 5 and len(d2.shape) == 5:
             if not np.array_equal(d1.base_dates, d2.base_dates):
-                raise ValueError(
-                    f"{self.__class__.__name__}: "
-                    "Incompatible base dates"
-                )
+                raise ValueError(f"{self.__class__.__name__}: " "Incompatible base dates")
 
             if not np.array_equal(d1.steps, d2.steps):
-                raise ValueError(
-                    f"{self.__class__.__name__}: "
-                    "Incompatible forecast steps"
-                )
+                raise ValueError(f"{self.__class__.__name__}: " "Incompatible forecast steps")
             return
 
         super().check_same_dates(d1, d2)
@@ -399,9 +393,7 @@ class Cutout(GridsBase):
 
         super().__init__(datasets, axis, options)
         assert len(datasets) >= 2, "CutoutGrids requires at least two datasets"
-        assert axis == len(datasets[0].shape) - 1, (
-            "CutoutGrids requires the grid to be the last axis"
-        )
+        assert axis == len(datasets[0].shape) - 1, "CutoutGrids requires the grid to be the last axis"
         assert cropping_distance >= 0, "cropping_distance must be a non-negative number"
         if min_distance_km is not None:
             assert min_distance_km >= 0, "min_distance_km must be a non-negative number"
