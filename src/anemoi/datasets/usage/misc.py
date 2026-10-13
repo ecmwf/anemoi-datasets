@@ -426,6 +426,15 @@ def _auto_adjust(
 
     subset_kwargs = [{} for _ in datasets]
 
+    is_trajectory = [len(d.shape) == 5 for d in datasets]
+    if any(is_trajectory) and not all(is_trajectory):
+        raise ValueError(
+            "Automatic adjustment of mixed gridded/trajectory "
+            "datasets is not supported"
+        )
+
+    trajectory_layout = all(is_trajectory)
+
     if "select" in adjust_set:
         assert "select" not in kwargs, "Cannot use 'select' in adjust and kwargs"
 
@@ -443,6 +452,50 @@ def _auto_adjust(
         for i, d in enumerate(datasets):
             if set(d.variables) != variables:
                 subset_kwargs[i]["select"] = sorted(variables)
+
+    # Trajectories have two independent time axes:
+    # base_dates and steps. They intentionally do not expose .dates.
+    if trajectory_layout:
+        datasets = [
+            d._subset(**subset_kwargs[i])
+            for i, d in enumerate(datasets)
+        ]
+
+        if adjust_set & {"start", "end", "frequency"}:
+            common = datasets[0].base_dates
+
+            for d in datasets[1:]:
+                common = np.intersect1d(common, d.base_dates)
+
+            if len(common) == 0:
+                raise ValueError("No common trajectory base dates")
+
+            from anemoi.datasets.usage.trajectories.subset import (
+                Subset as TrajectorySubset,
+            )
+
+            adjusted = []
+
+            for d in datasets:
+                if np.array_equal(d.base_dates, common):
+                    adjusted.append(d)
+                    continue
+
+                indices = np.nonzero(
+                    np.isin(d.base_dates, common)
+                )[0].tolist()
+
+                adjusted.append(
+                    TrajectorySubset(
+                        d,
+                        indices,
+                        {"adjust": "base_dates"},
+                    ).mutate()
+                )
+
+            datasets = adjusted
+
+        return datasets, kwargs
 
     if "start" or "end" in adjust_set:
         common = datasets[0].dates
