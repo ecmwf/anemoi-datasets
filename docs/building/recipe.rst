@@ -28,6 +28,13 @@ The top-level dates block depends on ``output.layout``:
 The recipe loader validates these rules and raises a clear error if they
 are mismatched.
 
+Zarr format
+===========
+
+Datasets are written in Zarr format 2 by default. Zarr format 3 can be
+selected with ``output.zarr_format: 3``. This is experimental, see
+:ref:`zarr-format`.
+
 Deprecated / removed output keys
 ================================
 

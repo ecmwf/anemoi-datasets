@@ -8,7 +8,9 @@
 # nor does it submit to any jurisdiction.
 
 import pytest
+from pydantic import ValidationError
 
+from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.create.recipe.output import GriddedOutput
 
 
@@ -68,3 +70,23 @@ def test_default_chunking_errors_when_one_grid_point_exceeds_codec_limit():
     output = GriddedOutput()
     with pytest.raises(ValueError, match="single-grid-point chunk"):
         output.get_chunking(_coords(variables=600_000_000, grid_points=4))
+
+
+def test_zarr_format_defaults_to_2():
+    assert GriddedOutput().zarr_format == 2
+
+
+@pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3")
+def test_zarr_format_3_is_accepted_with_zarr3():
+    assert GriddedOutput(zarr_format=3).zarr_format == 3
+
+
+@pytest.mark.skipif(zarr_version >= 3, reason="requires zarr-python<3")
+def test_zarr_format_3_requires_zarr3():
+    with pytest.raises(ValidationError, match="requires zarr-python>=3"):
+        GriddedOutput(zarr_format=3)
+
+
+def test_zarr_format_must_be_2_or_3():
+    with pytest.raises(ValidationError):
+        GriddedOutput(zarr_format=4)
