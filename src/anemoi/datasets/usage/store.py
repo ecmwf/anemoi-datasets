@@ -280,6 +280,11 @@ class ZarrStore(Dataset):
         )
 
     @property
+    def layout(self) -> str | None:
+        """Return the layout of the dataset."""
+        return self.store.attrs.get("layout", "gridded")
+
+    @property
     def resolution(self) -> str | None:
         """Return the resolution of the dataset."""
         return self.store.attrs.get("resolution")

@@ -222,7 +222,8 @@ class GriddedZarr(ZarrStore):
 
         if len(self.store.attrs.get("missing_dates", [])):
             LOG.warning(f"Dataset {self} has missing dates")
-            return ZarrWithMissingDates(self.store, self.path)
+            return ZarrWithMissingDates(self.store, self.path).mutate()
+
         return self
 
     def tree(self) -> Node:
@@ -289,14 +290,37 @@ class ZarrWithMissingDates(GriddedZarr):
         self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
         self._missing = set(self.missing_to_dates)
 
+    def mutate(self) -> "ZarrWithMissingDates":
+        start, end, frequency = self.start_date, self.end_date, self.frequency
+        size = self.data.shape[0]
+        expected_size = ((end - start) // frequency) + 1
+
+        if size == expected_size:
+            return self
+
+        from anemoi.datasets import __version__ as anemoi_version
+
+        LOG.warning("=" * 80)
+        LOG.warning(
+            "!!!!! This datasets was created by a version of anemoi-datasets that encoded missing dates incorrectly."
+        )
+        LOG.warning(
+            f"Please consider recreating this dataset with a newer version of anemoi-datasets (e.g. {anemoi_version} )"
+        )
+        LOG.warning("=" * 80)
+        LOG.warning("Applying in memory fix...")
+        LOG.warning("=" * 80)
+        use_fix = int(os.environ.get("ANEMOI_DATASETS_MISSING_DATES_FIX_EXPERIMENTAL", 0))
+        if use_fix:
+            return ZarrWithMissingDatesFix(self.store, self.path)
+        raise ValueError(
+            f"Dataset {self} is not encoded correctly. Please recreate the dataset with a newer version of anemoi-datasets."
+        )
+
     @property
     def missing(self) -> set[int]:
         """Return the missing dates of the dataset."""
         return self._missing
-
-    def mutate(self) -> Dataset:
-        """Mutate the dataset."""
-        return self
 
     @debug_indexing
     @expand_list_indexing
@@ -349,7 +373,95 @@ class ZarrWithMissingDates(GriddedZarr):
         """Return the label of the dataset."""
         return "zarr*"
 
-    # def origin(self, index):
-    #     if index[0] in self.missing:
-    #         self._report_missing(index[0])
-    #     return super().origin(index)
+
+class ReIndex:
+    def __init__(self, data, shape, index_mapping):
+        self._len = shape[0]
+        self.data = data
+        self.shape = shape
+        self.index_mapping = index_mapping
+
+    def __getitem__(self, idx):
+
+        match idx:
+            case int():
+                return self.data[self.index_mapping[idx]]
+
+            case slice():
+                indices = list(range(*idx.indices(self._len)))
+                return np.stack([self.data[self.index_mapping[i]] for i in indices])
+
+            case list():
+                return np.stack([self.data[self.index_mapping[i]] for i in idx])
+
+            case tuple():
+                first, *rest = idx
+                match first:
+                    case int():
+                        return self.data[self.index_mapping[first], *rest]
+
+                    case slice():
+                        indices = list(range(*first.indices(self._len)))
+                        return np.stack([self.data[self.index_mapping[i], *rest] for i in indices])
+
+                    case list():
+                        return np.stack([self.data[self.index_mapping[i], *rest] for i in first])
+
+            case _:
+                raise TypeError(f"Unsupported index type: {type(idx)}")
+
+
+class ZarrWithMissingDatesFix(ZarrWithMissingDates):
+    """A zarr dataset with missing dates. Fix missing entries."""
+
+    def __init__(self, store: zarr.Group, path: str) -> None:
+
+        # First fix the dates
+
+        stored_dates = store["dates"][:]
+
+        start = stored_dates[0]
+        end = stored_dates[-1]
+        frequency = frequency_to_timedelta(store.attrs["frequency"])
+
+        missing_dates = store.attrs.get("missing_dates", [])
+        missing_dates = {np.datetime64(x, "s") for x in missing_dates}
+
+        actual_dates = []
+        date = start
+        i = 0
+        index_mapping = {}
+        while date <= end:
+            npdate = np.datetime64(date, "s")
+            if npdate not in missing_dates:
+                index_mapping[i] = len(index_mapping)
+            i += 1
+
+            actual_dates.append(npdate)
+            date += frequency
+
+        self._actual_dates = np.array(actual_dates)
+
+        super().__init__(store, path)
+
+        self.data = ReIndex(store["data"], self.shape, index_mapping)
+
+    def mutate(self):
+        return self
+
+    @property
+    def dates(self):
+        return self._actual_dates
+
+    @property
+    def label(self) -> str:
+        """Return the label of the dataset."""
+        return "zarr?"
+
+    @property
+    def shape(self):
+        s = super().shape
+        return (len(self._actual_dates), *s[1:])
+
+    def __len__(self):
+        return len(self._actual_dates)
