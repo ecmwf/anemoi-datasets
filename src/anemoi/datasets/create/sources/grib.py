@@ -172,18 +172,11 @@ class GribSource(Source):
                 if self.flavour is not None:
                     s = self.flavour.map(s)
 
-                # Build sel kwargs, remapping legacy key names to earthkit 1.0 paths.
-                # Keys with eccodes type qualifiers (e.g. "level:d") are passed
-                # through as "metadata.key:type" — component paths do not
-                # support type qualifiers.  Plain keys are remapped via
-                # _SEL_REMAPPING.
+                # Legacy keys are remapped to component paths via _SEL_REMAPPING, other GRIB keys
+                # (including typed ones such as "level:d") are read from the metadata namespace.
                 sel_kwargs: dict[str, Any] = {}
                 for k, v in self.kwargs.items():
-                    if ":" in k:
-                        # Typed key (e.g. "level:d") → metadata.level:d
-                        sel_kwargs[f"metadata.{k}"] = v
-                    else:
-                        sel_kwargs[k] = v
+                    sel_kwargs[k if k in self._SEL_REMAPPING or "." in k else f"metadata.{k}"] = v
                 if dates:
                     sel_kwargs["valid_datetime"] = dates
 

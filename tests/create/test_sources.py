@@ -275,6 +275,36 @@ def test_fdb(tmp_path, monkeypatch) -> None:
     assert float(ds[0, 0, 0, 0]) == 1
 
 
+def test_selection_by_other_keys(tmp_path) -> None:
+    """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
+    import xarray as xr
+
+    path = _write_grib(
+        tmp_path / "levels.grib",
+        [dict(dataDate=20200101, dataTime=0, shortName=name, value=1) for name in ("sp", "msl")],
+    )
+    dates = {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"}
+
+    recipe = {"dates": dates, "input": {"grib": {"path": path, "typeOfLevel": "surface"}}}
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["sp"]
+
+    lat, lon = np.arange(50.0, 40.0, -1.0), np.arange(0.0, 10.0, 1.0)
+    xr.Dataset(
+        {"t2m": (("number", "time", "latitude", "longitude"), np.ones((3, 1, lat.size, lon.size)), {"units": "K"})},
+        coords={
+            "number": [0, 1, 2],
+            "time": [np.datetime64("2020-01-01T00:00", "ns")],
+            "latitude": ("latitude", lat, {"standard_name": "latitude", "units": "degrees_north"}),
+            "longitude": ("longitude", lon, {"standard_name": "longitude", "units": "degrees_east"}),
+        },
+    ).to_netcdf(tmp_path / "ens.nc")
+
+    recipe = {"dates": dates, "input": {"netcdf": {"path": str(tmp_path / "ens.nc"), "number": [1, 2]}}}
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.shape[2] == 2
+
+
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.

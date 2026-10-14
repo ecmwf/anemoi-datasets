@@ -160,6 +160,12 @@ def load_one(
             except (KeyError, ValueError):
                 # Coordinate not in dataset — defer to FieldList sel
                 remaining_kwargs[k] = v
+        elif k not in _SEL_KEY_MAP and k in data.indexes:
+            # Other dimensions (e.g. number) are not exposed as field keys, so select them here
+            try:
+                data = data.sel({k: v if isinstance(v, (list, tuple)) else [v]})
+            except (KeyError, ValueError, TypeError):
+                remaining_kwargs[k] = v
         else:
             remaining_kwargs[k] = v
 
@@ -179,10 +185,7 @@ def load_one(
     # Translate any remaining kwargs to component-path keys for sel().
     sel_kwargs: dict[str, Any] = {}
     for k, v in remaining_kwargs.items():
-        if ":" in k:
-            sel_kwargs[f"metadata.{k}"] = v
-        else:
-            sel_kwargs[_SEL_KEY_MAP.get(k, k)] = v
+        sel_kwargs[_SEL_KEY_MAP.get(k, k if "." in k else f"metadata.{k}")] = v
 
     if len(dates) == 0:
         if sel_kwargs:
