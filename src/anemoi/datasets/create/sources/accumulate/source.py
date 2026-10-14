@@ -19,6 +19,19 @@ from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.encoders.grib import GribEncoder as _GribEncoder
 
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ForecastIntervals
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.source import Source
+from anemoi.datasets.create.sources import source_registry
+
+from .accumulator import Accumulator
+from .accumulator import Logs
+from .covering import ForecastCovering
+from .covering import covering_factory
+from .field_to_interval import FieldToInterval
+
 
 class _GribOutputCompat:
     """Compatibility shim replacing removed earthkit.data.readers.grib.output.new_grib_output."""
@@ -45,19 +58,6 @@ class _GribOutputCompat:
 def _new_grib_output(path):
     return _GribOutputCompat(path)
 
-
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ForecastIntervals
-from anemoi.datasets.create.arguments import Intervals
-from anemoi.datasets.create.arguments import ValidDates
-from anemoi.datasets.create.source import Source
-from anemoi.datasets.create.sources import source_registry
-
-from .accumulator import Accumulator
-from .accumulator import Logs
-from .covering import ForecastCovering
-from .covering import covering_factory
-from .field_to_interval import FieldToInterval
 
 LOG = logging.getLogger(__name__)
 
