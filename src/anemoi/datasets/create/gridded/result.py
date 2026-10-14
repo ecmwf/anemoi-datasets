@@ -121,6 +121,14 @@ def _ensemble_member(member: Any) -> int:
     return 0 if member is None else int(member)
 
 
+def _raw_key(field: Any, key: str, collection: str) -> Any:
+    """Return a raw GRIB key, from ``metadata.<collection>`` when filters mask the single key."""
+    value = field.get(f"metadata.{key}", default=None)
+    if value is None:
+        value = (field.get(collections=f"metadata.{collection}") or {}).get(key)
+    return value
+
+
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
@@ -211,26 +219,19 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
 
         if md.get("param") == "unknown":
-            md["param"] = str(f.get("metadata.paramId", default="unknown"))
+            md["param"] = str(_raw_key(f, "paramId", "parameter") or "unknown")
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
-        # Filters mask the raw GRIB keys, but the metadata.time collection keeps the steps and stepType
-        time_md = f.get(collections="metadata.time") or {}
-
-        def _time_key(key: str) -> Any:
-            value = f.get(f"metadata.{key}", default=None)
-            return time_md.get(key) if value is None else value
-
-        startStep = _time_key("startStep")
+        startStep = _raw_key(f, "startStep", "time")
         if startStep is not None:
             startStep = as_timedelta(startStep)
 
-        endStep = _time_key("endStep")
+        endStep = _raw_key(f, "endStep", "time")
         if endStep is not None:
             endStep = as_timedelta(endStep)
 
         stepTypeForConversion = f.get("metadata.stepTypeForConversion", default=None)
-        stepType = _time_key("stepType")
+        stepType = _raw_key(f, "stepType", "time")
         typeOfStatisticalProcessing = f.get("metadata.typeOfStatisticalProcessing", default=None)
         timeRangeIndicator = f.get("metadata.timeRangeIndicator", default=None)
 
@@ -336,7 +337,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         other[current_variable]["units"] = units
 
-        grib = {k: f.get(f"metadata.{k}", default=None) for k in ("paramId", "shortName")}
+        grib = {k: _raw_key(f, k, "parameter") for k in ("paramId", "shortName")}
         if any(grib.values()):
             other[current_variable]["grib"] = grib
 
