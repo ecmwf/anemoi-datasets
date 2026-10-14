@@ -209,15 +209,23 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             md["param"] = str(f.get("metadata.paramId", default="unknown"))
             # assert md['param'] != 'unknown', (md, f.metadata('param'))
 
-        startStep = f.get("metadata.startStep", default=None)
+        # Filters mask the raw GRIB keys, but the metadata.time collection keeps the steps and stepType
+        time_md = f.get(collections="metadata.time") or {}
+
+        def _time_key(key: str) -> Any:
+            value = f.get(f"metadata.{key}", default=None)
+            return time_md.get(key) if value is None else value
+
+        startStep = _time_key("startStep")
         if startStep is not None:
             startStep = as_timedelta(startStep)
 
-        endStep = f.get("metadata.endStep", default=None)
+        endStep = _time_key("endStep")
         if endStep is not None:
             endStep = as_timedelta(endStep)
 
         stepTypeForConversion = f.get("metadata.stepTypeForConversion", default=None)
+        stepType = _time_key("stepType")
         typeOfStatisticalProcessing = f.get("metadata.typeOfStatisticalProcessing", default=None)
         timeRangeIndicator = f.get("metadata.timeRangeIndicator", default=None)
 
@@ -262,6 +270,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
+                "avg": "average",
             }
 
             #
@@ -281,6 +290,8 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
                 process = TIME_RANGE_INDICATOR.get(timeRangeIndicator)
             if process is None:
                 process = STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)
+            if process is None:
+                process = STEP_TYPE_FOR_CONVERSION.get(stepType)
             if process is None:
                 process = PATCHES.get(md["param"])
                 if process is not None:
