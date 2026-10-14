@@ -350,9 +350,9 @@ def _interval_generator_factory(
             raise NotImplementedError(f"Unknown availability config {config}")
 
         case {"mars": mars_config}:
-            from ..windowed.description import FromTrajectories
-            from ..windowed.description import TrajectoryIntervalGenerator
-            from ..windowed.description import _mars_archive_description
+            from .description import FromTrajectories
+            from .description import TrajectoryIntervalGenerator
+            from .description import _mars_archive_description
 
             _class = mars_config.get("class")
             _stream = mars_config.get("stream")

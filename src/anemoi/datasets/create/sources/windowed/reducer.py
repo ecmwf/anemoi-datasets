@@ -7,9 +7,17 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+"""Reduce one window of interval-valued source data to one field.
+
+A window is cut into subwindows (:mod:`.subwindows`). Each is rebuilt from archived
+fields by a **signed sum** -- one field when the archive holds it outright, ``+a(0,12)
+-a(0,6)`` when the archive accumulates from the start of the run. Once a subwindow is
+complete its value is reduced into the window value by the operation (sum, max, min,
+mean), and released.
+"""
+
 import datetime
 import logging
-from typing import Any
 
 import numpy as np
 from anemoi.transform.fields import Field
@@ -18,160 +26,130 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
 
+from .operations import Operation
+from .operations import stamp
+from .subwindows import Subwindow
+
 LOG = logging.getLogger(__name__)
 
 
+def _matches(wanted: SignedInterval, interval: SignedInterval) -> bool:
+    if wanted.min == interval.min and wanted.max == interval.max and wanted.base == interval.base:
+        return True
+    return wanted.start == interval.start and wanted.end == interval.end and wanted.base is None
+
+
 class Reducer:
-    values: NDArray | None = None
-    locked: bool = False
+    """One ``(valid_date, basetime, variable)`` window.
+
+    Parameters
+    ----------
+    valid_date : datetime.datetime
+        The end of the window, which the output is stamped with.
+    period : datetime.timedelta
+        The length of the window.
+    key : tuple
+        The grouping key identifying the variable.
+    subwindows : list of Subwindow
+        The pieces the window is cut into; every one is required.
+    operation : Operation
+        What reduces the subwindow values.
+    basetime : datetime.datetime, optional
+        The model-run time to stamp the output with, for a trajectory row.
+    """
 
     def __init__(
         self,
         valid_date: datetime.datetime,
         period: datetime.timedelta,
-        key: dict[str, Any],
-        coverage,
+        key: tuple,
+        subwindows: list[Subwindow],
+        operation: Operation,
         basetime: datetime.datetime | None = None,
-    ):
-        # The accumulator only accumulates fields and does not know about the rest
-        # Reducer object for a given param/member/valid_date
-
+    ) -> None:
         self.valid_date = valid_date
         self.period = period
         self.key = key
+        self.operation = operation
         self.basetime = basetime
 
-        self.coverage = coverage
+        self.subwindows = subwindows
+        self.todo = [list(s.contributions) for s in subwindows]
+        self._partial: list[NDArray | None] = [None] * len(subwindows)
+        self._reduced: NDArray | None = None
+        self._total_weight = 0.0
+        self.outstanding = len(subwindows)
+        #: How many fields some subwindow took. "No field arrived" and "no subwindow
+        #: completed" are different: a differenced subwindow takes two fields first.
+        self.fields_used = 0
+        self.locked = False
 
-        self.todo = [v for v in coverage]
-        self.done = []
+    def is_complete(self) -> bool:
+        return self.outstanding == 0
 
-        self.values = None  # will hold accumulated values array
+    def compute(self, values: NDArray, interval: SignedInterval) -> bool:
+        """Offer a field to every subwindow of this window; True if one took it.
 
-    def is_complete(self, **kwargs) -> bool:
-        """Check whether the accumulation is complete (all intervals have been processed)"""
-        return not self.todo
-
-    def compute(self, values: NDArray, interval: SignedInterval) -> None:
-        """Perform accumulation with the values array on this interval and record the operation.
-        Note: values have been extracted from field before the call to `compute`,
-        so values are read from field only once.
-
-        Parameters:
-        ----------
-        field: Any
-            An earthkit-data-like field
-        values: NDArray
-            Values from the field, will be added to the held values array
-
-        Return
-        ------
-        None
+        One field can serve several subwindows: on a cumulative archive ``a(0,7)`` is
+        ``+`` in ``[6,7]`` and ``-`` in ``[7,8]``. *values* is shared with every other
+        window, so it is never modified in place.
         """
+        used = False
+        for i, todo in enumerate(self.todo):
+            matching = [c for c in todo if _matches(c, interval)]
+            if not matching:
+                continue
+            used = True
+            for contribution in matching:
+                local = contribution.sign * values  # a new array, never the shared one
+                if self._partial[i] is None:
+                    self._partial[i] = local
+                else:
+                    self._partial[i] += local
+                todo.remove(contribution)
 
-        def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
-            for i in lst:
-                if i.min == interval.min and i.max == interval.max and i.base == interval.base:
-                    return i
-                if i.start == interval.start and i.end == interval.end and i.base is None:
-                    return i
-            return None
+            if not todo:
+                subwindow = self.subwindows[i]
+                weight = (subwindow.end - subwindow.start).total_seconds()
+                self._reduced = self.operation.reduce(self._reduced, self._partial[i], weight)
+                self._partial[i] = None
+                self._total_weight += weight
+                self.outstanding -= 1
 
-        matching = match_interval(interval, self.todo)
-
-        if not matching:
-            # interval not needed for this accumulator
-            # this happens when multiple reducers have the same key but different valid_date
-            return False
-
-        def raise_error(msg):
-            LOG.error(f"Reducer {self.__repr__(verbose=True)} state:")
-            LOG.error(f"Received interval: {interval}")
-            LOG.error(f"Matching interval: {matching}")
-            raise ValueError(msg)
-
-        if matching in self.done:
-            # this should not happen normally
-            raise_error(f"SignedInterval {matching} already done for accumulator")
-
-        if self.locked:
-            raise_error(f"Reducer already used, cannot process interval {interval}")
-
-        assert isinstance(values, np.ndarray), type(values)
-
-        # actual accumulation computation
-        # negative accumulation if interval is reversed
-        # copy is mandatory since value is shared between reducers
-        local_values = matching.sign * values.copy()
-        if self.values is None:
-            self.values = local_values
-        else:
-            self.values += local_values
-
-        self.todo.remove(matching)
-        self.done.append(matching)
-        return True
+        if used:
+            self.fields_used += 1
+        return used
 
     def as_field(self, template: Field) -> Field:
-        """Build the accumulated field once the accumulation is complete.
-
-        The result is an in-memory field carrying the accumulation in its
-        components: the time component gives the base time and the step to
-        the validity time, and the processing component records an
-        accumulation over the last ``period`` of that step. For valid-date
-        accumulations (no basetime) the base time is the start of the
-        accumulation window, so the whole step is accumulated; for forecast
-        accumulations the base time is the model-run basetime (so trajectory
-        loaders can recover ``(basetime, step)``).
-
-        Parameters
-        ----------
-        template : Field
-            Field providing all other components (parameter, geography, ...).
-
-        Returns
-        -------
-        Field
-            The accumulated field.
-        """
-        assert self.is_complete(), (self.todo, self.done, self)
+        """Build the reduced field, once every subwindow is in."""
+        assert self.is_complete(), self.__repr__(verbose=True)
         assert not self.locked  # prevent building the field twice
 
-        # negative values may be an anomaly (e.g precipitation), but this is user's choice
-        for k, v in self.key:
-            if k == "param" and v == "tp":
-                if np.any(self.values < 0):
-                    LOG.warning(
-                        f"Negative values when computing accumutation for {self}): min={np.nanmin(self.values)} max={np.nanmax(self.values)}"
-                    )
+        values = self.operation.finalize(self._reduced, self._total_weight)
 
-        basetime = self.basetime if self.basetime is not None else self.valid_date - self.period
-        field = Field.from_numpy(
-            self.values,
-            template=template,
-            **{
-                "time.base_datetime": basetime,
-                "time.step": self.valid_date - basetime,
-                "proc.time_method": "accum",
-                "proc.time_value": self.period,
-            },
-        )
-        # lock the accumulator to prevent further use
+        # negative values may be an anomaly (e.g precipitation), but this is user's choice
+        if self.operation.name == "sum" and ("param", "tp") in self.key and np.any(values < 0):
+            LOG.warning(
+                f"Negative values when computing accumulation for {self}): "
+                f"min={np.nanmin(values)} max={np.nanmax(values)}"
+            )
+
         self.locked = True
-        return field
+        return stamp(values, template, self.operation, self.valid_date, self.period, self.basetime)
 
     def __repr__(self, verbose: bool = False) -> str:
         key = ", ".join(f"{k}={v}" for k, v in self.key)
         period = frequency_to_string(self.period)
-        default = f"{self.__class__.__name__}(valid_date={self.valid_date}, {period}, key={{ {key} }})"
+        run = f", basetime={self.basetime}" if self.basetime is not None else ""
+        default = (
+            f"{type(self).__name__}(valid_date={self.valid_date}{run}, {period}, "
+            f"{self.operation.name}, key={{ {key} }})"
+        )
         if verbose:
-            extra = []
-            if self.locked:
-                extra.append("(locked)")
-            for i in self.done:
-                extra.append(f"    done: {i}")
-            for i in self.todo:
-                extra.append(f"    todo: {i}")
+            extra = ["    (locked)"] if self.locked else []
+            for subwindow, todo in zip(self.subwindows, self.todo):
+                extra.append(f"    {subwindow}: {'done' if not todo else 'waiting for'}")
+                extra.extend(f"        {'+' if c.sign > 0 else '-'}{c}" for c in todo)
             default += "\n" + "\n".join(extra)
         return default
 
@@ -204,8 +182,10 @@ class Logs(list):
         for log in self:
             res.append(f"  {KEY_COLOR}{log[0]}{RESET_COLOR} {INTERVAL_COLOR}{log[2]}{RESET_COLOR}")
             res.append(f"       {KEY_COLOR}{log[1]}{RESET_COLOR}")
-            for d, acc_repr in zip(log[3], log[4]):
-                res.append(f"   used for date {d}: {acc_repr}")
+            if log[3]:
+                res.append("   used for " + ", ".join(str(d) for d in log[3]))
+            else:
+                res.append("   used for nothing")
 
         LOG.error("\n".join(res))
         res = ["More details below:"]

@@ -116,7 +116,7 @@ def normalise_from(
     return None, None
 
 
-def check_valid_time_source(from_: Any, *, period: datetime.timedelta) -> None:
+def check_valid_time_source(from_: Any, *, period: datetime.timedelta, source_name: str = "accumulate") -> None:
     """Check a bare ``from:`` used as base-less, validity-time-indexed source data.
 
     Only a :class:`FromBare` is checked, and only the rules intrinsic to the
@@ -147,7 +147,7 @@ def check_valid_time_source(from_: Any, *, period: datetime.timedelta) -> None:
     duration = from_.duration
     if duration is None:
         raise ValueError(
-            "accumulate: a bare 'from:' describes base-less source data indexed by validity time, "
+            f"{source_name}: a bare 'from:' describes base-less source data indexed by validity time, "
             "so 'accumulation' must be a fixed duration (e.g. '3h'); "
             f"{from_.accumulation!r} ('from-zero'/'from-zero-reset') is a run scheme — declare the "
             "run grid too, with explicit 'base_dates' + 'steps' (or 'base_dates: from-layout, "
@@ -156,7 +156,7 @@ def check_valid_time_source(from_: Any, *, period: datetime.timedelta) -> None:
 
     if period % duration != datetime.timedelta(0):
         raise ValueError(
-            f"accumulate: the source data's 'accumulation' ({frequency_to_string(duration)}) "
+            f"{source_name}: the source data's 'accumulation' ({frequency_to_string(duration)}) "
             f"must divide the requested 'period' ({frequency_to_string(period)})"
         )
 

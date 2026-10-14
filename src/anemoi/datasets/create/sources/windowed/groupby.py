@@ -9,6 +9,7 @@
 
 """The recipe ``group_by:`` block: which metadata identifies one variable."""
 
+
 def patch_groupby_keys(group_by: dict | None = None, *, source_name: str = "accumulate"):
     """Validate a recipe ``group_by:`` block, filling in the default.
 

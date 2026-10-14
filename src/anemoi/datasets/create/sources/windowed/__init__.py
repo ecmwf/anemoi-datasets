@@ -9,9 +9,14 @@
 
 """Shared machinery for sources that reduce archived fields over a time window.
 
-`accumulate` and the time reductions (`average`, `minimum`, `maximum`) are thin
-layers on top of this package: they differ in the operation applied over the
-window, not in how the window is resolved, retrieved or grouped.
+`accumulate` and the time reductions (`average`, `minimum`, `maximum`) are built on
+this package. The code is split by kind of source data, not by operation:
 
-Nothing here knows a recipe key.
+- fields that each *span* an interval are covered by subwindows (`covering`,
+  `subwindows`), each rebuilt by a signed sum, and reduced by `ranges.reduce_ranges`;
+- instantaneous fields are sampled inside the window, by the loop in
+  `reduce/source.py`.
+
+Both reduce with one of four `operations` and ask one table, `check.check`, whether
+the reduction suits what the archive stores.
 """

@@ -33,8 +33,8 @@ from anemoi.datasets.create.intervals import SignedInterval
 from anemoi.datasets.create.intervals import step_to_timedelta
 from anemoi.datasets.create.time_schemas import Steps
 
-from ..search import search_intervals
 from ..interval_generators import IntervalGenerator
+from ..search import search_intervals
 from .accumulation import parse_accumulation
 from .base_dates import RecurringBaseDates
 

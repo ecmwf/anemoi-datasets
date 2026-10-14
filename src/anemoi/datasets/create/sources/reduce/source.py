@@ -25,6 +25,11 @@ is (see :mod:`.description`).
      from: {frequency: 6h}
      source: {mars: {class: ea, type: an, param: [2t], ...}}
 
+``from:`` decides which of two loops runs. Instantaneous fields that *exist every*
+``frequency`` are sampled inside the window, here. Fields that each *span* an interval
+(``from: {accumulation: ...}`` or explicit step pairs) are reduced over the subwindows
+covering the window, by the same loop as ``accumulate`` (:mod:`..windowed.ranges`).
+
 Under a trajectory layout, ``from:`` also decides what the subsource is asked
 for: a base-less ``{frequency: ...}`` is fetched by validity time and the row's
 basetime only stamps the output, while ``{base_dates: true, frequency: ...}``
@@ -34,8 +39,6 @@ fetches lead times of the run the layout imposes.
 from __future__ import annotations
 
 import datetime
-import hashlib
-import json
 import logging
 from collections import defaultdict
 from typing import Any
@@ -49,17 +52,27 @@ from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from ..windowed.groupby import patch_groupby_keys
+from ..windowed.check import Pieces
+from ..windowed.check import check
+from ..windowed.check import field_statistic
+from ..windowed.common import check_complete
+from ..windowed.common import create_source_object
+from ..windowed.common import group_key
+from ..windowed.common import prepare_source
+from ..windowed.covering import covering_from_description
+from ..windowed.description import FromInstants
 from ..windowed.description import FromRun
 from ..windowed.description import ReduceSchema
 from ..windowed.description import check_window_inside_run
 from ..windowed.description import validate_from
 from ..windowed.description import window_samples
-from .reducer import AverageReducer
-from .reducer import MaximumReducer
-from .reducer import MinimumReducer
+from ..windowed.field_to_interval import FieldToInterval
+from ..windowed.groupby import patch_groupby_keys
+from ..windowed.operations import OPERATIONS
+from ..windowed.ranges import argument
+from ..windowed.ranges import cut
+from ..windowed.ranges import reduce_ranges
 from .reducer import SampleReducer
-from .reducer import describe
 
 LOG = logging.getLogger(__name__)
 
@@ -95,11 +108,11 @@ def _base_datetime(field) -> datetime.datetime:
 
 
 class ReduceSource(Source):
-    """Reduce a window of instantaneous source fields to one field per date.
+    """Reduce a window of source fields to one field per date.
 
     Not registered itself: the registered sources are :class:`AverageSource`,
     :class:`MinimumSource` and :class:`MaximumSource`, which differ only in
-    :attr:`reducer_class`.
+    :attr:`operation`.
 
     Parameters
     ----------
@@ -109,6 +122,10 @@ class ReduceSource(Source):
         The subsource, as a single-key dictionary (``{mars: {...}}``).
     period : str or int or datetime.timedelta
         The reduction window, e.g. ``24h``.
+    over : str or int or datetime.timedelta, optional
+        For interval-valued source data only: cut the window into ``over``-long
+        subwindows, each rebuilt by a signed sum, so ``over: 1h`` under ``maximum:``
+        is the largest hourly total of an accumulating archive.
     group_by : dict, optional
         Which metadata keys identify a variable; same meaning and defaults as
         in ``accumulate``.
@@ -118,8 +135,8 @@ class ReduceSource(Source):
 
     schema = ReduceSchema
 
-    #: The reduction this source performs.
-    reducer_class: type[SampleReducer]
+    #: The reduction this source performs: ``max``, ``min`` or ``mean``.
+    operation: str
 
     #: The registered recipe spelling, for error messages.
     name: str
@@ -129,6 +146,7 @@ class ReduceSource(Source):
         context: Any,
         source: Any,
         period: str | int | datetime.timedelta,
+        over: str | int | datetime.timedelta | None = None,
         group_by: dict | None = None,
         **kwargs: Any,
     ) -> None:
@@ -156,85 +174,47 @@ class ReduceSource(Source):
                 "e.g. 'from: {frequency: 6h}'"
             )
 
-        # Validated through the same helper as the recipe schema, so recipe-time
-        # and build-time validation cannot drift apart.
         self._from = validate_from(from_)
-
         self.source = source
         self.period = frequency_to_timedelta(period)
+        self.over = frequency_to_timedelta(over) if over is not None else None
         self.group_by = patch_groupby_keys(group_by, source_name=self.name)
-        self._source_name = self._prepare_source()
 
-        # Raises when the window is not a whole number of samples.
-        window_samples(datetime.datetime(2000, 1, 1), self.period, self._from.frequency)
+        # Validated through the recipe schema, so recipe-time and build-time
+        # validation cannot drift apart; it also owns every rule about `over:`.
+        ReduceSchema.model_validate(
+            {"period": self.period, "from": self._from, "source": self.source, "over": self.over}
+        )
+
+        # A run-anchored description reads a forecast; a base-less instantaneous one
+        # reads fields indexed by validity time, i.e. an analysis; interval-valued
+        # data is archived per step of a forecast.
+        mars_type = "an" if self.is_instant_valued and not self.is_run_anchored else "fc"
+        self._source_name = prepare_source(self.name, self.source, mars_type)
 
     @property
     def frequency(self) -> datetime.timedelta:
-        """The cadence of the source data (``from.frequency``)."""
+        """The cadence of the source data (``from.frequency``); instant-valued only."""
         return self._from.frequency
+
+    @property
+    def is_instant_valued(self) -> bool:
+        """Whether ``from:`` describes fields that *exist every* frequency.
+
+        The alternative is interval-valued source data -- fields that each *span* an
+        interval -- reduced over the subwindows covering the window.
+        """
+        return isinstance(self._from, (FromInstants, FromRun))
 
     @property
     def is_run_anchored(self) -> bool:
         """Whether ``from:`` describes the run the trajectory layout imposes."""
         return isinstance(self._from, FromRun)
 
-    # ── shared helpers ───────────────────────────────────────────────
-
-    def _prepare_source(self) -> str:
-        """Validate the subsource config and apply MARS defaults."""
-        source = self.source
-        if not (isinstance(source, dict) and len(source) == 1):
-            raise ValueError(f"{self.name}: 'source' must have exactly one key, got {sorted(source)}")
-        source_name, source_config = next(iter(source.items()))
-        if source_name == "mars":
-            if "type" not in source_config:
-                # A run-anchored description reads a forecast; a base-less one
-                # reads fields indexed by validity time, i.e. an analysis.
-                default = "fc" if self.is_run_anchored else "an"
-                source_config["type"] = default
-                LOG.warning(
-                    f"{self.name}: assuming 'type: {default}' for the mars source as the recipe " "did not specify one"
-                )
-            if "levtype" not in source_config:
-                source_config["levtype"] = "sfc"
-                LOG.warning(
-                    f"{self.name}: assuming 'levtype: sfc' for the mars source as the recipe did not specify one"
-                )
-        return source_name
-
-    def _create_source_object(self):
-        """Create a cached subsource object keyed by a content hash."""
-        parts = (
-            self.name,
-            str(self.period),
-            str(self.frequency),
-            self.is_run_anchored,
-            self.source,
-        )
-        h = hashlib.md5(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
-        return self.context.create_source(self.source, "data_sources", h)
-
-    def _group_key(self, field) -> tuple:
-        """The metadata identifying the variable a field belongs to."""
-        meta = field.get(collections=f"metadata.{self.group_by['namespace']}")
-        key = {k: v for k, v in meta.items() if k not in self.group_by["ignore"]}
-        return tuple(sorted(key.items()))
-
     # ── dispatch branches ────────────────────────────────────────────
 
     def execute_valid_dates(self, dates: ValidDates) -> FieldList:
-        """Reduce one window per requested validity date (gridded layout).
-
-        Parameters
-        ----------
-        dates : ValidDates
-            The output dates of the dataset being built.
-
-        Returns
-        -------
-        FieldList
-            One reduced field per date and per variable.
-        """
+        """Reduce one window per requested validity date (gridded layout)."""
         if self.is_run_anchored:
             raise ValueError(
                 f"{self.name}: 'from: {{base_dates: true, ...}}' inherits the run from "
@@ -247,10 +227,12 @@ class ReduceSource(Source):
                 raise TypeError(f"{self.name}: valid_date must be a datetime.datetime instance, got {type(d)}")
 
         targets = [(d, None) for d in dates]
+        if not self.is_instant_valued:
+            return self._reduce_ranges(targets)
+
         samples = self._window_samples(targets)
         wanted = sorted({sample for window in samples.values() for sample in window})
-
-        return self._reduce_fields(ValidDates(wanted), targets, samples)
+        return self._reduce_samples(ValidDates(wanted), targets, samples)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> FieldList:
         """Reduce one window per ``(valid_time, basetime)`` row (trajectories layout).
@@ -265,17 +247,13 @@ class ReduceSource(Source):
           run the layout imposes, so each sample is asked for as
           ``(sample_time, basetime)`` — one lead time of that run.
 
-        Parameters
-        ----------
-        dates : ForecastDates
-            The ``(valid_time, basetime)`` rows of the trajectory being built.
-
-        Returns
-        -------
-        FieldList
-            One reduced field per row and per variable.
+        Interval-valued source data is covered by the same search as on the
+        validity-date path, and the row's basetime only stamps the output.
         """
         targets = [(valid_time, basetime) for valid_time, basetime in dates.items]
+
+        if not self.is_instant_valued:
+            return self._reduce_ranges(targets)
 
         if self.is_run_anchored:
             # The window has to lie inside the run; a base-less source has no
@@ -288,15 +266,43 @@ class ReduceSource(Source):
         if self.is_run_anchored:
             # Each sample belongs to the run of its own row, so the same
             # validity time reached from two runs stays two distinct requests.
-            argument = ForecastDates(
+            wanted = ForecastDates(
                 sorted({(sample, basetime) for (_, basetime), window in samples.items() for sample in window})
             )
         else:
-            argument = ValidDates(sorted({sample for window in samples.values() for sample in window}))
+            wanted = ValidDates(sorted({sample for window in samples.values() for sample in window}))
 
-        return self._reduce_fields(argument, targets, samples)
+        return self._reduce_samples(wanted, targets, samples)
 
-    # ── the shared reduction ─────────────────────────────────────────
+    # ── interval-valued source data ──────────────────────────────────
+
+    def _reduce_ranges(self, targets: list[tuple]) -> FieldList:
+        """Reduce the subwindows covering each window, with ``accumulate``'s loop."""
+        covering = covering_from_description(self._from, period=self.period, source_name=self.name)
+        windows = {(vt, bt): cut(covering, vt - self.period, vt, over=self.over) for vt, bt in targets}
+
+        key_parts = (self.name, str(self.period), self._from.model_dump_json(), str(self.over), self.source)
+        source_object = create_source_object(self.context, self.source, key_parts)
+        field_to_interval = FieldToInterval()
+
+        reducers, fields = reduce_ranges(
+            source_object(self.context, argument(targets, windows, self.period, forecast=False)),
+            targets=targets,
+            windows=windows,
+            period=self.period,
+            operation=OPERATIONS[self.operation],
+            group_by=self.group_by,
+            field_to_interval=field_to_interval,
+            source=self.source,
+            stamp_basetime=True,
+            # An `accumulation` scheme says the fields accumulate; explicit step pairs
+            # (the way to describe a stored-extremum archive) say nothing.
+            declared="accum" if getattr(self._from, "accumulation", None) is not None else None,
+        )
+        check_complete(self.name, self.period, reducers, fields, targets)
+        return FieldList.from_fields(fields)
+
+    # ── instantaneous source data ────────────────────────────────────
 
     def _window_samples(self, targets: list[tuple]) -> dict[tuple, list[datetime.datetime]]:
         """The sample times of every target's window, keyed by target.
@@ -313,12 +319,12 @@ class ReduceSource(Source):
         Base-less source data is identified by validity time alone.  Run-anchored
         source data is identified by ``(validity time, basetime)``: the same
         validity time reached from two different runs is two different fields
-        and must never be folded together.
+        and must never be reduced together.
         """
         return (valid_datetime, basetime if self.is_run_anchored else None)
 
-    def _reduce_fields(self, argument: Any, targets: list[tuple], samples: dict) -> FieldList:
-        """Fetch the samples and fold each window down to one field.
+    def _reduce_samples(self, argument: Any, targets: list[tuple], samples: dict) -> FieldList:
+        """Fetch the samples and reduce each window down to one field.
 
         Parameters
         ----------
@@ -353,8 +359,13 @@ class ReduceSource(Source):
             len(needed_by),
         )
 
-        source_object = self._create_source_object()
+        key_parts = (self.name, str(self.period), str(self.frequency), self.is_run_anchored, self.source)
+        source_object = create_source_object(self.context, self.source, key_parts)
         input_fields = source_object(self.context, argument)
+
+        operation = OPERATIONS[self.operation]
+        pieces = Pieces.of_samples(self.frequency, samples.values())
+        checked: set = set()
 
         reducers: dict[tuple, SampleReducer] = {}
         fields = []
@@ -362,18 +373,23 @@ class ReduceSource(Source):
         for field in input_fields:
             valid_datetime = _valid_datetime(field)
             basetime = _base_datetime(field) if self.is_run_anchored else None
-            key = self._group_key(field)
+            key = group_key(field, self.group_by)
             values = field.values
+
+            if key not in checked:
+                check(operation.name, field_statistic(field), pieces)
+                checked.add(key)
 
             used = False
             for target in needed_by.get(self._sample_id(valid_datetime, basetime), ()):
                 reducer_key = (*target, key)
                 if reducer_key not in reducers:
-                    reducers[reducer_key] = self.reducer_class(
+                    reducers[reducer_key] = SampleReducer(
                         target[0],
                         period=self.period,
                         key=key,
                         samples=samples[target],
+                        operation=operation,
                         basetime=target[1],
                     )
                 reducer = reducers[reducer_key]
@@ -391,57 +407,29 @@ class ReduceSource(Source):
                     "what the source actually provides."
                 )
 
-        return self._finalise(reducers, fields, targets)
-
-    def _finalise(self, reducers: dict[tuple, SampleReducer], fields: list, targets: list[tuple]) -> FieldList:
-        """Check that every window was complete and return the reduced fields."""
-        if not reducers:
-            raise ValueError(f"{self.name}: the source returned no usable field, cannot reduce anything")
-
-        incomplete = {k: r for k, r in reducers.items() if not r.is_complete()}
-        if incomplete:
-            raise ValueError(
-                f"{self.name}: {len(incomplete)} window(s) are missing source samples — a "
-                "reduction over an incomplete window would silently bias the result and its "
-                f"statistics:\n{describe(incomplete)}"
-            )
-
-        # A variable that is missing for a whole target creates no reducer at
-        # all, so completeness alone would not catch it.
-        keys = {key for *_, key in reducers}
-        missing = [(t, key) for t in targets for key in sorted(keys) if (*t, key) not in reducers]
-        if missing:
-            detail = "\n".join(
-                f"  {vdate}{f' (basetime {basetime})' if basetime is not None else ''}: {dict(key)}"
-                for (vdate, basetime), key in missing[:20]
-            )
-            raise ValueError(
-                f"{self.name}: no source data at all for {len(missing)} (date, variable) " f"combination(s):\n{detail}"
-            )
-
-        LOG.info("%s: created %d reduced fields over %s", self.name, len(fields), frequency_to_string(self.period))
+        check_complete(self.name, self.period, reducers, fields, targets)
         return FieldList.from_fields(fields)
 
 
 @source_registry.register("average")
 class AverageSource(ReduceSource):
-    """Time-average of instantaneous source fields over ``period``."""
+    """Time-average of source fields over ``period``."""
 
     name = "average"
-    reducer_class = AverageReducer
+    operation = "mean"
 
 
 @source_registry.register("minimum")
 class MinimumSource(ReduceSource):
-    """Time-minimum of instantaneous source fields over ``period``."""
+    """Time-minimum of source fields over ``period``."""
 
     name = "minimum"
-    reducer_class = MinimumReducer
+    operation = "min"
 
 
 @source_registry.register("maximum")
 class MaximumSource(ReduceSource):
-    """Time-maximum of instantaneous source fields over ``period``."""
+    """Time-maximum of source fields over ``period``."""
 
     name = "maximum"
-    reducer_class = MaximumReducer
+    operation = "max"
