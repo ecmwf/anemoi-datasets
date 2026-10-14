@@ -122,9 +122,9 @@ class FdbSource(Source):
         requests = requests or [self.request]
         requests = compress_prebuilt_requests(requests)
 
-        fl = ekd.from_source("empty")
-        for request in requests:
-            fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
+        fl = ekd.concat(
+            *[ekd.from_source("fdb", request, **self.configs, read_all=True).to_fieldlist() for request in requests]
+        )
 
         if self.grid is not None:
             fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
