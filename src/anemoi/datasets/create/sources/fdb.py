@@ -64,7 +64,7 @@ class FdbSource(Source):
         """
         super().__init__(context)
         self.request = fdb_request.copy()
-        self.configs = {"config": fdb_config, "userconfig": fdb_userconfig}
+        self.configs = {"config": fdb_config, "user_config": fdb_userconfig}
 
         self.flavour = RuleBasedFlavour(flavour) if flavour else None
         if grid_definition is not None:
@@ -123,7 +123,7 @@ class FdbSource(Source):
         requests = compress_prebuilt_requests(requests)
 
         fl = ekd.concat(
-            *[ekd.from_source("fdb", request, **self.configs, read_all=True).to_fieldlist() for request in requests]
+            *[ekd.from_source("fdb", request, **self.configs).to_fieldlist(read_all=True) for request in requests]
         )
 
         if self.grid is not None:

@@ -257,7 +257,10 @@ def test_fdb(tmp_path, monkeypatch) -> None:
     from_source = ekd.from_source
 
     def mock_from_source(name, *args, **kwargs):
-        return from_source("file", path) if name == "fdb" else from_source(name, *args, **kwargs)
+        if name != "fdb":
+            return from_source(name, *args, **kwargs)
+        assert "read_all" not in kwargs  # rejected by the earthkit-data 1.x fdb source
+        return from_source("stream", open(path, "rb"))
 
     monkeypatch.setattr(ekd, "from_source", mock_from_source)
 
