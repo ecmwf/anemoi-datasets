@@ -220,7 +220,7 @@ def _write_grib(path, messages: list[dict]) -> str:
 
 
 def test_grib_ensemble_with_filter(tmp_path) -> None:
-    """Ensemble members keep their order and count after a filter."""
+    """Ensemble members keep their order and count after a filter, and the MARS metadata follows the filter."""
     members = [1, 2, 10]
     path = _write_grib(
         tmp_path / "ens.grib",
@@ -243,10 +243,15 @@ def test_grib_ensemble_with_filter(tmp_path) -> None:
         "input": {"pipe": [{"grib": {"path": path}}, {"rename": {"param": {"sp": "surface_pressure"}}}]},
     }
 
-    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    created = create_dataset(recipe=recipe, output=None)
+    ds = open_dataset(created)
     assert ds.variables == ["surface_pressure"]
     assert ds.shape[2] == len(members)
     assert [float(ds[0, 0, m, 0]) for m in range(len(members))] == members
+
+    mars = ds.variables_metadata["surface_pressure"]["mars"]
+    assert (mars["param"], mars["levtype"]) == ("surface_pressure", "sfc")
+    assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["surface_pressure"]}
 
 
 def test_fdb(tmp_path, monkeypatch) -> None:

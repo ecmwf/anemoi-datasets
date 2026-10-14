@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import itertools
 import logging
 import math
@@ -17,6 +18,7 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
+from anemoi.transform.metadata import LEVEL_TYPE_TO_LEVTYPE
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
@@ -127,6 +129,46 @@ def _raw_key(field: Any, key: str, collection: str) -> Any:
     if value is None:
         value = (field.get(collections=f"metadata.{collection}") or {}).get(key)
     return value
+
+
+def _mars_request(field: Any) -> dict[str, Any]:
+    """Return the MARS request of a field, or an empty dict for computed forcings.
+
+    Filters leave ``metadata.mars`` as it was before them, so the keys the components
+    carry are read from the components and the collection provides the others.
+    """
+    param = field.get("parameter.variable", default=None)
+    if _KNOWN_VARIABLES.get(param, {}).get("computed_forcing"):
+        return {}
+
+    raw = field.get(collections="metadata.mars") or field.get(collections="metadata.default") or {}
+    md = {k: v for k, v in raw.items() if k not in ("param", "levtype", "levelist", "date", "time", "step", "number")}
+
+    if param in (None, "unknown"):
+        param = str(_raw_key(field, "paramId", "parameter") or "unknown")
+    md["param"] = param
+
+    level = field.get("vertical.level", default=None)
+    level_type = field.get("vertical.level_type", default=None)
+    levtype = LEVEL_TYPE_TO_LEVTYPE.get(level_type) or raw.get("levtype") or ("sfc" if level is None else level_type)
+    md["levtype"] = levtype
+    if levtype != "sfc" and level is not None:
+        md["levelist"] = level
+
+    base = field.get("time.base_datetime", default=None)
+    if base is not None:
+        md["date"] = int(base.strftime("%Y%m%d"))
+        md["time"] = base.hour * 100 + base.minute
+
+    step = field.get("time.step", default=None)
+    if step is not None:
+        hours, rest = divmod(step, datetime.timedelta(hours=1))
+        md["step"] = f"{step // datetime.timedelta(minutes=1)}m" if rest else hours
+
+    if "number" in raw:
+        md["number"] = _ensemble_member(field.get("ensemble.member", default=None))
+
+    return md
 
 
 def _resolution(field: Any) -> Any:
@@ -261,19 +303,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         current_variable = c._coords_names[variables_axis_idx]
 
         f = cube[c.coords]
-        md = f.get(collections="metadata.mars")
-        if not md:
-            md = f.get(collections="metadata.default")
-        if md is None:
-            md = {}
-
-        if md.get("param") == "~":
-            md["param"] = f.metadata("param")
-            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
-
-        if md.get("param") == "unknown":
-            md["param"] = str(_raw_key(f, "paramId", "parameter") or "unknown")
-            # assert md['param'] != 'unknown', (md, f.metadata('param'))
+        md = _mars_request(f)
 
         startStep = _raw_key(f, "startStep", "time")
         if startStep is not None:
@@ -444,27 +474,14 @@ def _data_request(data: Any) -> dict[str, Any]:
             if field.time.valid_datetime() != date:
                 continue
 
-            as_mars = field.get(collections="metadata.mars")
+            if not field.get(collections="metadata.mars"):
+                continue
+
+            as_mars = _mars_request(field)
             if not as_mars:
                 continue
 
-            # In earthkit 1.0, forcing fields (e.g. cos_latitude) are wrapped
-            # with new_field_with_metadata and inherit the template GRIB's MARS
-            # metadata.  Their parameter.variable differs from as_mars["param"]
-            # so we skip them to avoid recording spurious area/grid/param_level.
-            # Note: renamed GRIB fields (e.g. tp → tp_accum_1h) also trigger
-            # this condition (as_mars["param"]='tp', parameter.variable='tp_accum_1h'),
-            # but since the comparison ignores metadata.data_request.param_level
-            # and metadata.data_request.param_step, this is acceptable.
-            _param_var = field.get("parameter.variable", default=None)
-            _mars_param = as_mars.get("param")
-            if _param_var is not None and _mars_param is not None and _param_var != _mars_param:
-                continue
-
-            # Use _param_var (the human-facing variable name) as the param so
-            # that renamed fields are recorded under their display name rather
-            # than the raw GRIB param.
-            param = _param_var if _param_var is not None else _mars_param
+            param = as_mars["param"]
             step = as_mars.get("step")
             levtype = as_mars.get("levtype", "sfc")
             levelist = as_mars.get("levelist", None)
