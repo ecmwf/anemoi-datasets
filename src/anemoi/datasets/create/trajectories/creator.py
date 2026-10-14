@@ -27,6 +27,7 @@ from anemoi.datasets.dates.groups import TrajectoryGroups
 
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
+from ..gridded.result import _ensemble_member
 from ..gridded.result import _strip_zero_level_suffix
 from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
@@ -220,7 +221,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # Map GRIB member numbers to positions on the ensemble axis.  Member
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
-        numbers = cube.user_coords.get("metadata.number")
+        numbers = cube.user_coords.get("ensemble.member")
         number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
 
         LOG.info(
@@ -268,11 +269,11 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 if var_name is None:
                     var_name = str(field.metadata("param"))
 
-                number = field.get("metadata.number", default=0) or 0
+                number = _ensemble_member(field.get("ensemble.member", default=None))
                 if number_to_index is None:
                     ens_idx = 0
                 else:
-                    ens_idx = number_to_index.get(int(number))
+                    ens_idx = number_to_index.get(number)
                     if ens_idx is None:
                         raise ValueError(
                             f"Trajectories: member number {number} not in the cube's "

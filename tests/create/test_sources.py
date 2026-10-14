@@ -199,6 +199,36 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
         created = create_dataset(recipe=config_grib_index, output=None)
 
 
+def test_grib_ensemble_with_filter(tmp_path) -> None:
+    """Ensemble members keep their order and count after a filter."""
+    import eccodes
+
+    members = [1, 2, 10]
+    path = tmp_path / "ens.grib"
+    with open(path, "wb") as f:
+        for number in members:
+            h = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+            eccodes.codes_set(h, "dataDate", 20200101)
+            eccodes.codes_set(h, "dataTime", 0)
+            eccodes.codes_set(h, "shortName", "sp")
+            eccodes.codes_set(h, "productDefinitionTemplateNumber", 1)
+            eccodes.codes_set(h, "perturbationNumber", number)
+            eccodes.codes_set(h, "numberOfForecastsInEnsemble", len(members))
+            eccodes.codes_set_values(h, np.full(eccodes.codes_get(h, "numberOfValues"), float(number)))
+            eccodes.codes_write(h, f)
+            eccodes.codes_release(h)
+
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": str(path)}}, {"rename": {"param": {"sp": "surface_pressure"}}}]},
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["surface_pressure"]
+    assert ds.shape[2] == len(members)
+    assert [float(ds[0, 0, m, 0]) for m in range(len(members))] == members
+
+
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.

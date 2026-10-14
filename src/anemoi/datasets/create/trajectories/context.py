@@ -34,10 +34,9 @@ class TrajectoryGriddedContext(Context):
     # coupled to the ``traj_point`` remapping key injected below, and
     # per-field placement in ``TrajectoryGriddedCreator.load_result`` reads
     # ``date/time/step`` from field metadata, so cube ordering does not
-    # affect the output. Keys use the ``metadata.`` prefix required by
-    # earthkit 1.0's ``_get_single``; ``traj_point`` and ``param_level`` are
-    # remapped synthetic keys and have no prefix.
-    order_by: list[str] = ["traj_point", "param_level", "metadata.number"]
+    # affect the output. ``traj_point`` and ``param_level`` are remapped
+    # synthetic keys.
+    order_by: list[str] = ["traj_point", "param_level", "ensemble.member"]
 
     def __init__(self, recipe: Any) -> None:
         super().__init__(recipe)

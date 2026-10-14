@@ -39,7 +39,7 @@ class SimpleGriddedContext(Context):
     # ``metadata.valid_datetime`` (raw GRIB metadata path): the time-component
     # path survives field.set() wrapping (e.g. new_field_with_metadata) whereas
     # the raw-metadata path does not.
-    order_by: list[str] = ["time.valid_datetime", "param_level", "metadata.number"]
+    order_by: list[str] = ["time.valid_datetime", "param_level", "ensemble.member"]
 
     def __init__(self, recipe: Any) -> None:
         """Initialise a SimpleGriddedContext instance.

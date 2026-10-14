@@ -116,6 +116,11 @@ def _strip_zero_level_suffix(name: str) -> str:
     return name
 
 
+def _ensemble_member(member: Any) -> int:
+    """Return ``ensemble.member`` (a string in earthkit 1.x) as an int, with 0 for deterministic fields."""
+    return 0 if member is None else int(member)
+
+
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
@@ -515,7 +520,7 @@ class GriddedResult(Result):
         assert self.order_by, self.order_by
 
         self.patches: dict[str, Any] = {
-            "metadata.number": {None: 0},
+            "ensemble.member": _ensemble_member,
             # Strip the ``_0`` suffix produced for surface fields by the
             # ``{parameter.variable}_{vertical.level}`` template.  In earthkit 1.0
             # ``vertical.level`` returns 0 for surface fields (not None), so the
