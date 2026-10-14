@@ -163,51 +163,51 @@ step pairs are written out instead:
 The window is then covered by whole archived intervals rather than sampled,
 and the reduction is applied across them.
 
+.. note::
+
+   ``rr`` itself stamps every ``10fg`` field with ``startStep=0``, whatever
+   range it covers, so its fields do not match the declared pairs and the
+   build stops with "Field not used". Until the start step can be rebuilt
+   from the declared pairs, the example above only works on an archive that
+   encodes its ranges.
+
 .. _reduce-over:
 
 Subwindows and ``over:``
 ========================
 
-The parts the window is cut into are **subwindows**, and each carries one
+The pieces the window is cut into are **subwindows**, and each carries one
 value that the reduction is applied across. Where they come from depends on
-what the archive holds:
+what the archive holds and on ``over:``.
+
+Without ``over:`` the window is covered in one go and the archive's own
+granularity decides:
 
 -  an archive holding **parts of the window outright** — per-step gusts,
-   hourly increments — gives one subwindow per archived field, at the
-   archive's own granularity. A 6 h window of hourly increments is six 1 h
-   subwindows, so ``maximum:`` is the wettest hour without your asking for
-   anything.
+   hourly increments — gives one subwindow per archived field. A 6 h window
+   of hourly increments is six 1 h subwindows, so ``maximum:`` is the
+   wettest hour without your asking for anything.
 -  an archive storing a **running total from the start of the run** holds no
-   part of the window at all: a subwindow has to be rebuilt by subtracting
-   two cumulative fields. Rebuild the whole window and you get one subwindow
-   — and a maximum over one subwindow is that subwindow.
+   part of the window: covering it gives one subwindow, rebuilt by
+   subtracting two cumulative fields — and a maximum over one subwindow is
+   that subwindow, so it is refused.
 
-``over:`` is for the second case. It cuts the window into ``over``-long
-slices and covers each on its own, so ``over: 1h`` on a cumulative archive
-gives six differenced 1 h subwindows: the wettest hour in the window.
+With ``over:`` the window is cut into fixed, consecutive ``over``-long
+slices, and each slice is one subwindow, rebuilt by a signed sum of the
+fields covering it. ``over: 1h`` on a cumulative archive gives six hourly
+totals; ``over: 3h`` on an hourly increment archive gives two 3-hourly
+totals. That is only meaningful for additive fields, so ``over:`` over
+stored maxima, minima or means is refused.
 
 .. literalinclude:: yaml/reduce-maximum-over.yaml
    :language: yaml
 
-The length is part of what you are asking for — the largest hourly total and
-the largest 3-hourly total are different numbers — so where subwindows are
-*constructed*, the recipe states how long they are.
-
-Omitted, ``over:`` is the whole ``period``, which means the window is covered
-in one go rather than that it becomes one subwindow. How many subwindows that
-gives is the archive's business: one per archived field where it holds them
-outright, or a single differenced one where it holds none. That is why the
-same omitted ``over:`` is right on an increment archive and refused on a
-cumulative one.
-
-Where subwindows are taken from the archive directly, ``over:`` cannot
-coarsen them. It pins the slice boundaries, and each slice is then covered by
-whatever the archive holds inside it, which may be finer: on a gust archive
-of ``0-1, 1-2, 2-3, 3-6``, ``over: 3h`` still gives subwindows of 1 h, 1 h,
-1 h and 3 h. What ``over:`` can do on such an archive is fail — ``over: 1h``
-needs a boundary at 04:00 and there is none. Nothing recovers a finer
-interval than the archive stores; achievable windows are unions of whole
-archived intervals.
+The slices are **fixed, not rolling**: ``over: 3h`` on a 6 h window is
+``[0-3]`` and ``[3-6]``, not every 3 h interval at an hourly stride. The two
+agree when ``over:`` equals the archive's own step, which is why the wettest
+*hour* is unambiguous on an hourly archive. ``over:`` is recorded only in
+the recipe stored with the dataset — the output field says ``max`` over
+``period``, whatever the slice length.
 
 ``accumulate`` does not take ``over:``. A sum of subwindows is the same
 whatever length they are.
@@ -215,106 +215,87 @@ whatever length they are.
 Which reductions an archive supports
 ====================================
 
-Each subwindow carries a statistic — a total, a maximum, a mean over its own
-interval — and the reduction is applied across those values. The result is
-what you asked for only when the two agree. ``maximum:`` over maxima is the
-maximum however the window was cut. ``average:`` over maxima is not: it would
-average the maxima of whatever blocks the archive happens to hold, and
-3-hourly maxima average higher than hourly ones over the same window, so an
-archive whose granularity changes with lead time would put two different
-quantities into one dataset.
-
-Combinations that would depend on the partition are therefore refused, unless
-``over:`` states the length that makes them well defined:
+Each piece of the window — a subwindow, or a sample — carries a statistic: a
+total, a maximum, a mean over its own interval, or an instantaneous value.
+The reduction is applied across those values, and the result is what you
+asked for only when the two agree. One table decides, for every block:
 
 .. list-table::
-   :widths: 30 17 12 41
+   :widths: 16 21 21 21 21
    :header-rows: 1
 
-   * - the archive holds
-     - block
-     - ``over:``
-     - result
-   * - parts of the window outright, as accumulations (per-step increments)
-     - ``maximum`` / ``minimum``
-     - omitted
-     - accepted, at the archive's own granularity
-   * - a running total from the start of the run
-     - ``maximum`` / ``minimum``
-     - omitted
-     - **refused** — the subwindow would be two cumulative maxima subtracted
-   * - a running total from the start of the run
-     - ``maximum`` / ``minimum``
-     - stated
-     - accepted — the wettest ``over:`` in the window
-   * - the whole window in one accumulated field
-     - ``maximum`` / ``minimum``
-     - omitted
-     - **refused** — a maximum over one subwindow is that subwindow
-   * - stored maxima (explicit ``steps:`` pairs)
-     - ``maximum`` / ``minimum``
-     - omitted
-     - accepted, whatever the granularity — the answer does not depend on it
-   * - accumulations, however held
-     - ``accumulate``
-     - n/a
-     - accepted — a sum does not depend on the partition
-   * - accumulations, however held
-     - ``average``
-     - any
-     - **refused**
-   * - stored maxima
-     - ``average`` / ``accumulate``
-     - any
-     - **refused**
+   * - block \\ fields store
+     - totals (``accum``)
+     - maxima
+     - minima
+     - means (``avg``)
+   * - ``accumulate``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+   * - ``maximum``
+     - ✅ equal pieces, at least two per window
+     - ✅
+     - ❌
+     - ✅ equal pieces held outright
+   * - ``minimum``
+     - ✅ equal pieces, at least two per window
+     - ❌
+     - ✅
+     - ✅ equal pieces held outright
+   * - ``average``
+     - ❌ — accumulate and divide by ``period``
+     - ✅ equal pieces held outright
+     - ✅ equal pieces held outright
+     - ✅ weighted by length
 
-A field that does not state its statistic is accepted: most archives cannot
-state it, and refusing there would reject nearly everything.
+A field that does not state its statistic — an instantaneous analysis, or a
+GRIB1 accumulation reported as ``instant`` — is accepted under every block,
+on trust.
+
+In every column but the first, a piece must be **held outright** by the
+archive: maxima, minima and means are not additive, so a piece rebuilt by
+subtracting or adding stored fields is refused.
+
+"Equal pieces" is what makes the partition-dependent cells well defined. The
+mean of daily maxima is a real quantity — the archive's daily blocks *are*
+the definition — but over an archive whose granularity changes with lead
+time it would mix hourly and 3-hourly maxima into one number, so it is
+accepted only when every piece has the same length.
 
 Why those are refused
 ---------------------
 
 **Subtracting two cumulative maxima** does not give the maximum over the
 difference of their intervals. If the extreme falls in the earlier interval,
-both fields carry it and the difference is zero.
+both fields carry it and the difference is zero. A mean accumulated from the
+start of the run could in principle be rebuilt —
+``m(6,9) = (9·m(0,9) − 6·m(0,6)) / 3`` — but only weighted by length, which
+is not implemented.
 
-**A maximum over one subwindow is that subwindow**, so where the archive holds
-the whole window outright as an accumulation, the result would be the
-window's total with a ``max`` label on it. This is not a corner case:
-``od-oper`` runs are 12 h apart, so a 6 h ``period`` is held outright on every
-other row and differenced in between — a recipe without ``over:`` would be
-wrong in two different ways on alternating rows.
+**A maximum over one piece is that piece**, so where the archive holds the
+whole window as one accumulated field, the result would be the window's
+total with a ``max`` label on it. ``od-oper`` runs are 12 h apart, so a 6 h
+``period`` is held outright on every other row and differenced in between;
+``over:`` fixes both.
 
-**A mean of accumulations** is not a mean of the quantity: length-weighting
-presumes intensive values, and an accumulation is extensive. For a mean rate,
-use ``accumulate:`` and divide by ``period``. ``average:`` over *stored*
-maxima is refused for the partition reason above — the answer would be a mean
-of whatever blocks the archive holds, which is not a property of the window.
+**A mean of totals** is the window total divided by however many blocks the
+archive holds. For a mean rate, use ``accumulate:`` and divide by ``period``.
 
-The errors say *not implemented* rather than *impossible*, because a coarser
-block could in principle be built by combining stored ones — ``max`` over
-three hourly maxima is the 3-hourly maximum — and nothing here does that
-today. What exists is subtraction, which needs an additive quantity.
+**Crossed extrema** — the maximum of stored minima — and **sums of
+statistics** have no physical meaning.
 
 When a refusal happens
 ----------------------
 
-Three of the four refusals are settled from the recipe, before anything is
-fetched: ``from:`` says whether the fields accumulate, which is enough to
-refuse ``average:`` over them, and to see that a subwindow would have to be
-rebuilt by subtraction or that the window is a single accumulated part. The
-error names the fields it would have needed.
+Once per variable, when its first field arrives, because that is when the
+field's own statistic is known — read from ``proc.time_method``, or from the
+parameter on GRIB1. Where the field does not say and ``from:`` declares an
+``accumulation``, the description is taken instead. The same check runs for
+instantaneous ``from: {frequency: ...}`` data, where every sample is a piece
+held outright.
 
-The fourth is settled when a field arrives, from the field's own statistic: a
-field carrying a ``max``, ``min`` or ``avg`` is never rebuilt by subtraction,
-whatever the recipe said. An archive of stored maxima declares nothing about
-its statistic in ``from:`` — explicit ``steps:`` pairs say only which
-intervals exist — so ``accumulate:`` or ``average:`` over a gust archive is
-caught here, after the first retrieval.
-
-Neither moment can be dropped. A recipe can be wrong about what the archive
-holds; a field is authoritative, but only arrives once a retrieval has
-happened.
 
 ***************
  Trajectories

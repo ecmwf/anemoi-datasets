@@ -7,55 +7,55 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Per-window state: fill each part of the window, then reduce the parts.
+"""Reduce one window of interval-valued source data to one field.
 
-One :class:`Reducer` per ``(valid_date, basetime, variable)``. It holds one
-:class:`~.states.State` per part -- a subwindow or a sample -- and works at two levels:
-
-- a **state** gathers the fields its part needs and makes one value; for a subwindow
-  that is a signed sum, which is where differencing happens;
-- the **operation** reduces each completed value into the window value, and the state's
-  array is released.
-
-Peak memory is therefore bounded by the parts still incomplete, not by the window.
+A window is cut into subwindows (:mod:`.subwindows`). Each is rebuilt from archived
+fields by a **signed sum** -- one field when the archive holds it outright, ``+a(0,12)
+-a(0,6)`` when the archive accumulates from the start of the run. Once a subwindow is
+complete its value is reduced into the window value by the operation (sum, max, min,
+mean), and released.
 """
-
-from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any
 
 import numpy as np
 from anemoi.transform.fields import Field
 from anemoi.utils.dates import frequency_to_string
+from numpy.typing import NDArray
+
+from anemoi.datasets.create.intervals import SignedInterval
 
 from .operations import Operation
-from .operations import operation_factory
-from .states import NON_ADDITIVE
-from .states import State
+from .operations import stamp
+from .subwindows import Subwindow
 
 LOG = logging.getLogger(__name__)
 
 
+def _matches(wanted: SignedInterval, interval: SignedInterval) -> bool:
+    if wanted.min == interval.min and wanted.max == interval.max and wanted.base == interval.base:
+        return True
+    return wanted.start == interval.start and wanted.end == interval.end and wanted.base is None
+
+
 class Reducer:
-    """Reduce one window to one field.
+    """One ``(valid_date, basetime, variable)`` window.
 
     Parameters
     ----------
     valid_date : datetime.datetime
-        The validity time the output is stamped with (the end of the window).
+        The end of the window, which the output is stamped with.
     period : datetime.timedelta
         The length of the window.
     key : tuple
-        The grouping key: the metadata identifying the variable.
-    states : list of State
-        The parts the window is made of; all of them are required.
-    operation : Operation or str, optional
-        What reduces the state values. Defaults to a sum.
+        The grouping key identifying the variable.
+    subwindows : list of Subwindow
+        The pieces the window is cut into; every one is required.
+    operation : Operation
+        What reduces the subwindow values.
     basetime : datetime.datetime, optional
-        The model-run time to stamp the output with, for a trajectory row. ``None``
-        stamps the start of the window instead, so the whole step is the window.
+        The model-run time to stamp the output with, for a trajectory row.
     """
 
     def __init__(
@@ -63,163 +63,95 @@ class Reducer:
         valid_date: datetime.datetime,
         period: datetime.timedelta,
         key: tuple,
-        states: list[State],
-        operation: Operation | str | None = None,
+        subwindows: list[Subwindow],
+        operation: Operation,
         basetime: datetime.datetime | None = None,
     ) -> None:
         self.valid_date = valid_date
         self.period = period
         self.key = key
+        self.operation = operation
         self.basetime = basetime
-        self.operation = operation_factory(operation)
 
-        self.states = list(states)
-        self._reduced: np.ndarray | None = None
-        self._done = 0
-        #: How many arriving fields some state took. Distinct from the reduced value
-        #: being set, which needs a whole *part* to complete: a subwindow rebuilt by
-        #: differencing takes several fields before it yields anything. "Nothing
-        #: arrived" and "nothing finished" are different failures.
+        self.subwindows = subwindows
+        self.todo = [list(s.contributions) for s in subwindows]
+        self._partial: list[NDArray | None] = [None] * len(subwindows)
+        self._reduced: NDArray | None = None
+        self._total_weight = 0.0
+        self.outstanding = len(subwindows)
+        #: How many fields some subwindow took. "No field arrived" and "no subwindow
+        #: completed" are different: a differenced subwindow takes two fields first.
         self.fields_used = 0
-        self.total_weight = 0.0
         self.locked = False
 
-    @property
-    def values(self) -> np.ndarray | None:
-        """The window value so far; ``None`` until the first state completes."""
-        return self._reduced
-
     def is_complete(self) -> bool:
-        """Whether every state has been filled and reduced in."""
-        return self._done == len(self.states)
+        return self.outstanding == 0
 
-    def compute(self, values: np.ndarray, identity: Any, statistic: str | None = None) -> bool:
-        """Offer a field to this window's states.
+    def compute(self, values: NDArray, interval: SignedInterval) -> bool:
+        """Offer a field to every subwindow of this window; True if one took it.
 
-        A field can fill more than one state: with a cumulative archive neighbouring
-        subwindows share an endpoint, so ``a(0,7)`` is the positive contribution of
-        ``[6,7]`` and the negative one of ``[7,8]``.
-
-        Parameters
-        ----------
-        values : numpy.ndarray
-            Values read off the field. Shared with every other window this field feeds,
-            so states copy before taking ownership.
-        identity : Any
-            What the field is, in whatever terms the states are expressed.
-        statistic : str, optional
-            What statistic the field carries, when known. Used to reject a
-            non-additive field being handed to a state that would difference it.
-
-        Returns
-        -------
-        bool
-            True if some state needed this field.
+        One field can serve several subwindows: on a cumulative archive ``a(0,7)`` is
+        ``+`` in ``[6,7]`` and ``-`` in ``[7,8]``. *values* is shared with every other
+        window, so it is never modified in place.
         """
-        # What the archive stores has to be something this reduction can be applied to,
-        # whatever the partition looks like. Checked before the states, because it is a
-        # property of the source data and the recipe rather than of any one part.
-        if statistic is not None and not self.operation.reduces_archived(statistic):
-            raise ValueError(f"{self!r}: {self.operation.why_not_archived(statistic)}")
-
-        # No guard on `locked` here: once every state is complete none of them accepts
-        # anything, so a repeat simply reports "not needed". Overlapping windows make
-        # repeats ordinary -- the same field is offered once per window that wants it.
         used = False
-        for state in self.states:
-            if state.is_complete:
+        for i, todo in enumerate(self.todo):
+            matching = [c for c in todo if _matches(c, interval)]
+            if not matching:
                 continue
+            used = True
+            for contribution in matching:
+                local = contribution.sign * values  # a new array, never the shared one
+                if self._partial[i] is None:
+                    self._partial[i] = local
+                else:
+                    self._partial[i] += local
+                todo.remove(contribution)
 
-            # The recipe cannot tell us this -- `accumulate` declares no statistic --
-            # but the field can. Subtracting two maxima does not give the maximum over
-            # the difference of their intervals; it gives nothing meaningful. The state
-            # says whether it differences and whether it wants this field; the reducer
-            # does not need to know what kind of state it is holding.
-            if statistic in NON_ADDITIVE and state.differences and state.wants(identity):
-                raise ValueError(f"{self!r}: {state.why_not(statistic)}")
+            if not todo:
+                subwindow = self.subwindows[i]
+                weight = (subwindow.end - subwindow.start).total_seconds()
+                self._reduced = self.operation.reduce(self._reduced, self._partial[i], weight)
+                self._partial[i] = None
+                self._total_weight += weight
+                self.outstanding -= 1
 
-            if state.accept(values, identity):
-                used = True
-                if state.is_complete:
-                    self._reduced = self.operation.reduce(self._reduced, state.release(), state.weight)
-                    self.total_weight += state.weight
-                    self._done += 1
         if used:
             self.fields_used += 1
         return used
 
     def as_field(self, template: Field) -> Field:
-        """Build the reduced field, once every state is in.
-
-        For a gridded window (no basetime) the base time is the start of the window and
-        the step reaches the validity time, so the whole step is the window. For a
-        trajectory row the base time is the model-run basetime, so trajectory loaders
-        recover ``(basetime, step)``. Either way the processing component records which
-        reduction produced it, over ``period``.
-
-        Parameters
-        ----------
-        template : Field
-            Field providing every other component (parameter, geography, ...).
-
-        Returns
-        -------
-        Field
-            The reduced field.
-        """
-        assert self.is_complete(), (self._done, len(self.states), self)
+        """Build the reduced field, once every subwindow is in."""
+        assert self.is_complete(), self.__repr__(verbose=True)
         assert not self.locked  # prevent building the field twice
 
-        values = self.operation.finalize(self._reduced, self.total_weight)
+        values = self.operation.finalize(self._reduced, self._total_weight)
 
-        # Negative values may be an anomaly (e.g. precipitation), but this is the user's
-        # choice. Only meaningful for a sum: an extremum of non-negative fields cannot
-        # go negative.
-        if self.operation.name == "sum" and any(k == "param" and v == "tp" for k, v in self.key):
-            if np.any(values < 0):
-                LOG.warning(
-                    f"Negative values when computing accumulation for {self}): "
-                    f"min={np.nanmin(values)} max={np.nanmax(values)}"
-                )
+        # negative values may be an anomaly (e.g precipitation), but this is user's choice
+        if self.operation.name == "sum" and ("param", "tp") in self.key and np.any(values < 0):
+            LOG.warning(
+                f"Negative values when computing accumulation for {self}): "
+                f"min={np.nanmin(values)} max={np.nanmax(values)}"
+            )
 
-        basetime = self.basetime if self.basetime is not None else self.valid_date - self.period
-        field = Field.from_numpy(
-            values,
-            template=template,
-            **{
-                "time.base_datetime": basetime,
-                "time.step": self.valid_date - basetime,
-                "proc.time_method": self.operation.time_method,
-                "proc.time_value": self.period,
-            },
-        )
         self.locked = True
-        return field
+        return stamp(values, template, self.operation, self.valid_date, self.period, self.basetime)
 
     def __repr__(self, verbose: bool = False) -> str:
         key = ", ".join(f"{k}={v}" for k, v in self.key)
         period = frequency_to_string(self.period)
         run = f", basetime={self.basetime}" if self.basetime is not None else ""
-        operation = "" if self.operation.name == "sum" else f", {self.operation.name}"
-        default = f"{type(self).__name__}(valid_date={self.valid_date}{run}, {period}{operation}, key={{ {key} }})"
+        default = (
+            f"{type(self).__name__}(valid_date={self.valid_date}{run}, {period}, "
+            f"{self.operation.name}, key={{ {key} }})"
+        )
         if verbose:
-            extra = []
-            if self.locked:
-                extra.append("(locked)")
-            extra.append(f"    reduced {self._done} of {len(self.states)}, from {self.fields_used} field(s):")
-            for state in self.states:
-                extra.append(f"    {state}")
+            extra = ["    (locked)"] if self.locked else []
+            for subwindow, todo in zip(self.subwindows, self.todo):
+                extra.append(f"    {subwindow}: {'done' if not todo else 'waiting for'}")
+                extra.extend(f"        {'+' if c.sign > 0 else '-'}{c}" for c in todo)
             default += "\n" + "\n".join(extra)
         return default
-
-
-def describe(reducers: dict, limit: int = 20) -> str:
-    """Render reducers for an error message, least complete first."""
-    ordered = sorted(reducers.values(), key=lambda r: (r._done - len(r.states), r.valid_date))
-    lines = [f"  {r.__repr__(verbose=True)}" for r in ordered[:limit]]
-    if len(ordered) > limit:
-        lines.append(f"  ... and {len(ordered) - limit} more")
-    return "\n".join(lines)
 
 
 class Logs(list):

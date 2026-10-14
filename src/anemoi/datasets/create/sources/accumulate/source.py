@@ -13,13 +13,18 @@ import logging
 from typing import Any
 
 from anemoi.transform import FieldList
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.arguments import ForecastDates
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
 from ..windowed.clip import apply_clip
 from ..windowed.clip import normalise_clip
+from ..windowed.common import check_complete
+from ..windowed.common import create_source_object
+from ..windowed.common import prepare_source
 from ..windowed.covering import ForecastCovering
 from ..windowed.covering import covering_factory
 from ..windowed.covering import covering_from_description
@@ -28,8 +33,11 @@ from ..windowed.description import FromTrajectories
 from ..windowed.description import infer_from_trajectories
 from ..windowed.description import normalise_from
 from ..windowed.field_to_interval import FieldToInterval
-from ..windowed.interval_plan import IntervalPlan
-from ..windowed.source import WindowSourceBase
+from ..windowed.groupby import patch_groupby_keys
+from ..windowed.operations import OPERATIONS
+from ..windowed.ranges import argument
+from ..windowed.ranges import cut
+from ..windowed.ranges import reduce_ranges
 
 LOG = logging.getLogger(__name__)
 
@@ -43,9 +51,8 @@ LOG = logging.getLogger(__name__)
 
 
 @source_registry.register("accumulate")
-class AccumulateSource(WindowSourceBase):
+class AccumulateSource(Source):
 
-    name = "accumulate"
     schema = AccumulateSchema
 
     def __init__(
@@ -61,6 +68,8 @@ class AccumulateSource(WindowSourceBase):
         clip: Any = None,
         **kwargs: Any,
     ) -> None:
+        super().__init__(context)
+
         # `from` is a Python keyword, so it can only arrive through kwargs.
         # A raw recipe spells it `from:`; a recipe that has been through the
         # pydantic schema is dumped by field name and spells it `from_`.
@@ -80,13 +89,6 @@ class AccumulateSource(WindowSourceBase):
             return value
 
         group_by = _pop_hyphenated("group_by", group_by)
-        if "over" in kwargs:
-            raise ValueError(
-                "accumulate: 'over:' does not apply to a sum. It states how long each "
-                "subwindow is, which matters only when the reduction differs from what a "
-                "subwindow carries -- and a sum of subwindows is the same whatever length "
-                "they are. Use it on 'maximum:'/'minimum:'/'average:'"
-            )
         if kwargs:
             raise TypeError(f"accumulate: unknown argument(s) {sorted(kwargs)}")
 
@@ -104,42 +106,74 @@ class AccumulateSource(WindowSourceBase):
             warn=False,
         )
 
+        self.source = source
+        self.period = frequency_to_timedelta(period)
         self.patch = patch
+        self.group_by = patch_groupby_keys(group_by)
         self.clip = normalise_clip(clip)
         self._field_to_interval = FieldToInterval(patch)
+        self._source_name = self._prepare_source()
 
-        super().__init__(context, source=source, period=period, group_by=group_by)
+    def _prepare_source(self) -> str:
+        return prepare_source("accumulate", self.source, mars_type="fc")
 
-    def _discard_unusable(self, reducers: dict) -> set:
-        """Drop windows that no field reached at all, rather than failing on them.
+    # ── the reduction ────────────────────────────────────────────────
 
-        `accumulate` asks MARS for intervals, and MARS may answer with fields that do
-        not exactly match what was asked -- the `scda`/`oper` stream split above is
-        the standing example: runs at 06Z and 18Z live in `scda`, the request says
-        `oper`, and the windows anchored on them come back with nothing. That is the
-        request being answered loosely, not a window that came out short.
+    def _accumulate(self, covering, targets: list, hash_part: Any, from_layout: bool = False) -> FieldList:
+        """Cover every target's window, fetch the fields, sum them, and check the result.
 
-        The test is deliberately "no field arrived", not "no value was produced".
-        Those are different, and the difference is the ordinary case rather than a
-        corner: a from-zero archive with no `over:` gives one subwindow rebuilt from
-        two fields, so a window holding `a(0,12)` and still waiting for `a(0,6)` has
-        produced no value at all. Dropping that would turn half a window into a
-        warning and a silently absent field. It falls through to the completeness
-        check instead, which says exactly what is outstanding.
-
-        This is the one place the reductions are deliberately stricter: they drop
-        nothing, because a missing sample there means an average over fewer fields
-        than the recipe asked for.
+        Parameters
+        ----------
+        covering
+            Resolves a window into the subwindows covering it.
+        targets
+            ``(valid_date, basetime)`` rows; *basetime* is ``None`` on the
+            validity-date path.
+        hash_part
+            What identifies the source-data description in the subsource cache key.
+        from_layout
+            Whether the subsource is the run the trajectory layout imposes, so the
+            covering is anchored on each row's basetime and the argument is a
+            ``ForecastIntervals``.
         """
+        windows = {}
+        for vt, bt in targets:
+            windows[(vt, bt)] = cut(covering, vt - self.period, vt, basetime=bt if from_layout else None)
+            LOG.debug("  Covering of %s to %s:", vt - self.period, vt)
+            for subwindow in windows[(vt, bt)]:
+                LOG.debug("    %s", subwindow)
+
+        source_object = create_source_object(self.context, self.source, (str(self.period), self.source, hash_part))
+        input_fields = source_object(self.context, argument(targets, windows, self.period, forecast=from_layout))
+
+        reducers, fields = reduce_ranges(
+            input_fields,
+            targets=targets,
+            windows=windows,
+            period=self.period,
+            operation=OPERATIONS["sum"],
+            group_by=self.group_by,
+            field_to_interval=self._field_to_interval,
+            source=self.source,
+            stamp_basetime=True,
+            declared="accum",
+        )
+
+        # MARS may answer a request with fields that do not match it exactly: runs at
+        # 06Z and 18Z live in `scda` while the request says `oper`, so the windows
+        # anchored on them get nothing at all. Drop those windows. "No field arrived"
+        # is the test, not "no value yet": a from-zero window holding `a(0,12)` and
+        # still waiting for `a(0,6)` has produced no value, and that half-window is an
+        # error, reported by the completeness check.
         empty = {k for k, reducer in reducers.items() if reducer.fields_used == 0}
         for k in empty:
-            LOG.warning("%s: no field reached the window for %s; dropping it", self.name, k)
+            LOG.warning("accumulate: no field reached the window for %s; dropping it", k)
             del reducers[k]
-        return empty
 
-    def _as_fieldlist(self, fields: list) -> FieldList:
-        ds = apply_clip(super()._as_fieldlist(fields), self.clip)
-        LOG.debug("%s: created %d field(s):", self.name, len(ds))
+        check_complete("accumulate", self.period, reducers, fields, targets, discarded=empty)
+
+        ds = apply_clip(FieldList.from_fields(fields), self.clip)
+        LOG.debug("Created %d accumulated fields:", len(ds))
         for f in ds:
             LOG.debug("  %s", f)
         return ds
@@ -165,9 +199,9 @@ class AccumulateSource(WindowSourceBase):
         """Build the Covering for the validity-date path from the description."""
         description = self._resolved_from()
         if description is not None:
-            return covering_from_description(description, period=self.period, source_name=self.name)
+            return covering_from_description(description, period=self.period, source_name="accumulate")
 
-        # Deprecated 'covering:'/'availability:' -- the legacy machinery.
+        # Deprecated 'covering:'/'availability:' — the legacy machinery.
         return covering_factory(self.covering, self._source_name, self.source[self._source_name])
 
     def _description_hash_part(self) -> str:
@@ -190,14 +224,7 @@ class AccumulateSource(WindowSourceBase):
         for d in dates:
             if not isinstance(d, datetime.datetime):
                 raise TypeError("valid_date must be a datetime.datetime instance")
-
-        plan = IntervalPlan(
-            period=self.period,
-            covering=self._searched_covering(),
-            source=self.source,
-            field_to_interval=self._field_to_interval,
-        )
-        return self._run(plan, [(d, None) for d in dates], self._description_hash_part())
+        return self._accumulate(self._searched_covering(), [(d, None) for d in dates], self._description_hash_part())
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations.
@@ -212,54 +239,16 @@ class AccumulateSource(WindowSourceBase):
           :class:`ForecastCovering` (no search over the archive).
         - every other subsource (a bare, base-less valid-time source; an
           explicit-grid or recognised (omitted ``from:``) trajectory archive;
-          a ``lookup-table``) —
-          reconstructed by the same base-less covering *search* as
-          :meth:`execute_valid_dates`; only the result is stamped as a forecast
-          field at ``(basetime, step)``.
+          a ``lookup-table``) — reconstructed by the same base-less covering
+          *search* as :meth:`execute_valid_dates`; only the result is stamped
+          as a forecast field at ``(basetime, step)``.
         """
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         description = self._resolved_from()
+        targets = list(dates.items)
 
         if isinstance(description, FromTrajectories) and description.is_layout_grid:
-            return self._execute_forecast_from_layout(dates, description)
+            covering = ForecastCovering(period=self.period, accumulation=description.accumulation)
+            return self._accumulate(covering, targets, description.accumulation, from_layout=True)
 
-        return self._execute_forecast_reconstructed(dates)
-
-    def _execute_forecast_from_layout(self, dates: ForecastDates, description: FromTrajectories) -> Any:
-        """Forecast accumulations for a ``from-layout`` subsource (the layout's own run).
-
-        The layout imposes the basetime per row, so the covering is the trivial
-        signed decomposition of :class:`ForecastCovering` — no search over the
-        source data.
-        """
-        items = list(dates.items)
-        plan = IntervalPlan(
-            period=self.period,
-            covering=ForecastCovering(period=self.period, accumulation=description.accumulation),
-            source=self.source,
-            field_to_interval=self._field_to_interval,
-            basetime=True,
-            forecast_items=items,
-        )
-        return self._run(plan, list(items), description.accumulation)
-
-    def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
-        """Forecast accumulations reconstructed from a searched subsource covering.
-
-        Shares the covering *search* of :meth:`execute_valid_dates` (via
-        :meth:`_searched_covering`): each output window ``[vt − period, vt]`` is
-        covered from the subsource independently of the output basetime.  The
-        covering intervals carry the subsource's own base (``None`` for a
-        base-less valid-time source, the archive run for a trajectory archive),
-        so the inner source fetches them unchanged; the accumulated result is
-        stamped as a forecast field at the layout's ``(basetime, step)`` because
-        the accumulator is given that basetime.
-        """
-        plan = IntervalPlan(
-            period=self.period,
-            covering=self._searched_covering(),
-            source=self.source,
-            field_to_interval=self._field_to_interval,
-            basetime=True,
-        )
-        return self._run(plan, list(dates.items), self._description_hash_part())
+        return self._accumulate(self._searched_covering(), targets, self._description_hash_part())
