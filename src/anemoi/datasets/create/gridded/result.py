@@ -129,6 +129,59 @@ def _raw_key(field: Any, key: str, collection: str) -> Any:
     return value
 
 
+def _resolution(field: Any) -> Any:
+    """Return the grid resolution as earthkit-data 0.x ``field.resolution`` did.
+
+    The GRIB handle behind ``field.geography`` is read because filters mask the single GRIB keys.
+    """
+    handle = getattr(field.geography, "handle", None)
+    if handle is None:
+        return None
+
+    grid_type = handle.get("gridType", default=None)
+
+    if grid_type in ("reduced_gg", "reduced_rotated_gg"):
+        return handle.get("gridName", default=None)
+
+    if grid_type in ("regular_ll", "rotated_ll"):
+        x = round(handle.get("DxInDegrees") * 1_000_000) / 1_000_000
+        y = round(handle.get("DyInDegrees") * 1_000_000) / 1_000_000
+        return x if x == y else None
+
+    if grid_type in ("lambert", "lambert_azimuthal_equal_area"):
+        x = handle.get("DxInMetres")
+        y = handle.get("DyInMetres")
+        return str(x / 1000).replace(".", "p") + "km" if x == y else None
+
+    return None
+
+
+def _mars_area_and_grid(field: Any) -> tuple[Any, Any]:
+    """Return the MARS ``area`` and ``grid`` of a field, as earthkit-data 0.x ``mars_area`` and ``mars_grid`` did."""
+    handle = getattr(field.geography, "handle", None)
+    if handle is None:
+        area = field.geography.area()
+        return (None if area is None else list(area)), None
+
+    area = [
+        handle.get(key, default=None)
+        for key in (
+            "latitudeOfFirstGridPointInDegrees",
+            "longitudeOfFirstGridPointInDegrees",
+            "latitudeOfLastGridPointInDegrees",
+            "longitudeOfLastGridPointInDegrees",
+        )
+    ]
+    if len(field.shape) == 2:
+        grid = [
+            handle.get("iDirectionIncrementInDegrees", default=None),
+            handle.get("jDirectionIncrementInDegrees", default=None),
+        ]
+    else:
+        grid = handle.get("gridName", default=None)
+    return area, grid
+
+
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
@@ -415,28 +468,7 @@ def _data_request(data: Any) -> dict[str, Any]:
             step = as_mars.get("step")
             levtype = as_mars.get("levtype", "sfc")
             levelist = as_mars.get("levelist", None)
-            area = as_mars.get("area", None)
-            # Recover grid resolution as [di, dj] (matching old field.mars_grid behaviour).
-            # Fall back to spacing computed from grid points when the increment
-            # metadata is masked (earthkit 1.0 fields wrapped with
-            # new_field_with_valid_datetime mask iDirectionIncrementInDegrees).
-            _di = field.get("metadata.iDirectionIncrementInDegrees", default=None)
-            _dj = field.get("metadata.jDirectionIncrementInDegrees", default=None)
-            if _di is not None and _dj is not None:
-                grid = [_di, _dj]
-            else:
-                try:
-                    _glats, _glons = field.geography.latlons()
-                    _ulats = np.unique(_glats)
-                    _ulons = np.unique(_glons)
-                    if len(_ulats) > 1 and len(_ulons) > 1:
-                        _dj = float(np.amin(np.abs(np.diff(np.sort(_ulats)))))
-                        _di = float(np.amin(np.abs(np.diff(np.sort(_ulons)))))
-                        grid = [_di, _dj]
-                    else:
-                        grid = field.get("metadata.gridType", default=None)
-                except Exception:
-                    grid = field.get("metadata.gridType", default=None)
+            area, grid = _mars_area_and_grid(field)
 
             if levelist is None:
                 params_levels[levtype].add(param)
@@ -789,18 +821,9 @@ class GriddedResult(Result):
         grid_values: list = list(range(len(grid_points[0])))
 
         self._grid_points: Any = grid_points
-        self._resolution: Any = first_field.get("metadata.iDirectionIncrementInDegrees", default=None)
+        self._resolution: Any = _resolution(first_field)
         if self._resolution is None:
-            self._resolution = first_field.get("metadata.gridName", default=None)
-        if self._resolution is None:
-            self._resolution = first_field.get("metadata.gridType", default=None)
-        if self._resolution is None:
-            # Fallback: infer resolution from unique latitude spacing when
-            # iDirectionIncrementInDegrees is masked (earthkit 1.0 fields
-            # wrapped with new_field_with_valid_datetime or new_field_with_metadata).
-            unique_lats = np.unique(lats)
-            if len(unique_lats) > 1:
-                self._resolution = float(np.amin(np.abs(np.diff(np.sort(unique_lats)))))
+            self._resolution = first_field.get("metadata.resolution", default=None)
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None

@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+import zarr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
@@ -340,6 +341,14 @@ def test_grib_gridfile(get_test_data) -> None:
     ds = open_dataset(created)
     assert ds.shape == (8, 1, 1, 1147980)
     assert ds.variables == ["2t"]
+
+    # unstructured grid: no resolution and no MARS grid, the area is the bounding box
+    data_request = zarr.open(created, mode="r").attrs["data_request"]
+    assert ds.resolution is None
+    assert data_request["grid"] is None
+    assert data_request["area"] == pytest.approx(
+        [ds.latitudes.max(), ds.longitudes.min(), ds.latitudes.min(), ds.longitudes.max()]
+    )
 
 
 @skip_if_offline
