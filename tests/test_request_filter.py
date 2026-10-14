@@ -102,3 +102,34 @@ class TestRequestFilterImmutable:
         snapshot = dict(request)
         RequestFilter.extract(request)
         assert request == snapshot
+
+
+class TestValidityTimeOverForecasts:
+    """A forecast archive is reachable by validity time: one run per validity time.
+
+    This is what lets ``maximum: {from: {frequency: 1h}}`` read a ``type: fc`` archive
+    -- the step list offers every lead time, and the base-time filter keeps the one run
+    that exists.
+    """
+
+    REQUEST = {
+        "class": "od",
+        "type": "fc",
+        "param": "10fg",
+        "date": "????-??-??",
+        "time": [0, 1200],
+        "step": "1/to/12",
+    }
+
+    @pytest.mark.parametrize("hour", range(24))
+    def test_each_validity_time_comes_from_exactly_one_run(self, hour: int) -> None:
+        import datetime
+
+        from anemoi.datasets.create.sources.mars.retrieval import _expand_mars_request
+
+        valid = datetime.datetime(2026, 6, 1, hour)
+        (request,) = _expand_mars_request(self.REQUEST, valid_date=valid)
+
+        base = datetime.datetime.strptime(request["date"] + request["time"], "%Y%m%d%H%M")
+        assert base.hour in (0, 12)
+        assert base + datetime.timedelta(hours=int(request["step"])) == valid

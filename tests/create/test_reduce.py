@@ -66,10 +66,19 @@ def test_schema_requires_from() -> None:
         ReduceSchema.model_validate({"period": "24h", "source": SOURCE})
 
 
-@pytest.mark.parametrize("from_", [{"accumulation": "6h"}, {"lookup-table": {}}])
-def test_schema_rejects_the_accumulate_vocabulary(from_: dict) -> None:
-    with pytest.raises(ValueError, match="belong to 'accumulate:'"):
-        ReduceSchema.model_validate({"period": "24h", "from": from_, "source": SOURCE})
+@pytest.mark.parametrize(
+    "from_,expected",
+    [
+        ({"accumulation": "1h"}, "FromBare"),
+        ({"lookup-table": {"start": "2021-01-01", "0-6": [0, "0-6"]}}, "FromLookupTable"),
+        ({"base_dates": {"times": [0, 12]}, "steps": ["0-1", "1-2", "2-3", "3-6"]}, "FromTrajectories"),
+    ],
+)
+def test_schema_accepts_interval_valued_source_data(from_: dict, expected: str) -> None:
+    """A reduction may also read fields that each span an interval, not only samples."""
+    schema = ReduceSchema.model_validate({"period": "6h", "from": from_, "source": SOURCE})
+    assert type(schema.from_).__name__ == expected
+    assert not schema.is_instant_valued
 
 
 def test_schema_accepts_the_run_anchored_shape() -> None:
@@ -370,12 +379,15 @@ class _FakeTime:
 class _FakeField:
     """The little a reduction source asks of a field, and nothing more."""
 
-    def __init__(self, valid_datetime: datetime.datetime, param: str, value: float) -> None:
+    def __init__(self, valid_datetime: datetime.datetime, param: str, value: float, statistic: str = "instant") -> None:
         self.time = _FakeTime(valid_datetime)
         self.param = param
         self.values = np.full(4, value)
+        self.statistic = statistic
 
-    def get(self, collections: str | None = None) -> dict:
+    def get(self, key: str | None = None, collections: str | None = None):
+        if key == "proc.time_method":
+            return self.statistic
         assert collections == "metadata.mars"
         return {
             "param": self.param,
@@ -425,7 +437,7 @@ def test_a_window_missing_one_sample_is_an_error() -> None:
     fields = [_FakeField(datetime.datetime(2021, 1, 1, 12), "2t", 1.0)]  # 06:00 is missing
     source = _source("average", fields)
 
-    with pytest.raises(ValueError, match="missing source samples"):
+    with pytest.raises(ValueError, match="missing source fields"):
         source.execute_valid_dates(_dates(12))
 
 
@@ -435,14 +447,18 @@ def test_a_variable_missing_for_a_whole_date_is_an_error() -> None:
     Completeness alone cannot see that — there is nothing to be incomplete —
     so the (date, variable) grid is checked separately.
     """
-    from anemoi.datasets.create.sources.reduce.reducer import AverageReducer
+    from anemoi.datasets.create.sources.reduce.reducer import SampleReducer
+    from anemoi.datasets.create.sources.windowed.common import check_complete
+    from anemoi.datasets.create.sources.windowed.operations import OPERATIONS
 
     source = _source("average", [])
     dates = _dates(12, 18)
 
-    def complete_reducer(date: datetime.datetime, param: str) -> AverageReducer:
+    def complete_reducer(date: datetime.datetime, param: str) -> SampleReducer:
         samples = window_samples(date, source.period, source.frequency)
-        reducer = AverageReducer(date, period=source.period, key=(("param", param),), samples=samples)
+        reducer = SampleReducer(
+            date, period=source.period, key=(("param", param),), samples=samples, operation=OPERATIONS["mean"]
+        )
         for sample in samples:
             reducer.compute(np.zeros(4), sample)
         assert reducer.is_complete()
@@ -456,7 +472,7 @@ def test_a_variable_missing_for_a_whole_date_is_an_error() -> None:
     }
 
     with pytest.raises(ValueError, match="no source data at all"):
-        source._finalise(reducers, [], [(d, None) for d in dates])
+        check_complete(source.name, source.period, reducers, [], [(d, None) for d in dates])
 
 
 def test_a_field_outside_every_window_is_an_error() -> None:
@@ -562,5 +578,79 @@ def test_the_same_validity_time_from_two_runs_is_not_folded_together() -> None:
 def test_each_source_stamps_its_own_time_method(name: str, time_method: str) -> None:
     """``proc.time_method`` is what anemoi-transform reads back as the statistical process."""
     from anemoi.datasets.create.sources import source_registry
+    from anemoi.datasets.create.sources.windowed.operations import OPERATIONS
 
-    assert source_registry.lookup(name).reducer_class.time_method == time_method
+    assert OPERATIONS[source_registry.lookup(name).operation].time_method == time_method
+
+
+# ── the statistic the fields carry, on the instant path ──────────────
+
+
+def _two_samples(statistic: str) -> list:
+    return [
+        _FakeField(datetime.datetime(2021, 1, 1, 6), "mx2t", 1.0, statistic=statistic),
+        _FakeField(datetime.datetime(2021, 1, 1, 12), "mx2t", 3.0, statistic=statistic),
+    ]
+
+
+def test_mean_of_stored_maxima_builds_when_the_blocks_are_equal(monkeypatch) -> None:
+    """Mean of daily Tmax: the archive's blocks are the definition, and all are one length."""
+    from anemoi.datasets.create.sources.reduce import reducer
+
+    built = []
+    monkeypatch.setattr(reducer, "stamp", lambda values, *args: built.append(values))
+    monkeypatch.setattr("anemoi.datasets.create.sources.reduce.source.FieldList.from_fields", lambda fields: fields)
+
+    _source("average", _two_samples("max")).execute_valid_dates(_dates(12))
+    (values,) = built
+    assert np.allclose(values, 2.0)
+
+
+def test_crossed_extrema_are_refused_on_the_instant_path_too() -> None:
+    with pytest.raises(ValueError, match="use 'maximum:'"):
+        _source("minimum", _two_samples("max")).execute_valid_dates(_dates(12))
+
+
+def test_averaging_stored_totals_is_refused_with_the_accumulate_hint() -> None:
+    with pytest.raises(ValueError, match="divide by the period"):
+        _source("average", _two_samples("accum")).execute_valid_dates(_dates(12))
+
+
+# ── over: ────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("over,match", [("4h", "must divide"), ("12h", "cannot exceed"), ("0h", "must be positive")])
+def test_over_must_be_a_whole_part_of_the_period(over: str, match: str) -> None:
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match=match):
+        source_registry.lookup("maximum")(
+            _FakeContext([]),
+            source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+            period="6h",
+            over=over,
+            **{"from": {"accumulation": "1h"}},
+        )
+
+
+def test_over_is_meaningless_for_instantaneous_source_data() -> None:
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(ValueError, match="nothing to subdivide"):
+        source_registry.lookup("average")(
+            _FakeContext([]), source=dict(SOURCE), period="6h", over="1h", **{"from": {"frequency": "1h"}}
+        )
+
+
+def test_accumulate_has_no_over() -> None:
+    """A sum of subwindows is the same whatever length they are."""
+    from anemoi.datasets.create.sources import source_registry
+
+    with pytest.raises(TypeError, match="unknown argument"):
+        source_registry.lookup("accumulate")(
+            _FakeContext([]),
+            source={"mars": {"class": "od", "param": ["tp"], "levtype": "sfc"}},
+            period="6h",
+            over="1h",
+            **{"from": {"accumulation": "1h"}},
+        )
