@@ -172,6 +172,8 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
+                                # a flavour masks the raw GRIB keys the accumulation reads
+                                "flavour": [[{"levtype": "sfc"}, {"levelist": None}]],
                             },
                         },
                     }
