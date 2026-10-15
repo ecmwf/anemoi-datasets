@@ -251,6 +251,7 @@ def test_grib_ensemble_with_filter(tmp_path) -> None:
 
     mars = ds.variables_metadata["surface_pressure"]["mars"]
     assert (mars["param"], mars["levtype"]) == ("surface_pressure", "sfc")
+    assert ds.variables_metadata["surface_pressure"]["units"] == "Pa"
     assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["surface_pressure"]}
 
 

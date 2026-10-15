@@ -398,14 +398,11 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             other[current_variable]["process"] = process
             other[current_variable]["period"] = (startStep, endStep)
 
-        units = f.get("metadata.units", default=None)
-        if units is None:
-            # earthkit 1.0: wrapped fields (new_field_with_valid_datetime /
-            # new_field_with_metadata) mask metadata.units; fall back to the
-            # richer parameter.units component (a PintUnits object).
-            pu = f.get("parameter.units", default=None)
-            if pu is not None:
-                units = str(pu)
+        # The GRIB units, unless missing (xarray) or stale (e.g. computed forcings)
+        units = _raw_key(f, "units", "parameter")
+        pu = f.get("parameter.units", default=None)
+        if pu is not None and (units is None or pu != units):
+            units = str(pu)
         if current_variable in units_seen:
             if units_seen[current_variable] != units:
                 raise ValueError(
