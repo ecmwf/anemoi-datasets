@@ -113,6 +113,9 @@ class DatesProvider(BaseModel):
         """
         return len(self.values)
 
+    def full_dates_list(self) -> list[datetime.datetime]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement full_dates_list()")
+
 
 class StartEndDates(DatesProvider):
 
@@ -189,6 +192,15 @@ class StartEndDates(DatesProvider):
 
     def dump(self, dumper):
         return dumper.start_end_dates(self.start, self.end, self.frequency)
+
+    def full_dates_list(self) -> list[datetime.datetime]:
+        """Return the list of dates including missing ones."""
+        dates = []
+        date = self.start
+        while date <= self.end:
+            dates.append(date)
+            date += self.frequency
+        return dates
 
 
 class BaseDates(StartEndDates):
@@ -268,6 +280,9 @@ class TrajectoryDates(DatesProvider):
 
 class ValuesDates(DatesProvider):
     values: list[datetime.datetime]
+
+    def full_dates_list(self) -> list[datetime.datetime]:
+        return list(self.values)
 
 
 class HindcastsDates(DatesProvider):
