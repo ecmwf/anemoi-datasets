@@ -362,6 +362,27 @@ def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
     assert np.all(ds[0, 0, 0] == 6 - 3)
 
 
+def test_forcings_metadata_from_accumulation_template(tmp_path) -> None:
+    """Computed forcings do not take the GRIB metadata of their template."""
+    path = _write_grib(
+        tmp_path / "tp.grib",
+        [dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=6, value=1)],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
+        "input": {
+            "join": [
+                {"grib": {"path": path}},
+                {"forcings": {"param": ["cos_latitude"], "template": "${input.join.0.grib}"}},
+            ]
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables_metadata["tp"]["process"] == "accumulation"
+    assert not {"mars", "grib", "process", "period"} & set(ds.variables_metadata["cos_latitude"])
+
+
 def test_selection_by_other_keys(tmp_path) -> None:
     """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
     import xarray as xr

@@ -131,15 +131,21 @@ def _raw_key(field: Any, key: str, collection: str) -> Any:
     return value
 
 
+def _computed_forcing(field: Any) -> bool:
+    """Whether a field is a computed forcing, whose GRIB metadata (if any) is its template's."""
+    return _KNOWN_VARIABLES.get(field.get("parameter.variable", default=None), {}).get("computed_forcing", False)
+
+
 def _mars_request(field: Any) -> dict[str, Any]:
     """Return the MARS request of a field, or an empty dict for computed forcings.
 
     Filters leave ``metadata.mars`` as it was before them, so the keys the components
     carry are read from the components and the collection provides the others.
     """
-    param = field.get("parameter.variable", default=None)
-    if _KNOWN_VARIABLES.get(param, {}).get("computed_forcing"):
+    if _computed_forcing(field):
         return {}
+
+    param = field.get("parameter.variable", default=None)
 
     raw = field.get(collections="metadata.mars") or field.get(collections="metadata.default") or {}
     md = {k: v for k, v in raw.items() if k not in ("param", "levtype", "levelist", "date", "time", "step", "number")}
@@ -308,6 +314,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         f = cube[c.coords]
         md = _mars_request(f)
+        computed = _computed_forcing(f)
 
         startStep = _raw_key(f, "startStep", "time")
         if startStep is not None:
@@ -332,7 +339,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         if startStep is not None and endStep is not None:
             assert endStep >= startStep, (startStep, endStep, md)
 
-        if startStep != endStep:
+        if startStep != endStep and not computed:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
             TYPE_OF_STATISTICAL_PROCESSING: dict[int | None, str | None] = {
                 None: None,
@@ -422,7 +429,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         other[current_variable]["units"] = units
 
         grib = {k: _raw_key(f, k, "parameter") for k in ("paramId", "shortName")}
-        if any(grib.values()):
+        if any(grib.values()) and not computed:
             other[current_variable]["grib"] = grib
 
         for k in md.copy().keys():
