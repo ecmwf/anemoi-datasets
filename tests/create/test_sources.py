@@ -298,6 +298,49 @@ def test_fdb(tmp_path, monkeypatch) -> None:
     assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
 
 
+def _grib_index(tmp_path, messages: list[dict]) -> str:
+    """Index GRIB messages written with ``_write_grib`` in a new grib-index database."""
+    from anemoi.datasets.create.sources.grib_index import GribIndex
+
+    path = str(tmp_path / "index.db")
+    GribIndex(path, update=True, overwrite=True).add_grib_file(_write_grib(tmp_path / "index.grib", messages))
+    return path
+
+
+def test_accumulate_with_grid_and_flavour(tmp_path) -> None:
+    """Accumulated fields keep the grid and the flavour their source applied."""
+    hourly = [
+        dict(
+            dataDate=20200101, dataTime=hour * 100, stepType="accum", shortName="tp", startStep=0, endStep=1, value=hour
+        )
+        for hour in range(3)
+    ]
+    gridfile, latitudes, longitudes = _write_icon_grid(tmp_path / "grid.nc", 496)
+    recipe = {
+        "dates": {"start": "2020-01-01T03:00:00", "end": "2020-01-01T03:00:00", "frequency": "3h"},
+        "input": {
+            "accumulate": {
+                "period": "3h",
+                "availability": "1h",
+                "source": {
+                    "grib-index": {
+                        "indexdb": _grib_index(tmp_path, hourly),
+                        "param": "tp",
+                        "flavour": [[{"shortName": "tp"}, {"param": "precip"}]],
+                        "grid_definition": {"icon": {"path": gridfile}},
+                    }
+                },
+            }
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["precip"]
+    assert np.all(ds[0, 0, 0] == 0 + 1 + 2)
+    assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
+    assert ds.variables_metadata["precip"]["process"] == "accumulation"
+
+
 def test_selection_by_other_keys(tmp_path) -> None:
     """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
     import xarray as xr

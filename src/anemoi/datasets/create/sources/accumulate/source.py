@@ -15,6 +15,7 @@ import warnings
 from typing import Any
 
 import earthkit.data
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.encoders.grib import GribEncoder as _GribEncoder
@@ -38,14 +39,19 @@ class _GribOutputCompat:
 
     def __init__(self, path):
         self._file = open(path, "wb")
+        self.templates = []
 
     def write(self, values, check_nans=True, metadata=None, template=None, missing_value=9999, **kwargs):
         if metadata is None:
             metadata = {}
         metadata = {**metadata, **kwargs}
+        # Encode from the source GRIB message, also after set() (flavour, grid_definition) masked it:
+        # a grid given as latitudes/longitudes cannot be encoded, and the flavoured keys are restored on read.
+        grib = template._get_grib()
+        self.templates.append(template)
         _GribEncoder().encode(
             values=values,
-            template=template,
+            template=template if grib is None else grib,
             check_nans=check_nans,
             metadata=metadata,
             missing_value=missing_value,
@@ -57,6 +63,20 @@ class _GribOutputCompat:
 
 def _new_grib_output(path):
     return _GribOutputCompat(path)
+
+
+def _was_set(field) -> bool:
+    """Whether the components of a GRIB field were changed with set() (e.g. by a flavour or a grid_definition)."""
+    return field._get_grib() is not None and field._get_grib(strict=True) is None
+
+
+def _restore_components(field, template):
+    """Give an accumulated field the components of its source field that its GRIB message does not hold."""
+    if not _was_set(template):
+        return field
+    return field.set(
+        **{name: getattr(template, name) for name in ("parameter", "geography", "vertical", "ensemble", "labels")}
+    )
 
 
 LOG = logging.getLogger(__name__)
@@ -180,6 +200,8 @@ class AccumulateSource(Source):
 
         output.close()
         ds = earthkit.data.from_source("file", tmp.path).to_fieldlist()
+        if any(_was_set(t) for t in output.templates):
+            ds = new_fieldlist_from_list([_restore_components(f, t) for f, t in zip(ds, output.templates)])
         ds._keep_file = tmp  # prevent deletion of temp file until ds is deleted
 
         LOG.debug(f"Created {len(ds)} accumulated fields:")
