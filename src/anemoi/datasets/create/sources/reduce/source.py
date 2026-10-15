@@ -65,8 +65,8 @@ from ..windowed.description import FromInstants
 from ..windowed.description import FromRun
 from ..windowed.description import ReduceSchema
 from ..windowed.description import check_window_inside_run
-from ..windowed.description import validate_from
 from ..windowed.description import takes_run_from_layout
+from ..windowed.description import validate_from
 from ..windowed.description import window_samples
 from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.groupby import patch_groupby_keys

@@ -70,8 +70,8 @@ from .instants import FromRun
 from .instants import ReduceSchema
 from .instants import check_period
 from .instants import check_window_inside_run
-from .instants import validate_from
 from .instants import takes_run_from_layout
+from .instants import validate_from
 from .instants import window_samples
 from .mars_archives import _mars_archive_description
 from .mars_archives import infer_from_trajectories
