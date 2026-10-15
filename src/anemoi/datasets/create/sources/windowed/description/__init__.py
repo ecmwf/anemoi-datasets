@@ -71,6 +71,7 @@ from .instants import ReduceSchema
 from .instants import check_period
 from .instants import check_window_inside_run
 from .instants import validate_from
+from .instants import takes_run_from_layout
 from .instants import window_samples
 from .mars_archives import _mars_archive_description
 from .mars_archives import infer_from_trajectories
@@ -109,6 +110,7 @@ __all__ = [
     "infer_from_trajectories",
     "normalise_from",
     "parse_accumulation",
+    "takes_run_from_layout",
     "validate_from",
     "window_samples",
 ]

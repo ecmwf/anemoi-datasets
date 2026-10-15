@@ -64,6 +64,7 @@ from pydantic import model_validator
 from anemoi.datasets.create.time_schemas import Frequency
 
 from .union import From as _IntervalValued
+from .union import FromTrajectories
 
 #: The keys that mark interval-valued source data -- fields that each *span* an
 #: interval. Their presence routes a ``from:`` to the union ``accumulate`` uses.
@@ -224,6 +225,17 @@ def _is_instant_valued(value: dict) -> bool:
     return "frequency" in value or not any(k in value for k in _INTERVAL_VALUED_KEYS)
 
 
+def takes_run_from_layout(from_: Any) -> bool:
+    """Whether ``from:`` is the run the trajectory layout imposes.
+
+    Samples spell it ``{base_dates: true, frequency: ...}``; fields that span an
+    interval spell it ``{base_dates: from-layout, steps: from-layout,
+    accumulation: ...}``. Either way each output row is built only from fields of
+    its own run, which only a trajectory layout supplies.
+    """
+    return isinstance(from_, FromRun) or (isinstance(from_, FromTrajectories) and from_.is_layout_grid)
+
+
 #: Every shape a reduction accepts: instantaneous samples, or the interval-valued
 #: descriptions ``accumulate`` reads. Recognised structurally, pre-checked so that the
 #: instant-valued mistakes get a message instead of a union error.
@@ -291,7 +303,7 @@ class ReduceSchema(BaseModel):
     @property
     def is_run_anchored(self) -> bool:
         """Whether ``from:`` describes the run the trajectory layout imposes."""
-        return isinstance(self.from_, FromRun)
+        return takes_run_from_layout(self.from_)
 
     @property
     def is_instant_valued(self) -> bool:

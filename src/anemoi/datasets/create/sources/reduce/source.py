@@ -59,12 +59,14 @@ from ..windowed.common import check_complete
 from ..windowed.common import create_source_object
 from ..windowed.common import group_key
 from ..windowed.common import prepare_source
+from ..windowed.covering import ForecastCovering
 from ..windowed.covering import covering_from_description
 from ..windowed.description import FromInstants
 from ..windowed.description import FromRun
 from ..windowed.description import ReduceSchema
 from ..windowed.description import check_window_inside_run
 from ..windowed.description import validate_from
+from ..windowed.description import takes_run_from_layout
 from ..windowed.description import window_samples
 from ..windowed.field_to_interval import FieldToInterval
 from ..windowed.groupby import patch_groupby_keys
@@ -209,7 +211,7 @@ class ReduceSource(Source):
     @property
     def is_run_anchored(self) -> bool:
         """Whether ``from:`` describes the run the trajectory layout imposes."""
-        return isinstance(self._from, FromRun)
+        return takes_run_from_layout(self._from)
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -217,9 +219,9 @@ class ReduceSource(Source):
         """Reduce one window per requested validity date (gridded layout)."""
         if self.is_run_anchored:
             raise ValueError(
-                f"{self.name}: 'from: {{base_dates: true, ...}}' inherits the run from "
-                "the output layout, which only 'layout: trajectories' imposes. In any other "
-                "layout describe base-less source data with 'from: {frequency: ...}'"
+                f"{self.name}: 'from: {{base_dates: true, ...}}' and 'base_dates: from-layout' "
+                "take the run from the output layout, which only 'layout: trajectories' imposes. "
+                "In any other layout describe the source data without it"
             )
 
         for d in dates:
@@ -247,19 +249,21 @@ class ReduceSource(Source):
           run the layout imposes, so each sample is asked for as
           ``(sample_time, basetime)`` — one lead time of that run.
 
-        Interval-valued source data is covered by the same search as on the
-        validity-date path, and the row's basetime only stamps the output.
+        Interval-valued source data is the same choice: ``base_dates:
+        from-layout`` reads the run from the layout; any other description is
+        covered by the same search as on the validity-date path, and the row's
+        basetime only stamps the output.
         """
         targets = [(valid_time, basetime) for valid_time, basetime in dates.items]
-
-        if not self.is_instant_valued:
-            return self._reduce_ranges(targets)
 
         if self.is_run_anchored:
             # The window has to lie inside the run; a base-less source has no
             # such restriction (analyses exist before the basetime too).
             for valid_time, basetime in targets:
                 check_window_inside_run(valid_time, basetime, self.period, self.name)
+
+        if not self.is_instant_valued:
+            return self._reduce_ranges(targets, from_layout=self.is_run_anchored)
 
         samples = self._window_samples(targets)
 
@@ -276,17 +280,28 @@ class ReduceSource(Source):
 
     # ── interval-valued source data ──────────────────────────────────
 
-    def _reduce_ranges(self, targets: list[tuple]) -> FieldList:
-        """Reduce the subwindows covering each window, with ``accumulate``'s loop."""
-        covering = covering_from_description(self._from, period=self.period, source_name=self.name)
-        windows = {(vt, bt): cut(covering, vt - self.period, vt, over=self.over) for vt, bt in targets}
+    def _reduce_ranges(self, targets: list[tuple], from_layout: bool = False) -> FieldList:
+        """Reduce the subwindows covering each window, with ``accumulate``'s loop.
+
+        With ``from_layout`` the source data is the run of each row, so every window is
+        covered from that run alone (no search) and the source is asked for
+        ``ForecastIntervals``; otherwise the archive is searched.
+        """
+        if from_layout:
+            covering = ForecastCovering(period=self.period, accumulation=self._from.accumulation)
+        else:
+            covering = covering_from_description(self._from, period=self.period, source_name=self.name)
+        windows = {
+            (vt, bt): cut(covering, vt - self.period, vt, basetime=bt if from_layout else None, over=self.over)
+            for vt, bt in targets
+        }
 
         key_parts = (self.name, str(self.period), self._from.model_dump_json(), str(self.over), self.source)
         source_object = create_source_object(self.context, self.source, key_parts)
         field_to_interval = FieldToInterval()
 
         reducers, fields = reduce_ranges(
-            source_object(self.context, argument(targets, windows, self.period, forecast=False)),
+            source_object(self.context, argument(targets, windows, self.period, forecast=from_layout)),
             targets=targets,
             windows=windows,
             period=self.period,

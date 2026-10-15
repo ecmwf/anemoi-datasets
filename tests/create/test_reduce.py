@@ -654,3 +654,155 @@ def test_accumulate_has_no_over() -> None:
             over="1h",
             **{"from": {"accumulation": "1h"}},
         )
+
+
+# ── a rolling window: `period` longer than the output stride ─────────
+
+
+@pytest.mark.parametrize("name,expected", [("average", [2.5, 3.5]), ("maximum", [4.0, 5.0])])
+def test_a_rolling_window_reuses_the_samples_of_the_previous_one(name: str, expected: list, monkeypatch) -> None:
+    """24 h windows every 6 h over 6-hourly samples: three of four samples are shared.
+
+    The window ending 12:00 is the samples at 18:00 (previous day), 00:00, 06:00 and 12:00, and
+    the one ending 18:00 drops the first and adds 18:00. Each sample is asked for once.
+    """
+    from anemoi.datasets.create.arguments import ValidDates
+    from anemoi.datasets.create.sources.reduce import reducer
+
+    built = {}
+    monkeypatch.setattr(
+        reducer, "stamp", lambda values, template, operation, valid_date, *rest: built.update({valid_date: values})
+    )
+    monkeypatch.setattr("anemoi.datasets.create.sources.reduce.source.FieldList.from_fields", lambda fields: fields)
+
+    # 2021-01-01 18:00 ... 2021-01-02 18:00, valued 1, 2, 3, 4, 5
+    samples = [datetime.datetime(2021, 1, 1, 18) + datetime.timedelta(hours=6 * i) for i in range(5)]
+    fields = [_FakeField(sample, "2t", float(i + 1)) for i, sample in enumerate(samples)]
+    source = _source(name, fields, period="24h")
+
+    targets = [datetime.datetime(2021, 1, 2, 12), datetime.datetime(2021, 1, 2, 18)]
+    source.execute_valid_dates(ValidDates(targets))
+
+    assert list(source.context.argument) == samples  # five samples asked for, not eight
+    assert [built[t][0] for t in targets] == expected
+
+
+# ── interval-valued source data from the run the layout imposes ──────
+
+#: Hourly gust maxima, each field spanning one step, read from each row's own run.
+FROM_LAYOUT_GUSTS = {"base_dates": "from-layout", "steps": "from-layout", "accumulation": "1h"}
+
+RUN = datetime.datetime(2021, 1, 1, 0)
+
+
+class _FakeIntervalTime:
+    def __init__(self, base: datetime.datetime) -> None:
+        self._base = base
+
+    def base_datetime(self) -> datetime.datetime:
+        return self._base
+
+
+class _FakeIntervalField:
+    """A field spanning ``[base + start, base + end]`` hours, as a GRIB message would say."""
+
+    def __init__(self, base: datetime.datetime, start: int, end: int, value: float, statistic: str = "max") -> None:
+        self.time = _FakeIntervalTime(base)
+        self.base, self.start, self.end = base, start, end
+        self.values = np.full(4, value)
+        self.statistic = statistic
+
+    def metadata(self, key: str):
+        valid = self.base + datetime.timedelta(hours=self.end)
+        return {
+            "startStep": self.start,
+            "endStep": self.end,
+            "validityDate": int(valid.strftime("%Y%m%d")),
+            "validityTime": int(valid.strftime("%H%M")),
+            "date": int(self.base.strftime("%Y%m%d")),
+            "time": int(self.base.strftime("%H%M")),
+            "step": self.end,
+        }[key]
+
+    def get(self, key: str | None = None, collections: str | None = None):
+        if key == "proc.time_method":
+            return self.statistic
+        assert collections == "metadata.mars"
+        return {"param": "10fg", "date": int(self.base.strftime("%Y%m%d")), "time": 0, "step": self.end}
+
+    def __repr__(self) -> str:
+        return f"_FakeIntervalField(10fg, {self.base:%Y%m%d%H} [{self.start}-{self.end}])"
+
+
+def _from_layout_source(fields: list, from_: dict = FROM_LAYOUT_GUSTS, name: str = "maximum"):
+    from anemoi.datasets.create.sources import source_registry
+
+    return source_registry.lookup(name)(
+        _FakeContext(fields),
+        source={"mars": {"class": "od", "type": "fc", "levtype": "sfc", "param": ["10fg"]}},
+        period="6h",
+        **{"from": from_},
+    )
+
+
+def test_schema_takes_interval_valued_from_layout_as_the_run_of_the_row() -> None:
+    schema = ReduceSchema.model_validate({"period": "6h", "from": FROM_LAYOUT_GUSTS, "source": SOURCE})
+    assert schema.is_run_anchored
+    assert not schema.is_instant_valued
+
+
+def test_from_layout_intervals_are_asked_for_from_the_row_run() -> None:
+    """The window of row (00Z, step 12) is steps 7..12 of the 00Z run, and nothing else."""
+    from anemoi.datasets.create.arguments import ForecastIntervals
+
+    valid = RUN + datetime.timedelta(hours=12)
+    source = _from_layout_source([])
+    with pytest.raises(ValueError, match="no usable field"):
+        source.execute_forecast_dates(_forecast((valid, RUN)))
+
+    argument = source.context.argument
+    assert isinstance(argument, ForecastIntervals)
+    assert all(i.base == RUN for i in argument.intervals)
+    steps = sorted(
+        ((i.min - RUN) // datetime.timedelta(hours=1), (i.max - RUN) // datetime.timedelta(hours=1))
+        for i in argument.intervals
+    )
+    assert steps == [(6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 12)]
+
+
+def test_from_layout_maximum_of_hourly_gusts(monkeypatch) -> None:
+    """End to end: the row's six hourly maxima reduce to their maximum."""
+    from anemoi.datasets.create.sources.windowed import reducer
+
+    built = []
+    monkeypatch.setattr(reducer, "stamp", lambda values, *args: built.append(values))
+    monkeypatch.setattr("anemoi.datasets.create.sources.reduce.source.FieldList.from_fields", lambda fields: fields)
+
+    valid = RUN + datetime.timedelta(hours=12)
+    fields = [_FakeIntervalField(RUN, s, s + 1, value) for s, value in zip(range(6, 12), [3, 9, 4, 1, 7, 2])]
+    _from_layout_source(fields).execute_forecast_dates(_forecast((valid, RUN)))
+
+    (values,) = built
+    assert np.allclose(values, 9.0)
+
+
+def test_from_layout_fields_of_another_run_are_not_used() -> None:
+    """The same hours from the 12Z run of the day before belong to no window of this row."""
+    valid = RUN + datetime.timedelta(hours=12)
+    other_run = RUN - datetime.timedelta(hours=12)
+    fields = [_FakeIntervalField(other_run, s + 12, s + 13, 1.0) for s in range(6, 12)]
+    with pytest.raises(ValueError, match="not used for any window"):
+        _from_layout_source(fields).execute_forecast_dates(_forecast((valid, RUN)))
+
+
+def test_from_layout_intervals_are_refused_in_a_gridded_layout() -> None:
+    from anemoi.datasets.create.arguments import ValidDates
+
+    with pytest.raises(ValueError, match="only 'layout: trajectories' imposes"):
+        _from_layout_source([]).execute_valid_dates(ValidDates([RUN + datetime.timedelta(hours=12)]))
+
+
+def test_from_layout_window_must_lie_inside_the_run() -> None:
+    """Row (00Z, step 3) with a 6 h period would need fields from before the run started."""
+    with pytest.raises(ValueError):
+        _from_layout_source([]).execute_forecast_dates(_forecast((RUN + datetime.timedelta(hours=3), RUN)))

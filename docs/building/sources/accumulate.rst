@@ -111,8 +111,14 @@ data is.
        ``1d``, …). Periods shorter than one hour are not supported yet.
    * - ``source``
      - **Required.** The data source, as a single-key dictionary
-       (``source: {mars: {...}}``). ``mars`` and ``grib-index`` are
-       supported.
+       (``source: {mars: {...}}``). It must be able to address a field
+       by the interval it spans: ``mars``, ``grib`` (files) and
+       ``grib-index`` are supported, and ``fdb`` except for the run from
+       the layout (``base_dates: from-layout``). ``mars`` and ``fdb``
+       serve only intervals tied
+       to a model run, so a base-less ``from: {accumulation: ...}`` needs
+       ``grib`` or ``grib-index``. Any other source is refused with an
+       error.
    * - ``from``
      - *Optional.* What the source data is.
 

@@ -182,10 +182,10 @@ class ForecastDates(Argument):
 class Intervals(ValidDates):
     """Archive-resolved accumulation windows.
 
-    Subclass of ``ValidDates`` so that sources registering only
-    ``execute_valid_dates`` receive ``Intervals`` via the default fallback.  Sources that
-    care about the period (e.g. ``MarsSource``) override ``execute_intervals``
-    explicitly to build step-range requests.
+    Not a request for validity times, although it subclasses ``ValidDates``:
+    ``dates`` are only the output dates, and what to fetch is ``intervals``. A
+    source must implement ``execute_intervals`` to serve it; there is no
+    fallback to ``execute_valid_dates``.
 
     Each ``SignedInterval`` carries its own ``base_time`` (the model-run
     time, ``None`` only for grib_index) and ``valid_time`` (== ``max``),
@@ -279,10 +279,10 @@ class Intervals(ValidDates):
 class ForecastIntervals(ForecastDates):
     """Forecast accumulations: ``(valid_time, basetime, period)`` items plus a flat list of intervals.
 
-    Subclass of ``ForecastDates`` so that sources registering only
-    ``execute_forecast_dates`` receive ``ForecastIntervals`` via the default fallback.
-    Sources that care about the period override ``execute_forecast_intervals``
-    explicitly.
+    Requests the archived intervals of the run from the layout (``from:
+    {base_dates: from-layout}``). Although it subclasses ``ForecastDates``, its
+    ``items`` are ``(valid_time, basetime, period)`` triples; a source must
+    implement ``execute_forecast_intervals`` to serve it, with no fallback.
 
     Each ``SignedInterval`` already carries its ``base_time`` (the
     basetime imposed by the caller) and ``valid_time``, so consumers

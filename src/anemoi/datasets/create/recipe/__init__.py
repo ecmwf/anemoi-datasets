@@ -237,16 +237,16 @@ class Recipe(BaseModel):
 
             if not is_traj:
                 raise ValueError(
-                    f"{name}: 'from.base_dates: true' is only valid in a "
+                    f"{name}: 'from.base_dates: true' / 'from-layout' is only valid in a "
                     "'layout: trajectories' recipe — the sentinel inherits the run from the "
-                    "output layout, which only that layout imposes. Describe base-less source "
-                    "data with 'from: {frequency: ...}' instead"
+                    "output layout, which only that layout imposes. Describe the source data "
+                    "without it: 'from: {frequency: ...}' for samples, or the archive's own runs"
                 )
 
             if self.steps is not None and self.steps.start < block.period:
                 raise ValueError(
                     f"{name}: 'steps.start' ({frequency_to_string(self.steps.start)}) must be "
-                    f">= 'period' ({frequency_to_string(block.period)}) — the samples come "
+                    f">= 'period' ({frequency_to_string(block.period)}) — the fields come "
                     "from the run the layout imposes, so an output window must not straddle "
                     "the basetime"
                 )

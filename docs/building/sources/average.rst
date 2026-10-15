@@ -126,7 +126,10 @@ The same three keys, plus ``over:``:
    * - ``period``
      - **Required.** The window you want, exactly as above.
    * - ``source``
-     - **Required.** The data source, exactly as above.
+     - **Required.** The data source. It must be able to address a field
+       by the interval it spans — the same sources as :ref:`accumulate
+       <sources-accumulate>`: ``mars``, ``grib``, ``grib-index`` and
+       ``fdb``.
    * - ``from``
      - **Required.** What each field *spans*. Every shape ``accumulate``
        accepts works here and means the same thing:
@@ -303,8 +306,10 @@ held outright.
 
 In a :ref:`trajectory recipe <layouts-trajectories>` the output rows are
 ``(base_date, step)`` and each one holds the reduction over
-``(base_date + step − period, base_date + step]``. Two source shapes are
-served, and ``from:`` says which.
+``(base_date + step − period, base_date + step]``. ``from:`` says where the
+fields of that window come from: by validity time from any source data, or
+from **the run from the layout** — the run initialised at the row's own base
+date.
 
 Base-less source data
 =====================
@@ -321,10 +326,15 @@ Because analyses exist before the run starts, such a window may reach back
 past the base date: a 24 h mean on a 6 h step covers ``base_date − 18h`` to
 ``base_date + 6h``, and the built variable records that as ``period: [-18h,
 6h]``. That is legitimate, and it is why the restriction below applies only
-to the run-anchored shape.
+to the run from the layout.
 
-The run the layout imposes
-==========================
+Interval-valued source data described any other way — explicit
+``base_dates`` and ``steps``, a lookup table, a bare ``accumulation`` — is
+treated the same: the window is covered from whatever the archive holds, and
+the row's base date only stamps the output.
+
+The run from the layout: samples
+================================
 
 ``from: {base_dates: true, frequency: ...}`` — the samples are lead times of
 the run initialised at the row's base date.  ``base_dates`` is a flag rather
@@ -344,14 +354,43 @@ steps — the one thing that is not true. ``base_dates`` is a flag for the same
 reason: with no ``steps:`` beside it, there is nothing for a sentinel value to
 agree with.
 
-Two rules follow from the run:
+The run from the layout: fields that span an interval
+=====================================================
 
--  ``base_dates: true`` is only valid under ``layout: trajectories``. It
-   inherits the run from the output layout, and no other layout imposes one.
+``from: {base_dates: from-layout, steps: from-layout, accumulation: ...}`` —
+the same description :ref:`accumulate <sources-accumulate>` uses for the run
+from the layout. Each window is covered from the row's own run alone, with no
+search, and the source is asked for that run's step ranges: a 6 h maximum at
+step 12 of the 00Z run reads the fields ``[6-7]`` … ``[11-12]`` of the 00Z
+run, and nothing from any other run.
+
+.. code:: yaml
+
+   maximum:
+     period: 6h
+     from:
+       base_dates: from-layout
+       steps: from-layout
+       accumulation: 1h        # each field holds the maximum over one step
+     source:
+       mars: {class: od, type: fc, stream: oper, levtype: sfc, param: [10fg]}
+
+``accumulation:`` says how long each archived field is, as for
+``accumulate``, and ``over:`` applies as described above. Only ``mars``,
+``grib`` and ``grib-index`` can be asked for a run's step ranges.
+
+Rules for the run from the layout
+=================================
+
+Both shapes follow two rules:
+
+-  They are only valid under ``layout: trajectories``. They inherit the run
+   from the output layout, and no other layout imposes one.
 -  ``steps.start`` must be at least ``period``. The window has to lie inside
    the run: reaching further back would need fields from before the forecast,
    which is analysis — a different quantity, not merely missing data. Use a
    base-less ``from:`` if that is what you want.
+
 
 **********************
  Completeness

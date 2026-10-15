@@ -19,7 +19,7 @@ Proposed - 14/10/2026
 `accumulate:` produces one output field per date by **summing** the window `(date − period, date]` of an archive of accumulated fields:
 
 - the window is covered by archived intervals (`covering:` / `availability:`);
-- each part is rebuilt by a **signed sum**: one field when the archive holds it outright, `+a(0,12) − a(0,6)` when it accumulates from the start of the run;
+- each subwindow is rebuilt by a **signed sum**: one field when the archive holds it outright, `+a(0,12) − a(0,6)` when it accumulates from the start of the run;
 - the output is stamped `proc.time_method: accum`.
 
 That is the only temporal reduction available when a dataset is built. The only other is `rolling_average`, used when a dataset is opened: it takes a mean over a fixed number of the dataset's own time steps, and only for values already in the dataset. Nothing produces a window maximum, minimum or mean from the archive.
@@ -34,7 +34,7 @@ That is the only temporal reduction available when a dataset is built. The only 
 | total precipitation in the past 6 h | `tp` | hourly increments, or cumulative from the run start |
 | mean short-wave flux from a stored integral | `ssrd` | cumulative from the run start |
 | wettest hour in the past 6 h | `tp` | hourly increments, or cumulative from the run start |
-| monthly mean of daily maximum temperature | `mx2t24` | one 24 h block per day |
+| monthly mean of daily maximum temperature | `mx2t24` | one 24 h interval per day |
 | daily mean / maximum of analyses | `2t` | instantaneous, every 1–6 h |
 
 Only the fourth row works today, and some of the others are worse than unsupported: `accumulate:` over a gust archive *builds*, and writes meaningless values (see below).
@@ -77,7 +77,7 @@ What the cells mean:
 - **❌ crossed extrema** (the maximum of stored minima) — arithmetically defined, physically meaningless.
 - **⭕ extremum of extrema** (`10fg`, `mn2t`) — partition-invariant, and the core need.
 - **⭕ extremum of accumulations** (the wettest hour) — needs each subwindow rebuilt by a signed sum *and then* reduced, plus a key stating how long a subwindow is, because the largest hourly total and the largest 3-hourly total are different numbers.
-- **⭕ mean of extrema** (monthly mean of daily Tmax, an ETCCDI index) and **extremum of means** (peak hourly flux) — real quantities, but partition-dependent. They are well defined when the archive's blocks *are* the definition: every block held outright and all the same length.
+- **⭕ mean of extrema** (monthly mean of daily Tmax, an ETCCDI index) and **extremum of means** (peak hourly flux) — real quantities, but partition-dependent. They are well defined when the archive's own subwindows *are* the definition: every subwindow held outright and all the same length.
 - **⭕ mean of means** (`avg_sdswrf`) — partition-invariant only when the mean is **weighted by length**.
 - **⭕ reductions of instantaneous fields** (daily mean or maximum of analyses) — the simplest case, sampled every `frequency`.
 - **⚠️ mean of accumulations** — equal to the window total divided by `period`. Possible today only as `accumulate:` followed by scaling outside the recipe block, and the output is then stamped `accum` while holding a rate.
@@ -212,6 +212,31 @@ maximum:
 
 The window is end-anchored and half-open, `(date − period, date]`, as for `accumulate:`. The output is stamped with `proc.time_method` `max`, `min` or `avg` over `period`.
 
+#### A rolling window on instantaneous data
+
+There is no `rolling:` key. A window is rolling when `period` is longer than the dataset's output frequency, so consecutive windows overlap. A rolling 24 h mean over 6-hourly data:
+
+```yaml
+dates:
+  start: 2020-01-01T00:00:00
+  end: 2020-01-31T18:00:00
+  frequency: 6h          # the output stride: one field every 6 h
+
+input:
+  average:
+    period: 24h          # longer than the stride, so the windows overlap
+    from: {frequency: 6h}
+    source: {mars: {class: ea, type: an, levtype: sfc, param: [2t]}}
+```
+
+The field stamped `2020-01-02T12:00` is the mean of the four samples at `−18 h`, `−12 h`, `−6 h` and `0 h`, that is `01-01T18:00`, `01-02T00:00`, `01-02T06:00` and `01-02T12:00`. The start of the window belongs to the previous one. The next field, at `18:00`, reuses three of the four samples, and each source field is fetched once and offered to every window that needs it.
+
+- `from: {frequency: 6h}` must divide `period`, so the window is a whole number of samples.
+- The first windows reach back before `start`, so the source must hold samples from `start − period + frequency`. A window missing a sample raises, instead of averaging fewer samples.
+- Under `maximum:` or `minimum:` the recipe is the same with the block renamed, for a rolling 24 h maximum.
+- This differs from `over:`, which cuts one window into fixed subwindows of interval-valued data. Here the windows themselves slide, by the dataset's stride.
+- It is the build-time counterpart of `rolling_average`, which averages the dataset's own time steps when a dataset is opened.
+
 ### The validity table
 
 ```
@@ -228,7 +253,7 @@ max / min / avg columns: any piece rebuilt from several fields is refused (not a
 
 The cell decisions:
 
-1. **Partition-dependent cells are accepted only when the archive's blocks are the definition** (D+U): every piece held outright and all the same length. This keeps the monthly mean of daily Tmax and the peak hourly mean flux. It refuses the same request on an archive whose granularity changes with lead time, where the result would mix hourly and 3-hourly blocks.
+1. **Partition-dependent cells are accepted only when the archive's own subwindows are the definition** (D+U): every piece held outright and all the same length. This keeps the monthly mean of daily Tmax and the peak hourly mean flux. It refuses the same request on an archive whose granularity changes with lead time, where the result would mix hourly and 3-hourly subwindows.
 2. **`average:` over accumulations is refused**, with the message "use `accumulate:` and divide by the period". A first-class mean rate needs a parameter and units change (J m⁻² → W m⁻²), which is left to a follow-up.
 3. **Both loops are checked.** On the instantaneous loop every sample is a piece held outright, `frequency` long.
 4. **A mean accumulated from the start of the run is refused.** Rebuilding one would need `m(6,9) = (9·m(0,9) − 6·m(0,6)) / 3`, which is not implemented, so a differenced `avg` piece fails loudly. Checked: `ea` `avg_sdswrf` is a mean over each step interval, and `od` `oper` does not archive it.
@@ -237,11 +262,39 @@ The cell decisions:
 
 ### `over:`
 
-- `over:` is a new key for interval-valued data. It cuts the window into **fixed, consecutive** slices, and each slice is one subwindow, rebuilt by a signed sum of the fields covering it. So `over: 1h` on a cumulative archive gives hourly totals, and `over: 3h` on an hourly archive gives 3-hourly totals.
+- `over:` is a new key for interval-valued data. It cuts the window into **fixed, consecutive** subwindows, each rebuilt by a signed sum of the fields covering it. So `over: 1h` on a cumulative archive gives hourly totals, and `over: 3h` on an hourly archive gives 3-hourly totals.
 - `over:` applies only to additive fields; on stored maxima, minima or means it is refused.
-- Slices are not rolling: `[0-3] [3-6]`, not every 3 h at an hourly stride. The two agree when `over:` equals the archive's own step.
+- The subwindows are fixed, not rolling: `[0-3] [3-6]`, not every 3 h at an hourly stride. The two agree when `over:` equals the archive's own step.
 - `over:` is recorded only in the stored recipe, not in the field metadata.
 - `accumulate:` takes no `over:`, because a sum does not depend on the partition.
+
+### Trajectory layout: the run from the layout
+
+Under `layout: trajectories` every output row is a `(base_date, step)` pair from one forecast run. What the data source is asked for depends on `from:`, not on the layout. The one case that differs is **the run from the layout**, where the source data is the row's own run:
+
+| block | `from:` | the source is asked for |
+|---|---|---|
+| `maximum` / `minimum` / `average` | `{frequency: ...}` | validity dates; the row's base date only stamps the output |
+| `maximum` / `minimum` / `average` | `{base_dates: true, frequency: ...}` | lead times of the row's run (`ForecastDates`) |
+| all four | `{base_dates: from-layout, steps: from-layout, accumulation: ...}` | step ranges of the row's run (`ForecastIntervals`) |
+| all four | any other interval-valued `from:` | intervals found by searching the archive; the row's base date only stamps the output |
+
+For example, the 6 h maximum gust at step 12 of the 00Z run reads steps `[6-7]` … `[11-12]` of the 00Z run, and nothing from any other run:
+
+```yaml
+maximum:
+  period: 6h
+  from:
+    base_dates: from-layout
+    steps: from-layout
+    accumulation: 1h        # each field holds the maximum over one step
+  source: {mars: {class: od, type: fc, stream: oper, levtype: sfc, param: [10fg]}}
+```
+
+- **Two argument types, because of the kind of data.** A sample is a point: `(valid_time, basetime)` identifies it, so `ForecastDates` is enough. A field that spans an interval is not: at step 12 of the 00Z run an archive may hold `[11-12]`, `[9-12]` or `[0-12]`, and a window needs several such fields, some subtracted. `ForecastIntervals` therefore carries the output rows and, separately, the archived intervals the covering found.
+- **One definition.** `takes_run_from_layout(from_)` is true for both spellings, and both recipe rules follow from it: only valid under `layout: trajectories`, and `steps.start ≥ period`, so that the window lies inside the run.
+- **No search.** The window is covered by `ForecastCovering`, anchored on the row's run, exactly as `accumulate:` does. The validity table then applies unchanged: hourly gust maxima are pieces held outright, so `maximum:` is accepted; a from-zero description over maxima would need differenced pieces, and is refused.
+- **Data sources.** Only sources that can fetch a field by run and lead time serve it: `mars`, `grib`, `grib-index`, and `forcings` for samples. A source that cannot address a field by the interval it spans now raises a clear error. Before this change the base `Source` silently fell back to asking for the output dates only.
 
 ### Interval-valued fields described as instants
 
@@ -263,12 +316,14 @@ It is supported but not advertised; the interval-valued `from:` is the documente
 - Recipe:
   - three new blocks, and the key `over:`;
   - `from:` replaces `covering:` / `availability:`, which remain accepted with a deprecation warning.
+- `Source.execute_intervals` / `execute_forecast_intervals` no longer fall back to the validity-date handlers; a source without interval support raises `NotImplementedError` naming the sources that work.
 - earthkit-data has no `min` time method, so it is registered at import time until it is available upstream.
 - Docs: `docs/building/sources/average.rst`, including the validity table and the semantics of `over:`.
 
 ## Consequences
 
-- Window maxima, minima and means can be produced when a dataset is built: from analyses, from per-step archives (including irregular ones), and, with `over:`, from cumulative archives (the wettest hour).
+- Window maxima, minima and means can be produced when a dataset is built: from analyses, from per-step archives (including irregular ones), and, with `over:`, from cumulative archives (the wettest hour). Under a trajectory layout they can be taken from each row's own forecast run.
+- **Behaviour change for data sources:** a source that cannot serve archived intervals now fails at once with an explicit error, instead of being asked for the output dates and failing later with missing fields.
 - One table states, in one place, what may be reduced by what. The user documentation reproduces it, and adding a statistic or an operation means adding a row or a column.
 - Following one field through the code means reading one loop and one reducer.
 - **Behaviour change for `accumulate:`:** over an archive of stored maxima, minima or means it now stops with an explanation, instead of writing meaningless values. Recipes that relied on that output fail. That output was never correct.
