@@ -32,6 +32,9 @@ from .utils.mock_sources import LoadSource
 HERE = os.path.dirname(__file__)
 # find_yamls
 NAMES = []
+# Recipes with tendency statistics, also built with one loader per group and the finalise
+# split into parts (`finalise --prepare`, `--load --parts i/n`, `--tidy`).
+TENDENCY_NAMES = []
 for path in glob.glob(os.path.join(HERE, "*.yaml")):
     name, _ = os.path.splitext(os.path.basename(path))
     with open(path) as f:
@@ -42,6 +45,8 @@ for path in glob.glob(os.path.join(HERE, "*.yaml")):
             NAMES.append(pytest.param(name, marks=pytest.mark.slow))
             continue
     NAMES.append(name)
+    if (conf.get("statistics") or {}).get("tendencies"):
+        TENDENCY_NAMES.append(name)
 
 
 # Used by pipe.yaml
@@ -199,6 +204,50 @@ def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTest
         Fixture to retrieve the test archive.
     get_test_data : GetTestData
         Fixture to retrieve a request's recorded test data.
+    """
+    _run(name, get_test_archive, get_test_data)
+
+
+@skip_if_offline
+@pytest.mark.parametrize("name", TENDENCY_NAMES)
+@pytest.mark.parametrize("finalise_parts", [2, 3, 5])
+def test_run_with_parallel_load_and_finalise(
+    name: str, finalise_parts: int, get_test_archive: GetTestArchive, get_test_data: GetTestData
+) -> None:
+    """Build the dataset with one loader per group and the finalise split into ``finalise_parts`` parts.
+
+    The statistics (including the tendencies) must match the reference, which was built in one process.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+    finalise_parts : int
+        The number of ``finalise --load --parts i/n`` parts.
+    get_test_archive : callable
+        Fixture to retrieve the test archive.
+    get_test_data : GetTestData
+        Fixture to retrieve a request's recorded test data.
+    """
+    _run(name, get_test_archive, get_test_data, finalise_parts=finalise_parts)
+
+
+def _run(
+    name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData, finalise_parts: int | None = None
+) -> None:
+    """Build the dataset and compare it to the reference.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataset.
+    get_test_archive : callable
+        Fixture to retrieve the test archive.
+    get_test_data : GetTestData
+        Fixture to retrieve a request's recorded test data.
+    finalise_parts : int, optional
+        If set, load each group in its own ``load --parts`` call and split the finalise
+        into ``finalise_parts`` parts.
 
     Raises
     ------
@@ -219,9 +268,10 @@ def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTest
         from anemoi.datasets.create.creator import VERSION
 
         recipe = os.path.join(HERE, name + ".yaml")
-        output = os.path.join(HERE, name + ".zarr")
+        suffix = "" if finalise_parts is None else f"-load-per-group-finalise-in-{finalise_parts}-parts"
+        output = os.path.join(HERE, name + suffix + ".zarr")
 
-        create_dataset(recipe=recipe, output=output, delta=["12h"])
+        create_dataset(recipe=recipe, output=output, delta=["12h"], finalise_parts=finalise_parts)
 
         _check_mars_requests(name, load_source.requests)
 
