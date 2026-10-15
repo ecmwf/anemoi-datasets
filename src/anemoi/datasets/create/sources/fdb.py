@@ -126,11 +126,11 @@ class FdbSource(Source):
             *[ekd.from_source("fdb", request, **self.configs).to_fieldlist(read_all=True) for request in requests]
         )
 
-        if self.grid is not None:
-            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
-
         if self.flavour:
             fl = self.flavour.map(fl)
+
+        if self.grid is not None:
+            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
 
         return fl
 

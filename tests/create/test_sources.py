@@ -255,11 +255,21 @@ def test_grib_ensemble_with_filter(tmp_path) -> None:
     assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["surface_pressure"]}
 
 
+def _write_icon_grid(path, npoints: int) -> tuple[str, np.ndarray, np.ndarray]:
+    """Write a minimal ICON grid file (cell centres only) with ``npoints`` points."""
+    import xarray as xr
+
+    latitudes, longitudes = np.linspace(40.0, 50.0, npoints), np.linspace(0.0, 10.0, npoints)
+    xr.Dataset({"clat": ("cell", np.deg2rad(latitudes)), "clon": ("cell", np.deg2rad(longitudes))}).to_netcdf(path)
+    return str(path), latitudes, longitudes
+
+
 def test_fdb(tmp_path, monkeypatch) -> None:
-    """The fdb source returns the fields of its requests (FDB itself is mocked)."""
+    """The fdb source returns the fields of its requests (FDB itself is mocked), flavoured, then on the grid."""
     import earthkit.data as ekd
 
     path = _write_grib(tmp_path / "fdb.grib", [dict(dataDate=20200101, dataTime=0, shortName="sp", value=1)])
+    gridfile, latitudes, longitudes = _write_icon_grid(tmp_path / "grid.nc", 496)
     from_source = ekd.from_source
 
     def mock_from_source(name, *args, **kwargs):
@@ -276,13 +286,16 @@ def test_fdb(tmp_path, monkeypatch) -> None:
             "fdb": {
                 "fdb_request": {"class": "od", "stream": "oper", "type": "an", "param": ["sp"]},
                 "param_id_map": {"sp": 134},
+                "flavour": [[{"shortName": "sp"}, {"param": "surface_pressure"}]],
+                "grid_definition": {"icon": {"path": gridfile}},
             }
         },
     }
 
     ds = open_dataset(create_dataset(recipe=recipe, output=None))
-    assert ds.variables == ["sp"]
+    assert ds.variables == ["surface_pressure"]
     assert float(ds[0, 0, 0, 0]) == 1
+    assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
 
 
 def test_selection_by_other_keys(tmp_path) -> None:
