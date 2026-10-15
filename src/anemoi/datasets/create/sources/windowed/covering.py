@@ -23,7 +23,7 @@ Today there are three concrete strategies:
   path.
 - :class:`ForecastCovering` — basetime-imposed; emits the trivial 1-
   or 2-interval decomposition for trajectory accumulations.
-- :class:`ValidTimeCovering` — base-less; tiles the window directly
+- :class:`ValidTimeCovering` — base-less; partitions the window directly
   for a validity-time-indexed increment source.
 
 The ``forecast`` recipe discriminator is intentionally **not**
@@ -182,9 +182,9 @@ class ForecastCovering(Covering):
         if self._kind == "from-zero":
             # Built explicitly rather than grouped: this is the one covering whose
             # intervals are not a chain. It is a flat signed decomposition -- the
-            # whole accumulation minus the part before the window -- which was fine
+            # whole accumulation minus the stretch before the window -- which was fine
             # while the consumer only summed them, and says nothing about which
-            # part of the window they rebuild. There is exactly one: the window.
+            # subwindow they rebuild. There is exactly one: the window.
             whole = SignedInterval(start=basetime, end=basetime + step_end, base=basetime)
             if step_start == zero:
                 # the window starts at the basetime, so the archive holds it outright
@@ -225,8 +225,8 @@ class ForecastCovering(Covering):
                 cycle += reset
             return group_intervals_into_subwindows(covering, start, end)
 
-        # increment (a fixed per-step window of length ``L``): tile the
-        # requested window with ``L``-long increments and sum them, so a
+        # increment (a fixed per-step window of length ``L``): partition the
+        # requested window into ``L``-long increments and sum them, so a
         # ``period`` coarser than the source increment re-accumulates (e.g. a
         # 6 h window from 3 h increments = two fields). The window must be a
         # whole multiple of ``L``.
@@ -257,14 +257,14 @@ class ValidTimeCovering(Covering):
 
     The source stores one accumulation per fixed-length window ending at its
     own validity time (a flat valid-time index).  The requested window
-    ``[start, end]`` is tiled into ``length``-long base-less increments and
+    ``[start, end]`` is partitioned into ``length``-long base-less increments and
     summed; ``end − start`` must be a whole multiple of ``length``.
 
     There is no search and no midnight alignment: the fields are addressed by
-    validity time, so the tiling is exact and anchored on the requested window
+    validity time, so the partition is exact and anchored on the requested window
     itself (a ``length`` that does not divide 24 h is therefore fine — e.g. a
-    5 h source serving a 5 h period).  A source that lacks one of the tiled
-    fields fails loudly later, at the completeness check — exactly as a search
+    5 h source serving a 5 h period).  A source that lacks one of the
+    subwindows' fields fails loudly later, at the completeness check — exactly as a search
     miss would.
 
     Parameters

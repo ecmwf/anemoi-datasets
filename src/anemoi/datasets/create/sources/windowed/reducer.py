@@ -51,7 +51,7 @@ class Reducer:
     key : tuple
         The grouping key identifying the variable.
     subwindows : list of Subwindow
-        The pieces the window is cut into; every one is required.
+        The subwindows the window is cut into; every one is required.
     operation : Operation
         What reduces the subwindow values.
     basetime : datetime.datetime, optional

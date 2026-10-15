@@ -193,7 +193,7 @@ granularity decides:
    that subwindow, so it is refused.
 
 With ``over:`` the window is cut into fixed, consecutive ``over``-long
-slices, and each slice is one subwindow, rebuilt by a signed sum of the
+subwindows, each rebuilt by a signed sum of the
 fields covering it. ``over: 1h`` on a cumulative archive gives six hourly
 totals; ``over: 3h`` on an hourly increment archive gives two 3-hourly
 totals. That is only meaningful for additive fields, so ``over:`` over
@@ -202,12 +202,12 @@ stored maxima, minima or means is refused.
 .. literalinclude:: yaml/reduce-maximum-over.yaml
    :language: yaml
 
-The slices are **fixed, not rolling**: ``over: 3h`` on a 6 h window is
+The subwindows are **fixed, not rolling**: ``over: 3h`` on a 6 h window is
 ``[0-3]`` and ``[3-6]``, not every 3 h interval at an hourly stride. The two
 agree when ``over:`` equals the archive's own step, which is why the wettest
 *hour* is unambiguous on an hourly archive. ``over:`` is recorded only in
 the recipe stored with the dataset — the output field says ``max`` over
-``period``, whatever the slice length.
+``period``, whatever the subwindow length.
 
 ``accumulate`` does not take ``over:``. A sum of subwindows is the same
 whatever length they are.
@@ -259,7 +259,7 @@ archive: maxima, minima and means are not additive, so a piece rebuilt by
 subtracting or adding stored fields is refused.
 
 "Equal pieces" is what makes the partition-dependent cells well defined. The
-mean of daily maxima is a real quantity — the archive's daily blocks *are*
+mean of daily maxima is a real quantity — the archive's daily subwindows *are*
 the definition — but over an archive whose granularity changes with lead
 time it would mix hourly and 3-hourly maxima into one number, so it is
 accepted only when every piece has the same length.
@@ -280,7 +280,7 @@ total with a ``max`` label on it. ``od-oper`` runs are 12 h apart, so a 6 h
 ``period`` is held outright on every other row and differenced in between;
 ``over:`` fixes both.
 
-**A mean of totals** is the window total divided by however many blocks the
+**A mean of totals** is the window total divided by however many subwindows the
 archive holds. For a mean rate, use ``accumulate:`` and divide by ``period``.
 
 **Crossed extrema** — the maximum of stored minima — and **sums of

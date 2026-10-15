@@ -51,9 +51,9 @@ def cut(
     """The subwindows of the window ``[start, end]``.
 
     Without *over* they are whatever the covering finds, so their length is the
-    archive's. With *over* the window is cut into ``over``-long slices, each covered on
+    archive's. With *over* the window is cut into ``over``-long subwindows, each covered on
     its own and rebuilt by one signed sum -- which is what turns an accumulating
-    archive into hourly totals for "the wettest hour". Slices are fixed, not rolling.
+    archive into hourly totals for "the wettest hour". The subwindows are fixed, not rolling.
 
     *basetime* is passed to the covering only when given: it is the run the trajectory
     layout imposes, which only a ``ForecastCovering`` takes.

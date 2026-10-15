@@ -31,9 +31,9 @@ from .operations import BLOCKS
 
 #: Partition-invariant: the answer does not depend on how the window was cut.
 OK = "ok"
-#: The mean / extremum of the archive's own blocks: only defined when every block is
+#: The mean / extremum of the archive's own subwindows: only defined when every one is
 #: held outright and all have the same length.
-BLOCKS_OF_EQUAL_LENGTH = "blocks"
+EQUAL_SUBWINDOWS = "equal"
 #: An extremum of additive pieces ("the wettest hour"): needs at least two pieces per
 #: window, all of the same length.
 EXTREMUM_OF_TOTALS = "totals"
@@ -49,17 +49,17 @@ TABLE: dict[tuple[str, str], str] = {
     ("max", "accum"): EXTREMUM_OF_TOTALS,
     ("max", "max"): OK,
     ("max", "min"): _CROSSED,
-    ("max", "avg"): BLOCKS_OF_EQUAL_LENGTH,
+    ("max", "avg"): EQUAL_SUBWINDOWS,
     ("min", "accum"): EXTREMUM_OF_TOTALS,
     ("min", "max"): _CROSSED,
     ("min", "min"): OK,
-    ("min", "avg"): BLOCKS_OF_EQUAL_LENGTH,
+    ("min", "avg"): EQUAL_SUBWINDOWS,
     ("mean", "accum"): (
-        "averaging stored totals gives the window total divided by however many blocks the "
+        "averaging stored totals gives the window total divided by however many subwindows the "
         "archive holds; for a mean rate, use 'accumulate:' and divide by the period"
     ),
-    ("mean", "max"): BLOCKS_OF_EQUAL_LENGTH,
-    ("mean", "min"): BLOCKS_OF_EQUAL_LENGTH,
+    ("mean", "max"): EQUAL_SUBWINDOWS,
+    ("mean", "min"): EQUAL_SUBWINDOWS,
     ("mean", "avg"): OK,
 }
 
@@ -134,7 +134,7 @@ def check(operation: str, statistic: str, pieces: Pieces) -> None:
 
     block = f"'{BLOCKS[operation]}:'"
     verdict = TABLE[(operation, statistic)]
-    if verdict not in (OK, BLOCKS_OF_EQUAL_LENGTH, EXTREMUM_OF_TOTALS):
+    if verdict not in (OK, EQUAL_SUBWINDOWS, EXTREMUM_OF_TOTALS):
         reason = verdict.format(op=operation, stat=statistic, same=BLOCKS[_STAT_OPERATION[statistic]])
         raise ValueError(f"{block} over fields that store a {statistic!r} is not supported: {reason}.")
 
@@ -155,9 +155,9 @@ def check(operation: str, statistic: str, pieces: Pieces) -> None:
 
     lengths = ", ".join(frequency_to_string(x) for x in sorted(pieces.lengths))
 
-    if verdict == BLOCKS_OF_EQUAL_LENGTH and len(pieces.lengths) > 1:
+    if verdict == EQUAL_SUBWINDOWS and len(pieces.lengths) > 1:
         raise ValueError(
-            f"{block} over fields that store a {statistic!r} reduces the archive's own blocks, which is "
+            f"{block} over fields that store a {statistic!r} reduces the archive's own subwindows, which is "
             f"only defined when they all have the same length; here they are {lengths}."
         )
 

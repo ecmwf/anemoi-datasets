@@ -327,8 +327,8 @@ class ReduceSchema(BaseModel):
     def _check_over(self) -> None:
         """Validate ``over:``, the length of each subwindow.
 
-        ``over:`` cuts the window into parts and covers each on its own, so that a
-        cumulative archive yields per-part values to reduce -- "the largest hourly
+        ``over:`` cuts the window into subwindows and covers each on its own, so that a
+        cumulative archive yields per-subwindow values to reduce -- "the largest hourly
         total in the window". It is meaningless for source data that is already a
         series of instants: there is nothing to de-accumulate, and the samples'
         spacing is ``frequency:``.

@@ -48,7 +48,7 @@ _register_min_time_method()
 class Operation(NamedTuple):
     """How the pieces of a window are reduced to one value.
 
-    ``reduce(reduced, value, weight)`` folds one piece into the running value, which is
+    ``reduce(reduced, value, weight)`` combines one piece into the running value, which is
     ``None`` before the first piece; it may consume *value*. ``finalize(reduced,
     total_weight)`` runs once, when the window is complete.
     """
