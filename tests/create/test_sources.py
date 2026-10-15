@@ -383,6 +383,28 @@ def test_forcings_metadata_from_accumulation_template(tmp_path) -> None:
     assert not {"mars", "grib", "process", "period"} & set(ds.variables_metadata["cos_latitude"])
 
 
+def test_check_variables_compatibility(tmp_path) -> None:
+    """The recipe can relax the check that the variables of every part of the dataset are compatible."""
+    path = _write_grib(
+        tmp_path / "tp.grib",
+        [
+            dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=step, value=1)
+            for step in (6, 12)
+        ],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T12:00:00", "frequency": "6h"},
+        "build": {"group_by": 1},
+        "input": {"grib": {"path": path}},
+    }
+
+    with pytest.raises(ValueError, match="not compatible"):
+        create_dataset(recipe=recipe, output=None)
+
+    recipe["build"]["check_variables_compatibility"] = {"ignore_processing_period": True}
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).shape[0] == 2
+
+
 def test_selection_by_other_keys(tmp_path) -> None:
     """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
     import xarray as xr

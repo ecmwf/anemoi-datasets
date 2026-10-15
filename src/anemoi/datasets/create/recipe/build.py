@@ -119,6 +119,8 @@ class Build(BaseModel):
     """Allow NaN values in the dataset. Can be True, False, or a list of variable names."""
     variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")
     group_by: str | int = "monthly"
+    check_variables_compatibility: dict[str, bool | str | list[str]] = {}
+    """Options of the check that the variables of every part are compatible, e.g. ``ignore_processing_period: true``."""
     additions: bool | None = None
     env: dict[str, str] = {}
 

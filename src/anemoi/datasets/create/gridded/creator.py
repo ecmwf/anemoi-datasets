@@ -185,7 +185,7 @@ class GriddedCreator(Creator):
         old = dataset.typed_variables
         new = result.typed_variables
 
-        Variable.check_compatibility(old, new)
+        Variable.check_compatibility(old, new, self.recipe.build.check_variables_compatibility)
 
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path
