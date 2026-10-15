@@ -86,9 +86,8 @@ split across processes, terminals or SLURM jobs. This mirrors the general
       anemoi-datasets finalise dataset.zarr
 
    A single ``finalise`` computes all the statistics in one process,
-   reading the whole dataset. If the loading was run in parallel
-   (``load --parts``), run the finalise in parallel too, in three
-   stages:
+   reading the whole dataset. The finalise can also be run in parallel,
+   in three stages:
 
    .. code:: bash
 
