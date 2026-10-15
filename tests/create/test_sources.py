@@ -341,6 +341,27 @@ def test_accumulate_with_grid_and_flavour(tmp_path) -> None:
     assert ds.variables_metadata["precip"]["process"] == "accumulation"
 
 
+def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
+    """A grib-index of forecasts (accumulated from their base time) serves accumulations over any window."""
+    forecast = [
+        dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=step, value=step)
+        for step in range(1, 7)
+    ]
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T06:00:00", "frequency": "3h"},
+        "input": {
+            "accumulate": {
+                "period": "3h",
+                "covering": {"auto": {"accumulated-from-start": {"basetime": [0], "frequency": 1, "last_step": 6}}},
+                "source": {"grib-index": {"indexdb": _grib_index(tmp_path, forecast), "param": "tp"}},
+            }
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert np.all(ds[0, 0, 0] == 6 - 3)
+
+
 def test_selection_by_other_keys(tmp_path) -> None:
     """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
     import xarray as xr
