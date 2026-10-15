@@ -13,8 +13,18 @@ import datetime
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
-from anemoi.datasets.create.sources.accumulate.covering import covering_factory
+from anemoi.datasets.create.sources.windowed.covering import AutoCovering
+from anemoi.datasets.create.sources.windowed.covering import covering_factory
+from anemoi.datasets.create.sources.windowed.subwindows import contributions_of
+
+
+def _intervals(covering, *args, **kwargs):
+    """The archived intervals a covering asks for, flattened out of its subwindows.
+
+    Most of these tests are about *which fields are retrieved*, which is what the
+    contributions are; the subwindow structure has its own tests.
+    """
+    return contributions_of(covering.partition(*args, **kwargs))
 
 
 def test_discriminator_auto():
@@ -82,8 +92,8 @@ def test_migrate_rewrites_availability():
 
 
 def _lookup(**table):
-    from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
-    from anemoi.datasets.create.sources.accumulate.interval_generators import LookupTableIntervalGenerator
+    from anemoi.datasets.create.sources.windowed.covering import AutoCovering
+    from anemoi.datasets.create.sources.windowed.interval_generators import LookupTableIntervalGenerator
 
     return AutoCovering(LookupTableIntervalGenerator(start="1970-01-01", **table))
 
@@ -100,7 +110,7 @@ def test_lookup_table_expresses_a_from_zero_difference(steps):
     silently added, giving 18h of accumulation labelled as a 6h window.
     """
     start, end = _window(6, 12)
-    cover = _lookup(**{"6-12": [0, steps]}).cover(start, end)
+    cover = _intervals(_lookup(**{"6-12": [0, steps]}), start, end)
 
     assert sum(i.length for i in cover) == (end - start).total_seconds()
     signed = {
@@ -113,32 +123,51 @@ def test_lookup_table_expresses_a_from_zero_difference(steps):
 def test_lookup_table_rejects_entries_that_cannot_cover_the_window():
     start, end = _window(6, 12)
     with pytest.raises(ValueError, match="Cannot find coverage"):
-        _lookup(**{"6-12": [0, "0-12/0-3"]}).cover(start, end)
+        _intervals(_lookup(**{"6-12": [0, "0-12/0-3"]}), start, end)
 
 
 def test_lookup_table_single_archived_window_still_works():
     """The documented form: the archive natively stores the requested windows."""
     start, end = _window(6, 12)
-    cover = _lookup(**{"0-6": [18, "6-12"], "6-12": [18, "12-18"], "12-18": [18, "18-24"], "18-24": [18, "0-6"]}).cover(
-        start, end
+    cover = _intervals(
+        _lookup(**{"0-6": [18, "6-12"], "6-12": [18, "12-18"], "12-18": [18, "18-24"], "18-24": [18, "0-6"]}),
+        start,
+        end,
     )
     assert len(cover) == 1
     assert cover[0].sign == 1
     assert sum(i.length for i in cover) == (end - start).total_seconds()
 
 
-def test_check_covering_rejects_a_mismatched_sum():
-    """No Covering may return intervals whose signed lengths miss the window."""
+def test_a_subwindow_whose_contributions_do_not_rebuild_it_is_rejected():
+    """The check that used to be check_covering, now per subwindow rather than per window.
+
+    Two positive from-zero fields summed give 18h of accumulation labelled as a 6h
+    window; one of them has to be subtracted.
+    """
     from anemoi.datasets.create.intervals import SignedInterval
-    from anemoi.datasets.create.sources.accumulate.covering import check_covering
+    from anemoi.datasets.create.sources.windowed.subwindows import Subwindow
+    from anemoi.datasets.create.sources.windowed.subwindows import validate_contributions
 
     bt = datetime.datetime(2024, 1, 1, 0)
     start, end = _window(6, 12)
-    both_positive = [
-        SignedInterval(bt, bt + datetime.timedelta(hours=12), base=bt),
-        SignedInterval(bt, bt + datetime.timedelta(hours=6), base=bt),
-    ]
-    with pytest.raises(ValueError, match="does not add up"):
-        check_covering(both_positive, start, end)
+    both_positive = Subwindow(
+        interval=SignedInterval(start, end),
+        contributions=(
+            SignedInterval(bt, bt + datetime.timedelta(hours=12), base=bt),
+            SignedInterval(bt, bt + datetime.timedelta(hours=6), base=bt),
+        ),
+    )
+    with pytest.raises(ValueError, match="do not reconstruct it"):
+        validate_contributions(both_positive)
 
-    assert check_covering([SignedInterval(start, end, base=bt)], start, end)
+    # the same two fields, one of them subtracted, do rebuild it
+    validate_contributions(
+        Subwindow(
+            interval=SignedInterval(start, end),
+            contributions=(
+                SignedInterval(bt, bt + datetime.timedelta(hours=12), base=bt),
+                -SignedInterval(bt, bt + datetime.timedelta(hours=6), base=bt),
+            ),
+        )
+    )

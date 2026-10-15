@@ -1,0 +1,18 @@
+# The archive stores a running total from the start of the run, so the window
+# has to be cut up before a maximum means anything.  `over: 1h` asks for hourly
+# totals: the wettest hour in each 24 h window.
+maximum:
+  period: 24h
+  over: 1h
+  from:
+    base_dates: {times: [0]}
+    steps: {start: 1h, end: 48h, frequency: 1h}
+    accumulation: from-zero
+  source:
+    mars:
+      class: od
+      type: fc
+      stream: oper
+      grid: 20./20.
+      levtype: sfc
+      param: [tp]

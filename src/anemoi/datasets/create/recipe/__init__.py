@@ -43,7 +43,7 @@ def _iter_accumulate_blocks(node: Any):
     models carry them directly; raw dicts (e.g. under ``concat``) are
     validated on the fly.
     """
-    from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
+    from anemoi.datasets.create.sources.windowed.description import AccumulateSchema
 
     if node is None:
         return
@@ -70,7 +70,7 @@ def _iter_accumulate_blocks(node: Any):
 
 
 #: The recipe spellings of the time-reduction sources (see
-#: ``create/sources/reduce_support/``).  They share one schema, so one iterator finds
+#: ``create/sources/reduce/``).  They share one schema, so one iterator finds
 #: every block whatever the verb.
 REDUCE_NAMES = ("average", "minimum", "maximum")
 
@@ -82,7 +82,7 @@ def _iter_reduce_blocks(node: Any):
     models carry the schema directly; raw dicts (e.g. under ``concat``) are
     validated on the fly.
     """
-    from anemoi.datasets.create.sources.reduce_support import ReduceSchema
+    from anemoi.datasets.create.sources.reduce import ReduceSchema
 
     if node is None:
         return
@@ -175,9 +175,9 @@ class Recipe(BaseModel):
         """
         from anemoi.utils.dates import frequency_to_string
 
-        from ..sources.accumulate.description import FromBare
-        from ..sources.accumulate.description import FromTrajectories
-        from ..sources.accumulate.description import check_valid_time_source
+        from ..sources.windowed.description import FromBare
+        from ..sources.windowed.description import FromTrajectories
+        from ..sources.windowed.description import check_valid_time_source
 
         is_traj = isinstance(self.output, TrajectoriesOutput)
         blocks = list(_iter_accumulate_blocks(self.input))
@@ -237,16 +237,16 @@ class Recipe(BaseModel):
 
             if not is_traj:
                 raise ValueError(
-                    f"{name}: 'from.base_dates: true' is only valid in a "
+                    f"{name}: 'from.base_dates: true' / 'from-layout' is only valid in a "
                     "'layout: trajectories' recipe — the sentinel inherits the run from the "
-                    "output layout, which only that layout imposes. Describe base-less source "
-                    "data with 'from: {frequency: ...}' instead"
+                    "output layout, which only that layout imposes. Describe the source data "
+                    "without it: 'from: {frequency: ...}' for samples, or the archive's own runs"
                 )
 
             if self.steps is not None and self.steps.start < block.period:
                 raise ValueError(
                     f"{name}: 'steps.start' ({frequency_to_string(self.steps.start)}) must be "
-                    f">= 'period' ({frequency_to_string(block.period)}) — the samples come "
+                    f">= 'period' ({frequency_to_string(block.period)}) — the fields come "
                     "from the run the layout imposes, so an output window must not straddle "
                     "the basetime"
                 )

@@ -118,10 +118,13 @@ class Source:
         )
 
     def execute_intervals(self, argument: "Intervals") -> FieldList:
-        """Handle archive-resolved interval requests from ``AccumulateSource``.
+        """Handle archived-interval requests from the windowed sources.
 
-        Falls back to ``execute_valid_dates`` by default. Override explicitly
-        when step-range requests must be encoded (e.g. ``MarsSource``).
+        ``accumulate`` (and ``maximum`` / ``minimum`` / ``average`` over
+        interval-valued source data) ask for the archived fields covering each
+        window, which only a source that can address a field by the interval it
+        spans can serve. There is no fallback: ``execute_valid_dates`` would
+        receive only the output dates and miss most of every window.
 
         Parameters
         ----------
@@ -133,13 +136,12 @@ class Source:
         FieldList
             The output data.
         """
-        return self.execute_valid_dates(argument)
+        raise NotImplementedError(self._cannot_serve_intervals())
 
     def execute_forecast_intervals(self, argument: "ForecastIntervals") -> FieldList:
-        """Handle forecast accumulation requests.
+        """Handle archived-interval requests for the run from the layout (``base_dates: from-layout``).
 
-        Falls back to ``execute_forecast_dates`` by default. Override explicitly
-        when step-range requests must be encoded.
+        As :meth:`execute_intervals`, with no fallback either.
 
         Parameters
         ----------
@@ -151,7 +153,17 @@ class Source:
         FieldList
             The output data.
         """
-        return self.execute_forecast_dates(argument)
+        raise NotImplementedError(self._cannot_serve_intervals(from_layout=True))
+
+    def _cannot_serve_intervals(self, from_layout: bool = False) -> str:
+        layout = " for the run from the layout (base_dates: from-layout)" if from_layout else ""
+        supported = "'mars', 'grib' and 'grib-index'" if from_layout else "'mars', 'fdb', 'grib' and 'grib-index'"
+        return (
+            f"'{type(self).__name__}' cannot serve archived intervals{layout}: a window over fields that "
+            f"each span an interval needs a source that can address a field by that interval, and only "
+            f"{supported} can. Use one of those as the 'source:', or, for instantaneous fields, "
+            "'from: {frequency: ...}' under 'maximum:' / 'minimum:' / 'average:'."
+        )
 
 
 class FieldSource(Source):

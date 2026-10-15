@@ -22,16 +22,17 @@ shape, which is ``accumulate``'s: ``source:`` is where the data comes from,
 The reduction is named by the block, so there is no ``reduce:`` source and no
 ``operation:`` key in a recipe.
 
-``from:`` has two shapes, recognised by whether ``base_dates`` is present:
-base-less instantaneous fields (``{frequency: ...}``, either output layout), or
-the forecast run a trajectory layout imposes (``{base_dates: true,
-frequency: ...}``).
+``from:`` describes either instantaneous fields — base-less (``{frequency:
+...}``, either output layout) or the forecast run a trajectory layout imposes
+(``{base_dates: true, frequency: ...}``) — or fields that each span an
+interval, in any shape ``accumulate`` accepts. The latter are reduced by
+``accumulate``'s loop, and may be cut into ``over:``-long subwindows.
 """
 
-from .description import FromInstants  # noqa: F401
-from .description import FromRun  # noqa: F401
-from .description import ReduceSchema  # noqa: F401
-from .description import window_samples  # noqa: F401
+from ..windowed.description import FromInstants  # noqa: F401
+from ..windowed.description import FromRun  # noqa: F401
+from ..windowed.description import ReduceSchema  # noqa: F401
+from ..windowed.description import window_samples  # noqa: F401
 from .source import AverageSource  # noqa: F401
 from .source import MaximumSource  # noqa: F401
 from .source import MinimumSource  # noqa: F401

@@ -8,7 +8,6 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import hashlib
 import json
 import logging
 from typing import Any
@@ -17,30 +16,28 @@ from anemoi.transform import FieldList
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ForecastIntervals
-from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulator import Accumulator
-from .accumulator import Logs
-from .clip import apply_clip
-from .clip import normalise_clip
-from .covering import AutoCovering
-from .covering import ForecastCovering
-from .covering import ValidTimeCovering
-from .covering import covering_factory
-from .description import AccumulateSchema
-from .description import FromBare
-from .description import FromLookupTable
-from .description import FromTrajectories
-from .description import TrajectoryIntervalGenerator
-from .description import check_valid_time_source
-from .description import infer_from_trajectories
-from .description import normalise_from
-from .field_to_interval import FieldToInterval
-from .interval_generators import LookupTableIntervalGenerator
+from ..windowed.clip import apply_clip
+from ..windowed.clip import normalise_clip
+from ..windowed.common import check_complete
+from ..windowed.common import create_source_object
+from ..windowed.common import prepare_source
+from ..windowed.covering import ForecastCovering
+from ..windowed.covering import covering_factory
+from ..windowed.covering import covering_from_description
+from ..windowed.description import AccumulateSchema
+from ..windowed.description import FromTrajectories
+from ..windowed.description import infer_from_trajectories
+from ..windowed.description import normalise_from
+from ..windowed.field_to_interval import FieldToInterval
+from ..windowed.groupby import patch_groupby_keys
+from ..windowed.operations import OPERATIONS
+from ..windowed.ranges import argument
+from ..windowed.ranges import cut
+from ..windowed.ranges import reduce_ranges
 
 LOG = logging.getLogger(__name__)
 
@@ -51,31 +48,6 @@ LOG = logging.getLogger(__name__)
 #    request["stream"] = "scda"
 # else:
 #    request["stream"] = "oper"
-
-
-def patch_groupby_keys(group_by: dict | None = None, *, source_name: str = "accumulate"):
-    """Validate a recipe ``group_by:`` block, filling in the default.
-
-    Shared with the time-reduction sources (``average``/``minimum``/``maximum``),
-    which use the same key with the same meaning; *source_name* only names the
-    caller in the error messages.
-    """
-    if group_by is None:
-        return {"namespace": "mars", "ignore": ["date", "time", "step"]}
-    else:
-        namespace = group_by.get("namespace", None)
-        if namespace is None:
-            raise ValueError("No namespace in group_by (set namespace: mars for default)")
-        if namespace != "mars":
-            raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
-        ignore = group_by.get("ignore", [])
-        for key in ["date", "time", "step"]:
-            if key not in ignore:
-                raise ValueError(
-                    f"{source_name} group_by: '{key}' absent in ignore list {ignore}; "
-                    "at least 'date', 'time', 'step' are required"
-                )
-        return group_by
 
 
 @source_registry.register("accumulate")
@@ -142,135 +114,69 @@ class AccumulateSource(Source):
         self._field_to_interval = FieldToInterval(patch)
         self._source_name = self._prepare_source()
 
-    # ── shared helpers ───────────────────────────────────────────────
+    def _prepare_source(self) -> str:
+        return prepare_source("accumulate", self.source, mars_type="fc")
 
-    def _prepare_source(self):
-        """Validate source config and apply MARS defaults."""
-        source = self.source
-        assert (
-            isinstance(source, dict) and len(source) == 1
-        ), f"Source must have exactly one key, got {list(source.keys())}"
-        source_name, source_config = next(iter(source.items()))
-        if source_name == "mars":
-            if "type" not in source_config:
-                source_config["type"] = "fc"
-                LOG.warning("Assuming 'type: fc' for mars source as it was not specified in the recipe")
-            if "levtype" not in source_config:
-                source_config["levtype"] = "sfc"
-                LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
-        return source_name
+    # ── the reduction ────────────────────────────────────────────────
 
-    def _create_source_object(self, *extra_hash_parts):
-        """Create a cached source object keyed by content hash."""
-        h = hashlib.md5(
-            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True, default=str).encode()
-        ).hexdigest()
-        return self.context.create_source(self.source, "data_sources", h)
-
-    def _extract_field_info(self, field):
-        """Extract values, grouping key, time interval, and log string from a field."""
-        values = field.values.copy()
-        meta = field.get(collections=f"metadata.{self.group_by['namespace']}")
-        key = {k: v for k, v in meta.items() if k not in self.group_by["ignore"]}
-        key = tuple(sorted(key.items()))
-        log = " ".join(f"{k}={v}" for k, v in meta.items())
-        field_interval = self._field_to_interval(field)
-        return values, key, field_interval, log
-
-    def _finalise(self, accumulators, fields):
-        """Clean empty accumulators, validate completeness, and return the dataset."""
-        # some accumulators may be empty, remove them
-        # this can happen when the source provides fields that not exactly the one requested (scda/oper)
-        empty = [k for k, acc in accumulators.items() if acc.values is None]
-        for k in empty:
-            LOG.warning(f"Removing empty accumulator for key {k}")
-            del accumulators[k]
-
-        for acc in accumulators.values():
-            if not acc.is_complete():
-                raise ValueError(f"Accumulator not complete: {acc.__repr__(verbose=True)}")
-
-        LOG.info(f"Created {len(accumulators)} accumulated fields")
-
-        if not accumulators:
-            raise ValueError("No accumulators were created, cannot produce accumulated datasource")
-
-        ds = apply_clip(FieldList.from_fields(fields), self.clip)
-
-        LOG.debug(f"Created {len(ds)} accumulated fields:")
-        for f in ds:
-            LOG.debug("  %s", f)
-        return ds
-
-    def _accumulate_fields(self, source_object, intervals, targets, coverages) -> tuple:
-        """Process fields from source and fill accumulators.
+    def _accumulate(self, covering, targets: list, hash_part: Any, from_layout: bool = False) -> FieldList:
+        """Cover every target's window, fetch the fields, sum them, and check the result.
 
         Parameters
         ----------
-        source_object
-            Source factory callable (called as ``source_object(context, intervals)``).
-        intervals
-            ``Intervals`` or ``ForecastIntervals`` to pass to *source_object*.
+        covering
+            Resolves a window into the subwindows covering it.
         targets
-            List of ``(vdate, basetime)`` tuples.  For the valid-date path
-            *basetime* is ``None``.
-        coverages
-            Dict mapping each target tuple to its list of covering intervals.
-
-        Returns
-        -------
-        tuple
-            ``(accumulators, fields)``.
+            ``(valid_date, basetime)`` rows; *basetime* is ``None`` on the
+            validity-date path.
+        hash_part
+            What identifies the source-data description in the subsource cache key.
+        from_layout
+            Whether the subsource is the run the trajectory layout imposes, so the
+            covering is anchored on each row's basetime and the argument is a
+            ``ForecastIntervals``.
         """
-        fields = []
-        accumulators = {}
-        # Execute the inner source once; the same FieldList feeds the main
-        # loop and, on failure, the diagnostic dump in Logs.
-        input_fields = source_object(self.context, intervals)
-        logs = Logs(
-            accumulators=accumulators,
-            source=self.source,
-            source_object=input_fields,
+        windows = {}
+        for vt, bt in targets:
+            windows[(vt, bt)] = cut(covering, vt - self.period, vt, basetime=bt if from_layout else None)
+            LOG.debug("  Covering of %s to %s:", vt - self.period, vt)
+            for subwindow in windows[(vt, bt)]:
+                LOG.debug("    %s", subwindow)
+
+        source_object = create_source_object(self.context, self.source, (str(self.period), self.source, hash_part))
+        input_fields = source_object(self.context, argument(targets, windows, self.period, forecast=from_layout))
+
+        reducers, fields = reduce_ranges(
+            input_fields,
+            targets=targets,
+            windows=windows,
+            period=self.period,
+            operation=OPERATIONS["sum"],
+            group_by=self.group_by,
             field_to_interval=self._field_to_interval,
+            source=self.source,
+            stamp_basetime=True,
+            declared="accum",
         )
-        for field in input_fields:
-            # for each field provided by the catalogue, find which accumulators need it and perform accumulation
-            values, key, field_interval, log = self._extract_field_info(field)
-            logs.append([str(field), log, field_interval, [], []])
 
-            field_used = False
-            for target in targets:
-                # The target defines the accumulation we want to produce,
-                # A target is a tuple:
-                #    - (validity_date, None) for valid-date accumulations
-                #    - (validity_date, basetime) for forecast accumulations (trajectories)
-                # The covering intervals coverage[target] defines which intervals are needed.
-                vdate, basetime = target
-                accumulator_key = (*target, key)
-                if accumulator_key not in accumulators:
-                    accumulators[accumulator_key] = Accumulator(
-                        vdate,
-                        period=self.period,
-                        key=key,
-                        coverage=coverages[target],
-                        basetime=basetime,
-                    )
+        # MARS may answer a request with fields that do not match it exactly: runs at
+        # 06Z and 18Z live in `scda` while the request says `oper`, so the windows
+        # anchored on them get nothing at all. Drop those windows. "No field arrived"
+        # is the test, not "no value yet": a from-zero window holding `a(0,12)` and
+        # still waiting for `a(0,6)` has produced no value, and that half-window is an
+        # error, reported by the completeness check.
+        empty = {k for k, reducer in reducers.items() if reducer.fields_used == 0}
+        for k in empty:
+            LOG.warning("accumulate: no field reached the window for %s; dropping it", k)
+            del reducers[k]
 
-                acc = accumulators[accumulator_key]
+        check_complete("accumulate", self.period, reducers, fields, targets, discarded=empty)
 
-                if acc.compute(values, field_interval):
-                    # actual computation happened in this .compute() method
-                    field_used = True
-                    logs[-1][3].append(target)
-                    logs[-1][4].append(acc.__repr__(verbose=True))
-
-                    if acc.is_complete():
-                        fields.append(acc.as_field(template=field))
-
-            if not field_used:
-                logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
-
-        return accumulators, fields
+        ds = apply_clip(FieldList.from_fields(fields), self.clip)
+        LOG.debug("Created %d accumulated fields:", len(ds))
+        for f in ds:
+            LOG.debug("  %s", f)
+        return ds
 
     # ── dispatch branches ────────────────────────────────────────────
 
@@ -292,19 +198,8 @@ class AccumulateSource(Source):
     def _searched_covering(self):
         """Build the Covering for the validity-date path from the description."""
         description = self._resolved_from()
-
-        if isinstance(description, FromTrajectories):
-            return AutoCovering(TrajectoryIntervalGenerator(description))
-
-        if isinstance(description, FromBare):
-            # A bare `from:` is base-less, validity-time-indexed source data;
-            # `accumulation` is a duration. The window is tiled directly (no
-            # search, no midnight alignment), so the length need not divide 24h.
-            check_valid_time_source(description, period=self.period)
-            return ValidTimeCovering(description.duration)
-
-        if isinstance(description, FromLookupTable):
-            return AutoCovering(LookupTableIntervalGenerator(**description.entries()))
+        if description is not None:
+            return covering_from_description(description, period=self.period, source_name="accumulate")
 
         # Deprecated 'covering:'/'availability:' — the legacy machinery.
         return covering_factory(self.covering, self._source_name, self.source[self._source_name])
@@ -326,37 +221,10 @@ class AccumulateSource(Source):
         recognition of a non-well-known source fails loudly at that point.
         """
         LOG.debug("💬 source for accumulations: %s", self.source)
-        source_object = self._create_source_object(self._description_hash_part())
-        covering_obj = self._searched_covering()
-
-        # generate the interval coverage for every date
-        coverages = {}
         for d in dates:
             if not isinstance(d, datetime.datetime):
                 raise TypeError("valid_date must be a datetime.datetime instance")
-            coverages[(d, None)] = covering_obj.cover(d - self.period, d)
-            LOG.debug(f"  Found covering intervals: for {d - self.period} to {d}:")
-            for c in coverages[(d, None)]:
-                LOG.debug(f"    {c}")
-
-        intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
-        targets = [(d, None) for d in dates]
-
-        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
-
-        # Final checks
-        for date in dates:
-            count = sum(1 for k in accumulators.keys() if k[0] == date)
-            LOG.debug(f"Date {date} has {count} accumulators")
-            if count != len(accumulators) // len(dates):
-                LOG.error(f"All requested dates: {dates}")
-                LOG.error(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
-                for k in accumulators.keys():
-                    if k[0] == date:
-                        LOG.error(f"  Accumulator for key {k}")
-                raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
-
-        return self._finalise(accumulators, fields)
+        return self._accumulate(self._searched_covering(), [(d, None) for d in dates], self._description_hash_part())
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
         """Handle forecast (trajectory) accumulations.
@@ -371,78 +239,16 @@ class AccumulateSource(Source):
           :class:`ForecastCovering` (no search over the archive).
         - every other subsource (a bare, base-less valid-time source; an
           explicit-grid or recognised (omitted ``from:``) trajectory archive;
-          a ``lookup-table``) —
-          reconstructed by the same base-less covering *search* as
-          :meth:`execute_valid_dates`; only the result is stamped as a forecast
-          field at ``(basetime, step)``.
+          a ``lookup-table``) — reconstructed by the same base-less covering
+          *search* as :meth:`execute_valid_dates`; only the result is stamped
+          as a forecast field at ``(basetime, step)``.
         """
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         description = self._resolved_from()
+        targets = list(dates.items)
 
         if isinstance(description, FromTrajectories) and description.is_layout_grid:
-            return self._execute_forecast_from_layout(dates, description)
+            covering = ForecastCovering(period=self.period, accumulation=description.accumulation)
+            return self._accumulate(covering, targets, description.accumulation, from_layout=True)
 
-        return self._execute_forecast_reconstructed(dates)
-
-    def _execute_forecast_from_layout(self, dates: ForecastDates, description: FromTrajectories) -> Any:
-        """Forecast accumulations for a ``from-layout`` subsource (the layout's own run).
-
-        The layout imposes the basetime per row, so the covering is the trivial
-        signed decomposition of :class:`ForecastCovering` — no search over the
-        source data.
-        """
-        source_object = self._create_source_object(description.accumulation)
-        covering = ForecastCovering(period=self.period, accumulation=description.accumulation)
-
-        coverages: dict = {}
-        for vt, bt in dates.items:
-            coverages[(vt, bt)] = covering.cover(vt - self.period, vt, basetime=bt)
-            LOG.debug("  Forecast covering for (vt=%s, bt=%s):", vt, bt)
-            for c in coverages[(vt, bt)]:
-                LOG.debug("    %s", c)
-
-        forecast_intervals = ForecastIntervals(
-            items=[(vt, bt, self.period) for vt, bt in dates.items],
-            intervals=[i for vt, bt in dates.items for i in coverages[(vt, bt)]],
-        )
-        targets = [(vt, bt) for vt, bt in dates.items]
-
-        accumulators, fields = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
-
-        return self._finalise(accumulators, fields)
-
-    def _execute_forecast_reconstructed(self, dates: ForecastDates) -> Any:
-        """Forecast accumulations reconstructed from a searched subsource covering.
-
-        Shares the covering *search* of :meth:`execute_valid_dates` (via
-        :meth:`_searched_covering`): each output window ``[vt − period, vt]`` is
-        covered from the subsource independently of the output basetime.  The
-        covering intervals carry the subsource's own base (``None`` for a
-        base-less valid-time source, the archive run for a trajectory archive),
-        so the inner source fetches them unchanged; the accumulated result is
-        stamped as a forecast field at the layout's ``(basetime, step)`` because
-        the accumulator is given that basetime.
-        """
-        source_object = self._create_source_object(self._description_hash_part())
-        covering_obj = self._searched_covering()
-
-        items = list(dates.items)
-        coverages: dict = {}
-        for vt, bt in items:
-            coverages[(vt, bt)] = covering_obj.cover(vt - self.period, vt)
-            LOG.debug("  Reconstructed covering for (vt=%s, bt=%s):", vt, bt)
-            for c in coverages[(vt, bt)]:
-                LOG.debug("    %s", c)
-
-        # Overlapping trajectory rows can request the same subsource window more
-        # than once; fetch each interval once (matching remaps it to every row).
-        seen: dict = {}
-        for vt, bt in items:
-            for i in coverages[(vt, bt)]:
-                seen.setdefault(i, None)
-        intervals = Intervals(dates=sorted({vt for vt, _ in items}), intervals=list(seen))
-        targets = [(vt, bt) for vt, bt in items]
-
-        accumulators, fields = self._accumulate_fields(source_object, intervals, targets, coverages)
-
-        return self._finalise(accumulators, fields)
+        return self._accumulate(self._searched_covering(), targets, self._description_hash_part())

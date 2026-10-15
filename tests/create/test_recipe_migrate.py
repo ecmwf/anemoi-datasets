@@ -323,7 +323,7 @@ def test_single_pair_with_nonzero_start_is_faithful():
     Regression: the frequency of an isolated step used to be guessed as the
     step value itself, turning a(6, 12) into a(0, 12) — a different field.
     """
-    from anemoi.datasets.create.sources.accumulate.description import FromTrajectories
+    from anemoi.datasets.create.sources.windowed.description import FromTrajectories
 
     old = _recipe({"period": "6h", "availability": [[6, "6-12"]], "source": MARS})
     block = _block(_migrate_and_validate(old))

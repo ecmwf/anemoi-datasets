@@ -33,8 +33,8 @@ from anemoi.datasets.create.intervals import SignedInterval
 from anemoi.datasets.create.intervals import step_to_timedelta
 from anemoi.datasets.create.time_schemas import Steps
 
-from ..covering_intervals import covering_intervals
 from ..interval_generators import IntervalGenerator
+from ..search import search_intervals
 from .accumulation import parse_accumulation
 from .base_dates import RecurringBaseDates
 
@@ -303,7 +303,7 @@ class TrajectoryIntervalGenerator(IntervalGenerator):
     Replaces the raw step-pair ``SearchableIntervalGenerator`` for the
     factorised form: candidates are computed *exactly* for a given time
     (no ``search_range`` window) from base_dates × steps × accumulated,
-    and the Dijkstra search in ``covering_intervals`` is layered on top
+    and the Dijkstra search in ``search_intervals`` is layered on top
     unchanged.
     """
 
@@ -311,9 +311,9 @@ class TrajectoryIntervalGenerator(IntervalGenerator):
         self.description = description
         self.pairs = description.step_pairs()
 
-    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
+    def search_intervals(self, start: datetime.datetime, end: datetime.datetime) -> list[SignedInterval]:
         """Return available SignedIntervals covering the period start->end."""
-        return covering_intervals(start, end, self)
+        return search_intervals(start, end, self)
 
     def __call__(self, current_time: datetime.datetime) -> list[SignedInterval]:
         """Generate the candidate intervals starting (or, negated, ending) at *current_time*."""

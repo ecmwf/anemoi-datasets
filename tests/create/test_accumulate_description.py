@@ -22,15 +22,15 @@ import pytest
 from pydantic import ValidationError
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate.description import AccumulateSchema
-from anemoi.datasets.create.sources.accumulate.description import FromBare
-from anemoi.datasets.create.sources.accumulate.description import FromLookupTable
-from anemoi.datasets.create.sources.accumulate.description import FromTrajectories
-from anemoi.datasets.create.sources.accumulate.description import RecurringBaseDates
-from anemoi.datasets.create.sources.accumulate.description import TrajectoryIntervalGenerator
-from anemoi.datasets.create.sources.accumulate.description import check_valid_time_source
-from anemoi.datasets.create.sources.accumulate.description import infer_from_trajectories
-from anemoi.datasets.create.sources.accumulate.description import parse_accumulation
+from anemoi.datasets.create.sources.windowed.description import AccumulateSchema
+from anemoi.datasets.create.sources.windowed.description import FromBare
+from anemoi.datasets.create.sources.windowed.description import FromLookupTable
+from anemoi.datasets.create.sources.windowed.description import FromTrajectories
+from anemoi.datasets.create.sources.windowed.description import RecurringBaseDates
+from anemoi.datasets.create.sources.windowed.description import TrajectoryIntervalGenerator
+from anemoi.datasets.create.sources.windowed.description import check_valid_time_source
+from anemoi.datasets.create.sources.windowed.description import infer_from_trajectories
+from anemoi.datasets.create.sources.windowed.description import parse_accumulation
 
 
 def _dt(*args):
@@ -369,7 +369,7 @@ def test_covering_monthly_reset_far_from_base():
     gen = TrajectoryIntervalGenerator(d)
     base = _dt(2014, 6, 1, 0)
 
-    cover = gen.covering_intervals(_dt(2014, 6, 15, 12), _dt(2014, 6, 15, 13))
+    cover = gen.search_intervals(_dt(2014, 6, 15, 12), _dt(2014, 6, 15, 13))
     assert sum(i.length for i in cover) == _hours(1).total_seconds()
     assert all(i.base == base for i in cover)
     # -a(336, 348) + a(336, 349)
@@ -387,11 +387,11 @@ def test_covering_bounded_archive():
     )
     gen = TrajectoryIntervalGenerator(d)
     # inside the bounds: fine
-    cover = gen.covering_intervals(_dt(2021, 1, 10, 18), _dt(2021, 1, 11, 0))
+    cover = gen.search_intervals(_dt(2021, 1, 10, 18), _dt(2021, 1, 11, 0))
     assert sum(i.length for i in cover) == _hours(6).total_seconds()
     # outside the bounds: no coverage
     with pytest.raises(ValueError, match="Cannot find coverage"):
-        gen.covering_intervals(_dt(2022, 6, 10, 18), _dt(2022, 6, 11, 0))
+        gen.search_intervals(_dt(2022, 6, 10, 18), _dt(2022, 6, 11, 0))
 
 
 def test_infer_from_trajectories_auto():
@@ -450,7 +450,7 @@ def test_schema_from_defaults_to_none():
     assert _schema().from_kind is None
 
     # recognition only knows well-known MARS archives — anything else still fails loudly
-    from anemoi.datasets.create.sources.accumulate.description import infer_from_trajectories
+    from anemoi.datasets.create.sources.windowed.description import infer_from_trajectories
 
     with pytest.raises(ValueError, match="only supported for the 'mars' source"):
         infer_from_trajectories("grib-index", {"index-db": "x"})
@@ -463,7 +463,7 @@ def test_schema_dump_round_trips_through_normalise_from():
     field name ``from_`` and re-validates without tripping the "'from: auto' is
     not a value" rejection (which only guards the user-facing ``from`` alias).
     """
-    from anemoi.datasets.create.sources.accumulate.description import normalise_from
+    from anemoi.datasets.create.sources.windowed.description import normalise_from
 
     # (a) omitted from: -> None -> dumped -> re-normalised without error
     dumped = _schema().model_dump()
@@ -493,7 +493,7 @@ def test_schema_unknown_from_key_rejected():
 
 def test_validate_from_messages_on_raw_configs():
     """The runtime path takes raw dicts, so it re-validates them structurally."""
-    from anemoi.datasets.create.sources.accumulate.description import _validate_from
+    from anemoi.datasets.create.sources.windowed.description import _validate_from
 
     # a bare mapping is now valid (base-less / trajectory-layout scheme)
     assert _validate_from({"accumulation": "1h"}).accumulation == "1h"
@@ -540,7 +540,7 @@ def test_normalise_from_warn_flag_silences_deprecations():
     """The runtime source re-normalises with warn=False, so a deprecated
     spelling warns once — at recipe validation — not once per layer.
     """
-    from anemoi.datasets.create.sources.accumulate.description import normalise_from
+    from anemoi.datasets.create.sources.windowed.description import normalise_from
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
