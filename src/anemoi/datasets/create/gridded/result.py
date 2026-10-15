@@ -176,6 +176,10 @@ def _resolution(field: Any) -> Any:
 
     The GRIB handle behind ``field.geography`` is read because filters mask the single GRIB keys.
     """
+    if field.geography.grid_type() == "_unstructured":
+        # Grids given as latitude/longitude arrays, as anemoi-transform 0.x reported them
+        return "unknown"
+
     handle = getattr(field.geography, "handle", None)
     if handle is None:
         return None

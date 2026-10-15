@@ -351,9 +351,9 @@ def test_grib_gridfile(get_test_data) -> None:
     assert ds.shape == (8, 1, 1, 1147980)
     assert ds.variables == ["2t"]
 
-    # unstructured grid: no resolution and no MARS grid, the area is the bounding box
+    # unstructured grid: resolution "unknown", no MARS grid, the area is the bounding box
     data_request = zarr.open(created, mode="r").attrs["data_request"]
-    assert ds.resolution is None
+    assert ds.resolution == "unknown"
     assert data_request["grid"] is None
     assert data_request["area"] == pytest.approx(
         [ds.latitudes.max(), ds.longitudes.min(), ds.latitudes.min(), ds.longitudes.max()]
