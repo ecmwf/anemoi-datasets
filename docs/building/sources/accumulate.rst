@@ -115,10 +115,10 @@ data is.
        by the interval it spans: ``mars``, ``grib`` (files) and
        ``grib-index`` are supported, and ``fdb`` except for the run from
        the layout (``base_dates: from-layout``). ``mars`` and ``fdb``
-       serve only intervals tied
-       to a model run, so a base-less ``from: {accumulation: ...}`` needs
-       ``grib`` or ``grib-index``. Any other source is refused with an
-       error.
+       fetch a field by run and step, so they need a ``from:`` that
+       names the runs; a bare ``from: {accumulation: ...}``, indexed by
+       validity time, needs ``grib`` or ``grib-index``. Any other source
+       is refused with an error.
    * - ``from``
      - *Optional.* What the source data is.
 
