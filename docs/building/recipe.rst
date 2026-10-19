@@ -32,7 +32,7 @@ Zarr format
 ===========
 
 Datasets are written in Zarr format 2 by default. Zarr format 3 can be
-selected with ``output.zarr_format: 3``. This is experimental, see
+selected with ``output.format: zarr3``. This is experimental, see
 :ref:`zarr-format`.
 
 Deprecated / removed output keys
@@ -45,6 +45,11 @@ Deprecated / removed output keys
    parsing with a ``DeprecationWarning``; any other value is rejected.
 -  ``output.flatten_grid`` has been **removed**. Cube flattening is
    always on.
+-  ``output.format`` no longer selects the layout, use ``output.layout``
+   instead. Recipes that set ``output.format`` to ``gridded``,
+   ``tabular`` or ``trajectories`` keep working, with a warning, and
+   ``anemoi-datasets recipe --migrate`` rewrites them. ``output.format``
+   now selects the Zarr format, see :ref:`zarr-format`.
 -  MARS request keys ``user_date`` and ``user_time`` are no longer
    accepted — use the wildcard shorthand ``date: "????-??-01"`` with an
    optional ``time:`` list instead. See :ref:`sources-mars`.

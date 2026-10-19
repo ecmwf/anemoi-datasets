@@ -23,6 +23,7 @@ from anemoi.utils.remote import TransferMethodNotImplementedError
 
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
@@ -71,8 +72,8 @@ class ZarrCopier:
         Rechunk size for the target data array.
     reshard : str
         Reshard size for the target data array.
-    zarr_format : int, optional
-        Zarr format of the target. Defaults to the format of the source, or 3 when resharding.
+    format : str, optional
+        Format of the target. Defaults to the format of the source, or ``"zarr3"`` when resharding.
     """
 
     def __init__(
@@ -88,7 +89,7 @@ class ZarrCopier:
         obfuscate: bool,
         rechunk: str,
         reshard: str = None,
-        zarr_format: int | None = None,
+        format: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the ZarrCopier.
@@ -117,8 +118,8 @@ class ZarrCopier:
             Rechunk size for the target data array.
         reshard : str
             Reshard size for the target data array.
-        zarr_format : int, optional
-            Zarr format of the target. Defaults to the format of the source, or 3 when resharding.
+        format : str, optional
+            Format of the target. Defaults to the format of the source, or ``"zarr3"`` when resharding.
         **kwargs : Any
             Additional keyword arguments.
         """
@@ -135,10 +136,11 @@ class ZarrCopier:
 
         self.rechunking = rechunk.split(",") if rechunk else []
         self.resharding = reshard.split(",") if reshard else []
-        self.zarr_format = zarr_format
 
-        if self.resharding and zarr_format == 2:
-            raise ValueError("Resharding requires Zarr format 3, it cannot be used with --zarr-format 2.")
+        self.zarr_format = zarr_format_from_name(format) if format is not None else None
+
+        if self.resharding and self.zarr_format == 2:
+            raise ValueError("Resharding requires Zarr format 3, it cannot be used with --format zarr2.")
 
         source_is_ssh = self.source.startswith("ssh://")
         target_is_ssh = self.target.startswith("ssh://")
@@ -671,10 +673,9 @@ class CopyMixin:
                 help="Reshard the target data array. This option will adjust --block-size to that it is divisible by the reshard size. Zarr 3 only.",
             )
             command_parser.add_argument(
-                "--zarr-format",
-                type=int,
-                choices=[2, 3],
-                help="Zarr format of the target. Defaults to the format of the source, or 3 with --reshard. Format 3 is experimental. Zarr 3 only.",
+                "--format",
+                choices=["zarr2", "zarr3"],
+                help="Format of the target. Defaults to the format of the source, or zarr3 with --reshard.",
             )
         command_parser.add_argument("source", help="Source location.")
         command_parser.add_argument("target", help="Target location.")
@@ -702,7 +703,7 @@ class CopyMixin:
 
         if zarr_version >= 3:
             # Converting the Zarr format requires rewriting the data, so it cannot use the file transfer
-            reshaping_requested = args.rechunk or getattr(args, "reshard", None) or getattr(args, "zarr_format", None)
+            reshaping_requested = args.rechunk or getattr(args, "reshard", None) or getattr(args, "format", None)
         else:
             reshaping_requested = args.rechunk
 

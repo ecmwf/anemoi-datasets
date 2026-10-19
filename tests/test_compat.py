@@ -20,6 +20,7 @@ from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.create.dataset import Dataset
@@ -164,7 +165,7 @@ def test_dataset_writes_default_format(tmp_path: Path) -> None:
 def test_dataset_writes_format_3(tmp_path: Path) -> None:
     path = tmp_path / "test.zarr"
 
-    dataset = Dataset(str(path), create=True, zarr_format=3)
+    dataset = Dataset(str(path), create=True, format="zarr3")
     dataset.add_array(name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",))
 
     for node in (path, path / "_build", path / "_build" / "flags"):
@@ -172,6 +173,22 @@ def test_dataset_writes_format_3(tmp_path: Path) -> None:
 
     # Updating detects the format of the existing store
     assert get_zarr_format(Dataset(str(path), update=True).store) == 3
+
+
+def test_zarr_format_from_name() -> None:
+    assert zarr_format_from_name("zarr2") == 2
+    assert zarr_format_from_name("zarr3") == 3
+    with pytest.raises(ValueError, match="Invalid format 'zarr4'"):
+        zarr_format_from_name("zarr4")
+
+
+def test_dataset_rejects_unknown_format(tmp_path: Path) -> None:
+    path = tmp_path / "test.zarr"
+
+    with pytest.raises(ValueError, match="Invalid format"):
+        Dataset(str(path), create=True, format="zarr4")
+
+    assert not path.exists()
 
 
 def test_dataset_update_requires_existing_store(tmp_path: Path) -> None:
@@ -193,7 +210,7 @@ def test_copy_resharding_requires_zarr_format_3() -> None:
             obfuscate=False,
             rechunk=None,
             reshard="10",
-            zarr_format=2,
+            format="zarr2",
         )
 
 

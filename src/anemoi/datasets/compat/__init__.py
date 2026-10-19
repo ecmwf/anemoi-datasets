@@ -21,6 +21,31 @@ zarr_private_files = (".zgroup", ".zattrs", ".zarray", "zarr.json")
 # anemoi-inference) support Zarr format 3.
 DEFAULT_ZARR_FORMAT = 2
 
+# Names of the Zarr formats in the user-facing API (recipe ``output.format``, ``copy --format``)
+_FORMATS = {"zarr2": 2, "zarr3": 3}
+
+DEFAULT_FORMAT = f"zarr{DEFAULT_ZARR_FORMAT}"
+
+
+def zarr_format_from_name(name: str) -> int:
+    """Return the Zarr format number for a user-facing format name.
+
+    Parameters
+    ----------
+    name : str
+        The format name, ``"zarr2"`` or ``"zarr3"``.
+
+    Returns
+    -------
+    int
+        The Zarr format, 2 or 3.
+    """
+    try:
+        return _FORMATS[name]
+    except KeyError:
+        raise ValueError(f"Invalid format {name!r}, expected one of {', '.join(map(repr, _FORMATS))}") from None
+
+
 if zarr_version < 3:
     from .zarr2 import DebugStore
     from .zarr2 import HTTPStore
@@ -89,6 +114,7 @@ def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
 
 
 __all__ = [
+    "DEFAULT_FORMAT",
     "DEFAULT_ZARR_FORMAT",
     "ZarrFileNotFoundError",
     "HTTPStore",
@@ -97,6 +123,7 @@ __all__ = [
     "MemoryStore",
     "blosc_compressor",
     "get_zarr_format",
+    "zarr_format_from_name",
     "zarr_open",
     "zarr_version",
     "zarr_private_files",

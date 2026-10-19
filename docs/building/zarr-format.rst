@@ -33,13 +33,13 @@ version of zarr-python supports it.
    cannot be read with zarr-python 2, so they cannot be used by tools
    that have not moved to zarr-python 3 yet.
 
-To create a dataset in Zarr format 3, set ``zarr_format`` in the
+To create a dataset in Zarr format 3, set ``format`` in the
 ``output`` section of the recipe:
 
 .. code:: yaml
 
    output:
-     zarr_format: 3
+     format: zarr3
 
 This requires zarr-python 3 or later. With zarr-python 2, the recipe is
 rejected when it is loaded, before anything is written.
@@ -59,22 +59,21 @@ format of the source.
 
 When the data is rewritten (``--rechunk``, ``--reshard`` or
 ``--obfuscate``), the target is also written in the format of the
-source, unless the ``--zarr-format`` option selects another one. This
+source, unless the ``--format`` option selects another one. This
 option is only available with zarr-python 3, and can also be used on its
 own to convert a dataset:
 
 .. code:: bash
 
-   anemoi-datasets copy --zarr-format 3 dataset.zarr dataset-v3.zarr
+   anemoi-datasets copy --format zarr3 dataset.zarr dataset-v3.zarr
 
 Sharding (``--reshard``) only exists in Zarr format 3, so resharding
 writes the target in Zarr format 3 and cannot be combined with
-``--zarr-format 2``.
+``--format zarr2``.
 
 When resuming an interrupted copy with ``--resume``, the target keeps its
-format. If ``--zarr-format`` is given and does not match the format of
-the target, the copy is aborted. Use ``--overwrite`` to start again
-instead.
+format. If ``--format`` is given and does not match the format of the
+target, the copy is aborted. Use ``--overwrite`` to start again instead.
 
 **********************************
  Checking the format of a dataset

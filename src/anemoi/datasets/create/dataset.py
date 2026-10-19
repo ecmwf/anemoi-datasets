@@ -20,7 +20,8 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 
 from .locking import Locking
@@ -54,7 +55,7 @@ class Dataset:
         overwrite: bool = False,
         update: bool = False,
         create: bool = False,
-        zarr_format: int = DEFAULT_ZARR_FORMAT,
+        format: str = DEFAULT_FORMAT,
     ) -> None:
 
         if path.endswith("/"):
@@ -81,7 +82,7 @@ class Dataset:
                     raise FileExistsError(f"Dataset path '{path}' already exists. Use --overwrite to overwrite.")
 
         if create:
-            self.store = zarr_open(self.path, "w", zarr_format=zarr_format)
+            self.store = zarr_open(self.path, "w", zarr_format=zarr_format_from_name(format))
         elif update:
             self.store = zarr_open(self.path, "r+")
         else:

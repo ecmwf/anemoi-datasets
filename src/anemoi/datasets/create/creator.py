@@ -22,7 +22,7 @@ import tqdm
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
+from anemoi.datasets.compat import DEFAULT_FORMAT
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
@@ -34,7 +34,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.21"
+VERSION = "0.22"
 
 LOG = logging.getLogger(__name__)
 
@@ -104,11 +104,11 @@ class Creator(ABC):
         for k, v in recipe.build.env.items():
             os.environ[k] = str(v)
 
-        format_type = recipe.output.layout
+        layout = recipe.output.layout
 
-        LOG.info(f"Creating dataset with format: {format_type}")
+        LOG.info(f"Creating dataset with layout: {layout}")
 
-        match format_type:
+        match layout:
 
             case "gridded":
                 from .gridded.creator import SimpleGriddedCreator
@@ -123,7 +123,7 @@ class Creator(ABC):
 
                 return TrajectoryGriddedCreator(recipe=recipe, **kwargs)
             case _:
-                raise ValueError(f"Unknown format type: {format_type}")
+                raise ValueError(f"Unknown layout: {layout}")
 
     #####################################################
     # Initialisation
@@ -132,18 +132,18 @@ class Creator(ABC):
     def task_init(self) -> Dataset:
         """Run the initialisation process for the dataset."""
 
-        zarr_format = self.recipe.output.zarr_format
-        if zarr_format != DEFAULT_ZARR_FORMAT:
+        format = self.recipe.output.format
+
+        if format != DEFAULT_FORMAT:
             LOG.warning(
-                f"Writing the dataset in Zarr format {zarr_format} is experimental:"
-                " it cannot be read with zarr-python 2 (e.g. by current anemoi-training/inference)."
+                f"Writing the dataset in format {format} is experimental: it cannot be read with zarr-python 2."
             )
 
         dataset = Dataset(
             self.path,
             overwrite=self.kwargs.get("overwrite", False),
             create=True,
-            zarr_format=zarr_format,
+            format=format,
         )
         self._cleanup_temporary_directories()
 
