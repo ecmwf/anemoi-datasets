@@ -485,6 +485,28 @@ def _auto_adjust(
 
             datasets = adjusted
 
+        if "frequency" in adjust_set:
+            common_steps = datasets[0].steps
+            for d in datasets[1:]:
+                common_steps = np.intersect1d(common_steps, d.steps)
+
+            if any(not np.array_equal(d.steps, common_steps) for d in datasets):
+                if len(common_steps) < 2 or not np.all(
+                    np.diff(common_steps) == np.diff(common_steps)[0]
+                ):
+                    raise ValueError("No regularly spaced common trajectory steps")
+
+                from anemoi.datasets.usage.trajectories.subset import StepSubset
+
+                datasets = [
+                    d
+                    if np.array_equal(d.steps, common_steps)
+                    else StepSubset(
+                        d, np.flatnonzero(np.isin(d.steps, common_steps)).tolist()
+                    ).mutate()
+                    for d in datasets
+                ]
+
         return datasets, kwargs
 
     if "start" or "end" in adjust_set:

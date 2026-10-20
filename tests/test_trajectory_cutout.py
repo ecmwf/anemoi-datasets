@@ -232,3 +232,367 @@ def test_trajectory_cutout_real_constructor(monkeypatch):
     np.testing.assert_array_equal(combined[index], expected)
 
     np.testing.assert_array_equal(combined[0], expected[0])
+
+
+class StepDataset:
+    """Minimal trajectory dataset for automatic step alignment tests."""
+
+    def __init__(self, hours):
+        self.steps = np.array(hours, dtype="timedelta64[h]")
+        self.base_dates = np.array(
+            ["2025-01-01", "2025-01-02"],
+            dtype="datetime64[h]",
+        )
+        self.variables = ["t"]
+        self.shape = (2, 1, 1, len(hours), 4)
+        self.data = np.arange(np.prod(self.shape)).reshape(self.shape)
+
+    def mutate(self):
+        return self
+
+    def swap_with_parent(self, parent):
+        return parent
+
+    @property
+    def step_frequency(self):
+        from datetime import timedelta
+
+        diffs = np.diff(self.steps)
+        if len(diffs) == 0 or not np.all(diffs == diffs[0]):
+            return None
+        seconds = int(diffs[0] / np.timedelta64(1, "s"))
+        return timedelta(seconds=seconds)
+
+    def _subset(self, **kwargs):
+        assert not kwargs
+        return self
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_trajectory_cutout_adjusts_common_steps(reverse):
+    from datetime import timedelta
+
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    hourly = StepDataset([6, 7, 8, 9, 10, 11, 12])
+    three_hourly = StepDataset([6, 9, 12])
+
+    sources = [hourly, three_hourly]
+    if reverse:
+        sources.reverse()
+
+    adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
+
+    expected_steps = np.array([6, 9, 12], dtype="timedelta64[h]")
+
+    for source, result in zip(sources, adjusted):
+        np.testing.assert_array_equal(result.steps, expected_steps)
+        assert result.shape == (2, 1, 1, 3, 4)
+        assert result.step_frequency == timedelta(hours=3)
+
+        indices = np.flatnonzero(np.isin(source.steps, expected_steps))
+        np.testing.assert_array_equal(
+            result[0],
+            source.data[0][..., indices, :],
+        )
+
+
+def test_trajectory_cutout_adjust_keeps_matching_steps():
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    d1 = StepDataset([6, 9, 12])
+    d2 = StepDataset([6, 9, 12])
+
+    adjusted, _ = _auto_adjust([d1, d2], {"adjust": "all"})
+
+    assert adjusted[0] is d1
+    assert adjusted[1] is d2
+
+
+@pytest.mark.parametrize(
+    "other_steps",
+    [
+        [15, 18, 21],
+        [6, 8, 11],
+    ],
+)
+def test_trajectory_cutout_adjust_rejects_incompatible_steps(other_steps):
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    d1 = StepDataset([6, 7, 8, 9, 10, 11, 12])
+    d2 = StepDataset(other_steps)
+
+    with pytest.raises(ValueError, match="No regularly spaced common trajectory steps"):
+        _auto_adjust([d1, d2], {"adjust": "all"})
+
+
+def test_trajectory_cutout_adjust_select_does_not_change_steps():
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    d1 = StepDataset([6, 7, 8, 9, 10, 11, 12])
+    d2 = StepDataset([6, 9, 12])
+
+    adjusted, _ = _auto_adjust([d1, d2], {"adjust": "select"})
+
+    assert adjusted[0] is d1
+    assert adjusted[1] is d2
+
+
+def test_trajectory_cutout_stepsubset_tendencies():
+    from datetime import timedelta
+    from unittest.mock import MagicMock
+
+    from anemoi.datasets.usage.trajectories.subset import StepSubset
+
+    source = MagicMock()
+    source.mutate.return_value = source
+    source.steps = np.arange(7, dtype="timedelta64[h]")
+
+    subset = StepSubset(source, [0, 3, 6])
+
+    subset.statistics_tendencies()
+    source.statistics_tendencies.assert_called_once_with(timedelta(hours=3))
+
+    source.statistics_tendencies.reset_mock()
+
+    subset.statistics_tendencies(timedelta(hours=1))
+    source.statistics_tendencies.assert_called_once_with(timedelta(hours=1))
+
+
+def test_trajectory_cutout_stepsubset_irregular_tendencies():
+    from unittest.mock import MagicMock
+
+    from anemoi.datasets.usage.trajectories.subset import StepSubset
+
+    source = MagicMock()
+    source.mutate.return_value = source
+    source.steps = np.arange(7, dtype="timedelta64[h]")
+
+    subset = StepSubset(source, [0, 2, 5])
+
+    assert subset.step_frequency is None
+
+    with pytest.raises(ValueError, match="not uniformly spaced"):
+        subset.statistics_tendencies()
+
+    source.statistics_tendencies.assert_not_called()
+
+
+def test_trajectory_cutout_adjust_two_and_five_hourly():
+    from datetime import timedelta
+
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    two_hourly = StepDataset(list(range(0, 31, 2)))
+    five_hourly = StepDataset(list(range(0, 31, 5)))
+
+    sources = [two_hourly, five_hourly]
+    adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
+
+    expected = np.array([0, 10, 20, 30], dtype="timedelta64[h]")
+
+    for source, result in zip(sources, adjusted):
+        np.testing.assert_array_equal(result.steps, expected)
+        assert result.step_frequency == timedelta(hours=10)
+        assert result.shape == (2, 1, 1, 4, 4)
+
+        indices = np.flatnonzero(np.isin(source.steps, expected))
+        np.testing.assert_array_equal(
+            result[0],
+            source.data[0][..., indices, :],
+        )
+
+
+@pytest.mark.parametrize(
+    "first_has_stats,second_has_stats",
+    [
+        (True, True),
+        (True, False),
+        (False, True),
+        (False, False),
+    ],
+)
+def test_trajectory_cutout_tendencies_follow_first_dataset(
+    first_has_stats, second_has_stats
+):
+    from datetime import timedelta
+    from unittest.mock import MagicMock
+
+    from anemoi.datasets.usage.forwards import Combined
+    from anemoi.datasets.usage.gridded.grids import Cutout
+
+    first = MagicMock()
+    second = MagicMock()
+    first.mutate.return_value = first
+
+    delta = timedelta(hours=10)
+    first_stats = {"stdev": np.array([2.0])}
+    second_stats = {"stdev": np.array([3.0])}
+
+    if first_has_stats:
+        first.statistics_tendencies.return_value = first_stats
+    else:
+        first.statistics_tendencies.side_effect = KeyError("10h")
+
+    if second_has_stats:
+        second.statistics_tendencies.return_value = second_stats
+    else:
+        second.statistics_tendencies.side_effect = KeyError("10h")
+
+    # Initialise the existing Combined machinery without spatial masks.
+    cutout = Cutout.__new__(Cutout)
+    cutout.check_compatibility = MagicMock()
+    Combined.__init__(cutout, [first, second], MagicMock())
+
+    if first_has_stats:
+        assert cutout.statistics_tendencies(delta) is first_stats
+    else:
+        with pytest.raises(KeyError):
+            cutout.statistics_tendencies(delta)
+
+    first.statistics_tendencies.assert_called_once_with(delta)
+    second.statistics_tendencies.assert_not_called()
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_trajectory_cutout_adjust_offset_base_dates_and_steps(reverse):
+    from datetime import timedelta
+
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    origin = np.datetime64("2025-01-01T00:00", "h")
+
+    regional = StepDataset(list(range(0, 31, 2)))
+    global_ds = StepDataset(list(range(0, 31, 3)))
+
+    regional.base_dates = origin + np.arange(22) * np.timedelta64(7, "h")
+    global_ds.base_dates = (
+        origin + np.timedelta64(11, "h")
+        + np.arange(30) * np.timedelta64(5, "h")
+    )
+
+    regional.base_frequency = timedelta(hours=7)
+    global_ds.base_frequency = timedelta(hours=5)
+
+    for ds in (regional, global_ds):
+        ds.shape = (len(ds.base_dates), 1, 1, len(ds.steps), 4)
+        ds.data = np.arange(np.prod(ds.shape)).reshape(ds.shape)
+
+    sources = [regional, global_ds]
+    if reverse:
+        sources.reverse()
+
+    adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
+
+    expected_base_dates = origin + np.array(
+        [21, 56, 91, 126], dtype="timedelta64[h]"
+    )
+    expected_steps = np.array(
+        [0, 6, 12, 18, 24, 30], dtype="timedelta64[h]"
+    )
+
+    for source, result in zip(sources, adjusted):
+        np.testing.assert_array_equal(result.base_dates, expected_base_dates)
+        np.testing.assert_array_equal(result.steps, expected_steps)
+
+        assert result.base_frequency == timedelta(hours=35)
+        assert result.step_frequency == timedelta(hours=6)
+        assert result.shape == (4, 1, 1, 6, 4)
+
+        base_indices = np.flatnonzero(
+            np.isin(source.base_dates, expected_base_dates)
+        )
+        step_indices = np.flatnonzero(
+            np.isin(source.steps, expected_steps)
+        )
+
+        for i, j in enumerate(base_indices):
+            np.testing.assert_array_equal(
+                result[i],
+                source.data[j][..., step_indices, :],
+            )
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_trajectory_cutout_adjust_partial_time_overlap(reverse):
+    from datetime import timedelta
+
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    origin = np.datetime64("2025-01-01T00:00", "h")
+
+    regional = StepDataset(list(range(2, 29, 2)))
+    global_ds = StepDataset(list(range(6, 25, 3)))
+
+    regional.base_dates = origin + np.arange(15) * np.timedelta64(7, "h")
+    global_ds.base_dates = (
+        origin + np.timedelta64(11, "h")
+        + np.arange(18) * np.timedelta64(5, "h")
+    )
+
+    regional.base_frequency = timedelta(hours=7)
+    global_ds.base_frequency = timedelta(hours=5)
+
+    for ds in (regional, global_ds):
+        ds.shape = (len(ds.base_dates), 1, 1, len(ds.steps), 4)
+        ds.data = np.arange(np.prod(ds.shape)).reshape(ds.shape)
+
+    sources = [regional, global_ds]
+    if reverse:
+        sources.reverse()
+
+    adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
+
+    expected_dates = origin + np.array(
+        [21, 56, 91], dtype="timedelta64[h]"
+    )
+    expected_steps = np.array(
+        [6, 12, 18, 24], dtype="timedelta64[h]"
+    )
+
+    for source, result in zip(sources, adjusted):
+        np.testing.assert_array_equal(result.base_dates, expected_dates)
+        np.testing.assert_array_equal(result.steps, expected_steps)
+
+        assert result.base_frequency == timedelta(hours=35)
+        assert result.step_frequency == timedelta(hours=6)
+        assert result.shape == (3, 1, 1, 4, 4)
+
+        assert result.base_dates[0] >= source.base_dates[0]
+        assert result.base_dates[-1] <= source.base_dates[-1]
+        assert result.steps[0] >= source.steps[0]
+        assert result.steps[-1] <= source.steps[-1]
+
+        base_indices = np.flatnonzero(
+            np.isin(source.base_dates, expected_dates)
+        )
+        step_indices = np.flatnonzero(
+            np.isin(source.steps, expected_steps)
+        )
+
+        for i, j in enumerate(base_indices):
+            np.testing.assert_array_equal(
+                result[i],
+                source.data[j][..., step_indices, :],
+            )
+
+
+def test_trajectory_cutout_adjust_no_common_base_dates():
+    from anemoi.datasets.usage.misc import _auto_adjust
+
+    origin = np.datetime64("2025-01-01T00:00", "h")
+
+    regional = StepDataset([0, 2, 4, 6])
+    global_ds = StepDataset([0, 2, 4, 6])
+
+    regional.base_dates = origin + np.arange(4) * np.timedelta64(7, "h")
+    global_ds.base_dates = (
+        origin + np.timedelta64(35, "h")
+        + np.arange(4) * np.timedelta64(5, "h")
+    )
+
+    with pytest.raises(ValueError, match="No common trajectory base dates"):
+        _auto_adjust([regional, global_ds], {"adjust": "all"})

@@ -142,8 +142,8 @@ expected that the bounding box of the first dataset is contained within
 the bounding box of the second dataset.
 
 The same ``cutout`` syntax also supports 5D trajectory datasets.
-With ``adjust="all"``, common base dates and variables can be aligned,
-but forecast steps and their frequencies must already match.
+With ``adjust="all"``, common base dates and variables are aligned,
+and forecast steps are reduced to their common regularly spaced subset.
 
 The image below shows the global dataset:
 

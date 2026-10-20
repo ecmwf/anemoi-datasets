@@ -118,9 +118,14 @@ class StepSubset(Forwards):
         return self.forward[n][..., self.step_indices, :]
 
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
-        """Delegate to the underlying dataset, which resolves a default delta
-        from the step frequency for trajectories.
-        """
+        """Return tendencies using the selected step frequency by default."""
+        if delta is None:
+            delta = self.step_frequency
+            if delta is None:
+                raise ValueError(
+                    "Cannot use a default tendencies delta: the steps of this dataset "
+                    "are not uniformly spaced. Pass 'delta' explicitly."
+                )
         return self.forward.statistics_tendencies(delta)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
