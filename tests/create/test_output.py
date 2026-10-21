@@ -7,9 +7,16 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-import pytest
+import logging
 
+import pytest
+from pydantic import ValidationError
+
+from anemoi.datasets.commands.recipe.migrate import migrate_output_format
+from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.create.recipe import Recipe
 from anemoi.datasets.create.recipe.output import GriddedOutput
+from anemoi.datasets.create.recipe.output import TabularOutput
 
 
 def _coords(*, variables=101, ensembles=1, grid_points=100):
@@ -68,3 +75,63 @@ def test_default_chunking_errors_when_one_grid_point_exceeds_codec_limit():
     output = GriddedOutput()
     with pytest.raises(ValueError, match="single-grid-point chunk"):
         output.get_chunking(_coords(variables=600_000_000, grid_points=4))
+
+
+def test_zarr_format_defaults_to_2():
+    assert GriddedOutput().format == "zarr2"
+
+
+@pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3")
+def test_zarr_format_3_is_accepted_with_zarr3():
+    assert GriddedOutput(format="zarr3").format == "zarr3"
+
+
+@pytest.mark.skipif(zarr_version >= 3, reason="requires zarr-python<3")
+def test_zarr_format_3_requires_zarr3():
+    with pytest.raises(ValidationError, match="requires zarr-python>=3"):
+        GriddedOutput(format="zarr3")
+
+
+def test_zarr_format_must_be_2_or_3():
+    with pytest.raises(ValidationError):
+        GriddedOutput(format="zarr4")
+
+
+def _recipe(output: dict) -> Recipe:
+    return Recipe(input={"empty": {}}, dates={"values": []}, output=output)
+
+
+def test_layout_selects_output():
+    output = _recipe({"layout": "tabular"}).output
+    assert isinstance(output, TabularOutput)
+    assert output.format == "zarr2"
+
+
+@pytest.mark.parametrize(("layout", "cls"), [("gridded", GriddedOutput), ("tabular", TabularOutput)])
+def test_legacy_format_is_migrated_to_layout(layout, cls, caplog):
+    # Recipes written before output.format selected the Zarr format, including those stored in existing datasets
+    with caplog.at_level(logging.WARNING):
+        output = _recipe({"format": layout}).output
+
+    assert isinstance(output, cls)
+    assert output.layout == layout
+    assert output.format == "zarr2"
+    assert f"'output.format: {layout}' is deprecated" in caplog.text
+
+
+def test_legacy_format_conflicting_with_layout_is_rejected():
+    with pytest.raises(ValidationError, match="conflicts with 'output.layout: gridded'"):
+        _recipe({"format": "tabular", "layout": "gridded"})
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ({"format": "tabular"}, {"layout": "tabular"}),
+        ({"format": "tabular", "dtype": "float64"}, {"layout": "tabular", "dtype": "float64"}),
+        ({"format": "zarr3"}, {"format": "zarr3"}),
+        ({"format": "tabular", "layout": "gridded"}, {"format": "tabular", "layout": "gridded"}),
+    ],
+)
+def test_migrate_output_format(output, expected):
+    assert migrate_output_format({"output": output}) == {"output": expected}

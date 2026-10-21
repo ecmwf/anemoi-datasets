@@ -42,13 +42,13 @@ def _check_group(group, verbosity: int, *path) -> None:
 
 
 def _check_array(array, verbosity: int, *path) -> None:
-    from anemoi.datasets.compat import zarr_version
+    from anemoi.datasets.compat import get_zarr_format
 
     assert len(array.chunks) == len(array.shape)
 
     full = os.path.join(*path)
 
-    if zarr_version >= 3:
+    if get_zarr_format(array) == 3:
         # zarr v3: files live under c/ with slash-separated coordinates.
         # For sharded arrays the unit is the shard; otherwise the chunk.
         shards = getattr(array, "shards", None)
@@ -102,7 +102,7 @@ def check_zarr(path: str, verbosity: int = 0) -> None:
     verbosity : int, optional
         Verbosity level for logging. Default is 0 (no logging).
     """
-    import zarr
+    from anemoi.datasets.compat import zarr_open
 
     if verbosity > 0:
         LOG.info(f"Checking Zarr archive {path}")
@@ -111,4 +111,4 @@ def check_zarr(path: str, verbosity: int = 0) -> None:
         # This does not work with non-directory Zarr archives
         raise ValueError(f"Path {path} does not exist.")
 
-    _check_group(zarr.open(path, mode="r"), verbosity, path)
+    _check_group(zarr_open(path, "r"), verbosity, path)
