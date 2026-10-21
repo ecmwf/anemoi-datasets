@@ -61,8 +61,9 @@ class HTTPStore(_ReadOnlyStore):
         Zarr lists an HTTP store. Links that only jump around that page
         are skipped.
         """
-        import fsspec
         from urllib.parse import urlparse
+
+        import fsspec
 
         directory = self.url
         if not directory.endswith("/"):
