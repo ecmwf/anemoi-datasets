@@ -14,7 +14,6 @@ import zarr
 from zarr import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
-zarr_append_mode = "w+"
 
 
 class _ReadOnlyStore(zarr.storage.BaseStore):
@@ -172,7 +171,34 @@ def _monkey_patch_create_array(
 Group.create_array = _monkey_patch_create_array
 
 
-def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.Blosc":
+def zarr_format_kwargs(zarr_format: int) -> dict:
+    """Return the keyword arguments selecting the on-disk format of a new zarr store.
+
+    zarr-python 2 names this option ``zarr_version``. Its experimental ``zarr_version=3``
+    implements a draft of the specification that is incompatible with Zarr format 3,
+    so only format 2 is supported.
+
+    Parameters
+    ----------
+    zarr_format : int
+        The Zarr format to write.
+
+    Returns
+    -------
+    dict
+        The keyword arguments to pass to ``zarr.open_group``.
+    """
+    if zarr_format != 2:
+        raise ValueError(f"zarr_format={zarr_format} requires zarr-python>=3 (installed: {zarr.__version__})")
+    return {"zarr_version": 2}
+
+
+def get_zarr_format(node: Group | zarr.core.Array) -> int:
+    """Return the Zarr format of a group or array, always 2 with zarr-python 2."""
+    return 2
+
+
+def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int) -> "zarr.Blosc":
     """Return a Blosc compressor for zarr2.
 
     Parameters
@@ -183,10 +209,13 @@ def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> 
         The compression level.
     shuffle : int
         The shuffle mode (0=none, 1=byte, 2=bit).
+    zarr_format : int
+        The Zarr format of the array the compressor is used for.
 
     Returns
     -------
     zarr.Blosc
         The Blosc compressor.
     """
+    zarr_format_kwargs(zarr_format)
     return zarr.Blosc(cname=cname, clevel=clevel, shuffle=shuffle)
