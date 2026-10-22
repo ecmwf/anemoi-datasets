@@ -415,9 +415,7 @@ def test_trajectory_cutout_adjust_two_and_five_hourly():
         (False, False),
     ],
 )
-def test_trajectory_cutout_tendencies_follow_first_dataset(
-    first_has_stats, second_has_stats
-):
+def test_trajectory_cutout_tendencies_follow_first_dataset(first_has_stats, second_has_stats):
     from datetime import timedelta
     from unittest.mock import MagicMock
 
@@ -469,10 +467,7 @@ def test_trajectory_cutout_adjust_offset_base_dates_and_steps(reverse):
     global_ds = StepDataset(list(range(0, 31, 3)))
 
     regional.base_dates = origin + np.arange(22) * np.timedelta64(7, "h")
-    global_ds.base_dates = (
-        origin + np.timedelta64(11, "h")
-        + np.arange(30) * np.timedelta64(5, "h")
-    )
+    global_ds.base_dates = origin + np.timedelta64(11, "h") + np.arange(30) * np.timedelta64(5, "h")
 
     regional.base_frequency = timedelta(hours=7)
     global_ds.base_frequency = timedelta(hours=5)
@@ -487,12 +482,8 @@ def test_trajectory_cutout_adjust_offset_base_dates_and_steps(reverse):
 
     adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
 
-    expected_base_dates = origin + np.array(
-        [21, 56, 91, 126], dtype="timedelta64[h]"
-    )
-    expected_steps = np.array(
-        [0, 6, 12, 18, 24, 30], dtype="timedelta64[h]"
-    )
+    expected_base_dates = origin + np.array([21, 56, 91, 126], dtype="timedelta64[h]")
+    expected_steps = np.array([0, 6, 12, 18, 24, 30], dtype="timedelta64[h]")
 
     for source, result in zip(sources, adjusted):
         np.testing.assert_array_equal(result.base_dates, expected_base_dates)
@@ -502,12 +493,8 @@ def test_trajectory_cutout_adjust_offset_base_dates_and_steps(reverse):
         assert result.step_frequency == timedelta(hours=6)
         assert result.shape == (4, 1, 1, 6, 4)
 
-        base_indices = np.flatnonzero(
-            np.isin(source.base_dates, expected_base_dates)
-        )
-        step_indices = np.flatnonzero(
-            np.isin(source.steps, expected_steps)
-        )
+        base_indices = np.flatnonzero(np.isin(source.base_dates, expected_base_dates))
+        step_indices = np.flatnonzero(np.isin(source.steps, expected_steps))
 
         for i, j in enumerate(base_indices):
             np.testing.assert_array_equal(
@@ -528,10 +515,7 @@ def test_trajectory_cutout_adjust_partial_time_overlap(reverse):
     global_ds = StepDataset(list(range(6, 25, 3)))
 
     regional.base_dates = origin + np.arange(15) * np.timedelta64(7, "h")
-    global_ds.base_dates = (
-        origin + np.timedelta64(11, "h")
-        + np.arange(18) * np.timedelta64(5, "h")
-    )
+    global_ds.base_dates = origin + np.timedelta64(11, "h") + np.arange(18) * np.timedelta64(5, "h")
 
     regional.base_frequency = timedelta(hours=7)
     global_ds.base_frequency = timedelta(hours=5)
@@ -546,12 +530,8 @@ def test_trajectory_cutout_adjust_partial_time_overlap(reverse):
 
     adjusted, _ = _auto_adjust(sources, {"adjust": "all"})
 
-    expected_dates = origin + np.array(
-        [21, 56, 91], dtype="timedelta64[h]"
-    )
-    expected_steps = np.array(
-        [6, 12, 18, 24], dtype="timedelta64[h]"
-    )
+    expected_dates = origin + np.array([21, 56, 91], dtype="timedelta64[h]")
+    expected_steps = np.array([6, 12, 18, 24], dtype="timedelta64[h]")
 
     for source, result in zip(sources, adjusted):
         np.testing.assert_array_equal(result.base_dates, expected_dates)
@@ -566,12 +546,8 @@ def test_trajectory_cutout_adjust_partial_time_overlap(reverse):
         assert result.steps[0] >= source.steps[0]
         assert result.steps[-1] <= source.steps[-1]
 
-        base_indices = np.flatnonzero(
-            np.isin(source.base_dates, expected_dates)
-        )
-        step_indices = np.flatnonzero(
-            np.isin(source.steps, expected_steps)
-        )
+        base_indices = np.flatnonzero(np.isin(source.base_dates, expected_dates))
+        step_indices = np.flatnonzero(np.isin(source.steps, expected_steps))
 
         for i, j in enumerate(base_indices):
             np.testing.assert_array_equal(
@@ -589,10 +565,7 @@ def test_trajectory_cutout_adjust_no_common_base_dates():
     global_ds = StepDataset([0, 2, 4, 6])
 
     regional.base_dates = origin + np.arange(4) * np.timedelta64(7, "h")
-    global_ds.base_dates = (
-        origin + np.timedelta64(35, "h")
-        + np.arange(4) * np.timedelta64(5, "h")
-    )
+    global_ds.base_dates = origin + np.timedelta64(35, "h") + np.arange(4) * np.timedelta64(5, "h")
 
     with pytest.raises(ValueError, match="No common trajectory base dates"):
         _auto_adjust([regional, global_ds], {"adjust": "all"})
