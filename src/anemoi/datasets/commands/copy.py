@@ -25,6 +25,8 @@ from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import get_zarr_format
 from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import nested_chunk_kwargs
+from anemoi.datasets.compat import nested_directory_store
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.misc.check import check_zarr
@@ -166,10 +168,12 @@ class ZarrCopier:
             Storage path.
         """
         if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
+            return nested_directory_store(path)
         return path
+
+    def _nested_kwargs(self, target: Any) -> dict:
+        """Extra ``create_array`` arguments for the nested chunk layout of ``--nested``, if needed for the target format."""
+        return nested_chunk_kwargs(get_zarr_format(target)) if self.nested else {}
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -344,6 +348,7 @@ class ZarrCopier:
                     LOG.warning(f"Existing target data array shards: {target_data.shards}")
         else:
             extra.setdefault("chunks", source_data.chunks)
+            extra.update(self._nested_kwargs(target))
             target_data = target.create_array(
                 "data",
                 shape=source_data.shape,
@@ -433,7 +438,7 @@ class ZarrCopier:
         # dates). Store each as a single chunk so the chunking does not depend on
         # zarr's automatic guess, which can produce a partial final chunk for large
         # arrays and later trip the divisibility check in check_zarr (see #718).
-        target.create_array(name, data=data, chunks=data.shape)
+        target.create_array(name, data=data, chunks=data.shape, **self._nested_kwargs(target))
         LOG.info(f"Copied {name}")
 
     def children(self, group):
@@ -520,6 +525,7 @@ class ZarrCopier:
                 "_copy",
                 shape=(source["data"].shape[0],),
                 dtype=bool,
+                **self._nested_kwargs(target),
             )
         _copy = target["_copy"]
         _copy_np = _copy[:]

@@ -54,6 +54,8 @@ if zarr_version < 3:
     from .zarr2 import blosc_compressor
     from .zarr2 import get_zarr_format
     from .zarr2 import zarr_format_kwargs
+    from .zarr2 import nested_chunk_kwargs
+    from .zarr2 import nested_directory_store
 
     MemoryStore = zarr.storage.MemoryStore
 else:
@@ -64,6 +66,8 @@ else:
     from .zarr3 import blosc_compressor
     from .zarr3 import get_zarr_format
     from .zarr3 import zarr_format_kwargs
+    from .zarr3 import nested_chunk_kwargs
+    from .zarr3 import nested_directory_store
 
     MemoryStore = zarr.storage.MemoryStore
 
@@ -125,6 +129,8 @@ __all__ = [
     "get_zarr_format",
     "zarr_format_from_name",
     "zarr_open",
+    "nested_chunk_kwargs",
+    "nested_directory_store",
     "zarr_version",
     "zarr_private_files",
 ]
