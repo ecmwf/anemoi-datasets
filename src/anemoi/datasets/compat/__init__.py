@@ -48,7 +48,9 @@ def zarr_format_from_name(name: str) -> int:
 
 if zarr_version < 3:
     from .zarr2 import DebugStore
+    from .zarr2 import DirectoryStore
     from .zarr2 import HTTPStore
+    from .zarr2 import LRUStoreCache
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
     from .zarr2 import blosc_compressor
@@ -58,7 +60,9 @@ if zarr_version < 3:
     MemoryStore = zarr.storage.MemoryStore
 else:
     from .zarr3 import DebugStore
+    from .zarr3 import DirectoryStore
     from .zarr3 import HTTPStore
+    from .zarr3 import LRUStoreCache
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
     from .zarr3 import blosc_compressor
@@ -120,6 +124,8 @@ __all__ = [
     "HTTPStore",
     "S3Store",
     "DebugStore",
+    "DirectoryStore",
+    "LRUStoreCache",
     "MemoryStore",
     "blosc_compressor",
     "get_zarr_format",

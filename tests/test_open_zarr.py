@@ -61,14 +61,18 @@ def http_server(tmp_path: Path) -> Iterator[tuple[str, list[str]]]:
 def test_open_zarr_cache(http_server: tuple[str, list[str]]) -> None:
     url, requested = http_server
 
+    chunks = {f"/test.zarr/data/{row}.0" for row in range(len(DATA))}
+
     root = open_zarr(f"{url}/test.zarr", cache=1_000_000)
 
     np.testing.assert_array_equal(root["data"][:], DATA)
+    assert chunks <= set(requested)
     first_read = len(requested)
     np.testing.assert_array_equal(root["data"][:], DATA)
 
-    # The second read is served from the cache
-    assert len(requested) == first_read
+    # The second read gets the chunks from the cache. Keys that were not found, which
+    # zarr-python 3 looks up again, are not cached.
+    assert not chunks & set(requested[first_read:])
 
 
 def test_open_zarr_debug_loading(dataset: str, monkeypatch: pytest.MonkeyPatch) -> None:

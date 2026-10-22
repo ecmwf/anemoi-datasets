@@ -15,6 +15,10 @@ from zarr import Group
 
 ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 
+DirectoryStore = zarr.storage.DirectoryStore
+
+LRUStoreCache = zarr.LRUStoreCache
+
 
 class _ReadOnlyStore(zarr.storage.BaseStore):
     """A base class for read-only stores."""
