@@ -53,6 +53,35 @@ class HTTPStore(_ReadOnlyStore):
         r.raise_for_status()
         return r.content
 
+    def listdir(self, path: str | None = None) -> list[str]:
+        """List immediate children of a directory.
+
+        fsspec reads links from a server's directory page, which is how
+        Zarr lists an HTTP store. Links that only jump around that page
+        are skipped.
+        """
+        from urllib.parse import urlparse
+
+        import fsspec
+
+        directory = self.url
+        if not directory.endswith("/"):
+            directory = directory + "/"
+        if path:
+            directory = directory + path.strip("/") + "/"
+
+        entries = fsspec.filesystem("http").ls(directory, detail=False)
+        entries = [entry for entry in entries if entry.startswith(directory)]
+
+        folder = urlparse(directory).path
+        names = []
+        for entry in entries:
+            relative = urlparse(entry).path.removeprefix(folder).strip("/")
+            name = relative.split("/")[0]
+            if name and name not in names:
+                names.append(name)
+        return names
+
 
 class S3Store(_ReadOnlyStore):
     """A read-only store for S3 resources."""
