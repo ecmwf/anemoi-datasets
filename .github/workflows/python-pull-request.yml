@@ -23,3 +23,10 @@ jobs:
     uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
     with:
       python-version: ${{ matrix.python-version }}
+      # Expose the odc binary bundled in the odclib wheel (and the eckit libraries
+      # it links against) so that tests needing the `odc` command are not skipped.
+      custom-pytest: >-
+        SITE=$(python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])");
+        export PATH="$SITE/odclib/bin:$PATH";
+        export LD_LIBRARY_PATH="$SITE/eckitlib/lib64:$SITE/eckitlib.libs:$SITE/odclib/lib64:$LD_LIBRARY_PATH";
+        pytest -rs
