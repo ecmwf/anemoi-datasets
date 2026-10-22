@@ -21,6 +21,8 @@ from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets.buffering import ReadAheadBuffer
+from anemoi.datasets.compat import blosc_compressor
+from anemoi.datasets.compat import get_zarr_format
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -158,6 +160,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
             shape=shape,
             dimensions=("time", "variable", "ensemble", "step", "cell"),
             fill_value=np.nan,
+            compressors=blosc_compressor(
+                cname="lz4", clevel=5, shuffle=1, zarr_format=get_zarr_format(dataset.store)
+            ),  # explicit: see SimpleGriddedCreator
         )
 
         dataset.add_array(name="base_dates", data=np.array(base_dates, "<M8[s]"), dimensions=("time",))
