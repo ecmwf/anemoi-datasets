@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.47](https://github.com/ecmwf/anemoi-datasets/compare/0.5.46...0.5.47) (2026-10-22)
+
+
+### Bug Fixes
+
+* **copy:** List folders when copying a dataset over HTTP ([#796](https://github.com/ecmwf/anemoi-datasets/issues/796)) ([6bc8ff7](https://github.com/ecmwf/anemoi-datasets/commit/6bc8ff7526ff8968f8423816d51acc93d8d99342))
+* **dependencies:** Lower-bound s3fs to fix problem with uv installing old version ([#801](https://github.com/ecmwf/anemoi-datasets/issues/801)) ([9df5ce8](https://github.com/ecmwf/anemoi-datasets/commit/9df5ce8f9481b8473a321045161d0c68b84ea995))
+
 ## [0.5.46](https://github.com/ecmwf/anemoi-datasets/compare/0.5.45...0.5.46) (2026-10-21)
 
 
