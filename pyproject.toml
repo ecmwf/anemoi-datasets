@@ -56,6 +56,7 @@ dependencies = [
   "pyyaml",
   "rich",
   "ruamel-yaml>=0.16",
+  "s3fs>=2023",
   "semantic-version",
   "tqdm",
   "zarr<=2.18.7",
