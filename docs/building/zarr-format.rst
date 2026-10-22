@@ -54,8 +54,10 @@ existing dataset.
 *******************
 
 When :ref:`copying a dataset <copy_command>` without changing its
-chunks, the files are transferred as they are, so the copy keeps the
-format of the source.
+chunks, the copy keeps the format of the source. Copies between a remote
+location (``ssh://``, ``s3://`` or ``abfs://``) and a local one transfer
+the files as they are. Every other copy, including a copy between two
+local paths, reads and rewrites the data.
 
 When the data is rewritten (``--rechunk``, ``--reshard`` or
 ``--obfuscate``), the target is also written in the format of the
@@ -74,6 +76,24 @@ writes the target in Zarr format 3 and cannot be combined with
 When resuming an interrupted copy with ``--resume``, the target keeps its
 format. If ``--format`` is given and does not match the format of the
 target, the copy is aborted. Use ``--overwrite`` to start again instead.
+
+*************
+ Compression
+*************
+
+The ``data`` array of a new dataset is compressed with Blosc (lz4,
+compression level 5, byte shuffle), whatever the Zarr format. Without
+an explicit compressor, zarr-python 3 writes the ``data`` array of a
+Zarr format 3 dataset with zstd and no shuffle.
+
+When a copy rewrites the data, the ``data`` array of the target keeps the
+compressor of the source. Blosc, Zstd and Gzip are translated to the
+codecs of the Zarr format of the target, including the compressor of the
+chunks inside the shards of a sharded source, and a source without
+compression gives a target without compression. If the compressor of the
+source has no equivalent in the format of the target (for example LZ4
+from a Zarr format 2 source to Zarr format 3), a warning is logged and
+the target uses Blosc (lz4, compression level 5, byte shuffle).
 
 **********************************
  Checking the format of a dataset
