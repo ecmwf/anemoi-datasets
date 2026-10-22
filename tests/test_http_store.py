@@ -11,11 +11,15 @@
 
 from unittest.mock import patch
 
-from anemoi.datasets.compat.zarr2 import HTTPStore
+import pytest
+
+from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import zarr_version
 
 ROOT = "https://data.example/anemoi-datasets/era.zarr"
 
 
+@pytest.mark.skipif(zarr_version >= 3, reason="requires zarr-python<3")
 def test_listdir_returns_child_names() -> None:
     root = ROOT + "/"
     data = root + "data/"
