@@ -7,40 +7,61 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Tests for directory listing on the Zarr 2 HTTP store."""
+"""Tests for directory listing on the HTTP store."""
 
+import asyncio
 from unittest.mock import patch
 
-from anemoi.datasets.compat.zarr2 import HTTPStore
+import pytest
+
+from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import zarr_version
 
 ROOT = "https://data.example/anemoi-datasets/era.zarr"
+ROOT_DIR = ROOT + "/"
+DATA_DIR = ROOT_DIR + "data/"
+
+# Links fsspec reads from the server's directory pages, keyed by directory
+PAGES = {
+    ROOT_DIR: [
+        ROOT_DIR,
+        ROOT_DIR + "#httpsFormats",
+        ROOT_DIR + ".zgroup",
+        ROOT_DIR + "data/",
+        ROOT_DIR + "dates/",
+        "https://other.example/data",
+    ],
+    DATA_DIR: [
+        DATA_DIR,
+        DATA_DIR + ".zarray",
+        DATA_DIR + "0.0.0.0",
+        DATA_DIR + "0.0.0.0?C=N",
+    ],
+}
 
 
+@pytest.mark.skipif(zarr_version >= 3, reason="requires zarr-python<3")
 def test_listdir_returns_child_names() -> None:
-    root = ROOT + "/"
-    data = root + "data/"
-    pages = {
-        root: [
-            root,
-            root + "#httpsFormats",
-            root + ".zgroup",
-            root + "data/",
-            root + "dates/",
-            "https://other.example/data",
-        ],
-        data: [
-            data,
-            data + ".zarray",
-            data + "0.0.0.0",
-            data + "0.0.0.0?C=N",
-        ],
-    }
-
     def ls(directory, detail=False):
-        return pages[directory]
+        return PAGES[directory]
 
     with patch("fsspec.filesystem") as filesystem:
         filesystem.return_value.ls.side_effect = ls
         store = HTTPStore(ROOT)
         assert store.listdir() == [".zgroup", "data", "dates"]
         assert store.listdir("data") == [".zarray", "0.0.0.0"]
+
+
+@pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3")
+def test_list_dir_returns_child_names() -> None:
+    async def ls(self, url, detail=True, **kwargs):
+        # zarr-python 3 lists subdirectories without the trailing "/"
+        return PAGES[url.rstrip("/") + "/"]
+
+    async def list_dir(store, prefix):
+        return [name async for name in store.list_dir(prefix)]
+
+    with patch("fsspec.implementations.http.HTTPFileSystem._ls", ls):
+        store = HTTPStore(ROOT)
+        assert asyncio.run(list_dir(store, "")) == [".zgroup", "data", "dates"]
+        assert asyncio.run(list_dir(store, "data")) == [".zarray", "0.0.0.0"]

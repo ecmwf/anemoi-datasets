@@ -22,7 +22,9 @@ from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.compat import DebugStore
+from anemoi.datasets.compat import DirectoryStore
 from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import LRUStoreCache
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import zarr_open
@@ -87,16 +89,16 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
                         "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
                         "Please disable it for other backends."
                     )
-                store = zarr.storage.DirectoryStore(store)
+                store = DirectoryStore(store)
             store = DebugStore(store)
 
         if cache is not None:
-            store = zarr.LRUStoreCache(store, max_size=cache)
+            store = LRUStoreCache(store, max_size=cache)
 
         return zarr_open(store, "r")
-    except ZarrFileNotFoundError:
+    except ZarrFileNotFoundError as e:
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise ZarrFileNotFoundError(path) from e
 
 
 QUIET = set()
