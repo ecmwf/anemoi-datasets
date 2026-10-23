@@ -124,7 +124,7 @@ class GriddedCreator(Creator):
 
         cube = result.get_cube()
         shape = cube.extended_user_shape
-        dates_in_data = cube.user_coords["valid_datetime"]
+        dates_in_data = cube.user_coords["time.valid_datetime"]
 
         # LOG.debug(f"Loading {shape=} in {self.data_array.shape=}")
 
@@ -185,7 +185,7 @@ class GriddedCreator(Creator):
         old = dataset.typed_variables
         new = result.typed_variables
 
-        Variable.check_compatibility(old, new)
+        Variable.check_compatibility(old, new, self.recipe.build.check_variables_compatibility)
 
     def check_dataset_name(self, path: str) -> None:
         from pathlib import Path

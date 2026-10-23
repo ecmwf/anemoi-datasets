@@ -34,8 +34,9 @@ class TrajectoryGriddedContext(Context):
     # coupled to the ``traj_point`` remapping key injected below, and
     # per-field placement in ``TrajectoryGriddedCreator.load_result`` reads
     # ``date/time/step`` from field metadata, so cube ordering does not
-    # affect the output.
-    order_by: list[str] = ["traj_point", "param_level", "number"]
+    # affect the output. ``traj_point`` and ``param_level`` are remapped
+    # synthetic keys.
+    order_by: list[str] = ["traj_point", "param_level", "ensemble.member"]
 
     def __init__(self, recipe: Any) -> None:
         super().__init__(recipe)
@@ -49,7 +50,7 @@ class TrajectoryGriddedContext(Context):
         # and steps -- e.g. base_dates with frequency 12h starting at 00Z
         # but ending at 00Z (an odd number of basetimes).
         remapping = dict(recipe.build.remapping)
-        remapping.setdefault("traj_point", "{date}_{time}_{step}")
+        remapping.setdefault("traj_point", "{time.base_datetime}_{time.step}")
         self.remapping = build_remapping(remapping)
 
     def create_result(self, argument: Any, data: Any) -> TrajectoryGriddedResult:
@@ -114,8 +115,8 @@ class TrajectoryGriddedContext(Context):
 
         result = []
         for fs in data:
-            previous = fs.metadata("anemoi_origin", default=None)
-            fall_through = fs.metadata("anemoi_fall_through", default=False)
+            previous = fs.get("metadata.anemoi_origin", default=None)
+            fall_through = fs.get("metadata.anemoi_fall_through", default=False)
             if fall_through:
                 # The field has pass unchanges in a filter
                 result.append(fs)
