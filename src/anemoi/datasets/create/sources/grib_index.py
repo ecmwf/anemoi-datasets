@@ -619,22 +619,27 @@ class GribIndexSource(Source):
     def execute_intervals(self, dates: Intervals) -> FieldArray:
         """Retrieve grib-indexed fields covering accumulation windows.
 
-        grib-index is valid-time indexed: each interval is resolved to its
-        validity time (``interval.max``) plus a ``step`` equal to the
-        accumulation period length. No basetime is involved — the
-        ``SignedInterval.base`` attribute is ignored here, which is why this
-        path does not go through ``Intervals.adjust_request``.
+        Each interval is resolved to its validity time (``interval.max``) plus:
+
+        - if the interval has a basetime (forecast archives, e.g. an
+          ``accumulated-from-previous-step`` covering): the model run as
+          ``date`` and ``time``. Together with the validity time, this
+          determines the step, so ``step`` is not part of the query.
+          ``time`` follows the MARS integer convention (``0``, ``1200``),
+          which is how the index stores it.
+        - otherwise (validity-time indexed archives): a ``step`` equal to the
+          accumulation period length.
         """
         full_requests = []
         for interval in dates.intervals:
-            # grib-index is valid-time indexed; intervals must not carry a basetime.
-            assert interval.base is None, (
-                f"GribIndexSource received an interval with a basetime: {interval!r}. "
-                "grib-index resolves intervals by valid time only."
-            )
             self.context.trace(self.emoji, "interval:", interval)
             request = self.request.copy()
-            request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            if interval.base is None:
+                request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            else:
+                request["date"] = int(interval.base.strftime("%Y%m%d"))
+                request["time"] = int(interval.base.strftime("%H%M"))
+                request.pop("step", None)
             self.context.trace(self.emoji, "  request =", request)
             full_requests.append(([interval.max], request))
         return self._run_requests(full_requests)
