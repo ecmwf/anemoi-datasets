@@ -26,6 +26,7 @@ The commands are:
 - :ref:`Extract Command <extract_command>`
 - :ref:`Schema Command <schema_command>`
 - :ref:`Rename Command <rename_command>`
+- :ref:`Nexus-record Command <nexus_record_command>`
 
 
 
@@ -48,3 +49,4 @@ The commands are:
    extract
    schema
    rename
+   nexus-record
