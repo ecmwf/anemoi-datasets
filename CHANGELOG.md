@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.47](https://github.com/ecmwf/anemoi-datasets/compare/0.5.46...0.5.47) (2026-10-22)
+
+
+### Bug Fixes
+
+* **copy:** List folders when copying a dataset over HTTP ([#796](https://github.com/ecmwf/anemoi-datasets/issues/796)) ([6bc8ff7](https://github.com/ecmwf/anemoi-datasets/commit/6bc8ff7526ff8968f8423816d51acc93d8d99342))
+* **dependencies:** Lower-bound s3fs to fix problem with uv installing old version ([#801](https://github.com/ecmwf/anemoi-datasets/issues/801)) ([9df5ce8](https://github.com/ecmwf/anemoi-datasets/commit/9df5ce8f9481b8473a321045161d0c68b84ea995))
+
+## [0.5.46](https://github.com/ecmwf/anemoi-datasets/compare/0.5.45...0.5.46) (2026-10-21)
+
+
+### Features
+
+* Introduce zarr_open as abstraction for zarr.open and add option to write zarr formats 2 and 3 ([#786](https://github.com/ecmwf/anemoi-datasets/issues/786)) ([00d0b05](https://github.com/ecmwf/anemoi-datasets/commit/00d0b05e1cb8ea2cf661fe5970930c48cc5dbeae))
+* Test mars-requests against baseline ([#774](https://github.com/ecmwf/anemoi-datasets/issues/774)) ([f7e4a3e](https://github.com/ecmwf/anemoi-datasets/commit/f7e4a3e164191122c3889e7022080dd40a758ebd))
+
+
+### Bug Fixes
+
+* **deps:** Pin xarray to last version with zarr2 support ([#777](https://github.com/ecmwf/anemoi-datasets/issues/777)) ([86b1f31](https://github.com/ecmwf/anemoi-datasets/commit/86b1f31d8a70ebea5053ef237f4f7c3b8c8639ba))
+
 ## [0.5.45](https://github.com/ecmwf/anemoi-datasets/compare/0.5.44...0.5.45) (2026-09-24)
 
 
