@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.48](https://github.com/ecmwf/anemoi-datasets/compare/0.5.47...0.5.48) (2026-10-23)
+
+
+### Bug Fixes
+
+* Add numpy array to statistics property. ([#766](https://github.com/ecmwf/anemoi-datasets/issues/766)) ([a1507f2](https://github.com/ecmwf/anemoi-datasets/commit/a1507f2804117b534e636e113d9ce4b9067c8070))
+
 ## [0.5.47](https://github.com/ecmwf/anemoi-datasets/compare/0.5.46...0.5.47) (2026-10-22)
 
 
