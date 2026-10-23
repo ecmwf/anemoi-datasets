@@ -21,6 +21,10 @@ from pydantic import BaseModel
 from pydantic import Discriminator
 from pydantic import Field
 from pydantic import Tag
+from pydantic import field_validator
+
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import zarr_version
 
 LOG = logging.getLogger(__name__)
 
@@ -39,16 +43,23 @@ class OutputBase(BaseModel):
     sanitise: bool = True
     """Whether to sanitise the metadata to remove sensitive information like paths, URLs..."""
 
+    format: Literal["zarr2", "zarr3"] = DEFAULT_FORMAT
+    """The on-disk format of the dataset. Zarr format 3 requires zarr-python>=3,
+    and the dataset cannot be read with zarr-python 2."""
+
+    @field_validator("format")
+    @classmethod
+    def _check_format(cls, format: str) -> str:
+        if format == "zarr3" and zarr_version < 3:
+            raise ValueError("'output.format: \"zarr3\"' requires zarr-python>=3")
+        return format
+
 
 class GriddedOutput(OutputBase):
     """Output configuration for gridded datasets."""
 
-    format: Literal["gridded"] = "gridded"
-    """The format of the dataset."""
-
-    @property
-    def layout(self) -> str:
-        return self.format
+    layout: Literal["gridded"] = "gridded"
+    """The layout of the dataset."""
 
     order_by: list[str] | None = Field(
         default=None,
@@ -170,12 +181,8 @@ class GriddedOutput(OutputBase):
 class TabularOutput(OutputBase):
     """Output configuration for tabular datasets."""
 
-    format: Literal["tabular"] = "tabular"
-    """The format of the dataset."""
-
-    @property
-    def layout(self) -> str:
-        return self.format
+    layout: Literal["tabular"] = "tabular"
+    """The layout of the dataset."""
 
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
@@ -236,8 +243,8 @@ class TrajectoriesOutput(OutputBase):
 def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
     if isinstance(v, dict):
-        return v.get("layout", v.get("format", "gridded"))
-    return getattr(v, "layout", getattr(v, "format", "gridded"))
+        return v.get("layout", "gridded")
+    return getattr(v, "layout")
 
 
 # if layout is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
