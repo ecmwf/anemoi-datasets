@@ -41,8 +41,10 @@ def make_trajectories_zarr(
     frequency_h: int = 6,
     vars: list[str] | None = None,
     analytic: bool = False,
+    path: str | None = None,
+    missing_dates: list[str] | None = None,
 ) -> zarr.Group:
-    """Build a minimal in-memory zarr group with trajectories layout.
+    """Build a minimal zarr group with trajectories layout, in memory or on disk.
 
     Parameters
     ----------
@@ -65,18 +67,23 @@ def make_trajectories_zarr(
         ones, so every element encodes its own (date, var, ensemble, step,
         cell) position — any wrong-axis indexing bug surfaces as a precise
         value mismatch.
+    path : str, optional
+        Where to write the store. Defaults to an in-memory group, which cannot
+        be reopened with ``open_dataset``.
+    missing_dates : list of str, optional
+        Base dates to record as missing.
 
     Returns
     -------
     zarr.Group
-        In-memory zarr group.
+        The zarr group.
     """
     if step_hours is None:
         step_hours = list(range(6, 6 * (n_steps + 1), 6))[:n_steps]
     if vars is None:
         vars = [chr(ord("a") + i) for i in range(n_vars)]
 
-    root = zarr.group()
+    root = zarr.group() if path is None else zarr.open_group(path, mode="w")
 
     start = datetime.datetime(2021, 1, 1)
     dates = np.array(
@@ -106,6 +113,8 @@ def make_trajectories_zarr(
     root.attrs["name_to_index"] = {v: i for i, v in enumerate(vars)}
     root.attrs["variables_metadata"] = {v: {} for v in vars}
     root.attrs["data_request"] = {"grid": 1, "area": "g", "param_level": {}}
+    if missing_dates:
+        root.attrs["missing_dates"] = list(missing_dates)
 
     return root
 

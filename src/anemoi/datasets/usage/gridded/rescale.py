@@ -217,6 +217,26 @@ class Rescale(Forwards):
 
         return result
 
+    @cached_property
+    def residual_statistics(self) -> dict[str, NDArray[Any]]:
+        """Get the residual statistics of the rescaled data.
+
+        A residual is a difference, so the offset ``b`` cancels out and every
+        statistic scales by ``a`` alone -- as for tendencies.
+        """
+        result = {}
+        a = self._a.squeeze()
+        assert np.all(a >= 0)
+
+        for k, v in self.forward.residual_statistics.items():
+            if k in ("maximum", "minimum", "mean", "stdev"):
+                result[k] = v * a
+                continue
+
+            raise NotImplementedError("rescale residual statistics", k)
+
+        return result
+
     def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the tendencies of the statistics of the rescaled data.
 
