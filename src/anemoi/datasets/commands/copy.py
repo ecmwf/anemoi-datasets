@@ -24,10 +24,10 @@ from anemoi.utils.remote import TransferMethodNotImplementedError
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import nested_chunk_kwargs
 from anemoi.datasets.compat import nested_directory_store
+from anemoi.datasets.compat import zarr_format_from_name
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.misc.check import check_zarr
