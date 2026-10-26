@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import os
 import tempfile
 from typing import Any
 
@@ -66,5 +67,8 @@ def create_dataset(
         run_task("cleanup", path=output, delta=delta)
 
     run_task("verify", path=output)
+
+    # New datasets are written in Zarr format 2, whatever the installed zarr-python version
+    assert os.path.exists(os.path.join(output, ".zgroup")), f"{output} is not in Zarr format 2"
 
     return output

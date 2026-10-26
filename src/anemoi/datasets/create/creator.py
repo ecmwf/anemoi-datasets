@@ -19,10 +19,11 @@ from typing import Any
 
 import numpy as np
 import tqdm
-import zarr
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
@@ -33,7 +34,7 @@ from .parts import PartFilter
 
 LOG = logging.getLogger(__name__)
 
-VERSION = "0.21"
+VERSION = "0.22"
 
 LOG = logging.getLogger(__name__)
 
@@ -103,11 +104,11 @@ class Creator(ABC):
         for k, v in recipe.build.env.items():
             os.environ[k] = str(v)
 
-        format_type = recipe.output.layout
+        layout = recipe.output.layout
 
-        LOG.info(f"Creating dataset with format: {format_type}")
+        LOG.info(f"Creating dataset with layout: {layout}")
 
-        match format_type:
+        match layout:
 
             case "gridded":
                 from .gridded.creator import SimpleGriddedCreator
@@ -122,7 +123,7 @@ class Creator(ABC):
 
                 return TrajectoryGriddedCreator(recipe=recipe, **kwargs)
             case _:
-                raise ValueError(f"Unknown format type: {format_type}")
+                raise ValueError(f"Unknown layout: {layout}")
 
     #####################################################
     # Initialisation
@@ -131,7 +132,19 @@ class Creator(ABC):
     def task_init(self) -> Dataset:
         """Run the initialisation process for the dataset."""
 
-        dataset = Dataset(self.path, overwrite=self.kwargs.get("overwrite", False), create=True)
+        format = self.recipe.output.format
+
+        if format != DEFAULT_FORMAT:
+            LOG.warning(
+                f"Writing the dataset in format {format} is experimental: it cannot be read with zarr-python 2."
+            )
+
+        dataset = Dataset(
+            self.path,
+            overwrite=self.kwargs.get("overwrite", False),
+            create=True,
+            format=format,
+        )
         self._cleanup_temporary_directories()
 
         LOG.info("Initialising dataset creation.")
@@ -328,12 +341,16 @@ class Creator(ABC):
     def task_size(self) -> None:
         dataset = Dataset(self.path, update=True)
         size, count = 0, 0
-        bar = tqdm.tqdm(iterable=os.walk(self.path), desc=f"Computing size of {os.path.basename(self.path)}")
-        for dirpath, _, filenames in bar:
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                size += os.path.getsize(file_path)
-                count += 1
+
+        files = (
+            os.path.join(dirpath, filename)
+            for dirpath, _, filenames in os.walk(self.path, followlinks=True)
+            for filename in filenames
+        )
+
+        for file_path in tqdm.tqdm(files, desc=f"Computing size of {os.path.basename(self.path)}", unit="files"):
+            size += os.path.getsize(file_path)
+            count += 1
 
         LOG.info(f"Total size: {bytes_to_human(size)}")
         LOG.info(f"Total number of files: {count:,}")
@@ -420,5 +437,5 @@ class Creator(ABC):
     @cached_property
     def variables_names(self) -> list[str]:
         """Get the variable names."""
-        z = zarr.open(self.path, mode="r")
+        z = zarr_open(self.path, "r")
         return z.attrs["variables"]
