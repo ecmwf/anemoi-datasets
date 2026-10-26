@@ -341,12 +341,16 @@ class Creator(ABC):
     def task_size(self) -> None:
         dataset = Dataset(self.path, update=True)
         size, count = 0, 0
-        bar = tqdm.tqdm(iterable=os.walk(self.path), desc=f"Computing size of {os.path.basename(self.path)}")
-        for dirpath, _, filenames in bar:
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                size += os.path.getsize(file_path)
-                count += 1
+
+        files = (
+            os.path.join(dirpath, filename)
+            for dirpath, _, filenames in os.walk(self.path, followlinks=True)
+            for filename in filenames
+        )
+
+        for file_path in tqdm.tqdm(files, desc=f"Computing size of {os.path.basename(self.path)}", unit="files"):
+            size += os.path.getsize(file_path)
+            count += 1
 
         LOG.info(f"Total size: {bytes_to_human(size)}")
         LOG.info(f"Total number of files: {count:,}")
