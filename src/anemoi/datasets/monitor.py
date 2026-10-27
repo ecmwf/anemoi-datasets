@@ -196,6 +196,7 @@ def plot_statistics(path: str, out: str) -> str | None:
     """Per variable: the extremes in stdevs from the mean, and the ratio of each tendency's
     stdev to the stdev. None if the dataset has no tendency statistics."""
     import zarr
+    from matplotlib.transforms import blended_transform_factory
 
     plt = _plt()
     store = zarr.open(path, mode="r")
@@ -228,8 +229,9 @@ def plot_statistics(path: str, out: str) -> str | None:
             axes[1].barh(y + (i - (len(deltas) - 1) / 2) * width, ratio, height=width, label=d)
             for j in np.flatnonzero(ratio == 0):  # no bar on a log axis
                 zeros.setdefault(j, []).append(d)
+        left = blended_transform_factory(axes[1].transAxes, axes[1].transData)  # x: axes fraction
         for j, ds in zeros.items():
-            axes[1].text(1e-3, y[j], f"{'/'.join(ds)}: 0", va="center", fontsize=7)
+            axes[1].text(0.01, y[j], f"{'/'.join(ds)}: 0", va="center", fontsize=7, transform=left)
     axes[1].set_xscale("log")
     axes[1].set_title("tendency stdev / stdev")
     axes[1].legend(title="tendency")
