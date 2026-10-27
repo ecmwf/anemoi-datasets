@@ -41,3 +41,7 @@ python-version = "3.12"
 
 [[matrix.test.include]]
 python-version = "3.13"
+
+[[trigger-downstream]]
+repo = "ecmwf/anemoi-core"
+ref = "main"
