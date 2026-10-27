@@ -1,0 +1,40 @@
+[package]
+name = "anemoi-datasets"
+repo = "ecmwf/anemoi-datasets"
+visibility = "public"
+compiler-inputs = []
+
+[[deps]]
+repo = "ecmwf/anemoi-utils"
+package = "anemoi-utils"
+ref = "main"
+compiler-inputs = []
+python-version-input = "python-version"
+
+[[deps]]
+repo = "ecmwf/anemoi-transform"
+package = "anemoi-transform"
+ref = "main"
+compiler-inputs = []
+python-version-input = "python-version"
+
+# Each leg publishes its wheel, so a consumer's leg takes the one tested on
+# its own Python (python-version-input).
+[matrix.test]
+triggers = ["upstream-change", "rebuild-request"]
+
+[matrix.test.defaults]
+job-script = "./.ci/test.sh.j2"
+runs-on = "arc-runner-normal"
+container = "eccr.ecmwf.int/public-ci-images/ubuntu24.04-base:latest"
+platform = "ubuntu-24.04"
+extras = "all,tests"
+
+[[matrix.test.include]]
+python-version = "3.11"
+
+[[matrix.test.include]]
+python-version = "3.12"
+
+[[matrix.test.include]]
+python-version = "3.13"
