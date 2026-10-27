@@ -193,8 +193,11 @@ class Dataset:
 
         from anemoi.utils.provenance import gather_provenance_info
 
-        if name not in self.store.attrs:
-            self.store.attrs[name] = gather_provenance_info()
+        # under the lock: parts finish together, and an unlocked read-modify-write can read
+        # .zattrs mid-replace (empty on Lustre) and write back the provenance alone
+        with self.synchronizer:
+            if name not in self.store.attrs:
+                self.store.attrs[name] = gather_provenance_info()
 
     # For statistics about
     def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
@@ -257,7 +260,7 @@ class Dataset:
     @cached_property
     def frequency(self) -> datetime.timedelta | None:
         """Get the dataset frequency."""
-        frequency = self.store.attrs.get("frequency")
+        frequency = self.get_metadata("frequency")
         return frequency_to_timedelta(frequency) if frequency is not None else None
 
     def touch(self) -> None:
@@ -266,7 +269,9 @@ class Dataset:
     @property
     def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata for each variable in the dataset."""
-        return self.store.attrs["variables_metadata"]
+        # under the lock, as other parts rewrite .zattrs after every group (touch)
+        with self.synchronizer:
+            return self.store.attrs["variables_metadata"]
 
     @cached_property
     def typed_variables(self) -> dict[str, Any]:

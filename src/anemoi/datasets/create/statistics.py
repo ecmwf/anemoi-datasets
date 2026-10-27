@@ -12,6 +12,7 @@ import hashlib
 import logging
 import pickle
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from typing import Any
 
@@ -26,6 +27,20 @@ STATISTICS = ("mean", "minimum", "maximum", "stdev")
 
 def _(t):
     return str(t)[:50] if len(str(t)) < 50 else str(t)[:47] + "..."
+
+
+def _load_state(path: str) -> "_State":
+    with open(path, "rb") as f:
+        state = pickle.load(f)
+    state.path = path
+    return state
+
+
+def _load_states(paths: list[str]) -> list["_State"]:
+    """Unpickle the per-group statistics, in threads: thousands of small files on a parallel
+    file system are bound by latency (serially, 7,032 files took 4 min on Lustre)."""
+    with ThreadPoolExecutor(32) as pool:
+        return list(tqdm.tqdm(pool.map(_load_state, paths), total=len(paths), desc="Loading precomputed statistics"))
 
 
 class _State:
@@ -693,14 +708,7 @@ class StatisticsCollector:
 
     @classmethod
     def load_precomputed(cls, dataset, precomputed):
-        states = []
-        for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
-            with open(item, "rb") as f:
-                state = pickle.load(f)
-                state.path = item
-                states.append(state)
-
-        states = sorted(states, key=lambda x: x.group)
+        states = sorted(_load_states(precomputed), key=lambda x: x.group)
 
         # Validate states
         offset = 0
@@ -950,14 +958,7 @@ class TrajectoryStatisticsCollector:
 
     @classmethod
     def load_precomputed(cls, dataset, precomputed):
-        states = []
-        for item in tqdm.tqdm(precomputed, desc="Loading precomputed statistics"):
-            with open(item, "rb") as f:
-                state = pickle.load(f)
-                state.path = item
-                states.append(state)
-
-        states = sorted(states, key=lambda x: x.group)
+        states = sorted(_load_states(precomputed), key=lambda x: x.group)
 
         offset = 0
         for i, state in enumerate(states):

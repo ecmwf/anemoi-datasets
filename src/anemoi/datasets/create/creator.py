@@ -14,6 +14,7 @@ import shutil
 import uuid
 from abc import ABC
 from abc import abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 from typing import Any
 
@@ -346,13 +347,13 @@ class Creator(ABC):
 
     def task_size(self) -> None:
         dataset = Dataset(self.path, update=True)
-        size, count = 0, 0
-        bar = tqdm.tqdm(iterable=os.walk(self.path), desc=f"Computing size of {os.path.basename(self.path)}")
-        for dirpath, _, filenames in bar:
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                size += os.path.getsize(file_path)
-                count += 1
+        files = [os.path.join(dirpath, f) for dirpath, _, filenames in os.walk(self.path) for f in filenames]
+        # one stat per chunk file: in threads, as a parallel file system answers each slowly
+        with ThreadPoolExecutor(32) as pool:
+            sizes = tqdm.tqdm(
+                pool.map(os.path.getsize, files), total=len(files), desc=f"Computing size of {os.path.basename(self.path)}"
+            )
+            size, count = sum(sizes), len(files)
 
         LOG.info(f"Total size: {bytes_to_human(size)}")
         LOG.info(f"Total number of files: {count:,}")
