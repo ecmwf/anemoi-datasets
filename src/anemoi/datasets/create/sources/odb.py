@@ -36,8 +36,8 @@ class OdbSource(Source):
     def __init__(
         self,
         context,
-        window: str,
         path: str,
+        window: str | None = None,
         select: str | None = None,
         where: str | None = None,
         flavour: dict = {},
@@ -54,10 +54,12 @@ class OdbSource(Source):
             The context.
         path : str
             The path to the ODB file.
-        window : str
+        window : str, optional
             The observations window to use around the input dates.
             For instance "[-3h,3h)" to use observations from 3 hours before
             to 3 hours after the input dates (excluding the final time).
+            Needed when called with dates; a source called with a ``TimeSpan``
+            (e.g. by ``grid_observations``) reads the span instead.
         select : str, optional
             The select clause. Defaults to all columns ("*").
         where : str, optional
@@ -68,6 +70,8 @@ class OdbSource(Source):
             "longitude_column_name": "lon",
             "date_column_name": "date",
             "time_column_name": "time"}.
+            ODB times are whole seconds: "milliseconds_column_name" names a column
+            of milliseconds to add to them (dropped from the output).
         pivot_columns : list, optional
             List of column names - values in these columns will be used to
             define the new columns after the reshaping.
@@ -100,7 +104,7 @@ class OdbSource(Source):
         super().__init__(context)
 
         self.path = path
-        self.window = Window(window)
+        self.window = Window(window) if window else None
         if not select:
             select = "*"
             LOG.warning("No SELECT clause provided; defaulting to all columns.")
@@ -120,7 +124,51 @@ class OdbSource(Source):
         self.pivot_values = pivot_values
         self.window_date_column = window_date_column
 
-    def execute(self, dates: Any) -> pandas.DataFrame:
+    def execute_time_span(self, span: Any) -> pandas.DataFrame:
+        """The rows of ``span``, from the files the path pattern names for ``span.dates``
+        (e.g. one file per cycle), or from the path itself if it names no date.
+
+        The SQL selects whole seconds around the span; the exact span (sub-second times,
+        open ends) is then applied to the rows.
+        """
+        if span.dates is None and "{" in str(self.path):
+            raise ValueError("odb: a TimeSpan without dates cannot expand the path pattern")
+        paths = list(dict.fromkeys(p for p, _ in iterate_patterns(self.path, span.dates or [])))
+        start = pandas.Timestamp(span.start).floor("s").to_pydatetime()
+        end = pandas.Timestamp(span.end).ceil("s").to_pydatetime()
+        frames = []
+        for path in paths:
+            df = self._read(path, start, end)
+            if df is not None:
+                frames.append(df[span.mask(df["date"]).to_numpy()])
+                LOG.info(f"ODB source read {len(frames[-1])} rows of {span} from {path}")
+        if not frames:
+            columns = ["date", "latitude", "longitude"]
+            return pandas.DataFrame(
+                {c: pandas.Series(dtype="datetime64[ns]" if c == "date" else float) for c in columns}
+            )
+        return pandas.concat(frames, ignore_index=True)
+
+    def _read(self, path: str, start: datetime.datetime, end: datetime.datetime) -> pandas.DataFrame | None:
+        """odb2df of [start, end], with the milliseconds column added to the times."""
+        ms = self.flavour.get("milliseconds_column_name")
+        flavour = {k: v for k, v in self.flavour.items() if k != "milliseconds_column_name"}
+        select = self.select if not ms or self.select == "*" or ms in self.select else f"{self.select}, {ms}"
+        df = odb2df(
+            start=start,
+            end=end,
+            path_str=path,
+            select=select,
+            where=self.where,
+            flavour=flavour,
+            pivot_columns=self.pivot_columns,
+            pivot_values=self.pivot_values,
+        )
+        if df is not None and ms:
+            df["date"] = df["date"] + pandas.to_timedelta(df.pop(ms).to_numpy(np.float64), unit="ms")
+        return df
+
+    def execute_valid_dates(self, dates: Any) -> pandas.DataFrame:
         """Execute the ODB source.
 
         Parameters
@@ -143,6 +191,8 @@ class OdbSource(Source):
             else:
                 return dt + offset
 
+        if self.window is None:
+            raise ValueError("odb: called with dates, set `window` to say which rows each date reads")
         df_list = []
         for idate, (expanded_path, date_list) in enumerate(iterate_patterns(self.path, dates)):
             LOG.info(f"Working on {expanded_path} {date_list[idate]}")
@@ -271,12 +321,14 @@ def odb2df(
 
     # The new "date" column has to be constructed from the existing date and
     # time columns which have them as YYYYMMDD and HHMMSS integers
-    df["date"] = pandas.to_datetime(
+    # (built before dropping them: the date column may itself be called "date")
+    date = pandas.to_datetime(
         df[flavour["date_column_name"]].astype(str).str.zfill(8)
         + df[flavour["time_column_name"]].astype(str).str.zfill(6),
         format="%Y%m%d%H%M%S",
     )
     df.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
+    df["date"] = date
 
     # The latitude and longitude columns may need renaming to standard names
     if flavour["latitude_column_name"] != "latitude":

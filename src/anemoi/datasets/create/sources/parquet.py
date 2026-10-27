@@ -81,8 +81,7 @@ class ParquetSource(Source):
 
         if self.window is None:
             raise ValueError("parquet: called with dates, set `window` to say which rows each date reads")
-        dates = sorted(argument.dates)
-        return self.execute_time_span(TimeSpan.from_window(self.window, dates[0], dates[-1]))
+        return self.execute_time_span(TimeSpan.from_window(self.window, argument.dates))
 
     def files(self, start: datetime.datetime, end: datetime.datetime) -> list[str]:
         days = pd.date_range(pd.Timestamp(start).floor("D"), pd.Timestamp(end).floor("D"))

@@ -361,7 +361,9 @@ class TimeSpan(Argument):
     Sent by sources that window observations themselves (e.g. ``grid_observations``),
     which need every row from ``start`` to ``end`` at once rather than per date. ``closed``
     says which ends are included, as in ``pandas.Interval`` ("right": start < t <= end).
-    ``columns`` are the columns the caller needs (a source may read more).
+    ``columns`` are the columns the caller needs (a source may read more). ``dates`` are the
+    dataset dates the span serves, for sources whose files are named by date (e.g. one ODB
+    file per cycle).
     """
 
     def __init__(
@@ -370,6 +372,7 @@ class TimeSpan(Argument):
         end: datetime.datetime,
         closed: str = "right",
         columns: list[str] | None = None,
+        dates: list[datetime.datetime] | None = None,
     ) -> None:
         if closed not in ("left", "right", "both", "neither"):
             raise ValueError(f"TimeSpan: invalid closed {closed!r}")
@@ -377,16 +380,22 @@ class TimeSpan(Argument):
         self.end = end
         self.closed = closed
         self.columns = columns
+        self.dates = list(dates) if dates is not None else None
 
     @classmethod
-    def from_window(
-        cls, window: Any, first: datetime.datetime, last: datetime.datetime, columns: list[str] | None = None
-    ) -> TimeSpan:
-        """The span of the windows (an ``anemoi.utils.window.Window``) of dates first..last."""
+    def from_window(cls, window: Any, dates: list[datetime.datetime], columns: list[str] | None = None) -> TimeSpan:
+        """The span of the windows (an ``anemoi.utils.window.Window``) of the given dates."""
         closed = {(True, True): "both", (True, False): "left", (False, True): "right", (False, False): "neither"}[
             (not window.exclude_before, not window.exclude_after)
         ]
-        return cls(first + window.before, last + window.after, closed, columns)
+        dates = sorted(dates)
+        return cls(dates[0] + window.before, dates[-1] + window.after, closed, columns, dates)
+
+    def mask(self, times: Any) -> Any:
+        """Which of `times` (a pandas Series or array of datetimes) are in the span."""
+        after = times >= self.start if self.closed in ("left", "both") else times > self.start
+        before = times <= self.end if self.closed in ("right", "both") else times < self.end
+        return after & before
 
     def __repr__(self) -> str:
         left = "[" if self.closed in ("left", "both") else "("

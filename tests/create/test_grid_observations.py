@@ -9,10 +9,12 @@
 
 import datetime
 import os
+import shutil
 
 import numpy as np
 import pandas as pd
 import pytest
+from anemoi.utils.window import Window
 
 from anemoi.datasets import open_dataset
 
@@ -131,3 +133,36 @@ def test_monitor_plots(tmp_path):
     outs = plot_all(created)
     assert [os.path.basename(o) for o in outs] == ["timeseries.png", "qc.png", "maps_2020-01.png"]
     assert all(os.path.getsize(o) > 0 for o in outs)
+
+
+@pytest.mark.skipif(shutil.which("odc") is None, reason="needs the odc command")
+def test_odb_time_span_per_cycle_files_with_milliseconds(tmp_path):
+    pyodc = pytest.importorskip("pyodc")
+    from anemoi.datasets.create.arguments import TimeSpan
+    from anemoi.datasets.create.sources.odb import OdbSource
+
+    class Context:
+        def trace(self, *args):
+            pass
+
+    # cycle 06Z holds (00:10, 06:10]; one row at 00:10:00.500, just inside it
+    rows = {
+        "date": [20200101] * 3,
+        "time": [1000, 30000, 61001],  # 06:10:01: after the window
+        "time_ms": [500.0, 0.0, 0.0],
+        "lat": [10.0, 20.0, 30.0],
+        "lon": [1.0, 2.0, 3.0],
+        "bt_1": [250.0, 251.0, 252.0],
+    }
+    pyodc.encode_odb(pd.DataFrame(rows), str(tmp_path / "2020010106.odb"))
+    flavour = {"date_column_name": "date", "time_column_name": "time", "latitude_column_name": "lat"}
+    flavour |= {"longitude_column_name": "lon"}
+    T = datetime.datetime(2020, 1, 1, 6)
+    span = TimeSpan.from_window(Window("(-350m,+10m]"), [T])
+    path = str(tmp_path / "{date:strftime(%Y%m%d%H)}.odb")
+    exact = OdbSource(Context(), path, select="*", flavour=flavour | {"milliseconds_column_name": "time_ms"})
+    df = exact.execute(span)
+    assert df["bt_1"].tolist() == [250.0, 251.0] and "time_ms" not in df
+    assert df["date"].iloc[0] == pd.Timestamp("2020-01-01 00:10:00.500")
+    seconds = OdbSource(Context(), path, select="*", flavour=flavour).execute(span)
+    assert seconds["bt_1"].tolist() == [251.0]  # 00:10:00 is outside the window

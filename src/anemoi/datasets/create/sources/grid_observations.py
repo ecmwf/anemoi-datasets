@@ -77,7 +77,7 @@ class GridObservationsSource(Source):
         from anemoi.datasets.create.arguments import TimeSpan
 
         steps = pd.DatetimeIndex(sorted(argument.dates))
-        span = TimeSpan.from_window(self.window, steps[0], steps[-1], self.gridding.input_columns())
+        span = TimeSpan.from_window(self.window, list(steps.to_pydatetime()), self.gridding.input_columns())
         rows = self.input(self.context, span)
         if not isinstance(rows, pd.DataFrame):
             raise TypeError(f"grid_observations: the input must give a DataFrame, not {type(rows).__name__}")
