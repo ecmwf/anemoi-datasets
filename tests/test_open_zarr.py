@@ -75,6 +75,11 @@ def test_open_zarr_cache(http_server: tuple[str, list[str]]) -> None:
     assert not chunks & set(requested[first_read:])
 
 
+def test_open_zarr_cache_local_path(dataset: str) -> None:
+    root = open_zarr(dataset, cache=1_000_000)
+    np.testing.assert_array_equal(root["data"][:], DATA)
+
+
 def test_open_zarr_debug_loading(dataset: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(store_module, "DEBUG_ZARR_LOADING", 1)
 

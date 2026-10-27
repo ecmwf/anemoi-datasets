@@ -72,6 +72,9 @@ def name_to_zarr_store(path_or_url: str) -> Any:
 
         return HTTPStore(store)
 
+    if os.path.isdir(store):
+        return DirectoryStore(store)
+
     return store
 
 
@@ -81,15 +84,11 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
         store = name_to_zarr_store(path)
 
         if DEBUG_ZARR_LOADING:
-            if isinstance(store, str):
-                import os
-
-                if not os.path.isdir(store):
-                    raise NotImplementedError(
-                        "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
-                        "Please disable it for other backends."
-                    )
-                store = DirectoryStore(store)
+            if not isinstance(store, DirectoryStore):
+                raise NotImplementedError(
+                    "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
+                    "Please disable it for other backends."
+                )
             store = DebugStore(store)
 
         if cache is not None:
