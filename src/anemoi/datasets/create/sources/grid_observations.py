@@ -110,7 +110,8 @@ class GridObservationsSource(Source):
         stats and the QC counts of the rows read; per cell, rows read and rejected by QC."""
         if not hasattr(self.context, "add_diagnostics"):
             return
-        observed = self.gridding.variables.observed()
+        v = self.gridding.variables
+        observed = [v.final(n) for n in v.observed()]
         self.context.add_diagnostics("obs_stats", out.stats(observed, self.gridding.group_by))
         self.context.add_diagnostics("obs_qc", out.qc.assign(day=steps[0].floor("D")))
         self.context.add_diagnostics("obs_qc_cells", out.sums["qc"].astype(np.int32))  # rows, rejected

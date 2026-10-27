@@ -22,8 +22,9 @@ input:
       forcings: [cos_latitude, sin_latitude, cos_sza]
       scan: {column: fov, n_positions: 30, group_size: 4, first_side: left}
       spread: [bt_921]
-      rename: {bt_: obsvalue_rawbt_, satid: satellite_id}
-    maps: [obsvalue_rawbt_921, time_delta, n_obs]
+      rename: {bt_: "", satid: satellite_id}
+      prefix: iasi_
+    maps: [iasi_921, iasi_time_delta, iasi_n_obs]
     input:
       parquet:
         path: /data/iasi/year=%Y/month=%m/%Y-%m-%d.parquet

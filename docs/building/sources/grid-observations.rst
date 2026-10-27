@@ -120,7 +120,12 @@ this QC.
 
 **rename**
    Output names. A key ending in ``_`` renames a prefix
-   (``bt_: obsvalue_rawbt_``).
+   (``bt_: obsvalue_rawbt_``, or ``bt_: ""`` to keep the channel number).
+
+**prefix**
+   Put before every output name, derived variables and forcings included,
+   e.g. ``iasi_`` gives ``iasi_921`` and ``iasi_cos_vza``. ``maps`` use
+   the prefixed names.
 
 **group_by** (default ``satid``)
    The integer column that QC counts, statistics and ``mean`` superobs
