@@ -43,7 +43,7 @@ jobs:
       - uses: ecmwf/ci-infrastructure/actions/pre-commit@main
 
   resolve:
-    needs: [ci-approval, pre-commit]
+    needs: ci-approval
     runs-on: arc-runner-normal
     container:
       image: eccr.ecmwf.int/public-ci-images/ubuntu24.04-base:latest
