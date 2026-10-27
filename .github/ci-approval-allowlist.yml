@@ -1,0 +1,14 @@
+# Exemptions from the check-ci-approval pre-commit hook of ecmwf/ci-infrastructure.
+# An entry here is a claim that the job never executes pull request code.
+# Re-check that claim whenever one of these jobs gains a checkout step.
+
+exempt:
+  # Checks the pull request title; no checkout.
+  - workflow: pr-conventional-commit.yml
+    jobs: [main]
+  # actions/labeler reads only the changed file names; no checkout.
+  - workflow: pr-label-file-based.yml
+    jobs: [labeler]
+  # Edits the pull request description with the docs preview link; no checkout.
+  - workflow: readthedocs-pr-update.yml
+    jobs: [documentation-links]
