@@ -86,6 +86,25 @@ For a day of IASI (3.4 M rows) with 44 variables, this was 2.5 GB on
 o96 and 3.2 GB on N320. On high-resolution grids (O1280: 9.6 GB per day),
 use ``group_by: 6h`` to load one window per group (6.4 GB).
 
+*************************
+ Tendency statistics
+*************************
+
+Training normalises tendencies (x(T) − x(T − Δ)) by their own statistics.
+Ask for them in the recipe, and they are computed during the build:
+
+.. code:: yaml
+
+   statistics:
+     tendencies: [6h]
+
+Differences involving a missing cell are skipped, so a variable observed
+at both times in few cells still gets statistics from those cells. With
+``load --parts``, each group's tendencies are completed at ``finalise``
+from the dates before the group, so the pairs across group boundaries
+count too. This replaces the ``init-additions`` / ``load-additions`` /
+``finalise-additions`` steps.
+
 **********
  Checking
 **********

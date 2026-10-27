@@ -724,9 +724,17 @@ class StatisticsCollector:
         if offset != dataset.data.shape[0]:
             raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
 
-        # Adjust partial statistics
-        for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
+        # Adjust partial statistics: each group reads the dates before it back from the dataset
+        # (tendencies across group boundaries). The groups are independent and the reads are
+        # bound by file system latency, so in threads (serially, 6 groups/s on Lustre).
+        dataset.dates  # cached before the threads share the dataset
+
+        def adjust(state):
             state.collector.adjust_partial_statistics(dataset, state)
+
+        with ThreadPoolExecutor(32) as pool:
+            for _ in tqdm.tqdm(pool.map(adjust, states), desc="Adjusting partial statistics", total=len(states)):
+                pass
 
         # Merge all collectors
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

@@ -12,7 +12,11 @@ maps into ``<dataset>/_monitor/``:
   step removes, and the fraction of cells filled;
 - ``maps_YYYY-MM.png``: for one month, per grid cell, the fraction of
   steps filled, the fraction of rows rejected by QC, and the mean, std
-  and one mid-month step of each map variable.
+  and one mid-month step of each map variable;
+- ``statistics.png``: per variable, how far the minimum and maximum lie
+  from the mean in stdevs, and the stdev of each tendency (recipe
+  ``statistics.tendencies``) relative to the stdev. Written for any
+  dataset built with tendency statistics.
 
 .. code:: console
 

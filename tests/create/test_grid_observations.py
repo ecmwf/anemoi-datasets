@@ -14,6 +14,7 @@ import shutil
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 import zarr
 from anemoi.utils.window import Window
 
@@ -132,10 +133,39 @@ def test_monitor_plots(tmp_path):
     path = write_days(tmp_path / "base", [("2020-01-01 06:10", 3, 250.0), ("2020-01-02 00:00", 5, 260.0)])
     config = recipe(path, missing_files="skip")
     config["input"]["grid_observations"]["maps"] = ["bt_1", "n_obs"]
+    config["statistics"] = {"tendencies": ["6h", "12h"]}
     created = create_dataset(recipe=config, output=str(tmp_path / "ds.zarr"))
     outs = plot_all(created)
-    assert [os.path.basename(o) for o in outs] == ["timeseries.png", "qc.png", "maps_2020-01.png"]
+    names = ["timeseries.png", "qc.png", "maps_2020-01.png", "statistics.png"]
+    assert [os.path.basename(o) for o in outs] == names
     assert all(os.path.getsize(o) > 0 for o in outs)
+
+
+def test_tendency_statistics_match_brute_force(tmp_path):
+    rows = [("2020-01-01 05:00", 3, 250.0), ("2020-01-01 11:00", 3, 255.0), ("2020-01-01 23:00", 3, 265.0)]
+    rows += [("2020-01-02 05:00", 3, 262.0), ("2020-01-02 17:00", 3, 240.0)]
+    (tmp_path / "base").mkdir()
+    config = recipe(write_days(tmp_path / "base", rows), missing_files="skip")
+    config["statistics"] = {"tendencies": ["6h", "12h"], "end": "2020-01-02T18:00:00"}
+    # in parts, as a parallel build: each day is its own group, and finalise adjusts the
+    # tendencies across the day boundary from the stored data
+    from anemoi.datasets.create.tasks import run_task
+
+    created = str(tmp_path / "ds.zarr")
+    with open(tmp_path / "recipe.yaml", "w") as f:
+        yaml.safe_dump(config, f)
+    run_task("init", recipe=str(tmp_path / "recipe.yaml"), path=created, overwrite=True)
+    for part in ("1/2", "2/2"):
+        run_task("load", path=created, parts=[part])
+    run_task("finalise", path=created)
+    ds, store = open_dataset(created), zarr.open(created, mode="r")
+    x = ds[:][:, ds.name_to_index["bt_1"], 0, :].astype(np.float64)
+    for name, k in (("6h", 1), ("12h", 2)):
+        d = x[k:] - x[:-k]  # pairs across the day boundary (one group each) included
+        d = d[np.isfinite(d)]
+        i = ds.name_to_index["bt_1"]
+        assert store[f"statistics_tendencies_{name}_mean"][i] == pytest.approx(d.mean())
+        assert store[f"statistics_tendencies_{name}_stdev"][i] == pytest.approx(d.std())
 
 
 @pytest.mark.skipif(shutil.which("odc") is None, reason="needs the odc command")

@@ -15,6 +15,8 @@ qc.png            per day and group: what each QC step removes, and the cells fi
                   (``obs_qc`` and ``obs_stats``)
 maps_YYYY-MM.png  one month per cell: steps filled, QC rejection (``obs_qc_cells``), mean /
                   std of the map variables and one step of them (read from the dataset)
+statistics.png    per variable: the extremes in stdevs from the mean, and each tendency's
+                  stdev relative to the stdev (recipe ``statistics.tendencies``)
 
 The diagnostics come from ``anemoi.datasets.create.diagnostics``, written by sources such
 as ``grid_observations``; plots whose inputs are missing are skipped.
@@ -190,6 +192,58 @@ def plot_maps(path: str, month: str, variables: list[str], out: str, qc_cells: n
     return _save(fig, out, rect=(0, 0, 1, 0.98))
 
 
+def plot_statistics(path: str, out: str) -> str | None:
+    """Per variable: the extremes in stdevs from the mean, and the ratio of each tendency's
+    stdev to the stdev. None if the dataset has no tendency statistics."""
+    import zarr
+
+    plt = _plt()
+    store = zarr.open(path, mode="r")
+    names = store.attrs["variables"]
+    deltas = sorted(
+        {
+            k[len("statistics_tendencies_") : -len("_stdev")]
+            for k in store.array_keys()
+            if k.startswith("statistics_tendencies_") and k.endswith("_stdev")
+        },
+        key=lambda d: pd.Timedelta(d),
+    )
+    if not deltas:
+        return None
+    mean, stdev = store["mean"][:], store["stdev"][:]
+    minimum, maximum = store["minimum"][:], store["maximum"][:]
+    y = np.arange(len(names))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 0.22 * len(names) + 1.5), sharey=True)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        # how far the extremes lie from the mean, in stdevs: outliers stretch a normalisation
+        axes[0].barh(y, (maximum - mean) / stdev, color="tab:red", label="(maximum - mean) / stdev")
+        axes[0].barh(y, (minimum - mean) / stdev, color="tab:blue", label="(minimum - mean) / stdev")
+        axes[0].set_xscale("symlog", linthresh=1)
+        axes[0].set_title("extremes in stdevs from the mean")
+        axes[0].legend(fontsize="small")
+        width = 0.8 / len(deltas)
+        zeros = {}
+        for i, d in enumerate(deltas):
+            ratio = store[f"statistics_tendencies_{d}_stdev"][:] / stdev
+            axes[1].barh(y + (i - (len(deltas) - 1) / 2) * width, ratio, height=width, label=d)
+            for j in np.flatnonzero(ratio == 0):  # no bar on a log axis
+                zeros.setdefault(j, []).append(d)
+        for j, ds in zeros.items():
+            axes[1].text(1e-3, y[j], f"{'/'.join(ds)}: 0", va="center", fontsize=7)
+    axes[1].set_xscale("log")
+    axes[1].set_title("tendency stdev / stdev")
+    axes[1].legend(title="tendency")
+    axes[0].set_yticks(y, names, fontsize=7)
+    axes[0].invert_yaxis()
+    for ax in axes:
+        ax.grid(axis="x", alpha=0.3)
+    fig.suptitle(
+        f"{os.path.basename(path.rstrip('/'))}: statistics "
+        f"{store.attrs.get('statistics_start_date', '')} .. {store.attrs.get('statistics_end_date', '')}"
+    )
+    return _save(fig, out, rect=(0, 0, 1, 0.97))
+
+
 def _save(fig, out: str, rect=None) -> str:
     fig.tight_layout(rect=rect)
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -244,6 +298,9 @@ def plot_all(path: str, month: str | None = None, variables: list[str] | None = 
             with np.load(cells_file) as f:
                 qc_cells = f.get(month)
         outs.append(plot_maps(path, month, variables, os.path.join(folder, f"maps_{month}.png"), qc_cells))
+    statistics = plot_statistics(path, os.path.join(folder, "statistics.png"))
+    if statistics is not None:
+        outs.append(statistics)
     for out in outs:
         LOG.info(f"Wrote {out}")
     return outs
