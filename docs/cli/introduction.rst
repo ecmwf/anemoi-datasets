@@ -38,6 +38,7 @@ The commands are:
    create
    create-test-recipe
    inspect
+   monitor
    grib-index
    compare
    copy

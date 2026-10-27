@@ -1,0 +1,4 @@
+parquet:
+  path: /data/iasi/year=%Y/month=%m/%Y-%m-%d.parquet
+  flavour: {date: datetime, latitude: lat, longitude: lon}
+  missing_files: skip

@@ -31,6 +31,7 @@ The following `sources` are currently available:
    sources/from-trajectories
    sources/grib
    sources/grib-index
+   sources/grid-observations
    sources/hindcasts
    sources/mars
    sources/netcdf
@@ -52,6 +53,7 @@ The following `sources` are currently available:
 
    sources/csv
    sources/odb
+   sources/parquet
 
 ..
    sources/bufr

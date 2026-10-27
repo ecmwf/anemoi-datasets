@@ -1,0 +1,30 @@
+dates:
+  start: 2020-01-01T00:00:00
+  end: 2020-01-31T18:00:00
+  frequency: 6h
+
+build:
+  group_by: daily
+  allow_nans: true
+
+input:
+  grid_observations:
+    window: "(-350m,+10m]"
+    grid: o96
+    select: {candidates: latest_pass, pass_gap: 15min, reduce: nearest}
+    qc:
+      flags: {gqis_flag_qual: [0]}
+      range: {bt_16: [170, 270], bt_921: [170, 340]}
+    variables:
+      channels: [bt_16, bt_921]
+      columns: [satid, zenith]
+      derived: [time_delta, cos_vza, scan_pos, n_obs]
+      forcings: [cos_latitude, sin_latitude, cos_sza]
+      scan: {column: fov, n_positions: 30, group_size: 4, first_side: left}
+      spread: [bt_921]
+      rename: {bt_: obsvalue_rawbt_, satid: satellite_id}
+    maps: [obsvalue_rawbt_921, time_delta, n_obs]
+    input:
+      parquet:
+        path: /data/iasi/year=%Y/month=%m/%Y-%m-%d.parquet
+        flavour: {date: datetime, latitude: lat, longitude: lon}
