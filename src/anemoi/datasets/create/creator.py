@@ -24,6 +24,7 @@ from anemoi.utils.sanitise import sanitise
 
 from anemoi.datasets.compat import DEFAULT_FORMAT
 from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.create import diagnostics
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
 from anemoi.datasets.create.recipe import loader_recipe_from_yaml
@@ -247,10 +248,14 @@ class Creator(ABC):
                 self.load_done(dataset, i)
                 continue
 
-            result = self.input.select(self.context(), argument=group)
+            context = self.context()
+            result = self.input.select(context, argument=group)
 
             # There are several groups. There is one result to load for each group.
             self.load_result(result, dataset)
+
+            if context.diagnostics:
+                diagnostics.save(self.work_dir, i, group.dates[0], context.diagnostics)
 
             # Notify sub-class
             self.load_done(dataset, i)
@@ -275,6 +280,7 @@ class Creator(ABC):
         LOG.info("Finalising dataset.")
         dataset = Dataset(self.path, update=True)
         self.finalise_dataset(dataset)
+        diagnostics.merge(self.work_dir, self.path, len(self.groups))
         self.final_metadata(dataset)
         dataset.touch()
         self.task_verify()

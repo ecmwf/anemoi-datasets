@@ -23,6 +23,13 @@ class Context(ABC):
         self.results = {}
         self.cache = {}
         self.use_grib_paramid = recipe.build.use_grib_paramid
+        self.diagnostics = {}  # see anemoi.datasets.create.diagnostics
+
+    def add_diagnostics(self, name: str, value: Any) -> None:
+        """Record a diagnostic of the group being built (a DataFrame or a numpy array)."""
+        if name in self.diagnostics:
+            raise ValueError(f"diagnostics {name!r} recorded twice for one group")
+        self.diagnostics[name] = value
 
     def trace(self, emoji, *message) -> None:
 

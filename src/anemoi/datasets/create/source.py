@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from anemoi.datasets.create.arguments import ForecastDates
     from anemoi.datasets.create.arguments import ForecastIntervals
     from anemoi.datasets.create.arguments import Intervals
+    from anemoi.datasets.create.arguments import TimeSpan
     from anemoi.datasets.create.arguments import ValidDates
 
 
@@ -58,6 +59,7 @@ class Source:
         from anemoi.datasets.create.arguments import ForecastDates
         from anemoi.datasets.create.arguments import ForecastIntervals
         from anemoi.datasets.create.arguments import Intervals
+        from anemoi.datasets.create.arguments import TimeSpan
         from anemoi.datasets.create.arguments import ValidDates
         from anemoi.datasets.dates.groups import GroupOfDates
 
@@ -76,6 +78,8 @@ class Source:
             return self.execute_forecast_dates(argument)
         if isinstance(argument, ValidDates):
             return self.execute_valid_dates(argument)
+        if isinstance(argument, TimeSpan):
+            return self.execute_time_span(argument)
         raise TypeError(
             f"{type(self).__name__}.execute() received unsupported argument type " f"'{type(argument).__name__}'."
         )
@@ -116,6 +120,24 @@ class Source:
         raise NotImplementedError(
             f"'{type(self).__name__}' does not support the trajectory layout " f"(received {type(argument).__name__})."
         )
+
+    def execute_time_span(self, argument: "TimeSpan") -> ekd.FieldList:
+        """Handle a continuous range of observation times (tabular sources).
+
+        Override in subclasses that read observations; by default raises
+        ``NotImplementedError``.
+
+        Parameters
+        ----------
+        argument : TimeSpan
+            The time range to read.
+
+        Returns
+        -------
+        ekd.FieldList
+            The output data (a ``pandas.DataFrame`` for tabular sources).
+        """
+        raise NotImplementedError(f"'{type(self).__name__}' does not read a TimeSpan.")
 
     def execute_intervals(self, argument: "Intervals") -> ekd.FieldList:
         """Handle archive-resolved interval requests from ``AccumulateSource``.

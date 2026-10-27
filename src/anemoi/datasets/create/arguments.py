@@ -348,3 +348,47 @@ class ForecastIntervals(ForecastDates):
 
     def __repr__(self) -> str:
         return f"ForecastIntervals({len(self.items)} items, {len(self._intervals)} intervals)"
+
+
+# ---------------------------------------------------------------------------
+# TimeSpan
+# ---------------------------------------------------------------------------
+
+
+class TimeSpan(Argument):
+    """A continuous range of observation times, for tabular sources.
+
+    Sent by sources that window observations themselves (e.g. ``grid_observations``),
+    which need every row from ``start`` to ``end`` at once rather than per date. ``closed``
+    says which ends are included, as in ``pandas.Interval`` ("right": start < t <= end).
+    ``columns`` are the columns the caller needs (a source may read more).
+    """
+
+    def __init__(
+        self,
+        start: datetime.datetime,
+        end: datetime.datetime,
+        closed: str = "right",
+        columns: list[str] | None = None,
+    ) -> None:
+        if closed not in ("left", "right", "both", "neither"):
+            raise ValueError(f"TimeSpan: invalid closed {closed!r}")
+        self.start = start
+        self.end = end
+        self.closed = closed
+        self.columns = columns
+
+    @classmethod
+    def from_window(
+        cls, window: Any, first: datetime.datetime, last: datetime.datetime, columns: list[str] | None = None
+    ) -> TimeSpan:
+        """The span of the windows (an ``anemoi.utils.window.Window``) of dates first..last."""
+        closed = {(True, True): "both", (True, False): "left", (False, True): "right", (False, False): "neither"}[
+            (not window.exclude_before, not window.exclude_after)
+        ]
+        return cls(first + window.before, last + window.after, closed, columns)
+
+    def __repr__(self) -> str:
+        left = "[" if self.closed in ("left", "both") else "("
+        right = "]" if self.closed in ("right", "both") else ")"
+        return f"TimeSpan{left}{self.start}, {self.end}{right}"

@@ -61,7 +61,7 @@ dependencies = [
   "zarr<=2.18.7",
 ]
 optional-dependencies.all = [
-  "anemoi-datasets[comparelam,create,remote,xarray]",
+  "anemoi-datasets[comparelam,create,observations,remote,xarray]",
 ]
 optional-dependencies.comparelam = [
   "prettytable",
@@ -88,6 +88,7 @@ optional-dependencies.docs = [
   "sphinx-argparse",
   "sphinx-rtd-theme",
 ]
+optional-dependencies.observations = [ "matplotlib", "pyarrow" ]
 optional-dependencies.remote = [ "anemoi-utils[s3]", "requests" ]
 optional-dependencies.tests = [
   "anemoi-datasets[xarray]",
