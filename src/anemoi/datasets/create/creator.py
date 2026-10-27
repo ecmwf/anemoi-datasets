@@ -258,6 +258,10 @@ class Creator(ABC):
             if context.diagnostics:
                 diagnostics.save(self.work_dir, i, group.dates[0], context.diagnostics)
 
+            # Free this group's data before the next is built: otherwise two groups are in
+            # memory at once (+4.6 GB for a day of 44 variables on o1280)
+            del result, context
+
             # Notify sub-class
             self.load_done(dataset, i)
 

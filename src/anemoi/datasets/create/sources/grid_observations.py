@@ -8,6 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
+import re
 
 import earthkit.data as ekd
 import numpy as np
@@ -87,6 +88,8 @@ class GridObservationsSource(Source):
             self.emoji, f"{len(rows)} rows → {len(out.picked)} cells over {len(steps)} windows ({self.window_string})"
         )
         lat, lon = grid_points(self.gridding.grid)
+        grid = self.gridding.grid
+        resolution = grid.upper() if re.fullmatch(r"[onON]\d+", grid) else grid  # as GRIB: O96, N320
         fields = [
             {
                 "param": name,
@@ -94,6 +97,7 @@ class GridObservationsSource(Source):
                 "latitudes": lat,
                 "longitudes": lon,
                 "valid_datetime": time.to_pydatetime(),
+                "resolution": resolution,
             }
             for i, time in enumerate(steps)
             for name, array in out.arrays.items()

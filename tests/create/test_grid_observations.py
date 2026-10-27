@@ -14,6 +14,7 @@ import shutil
 import numpy as np
 import pandas as pd
 import pytest
+import zarr
 from anemoi.utils.window import Window
 
 from anemoi.datasets import open_dataset
@@ -72,7 +73,8 @@ def test_grid_observations_windows_cross_the_day(tmp_path):
         ("2020-01-02 11:00", 3, 400.0),  # out of range: masked, then incomplete
     ]
     path = write_days(tmp_path, rows)
-    ds = open_dataset(create_dataset(recipe=recipe(path, missing_files="skip"), output=None))
+    created = create_dataset(recipe=recipe(path, missing_files="skip"), output=None)
+    ds = open_dataset(created)
     assert ds.shape == (8, 5, 1, 40320)
     assert ds.variables == sorted(["satid", "bt_1", "time_delta", "n_obs", "cos_latitude"])
     v = ds.name_to_index
@@ -83,6 +85,7 @@ def test_grid_observations_windows_cross_the_day(tmp_path):
     assert np.isnan(ds[:, v["bt_1"], 0, :CELL]).all()
     assert np.isfinite(ds[:, v["cos_latitude"], 0, :]).all()
     assert ds.statistics["mean"][v["bt_1"]] == pytest.approx(255)
+    assert zarr.open(created, mode="r").attrs["resolution"] == "O96"
 
 
 def test_parquet_time_span_ends_and_missing_files(tmp_path):
