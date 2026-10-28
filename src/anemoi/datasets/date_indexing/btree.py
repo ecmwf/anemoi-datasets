@@ -13,9 +13,9 @@ import logging
 from functools import cached_property
 
 import numpy as np
-import zarr
 from lru import LRU
 
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.epochs import epoch_to_date
 
 from ..buffering import RandomReadBuffer
@@ -106,7 +106,7 @@ class ZarrBTree:
 
         if isinstance(path, str):
             # Open or create Zarr store
-            self.store = zarr.open_group(self.path, mode=mode)
+            self.store = zarr_open(self.path, mode)
         else:
             self.store = path
 

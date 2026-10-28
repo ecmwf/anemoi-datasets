@@ -20,7 +20,9 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import zarr_format_from_name
+from anemoi.datasets.compat import zarr_open
 
 from .locking import Locking
 
@@ -47,7 +49,14 @@ def _tidy_json(obj: Any) -> Any:
 class Dataset:
     """A class to represent a dataset."""
 
-    def __init__(self, path: str, overwrite: bool = False, update: bool = False, create: bool = False) -> None:
+    def __init__(
+        self,
+        path: str,
+        overwrite: bool = False,
+        update: bool = False,
+        create: bool = False,
+        format: str = DEFAULT_FORMAT,
+    ) -> None:
 
         if path.endswith("/"):
             path = path[:-1]
@@ -72,15 +81,12 @@ class Dataset:
                 else:
                     raise FileExistsError(f"Dataset path '{path}' already exists. Use --overwrite to overwrite.")
 
-        mode = "r"
-
         if create:
-            mode = "w"
-
-        if update:
-            mode = "a"
-
-        self.store = zarr.open(self.path, mode=mode)
+            self.store = zarr_open(self.path, "w", zarr_format=zarr_format_from_name(format))
+        elif update:
+            self.store = zarr_open(self.path, "r+")
+        else:
+            self.store = zarr_open(self.path, "r")
         self.synchronizer = Locking(self.path + ".lock")
 
     def add_array(

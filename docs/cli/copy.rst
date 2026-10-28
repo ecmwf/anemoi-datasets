@@ -22,6 +22,10 @@ has a huge impact on the performance when reading the data: The chunk pattern
 for the source dataset has been defined for good reasons, and changing it is
 very likely to have a negative impact on the performance.
 
+The copy keeps the format of the source dataset, unless the
+``--format`` option selects another one. Resharding requires Zarr
+format 3. See :ref:`zarr-format` for details.
+
 .. warning::
 
     When resuming the copying process (using ``--resume``), calling the script with the same arguments for ``--block-size`` and ``--rechunk`` is recommended.
