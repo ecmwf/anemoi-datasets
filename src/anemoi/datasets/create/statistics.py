@@ -189,8 +189,12 @@ class _TendencyCollector(_CollectorBase):
     def __init__(self, column_names: list[str], delta: int) -> None:
         super().__init__(column_names)
         self._delta = delta
-        # Only keep a sliding window of the last 'delta' rows
+        # Ring buffer holding the last 'delta' rows: once it is full, the slot `_next`
+        # holds the row 'delta' steps before the next incoming row. Rows are written in
+        # place, so that the history is never copied (rows can be hundreds of MB).
         self._window = None
+        self._filled = 0
+        self._next = 0
         self._last_window_date = None  # Store only last date for validation
 
     def __repr__(self, extra: str = ""):
@@ -223,22 +227,46 @@ class _TendencyCollector(_CollectorBase):
                 f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
             )
 
+    def _push(self, data: NDArray[np.float64], out: NDArray[np.float64] | None = None) -> int:
+        # Write the rows of `data` into the ring buffer, in order. If `out` is given, the
+        # tendency of each row that has 'delta' rows of history is written to it.
+        # Returns the number of tendencies.
+        if self._window is None:
+            self._window = np.empty((self._delta,) + data.shape[1:], dtype=data.dtype)
+
+        n = 0
+        for row in data:
+            if self._filled == self._delta:
+                if out is not None:
+                    np.subtract(row, self._window[self._next], out=out[n])
+                n += 1
+            else:
+                self._filled += 1
+            self._window[self._next] = row
+            self._next = (self._next + 1) % self._delta
+        return n
+
     def update(self, data: NDArray[np.float64], dates) -> None:
         assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
         self._check_dates(dates)
 
-        # Concatenate window with new data for tendency computation
-        combined = data if self._window is None else np.concatenate([self._window, data], axis=0)
+        if len(data) == 0:
+            return
 
         # Compute tendencies wherever we have enough history
-        if len(combined) > self._delta:
-            tendencies = combined[self._delta :] - combined[: -self._delta]
+        count = min(max(self._filled + len(data) - self._delta, 0), len(data))
+        tendencies = None
+        if count > 0:
+            dtype = np.result_type(data.dtype, self._window.dtype if self._window is not None else data.dtype)
+            tendencies = np.empty((count,) + data.shape[1:], dtype=dtype)
+
+        n = self._push(data, tendencies)
+        assert n == count, (n, count)
+
+        if tendencies is not None:
             _CollectorBase.update(self, tendencies)
 
-        # Update sliding window: keep only last 'delta' rows
-        self._window = np.array(combined[-self._delta :], copy=True)
-        if len(dates) > 0:
-            self._last_window_date = dates[-1]
+        self._last_window_date = dates[-1]
 
     def prime(self, data: NDArray[np.float64], dates) -> None:
         """Fill the sliding window with rows that precede the range being collected.
@@ -258,8 +286,7 @@ class _TendencyCollector(_CollectorBase):
             return
         self._check_dates(dates)
 
-        combined = data if self._window is None else np.concatenate([self._window, data], axis=0)
-        self._window = np.array(combined[-self._delta :], copy=True)
+        self._push(data)
         self._last_window_date = dates[-1]
 
     def finalise(self) -> None:
@@ -268,6 +295,8 @@ class _TendencyCollector(_CollectorBase):
     def __getstate__(self):
         state = self.__dict__.copy()
         state["_window"] = None
+        state["_filled"] = 0
+        state["_next"] = 0
         state["_last_window_date"] = None
         return state
 
