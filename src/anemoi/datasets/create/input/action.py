@@ -12,7 +12,7 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cache
 
-import numpy as np  
+import numpy as np
 
 from anemoi.datasets.create.recipe.dates import BaseDates
 from anemoi.datasets.create.recipe.dates import StartEndDates
@@ -20,12 +20,13 @@ from anemoi.datasets.create.recipe.dates import Steps
 
 LOG = logging.getLogger(__name__)
 
+
 def _check_same_grid(ds1, ds2, path, rtol=1.0e-7):
     """Compare the grid points of the first field of two fieldlists."""
     if len(ds1) == 0 or len(ds2) == 0:
         return
-  
-    lat1, lon1 = ds1[0].to_latlon().values()   # or .metadata("latitudes","longitudes")
+
+    lat1, lon1 = ds1[0].to_latlon().values()  # or .metadata("latitudes","longitudes")
     lat2, lon2 = ds2[0].to_latlon().values()
 
     lat1, lon1 = np.asarray(lat1), np.asarray(lon1)
@@ -40,6 +41,7 @@ def _check_same_grid(ds1, ds2, path, rtol=1.0e-7):
             "Sources have the same grid but different point ordering; "
             "apply a regrid filter to align them before joining."
         )
+
 
 class Action(ABC):
     """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
