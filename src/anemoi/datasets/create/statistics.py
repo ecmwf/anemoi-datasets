@@ -10,18 +10,65 @@
 
 import hashlib
 import logging
+import os
 import pickle
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.utils.config import load_config
 from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
+
+# Below this number of values per batch, columns are processed sequentially: the
+# overhead of the threads would outweigh the gain.
+THREADING_THRESHOLD = 1_000_000
+
+_EXECUTOR = None
+_EXECUTOR_PID = None
+
+
+def _available_cpus() -> int:
+    threads = load_config().get("datasets", {}).get("statistics_threads")
+    if threads is not None:
+        return max(int(threads), 1)
+
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:  # Not available on macOS
+        return os.cpu_count() or 1
+
+
+def _executor() -> ThreadPoolExecutor | None:
+    # Shared thread pool for the column-wise statistics, or None if only one CPU is
+    # available. NumPy releases the GIL in the reductions, so the columns are processed
+    # concurrently. The pool is re-created after a fork, as threads do not survive it.
+    global _EXECUTOR, _EXECUTOR_PID
+
+    if _EXECUTOR_PID != os.getpid():
+        cpus = _available_cpus()
+        _EXECUTOR = ThreadPoolExecutor(max_workers=cpus, thread_name_prefix="statistics") if cpus > 1 else None
+        _EXECUTOR_PID = os.getpid()
+        LOG.info(f"Statistics computed with {cpus} thread(s)")
+
+    return _EXECUTOR
+
+
+def _for_each_column(func: Callable[[int], None], num_columns: int, size: int) -> None:
+    # Call `func(col_idx)` for each column, in threads if the batch (of `size` values) is large.
+    # `func` must only touch the entries of its own column, so the results do not depend on the threads.
+    executor = _executor() if size >= THREADING_THRESHOLD else None
+    if executor is None:
+        for col_idx in range(num_columns):
+            func(col_idx)
+    else:
+        list(executor.map(func, range(num_columns)))
 
 
 def _(t):
@@ -99,42 +146,43 @@ class _CollectorBase(_Base):
     def update(self, data: NDArray[np.float64]) -> None:
         if len(data) == 0:
             return
-        # data shape: (n_samples, n_columns)
-        data = data.astype(np.float64)
+        # data shape: (n_samples, n_columns, ...)
 
-        # Create mask for valid data (not NaN)
-        valid_mask = ~np.isnan(data)
+        # Each column only updates its own entries of the accumulators, so the columns
+        # can be processed in any order.
+        _for_each_column(lambda col_idx: self._update_column(data, col_idx), data.shape[1], data.size)
 
-        # Process each column
-        for col_idx in range(data.shape[1]):
-            col_data = data[:, col_idx]
-            col_mask = valid_mask[:, col_idx]
-            valid_data = col_data[col_mask]
+    def _update_column(self, data: NDArray[np.float64], col_idx: int) -> None:
+        # Converting each column to float64 gives the same values as converting the whole array
+        col_data = data[:, col_idx].astype(np.float64)
 
-            if valid_data.size == 0:
-                continue
+        # Mask for valid data (not NaN)
+        valid_data = col_data[~np.isnan(col_data)]
 
-            n = len(valid_data)
-            old_mean = self._mean[col_idx]
-            old_count = self._count[col_idx]
-            new_count = old_count + n
+        if valid_data.size == 0:
+            return
 
-            # Batch mean
-            batch_mean = np.mean(valid_data)
+        n = len(valid_data)
+        old_mean = self._mean[col_idx]
+        old_count = self._count[col_idx]
+        new_count = old_count + n
 
-            # Update combined mean
-            self._mean[col_idx] = (old_count * old_mean + n * batch_mean) / new_count
+        # Batch mean
+        batch_mean = np.mean(valid_data)
 
-            # Update M2 using parallel algorithm formula
-            batch_m2 = np.sum((valid_data - batch_mean) ** 2)
-            delta = batch_mean - old_mean
-            self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
+        # Update combined mean
+        self._mean[col_idx] = (old_count * old_mean + n * batch_mean) / new_count
 
-            self._count[col_idx] = new_count
+        # Update M2 using parallel algorithm formula
+        batch_m2 = np.sum((valid_data - batch_mean) ** 2)
+        delta = batch_mean - old_mean
+        self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
 
-            # Update min/max
-            self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
-            self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
+        self._count[col_idx] = new_count
+
+        # Update min/max
+        self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
+        self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
 
     def statistics(self) -> dict[str, NDArray[np.float64]]:
         # Returns arrays for each statistic across all columns
@@ -236,13 +284,23 @@ class _TendencyCollector(_CollectorBase):
 
         n = 0
         for row in data:
+            slot = self._window[self._next]
+            tendency = None
             if self._filled == self._delta:
                 if out is not None:
-                    np.subtract(row, self._window[self._next], out=out[n])
+                    tendency = out[n]
                 n += 1
             else:
                 self._filled += 1
-            self._window[self._next] = row
+
+            def _column(col_idx: int, row=row, slot=slot, tendency=tendency) -> None:
+                # Slices rather than indices, so that 1-D rows give arrays, not scalars
+                col = slice(col_idx, col_idx + 1)
+                if tendency is not None:
+                    np.subtract(row[col], slot[col], out=tendency[col])
+                slot[col] = row[col]
+
+            _for_each_column(_column, row.shape[0], row.size)
             self._next = (self._next + 1) % self._delta
         return n
 
