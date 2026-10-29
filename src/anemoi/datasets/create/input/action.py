@@ -35,7 +35,7 @@ def _check_same_grid(ds1, ds2, path, rtol=1.0e-7):
     if lat1.shape != lat2.shape or lon1.shape != lon2.shape:
         raise ValueError(f"Incompatible grids in join at {path}: {lat1.shape} vs {lat2.shape}")
 
-    if not np.allclose(lat1, lat2, rtol=rtol) or not np.allclose(lon1, lon2, rtol=rtol):
+    if not np.allclose(lat1, lat2, rtol=rtol) or not np.allclose(np.mod(lon1, 360), np.mod(lon2, 360), rtol=rtol):
         raise ValueError(
             f"Incompatible grid ordering in join at {path}. "
             "Sources have the same grid but different point ordering; "
