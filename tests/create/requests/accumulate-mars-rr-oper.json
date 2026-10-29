@@ -1,0 +1,116 @@
+[
+  {
+    "md5": "72e4ebe62f1658e1d422d46e07117334",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "rr",
+        "date": "20210110",
+        "expver": "prod",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "origin": "se-al-ec",
+        "param": [
+          "ssrd",
+          "strd",
+          "tp"
+        ],
+        "step": 3,
+        "stream": "oper",
+        "time": [
+          "1500",
+          "1800",
+          "2100"
+        ],
+        "type": "fc"
+      }
+    ]
+  },
+  {
+    "md5": "a33583dfde8425f0583d56b6312d291a",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "rr",
+        "date": "20210111",
+        "expver": "prod",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "origin": "se-al-ec",
+        "param": [
+          "ssrd",
+          "strd",
+          "tp"
+        ],
+        "step": 3,
+        "stream": "oper",
+        "time": [
+          "0000",
+          "0300",
+          "0600",
+          "0900",
+          "1200",
+          "1500",
+          "1800",
+          "2100"
+        ],
+        "type": "fc"
+      }
+    ]
+  },
+  {
+    "md5": "db234e9a85c78162cfd7dec8fb03d251",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "rr",
+        "date": "20210110",
+        "expver": "prod",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "origin": "se-al-ec",
+        "param": [
+          "ssrd",
+          "strd",
+          "tp"
+        ],
+        "step": 3,
+        "stream": "oper",
+        "time": "1500",
+        "type": "fc"
+      }
+    ]
+  },
+  {
+    "md5": "de36e4737f30ae7206ac1a1a422c83b8",
+    "count": 2,
+    "request": [
+      [],
+      {
+        "class": "rr",
+        "date": "20210112",
+        "expver": "prod",
+        "grid": "20./20.",
+        "levtype": "sfc",
+        "origin": "se-al-ec",
+        "param": [
+          "ssrd",
+          "strd",
+          "tp"
+        ],
+        "step": 3,
+        "stream": "oper",
+        "time": [
+          "0000",
+          "0300",
+          "0600",
+          "0900"
+        ],
+        "type": "fc"
+      }
+    ]
+  }
+]

@@ -20,7 +20,9 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
-import anemoi.datasets.compat  # noqa: F401 Ensure zarr2/3 compatibility is loaded
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import zarr_format_from_name
+from anemoi.datasets.compat import zarr_open
 
 from .locking import Locking
 
@@ -47,7 +49,14 @@ def _tidy_json(obj: Any) -> Any:
 class Dataset:
     """A class to represent a dataset."""
 
-    def __init__(self, path: str, overwrite: bool = False, update: bool = False, create: bool = False) -> None:
+    def __init__(
+        self,
+        path: str,
+        overwrite: bool = False,
+        update: bool = False,
+        create: bool = False,
+        format: str = DEFAULT_FORMAT,
+    ) -> None:
 
         if path.endswith("/"):
             path = path[:-1]
@@ -72,15 +81,12 @@ class Dataset:
                 else:
                     raise FileExistsError(f"Dataset path '{path}' already exists. Use --overwrite to overwrite.")
 
-        mode = "r"
-
         if create:
-            mode = "w"
-
-        if update:
-            mode = "a"
-
-        self.store = zarr.open(self.path, mode=mode)
+            self.store = zarr_open(self.path, "w", zarr_format=zarr_format_from_name(format))
+        elif update:
+            self.store = zarr_open(self.path, "r+")
+        else:
+            self.store = zarr_open(self.path, "r")
         self.synchronizer = Locking(self.path + ".lock")
 
     def add_array(
@@ -152,8 +158,8 @@ class Dataset:
 
     def todo_remaining(self) -> int:
         with self.synchronizer:
-            flags = self.store["_build"]["flags"]
-            return np.sum(~flags)
+            flags = self.store["_build"]["flags"][:]
+            return int(np.sum(~flags))
 
     def mark_done(self, i: int):
         with self.synchronizer:
@@ -171,34 +177,12 @@ class Dataset:
 
     ##################################
 
-    def group_to_range(self, group: int) -> tuple[int, int]:
-        """Convert group indices to slice in the data array's first axis."""
-
-        with self.synchronizer:
-            shapes = self.store["_build"]["shapes"][:]
-            lengths = shapes[:, 0]
-            start = sum(lengths[:group])
-            end = start + lengths[group]
-            return (start, end)
-
-    ##################################
-
     def add_provenance(self, name: str) -> None:
 
         from anemoi.utils.provenance import gather_provenance_info
 
         if name not in self.store.attrs:
             self.store.attrs[name] = gather_provenance_info()
-
-    # For statistics about
-    def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
-        """Initialise the per-group shape tracking array."""
-
-        self.add_array(
-            name="_build/shapes",
-            data=np.array(shapes, dtype=np.int64),
-            dimensions=("group", "dim"),
-        )
 
     def initialise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""
