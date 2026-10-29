@@ -111,6 +111,7 @@ def create_zarr(
     ensemble: int | None = None,
     grids: int | None = None,
     missing: bool = False,
+    dtype: np.dtype = np.float64,
 ) -> zarr.Group:
     """Create a Zarr dataset.
 
@@ -136,6 +137,8 @@ def create_zarr(
         Number of grids, by default None.
     missing : bool, optional
         Whether to include missing dates, by default False.
+    dtype : np.dtype, optional
+        Data type of the data array, by default np.float64.
 
     Returns
     -------
@@ -156,7 +159,7 @@ def create_zarr(
     ensembles = ensemble if ensemble is not None else 1
     values = grids if grids is not None else VALUES
 
-    data = np.zeros(shape=(len(dates), len(vars), ensembles, values))
+    data = np.zeros(shape=(len(dates), len(vars), ensembles, values), dtype=dtype)
 
     for i, date in enumerate(dates):
         for j, var in enumerate(vars):
@@ -167,22 +170,22 @@ def create_zarr(
         "data",
         data=data,
         chunks=data.shape,
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "dates",
         data=dates,
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "latitudes",
         data=np.array([x + values for x in range(values)]),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "longitudes",
         data=np.array([x + values for x in range(values)]),
-        compressor=None,
+        compressors=None,
     )
 
     root.attrs["frequency"] = frequency_to_string(frequency)
@@ -207,22 +210,22 @@ def create_zarr(
     root.create_array(
         "mean",
         data=np.mean(data, axis=0),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "stdev",
         data=np.std(data, axis=0),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "maximum",
         data=np.max(data, axis=0),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         "minimum",
         data=np.min(data, axis=0),
-        compressor=None,
+        compressors=None,
     )
 
     # Statistics tendencies: simple finite differences along the time axis for the
@@ -237,22 +240,22 @@ def create_zarr(
     root.create_array(
         f"statistics_tendencies_{delta}_mean",
         data=np.mean(tendencies, axis=(0, 2, 3)),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_stdev",
         data=np.std(tendencies, axis=(0, 2, 3)),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_maximum",
         data=np.max(tendencies, axis=(0, 2, 3)),
-        compressor=None,
+        compressors=None,
     )
     root.create_array(
         f"statistics_tendencies_{delta}_minimum",
         data=np.min(tendencies, axis=(0, 2, 3)),
-        compressor=None,
+        compressors=None,
     )
 
     root.attrs["field_shape"] = field_shape

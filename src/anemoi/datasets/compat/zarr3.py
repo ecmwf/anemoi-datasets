@@ -35,6 +35,16 @@ def HTTPStore(url: str) -> zarr.storage.FsspecStore:
 
 DebugStore = zarr.storage.LoggingStore
 
+DirectoryStore = zarr.storage.LocalStore
+
+
+def LRUStoreCache(store: zarr.abc.store.Store, max_size: int | None) -> zarr.storage.WrapperStore:
+    """Wrap a store in an in-memory cache of at most ``max_size`` bytes, evicting the least recently used keys."""
+    # zarr-python 3 replaced LRUStoreCache with CacheStore, which is still experimental
+    from zarr.experimental.cache_store import CacheStore
+
+    return CacheStore(store, cache_store=zarr.storage.MemoryStore(), max_size=max_size)
+
 
 def zarr_format_kwargs(zarr_format: int) -> dict:
     """Return the keyword arguments selecting the on-disk format of a new zarr store.

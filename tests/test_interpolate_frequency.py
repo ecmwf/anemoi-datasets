@@ -69,11 +69,7 @@ def test_interpolate_frequency_preserves_float32():
     This is a regression test: linear interpolation arithmetic can promote
     float32 to float64 if the result is not explicitly cast back.
     """
-    # Use create_zarr from the test infrastructure, then replace data with float32
-    root = create_zarr(vars=["a", "b"], start=2021, end=2021)
-    float32_data = root["data"][:].astype(np.float32)
-    del root["data"]
-    root.create_array("data", data=float32_data, chunks=float32_data.shape, compressor=None)
+    root = create_zarr(vars=["a", "b"], start=2021, end=2021, dtype=np.float32)
 
     with patch("zarr.open", lambda name, mode: root):
         with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, fail: name + ".zarr"):
