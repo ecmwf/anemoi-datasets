@@ -54,7 +54,7 @@ concurrent writes.
 
 Once you have loaded all the parts, you can finalise the dataset with
 the `finalise` command. This will write the metadata and the attributes
-to the dataset, and consolidate the statistics and clean up some
+to the dataset, compute the statistics and clean up some
 temporary files.
 
 .. code:: bash
@@ -81,31 +81,28 @@ the process. You can clean them up with the `cleanup` command.
 
 `anemoi-datasets` can compute additional statistics for the dataset,
 mostly statistics of the increments between two dates (e.g. 6h or 12h).
+They are computed by the `finalise` command, for the deltas listed in
+``statistics.tendencies`` in the recipe:
 
-To add statistics for 6h increments:
+.. code:: yaml
 
-.. code:: bash
+   statistics:
+     tendencies: [6h, 12h]
 
-   anemoi-datasets init-additions dataset.zarr --delta 6h
-   anemoi-datasets load-additions dataset.zarr --parts 1/2 --delta 6h
-   anemoi-datasets load-additions dataset.zarr --parts 2/2 --delta 6h
-   anemoi-datasets finalise-additions dataset.zarr --delta 6h
-
-To add statistics for 12h increments:
-
-.. code:: bash
-
-   anemoi-datasets init-additions dataset.zarr --delta 12h
-   anemoi-datasets load-additions dataset.zarr --parts 1/2 --delta 12h
-   anemoi-datasets load-additions dataset.zarr --parts 2/2 --delta 12h
-   anemoi-datasets finalise-additions dataset.zarr --delta 12h
-
-If this process leaves temporary files behind, you can clean them up
-with the `cleanup` command.
+The loaders only write the data: a single `finalise` computes all the
+statistics in one process, reading the whole dataset. If the parts were
+loaded in parallel, run the `finalise` command in parallel too, in three
+stages:
 
 .. code:: bash
 
-   anemoi-datasets cleanup dataset.zarr
+   anemoi-datasets finalise dataset.zarr --prepare
+   anemoi-datasets finalise dataset.zarr --load --parts 1/2
+   anemoi-datasets finalise dataset.zarr --load --parts 2/2
+   anemoi-datasets finalise dataset.zarr --tidy
+
+The `init-additions`, `load-additions` and `finalise-additions` commands
+are deprecated and do nothing.
 
 ********************************
  Patching the dataset metadata:
