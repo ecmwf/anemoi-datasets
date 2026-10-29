@@ -10,11 +10,11 @@
 
 import numpy as np
 import pytest
+from test_data import mockup_open_zarr
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.usage.gridded.indexing import length_to_slices
 from anemoi.datasets.usage.gridded.subset import Subset
-from tests.test_data import mockup_open_zarr
 
 
 def test_length_to_slices() -> None:
