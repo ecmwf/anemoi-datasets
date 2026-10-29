@@ -28,6 +28,7 @@ from anemoi.datasets.compat import LRUStoreCache
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
@@ -84,12 +85,14 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
         store = name_to_zarr_store(path)
 
         if DEBUG_ZARR_LOADING:
-            if not isinstance(store, DirectoryStore):
-                raise NotImplementedError(
-                    "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
-                    "Please disable it for other backends."
+            if zarr_version < 3 and not isinstance(store, DirectoryStore):
+                LOG.warning(
+                    "Ignoring DEBUG_ZARR_LOADING when opening %s. "
+                    "It is only implemented for DirectoryStore when using zarr < 3. ",
+                    path,
                 )
-            store = DebugStore(store)
+            else:
+                store = DebugStore(store)
 
         if cache is not None:
             store = LRUStoreCache(store, max_size=cache)
