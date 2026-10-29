@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.48](https://github.com/ecmwf/anemoi-datasets/compare/0.5.47...0.5.48) (2026-10-29)
+
+
+### Features
+
+* Finalise in parallel for efficiency, impact mostly long hourly datasets ([#784](https://github.com/ecmwf/anemoi-datasets/issues/784)) ([ef87d54](https://github.com/ecmwf/anemoi-datasets/commit/ef87d54de8d69b0e121d21ee282014525a7bc7d1))
+* Refactor task_size to support symlinked zarr stores and improve tqdm ([#798](https://github.com/ecmwf/anemoi-datasets/issues/798)) ([8133f69](https://github.com/ecmwf/anemoi-datasets/commit/8133f69b450bb7681569c4e3722414c9dd8c8ed1))
+
+
+### Bug Fixes
+
+* Add numpy array to statistics property. ([#766](https://github.com/ecmwf/anemoi-datasets/issues/766)) ([a1507f2](https://github.com/ecmwf/anemoi-datasets/commit/a1507f2804117b534e636e113d9ce4b9067c8070))
+* **grib-index:** Support accumulation intervals with a basetime ([#805](https://github.com/ecmwf/anemoi-datasets/issues/805)) ([b7ddd18](https://github.com/ecmwf/anemoi-datasets/commit/b7ddd18f27ce738faaa41624152f4f0ba0cea87d))
+* **grib-index:** Support accumulation intervals with a basetime ([#805](https://github.com/ecmwf/anemoi-datasets/issues/805)) ([97f2e29](https://github.com/ecmwf/anemoi-datasets/commit/97f2e29eba402ccdc212d66f69833cc9ade9efb0))
+* **inspect:** Read the data array by item access so zarr 3 groups work ([#800](https://github.com/ecmwf/anemoi-datasets/issues/800)) ([ed29c10](https://github.com/ecmwf/anemoi-datasets/commit/ed29c1001c81bdcdd1f491501363c4d89d8a3ec0))
+* Make odb source handle select wildcard correctly and make pivot robust to duplicates ([#759](https://github.com/ecmwf/anemoi-datasets/issues/759)) ([e147483](https://github.com/ecmwf/anemoi-datasets/commit/e147483b7cb33bc554aedb9cc6c88e2553015148))
+
 ## [0.5.47](https://github.com/ecmwf/anemoi-datasets/compare/0.5.46...0.5.47) (2026-10-22)
 
 

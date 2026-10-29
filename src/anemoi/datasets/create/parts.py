@@ -15,6 +15,46 @@ LOG = logging.getLogger(__name__)
 ALL = object()
 
 
+def part_bounds(parts: str | list | None, total: int) -> tuple[int, int, int]:
+    """Return ``(part_index, lo, hi)`` for the contiguous slice ``[lo, hi)`` of ``[0, total)``.
+
+    Mirrors :class:`PartFilter`'s 1-based ``i/n`` contiguous split. The bounds are derived from
+    ``total`` so that empty parts (``n`` larger than ``total``) still yield ``lo == hi`` at the
+    correct boundary, keeping the per-part results contiguous when they are merged.
+
+    Parameters
+    ----------
+    parts : str or list or None
+        The part to select, as ``'i/n'`` (1-based) or a one-element list of such a string.
+        ``None``, ``'all'`` or ``'*'`` select the whole range.
+    total : int
+        The number of items to split.
+
+    Returns
+    -------
+    tuple[int, int, int]
+        The 0-based part index and the bounds ``lo`` and ``hi``.
+    """
+    if isinstance(parts, list):
+        if len(parts) == 0:
+            parts = None
+        elif len(parts) == 1:
+            parts = parts[0]
+        else:
+            raise ValueError(f"Invalid parts format: {parts}. Must be a single 'i/n'.")
+
+    if not parts or parts.lower() in ("all", "*"):
+        return 0, 0, total
+
+    i, n = (int(x) for x in parts.split("/"))
+    assert 0 < i <= n, f"Invalid part {parts}: must be in the form 'i/n' with 1 <= i <= n."
+
+    chunk_size = total / n
+    lo = sum(1 for x in range(total) if x < (i - 1) * chunk_size)
+    hi = sum(1 for x in range(total) if x < i * chunk_size)
+    return i - 1, lo, hi
+
+
 class PartFilter:
     """A filter to determine which parts to process based on the specified parts.
 

@@ -10,18 +10,65 @@
 
 import hashlib
 import logging
+import os
 import pickle
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from typing import Any
 
 import numpy as np
 import tqdm
+from anemoi.utils.config import load_config
 from numpy.typing import NDArray
 
 LOG = logging.getLogger(__name__)
 
 STATISTICS = ("mean", "minimum", "maximum", "stdev")
+
+# Below this number of values per batch, columns are processed sequentially: the
+# overhead of the threads would outweigh the gain.
+THREADING_THRESHOLD = 1_000_000
+
+_EXECUTOR = None
+_EXECUTOR_PID = None
+
+
+def _available_cpus() -> int:
+    threads = load_config().get("datasets", {}).get("statistics_threads")
+    if threads is not None:
+        return max(int(threads), 1)
+
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError:  # Not available on macOS
+        return os.cpu_count() or 1
+
+
+def _executor() -> ThreadPoolExecutor | None:
+    # Shared thread pool for the column-wise statistics, or None if only one CPU is
+    # available. NumPy releases the GIL in the reductions, so the columns are processed
+    # concurrently. The pool is re-created after a fork, as threads do not survive it.
+    global _EXECUTOR, _EXECUTOR_PID
+
+    if _EXECUTOR_PID != os.getpid():
+        cpus = _available_cpus()
+        _EXECUTOR = ThreadPoolExecutor(max_workers=cpus, thread_name_prefix="statistics") if cpus > 1 else None
+        _EXECUTOR_PID = os.getpid()
+        LOG.info(f"Statistics computed with {cpus} thread(s)")
+
+    return _EXECUTOR
+
+
+def _for_each_column(func: Callable[[int], None], num_columns: int, size: int) -> None:
+    # Call `func(col_idx)` for each column, in threads if the batch (of `size` values) is large.
+    # `func` must only touch the entries of its own column, so the results do not depend on the threads.
+    executor = _executor() if size >= THREADING_THRESHOLD else None
+    if executor is None:
+        for col_idx in range(num_columns):
+            func(col_idx)
+    else:
+        list(executor.map(func, range(num_columns)))
 
 
 def _(t):
@@ -34,10 +81,9 @@ class _State:
         self.start = start
         self.end = end
         self.collector = collector
-        self.missing_tendencies_count = collector.missing_tendencies_count()
 
     def __repr__(self):
-        return f"_State(group={self.group}, start={self.start}, end={self.end}, missing_tendencies_count={self.missing_tendencies_count})"
+        return f"_State(group={self.group}, start={self.start}, end={self.end})"
 
 
 class _Base:
@@ -100,42 +146,43 @@ class _CollectorBase(_Base):
     def update(self, data: NDArray[np.float64]) -> None:
         if len(data) == 0:
             return
-        # data shape: (n_samples, n_columns)
-        data = data.astype(np.float64)
+        # data shape: (n_samples, n_columns, ...)
 
-        # Create mask for valid data (not NaN)
-        valid_mask = ~np.isnan(data)
+        # Each column only updates its own entries of the accumulators, so the columns
+        # can be processed in any order.
+        _for_each_column(lambda col_idx: self._update_column(data, col_idx), data.shape[1], data.size)
 
-        # Process each column
-        for col_idx in range(data.shape[1]):
-            col_data = data[:, col_idx]
-            col_mask = valid_mask[:, col_idx]
-            valid_data = col_data[col_mask]
+    def _update_column(self, data: NDArray[np.float64], col_idx: int) -> None:
+        # Converting each column to float64 gives the same values as converting the whole array
+        col_data = data[:, col_idx].astype(np.float64)
 
-            if valid_data.size == 0:
-                continue
+        # Mask for valid data (not NaN)
+        valid_data = col_data[~np.isnan(col_data)]
 
-            n = len(valid_data)
-            old_mean = self._mean[col_idx]
-            old_count = self._count[col_idx]
-            new_count = old_count + n
+        if valid_data.size == 0:
+            return
 
-            # Batch mean
-            batch_mean = np.mean(valid_data)
+        n = len(valid_data)
+        old_mean = self._mean[col_idx]
+        old_count = self._count[col_idx]
+        new_count = old_count + n
 
-            # Update combined mean
-            self._mean[col_idx] = (old_count * old_mean + n * batch_mean) / new_count
+        # Batch mean
+        batch_mean = np.mean(valid_data)
 
-            # Update M2 using parallel algorithm formula
-            batch_m2 = np.sum((valid_data - batch_mean) ** 2)
-            delta = batch_mean - old_mean
-            self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
+        # Update combined mean
+        self._mean[col_idx] = (old_count * old_mean + n * batch_mean) / new_count
 
-            self._count[col_idx] = new_count
+        # Update M2 using parallel algorithm formula
+        batch_m2 = np.sum((valid_data - batch_mean) ** 2)
+        delta = batch_mean - old_mean
+        self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
 
-            # Update min/max
-            self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
-            self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
+        self._count[col_idx] = new_count
+
+        # Update min/max
+        self._min[col_idx] = min(self._min[col_idx], np.min(valid_data))
+        self._max[col_idx] = max(self._max[col_idx], np.max(valid_data))
 
     def statistics(self) -> dict[str, NDArray[np.float64]]:
         # Returns arrays for each statistic across all columns
@@ -190,33 +237,16 @@ class _TendencyCollector(_CollectorBase):
     def __init__(self, column_names: list[str], delta: int) -> None:
         super().__init__(column_names)
         self._delta = delta
-        # Only keep a sliding window of the last 'delta' rows
+        # Ring buffer holding the last 'delta' rows: once it is full, the slot `_next`
+        # holds the row 'delta' steps before the next incoming row. Rows are written in
+        # place, so that the history is never copied (rows can be hundreds of MB).
         self._window = None
+        self._filled = 0
+        self._next = 0
         self._last_window_date = None  # Store only last date for validation
 
-        # Summary of dates seen (instead of storing full arrays)
-        self._first_date = None
-        self._last_date = None
-        self._n_dates = 0
-
-        # Offset tracking
-        # _first_date_offset: offset from group start to first filtered date (in dataset indices)
-        # _unfiltered_dates_seen: cumulative count of unfiltered dates (for computing offset across batches)
-        self._first_date_offset = None
-        self._unfiltered_dates_seen = 0
-
-        # Number of dates at the start that couldn't have tendencies computed
-        # A "missing" date d means we could not compute value(d) - value(d - delta)
-        # because d - delta is before available data.
-        # This is updated as more dates are seen, until it reaches delta.
-        self._n_missing = None
-
     def __repr__(self, extra: str = ""):
-        return super().__repr__(
-            f"delta={_(self._delta)}, n_dates={self._n_dates}, n_missing={self._n_missing}, "
-            f"first_date={self._first_date}, last_date={self._last_date}, first_date_offset={self._first_date_offset}"
-            + (f", {extra}" if extra else "")
-        )
+        return super().__repr__(f"delta={_(self._delta)}" + (f", {extra}" if extra else ""))
 
     @classmethod
     def _merge(cls, a: "_TendencyCollector", b: "_TendencyCollector", result: "_TendencyCollector"):
@@ -234,14 +264,7 @@ class _TendencyCollector(_CollectorBase):
         result = _TendencyCollector(self._column_names, self._delta)
         return self._merge(self, other, result)
 
-    def update(
-        self,
-        data: NDArray[np.float64],
-        dates,
-        unfiltered_batch_size: int | None = None,
-        first_offset_in_batch: int | None = None,
-    ) -> None:
-        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+    def _check_dates(self, dates) -> None:
         assert np.all(np.array(dates[1:]) >= np.array(dates[:-1])), ("Dates must be sorted", dates)
         if len(dates) > 1:
             diffs = np.diff(dates)
@@ -252,97 +275,87 @@ class _TendencyCollector(_CollectorBase):
                 f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
             )
 
-        # Concatenate window with new data for tendency computation
-        combined = data if self._window is None else np.concatenate([self._window, data], axis=0)
+    def _push(self, data: NDArray[np.float64], out: NDArray[np.float64] | None = None) -> int:
+        # Write the rows of `data` into the ring buffer, in order. If `out` is given, the
+        # tendency of each row that has 'delta' rows of history is written to it.
+        # Returns the number of tendencies.
+        if self._window is None:
+            self._window = np.empty((self._delta,) + data.shape[1:], dtype=data.dtype)
+
+        n = 0
+        for row in data:
+            slot = self._window[self._next]
+            tendency = None
+            if self._filled == self._delta:
+                if out is not None:
+                    tendency = out[n]
+                n += 1
+            else:
+                self._filled += 1
+
+            def _column(col_idx: int, row=row, slot=slot, tendency=tendency) -> None:
+                # Slices rather than indices, so that 1-D rows give arrays, not scalars
+                col = slice(col_idx, col_idx + 1)
+                if tendency is not None:
+                    np.subtract(row[col], slot[col], out=tendency[col])
+                slot[col] = row[col]
+
+            _for_each_column(_column, row.shape[0], row.size)
+            self._next = (self._next + 1) % self._delta
+        return n
+
+    def update(self, data: NDArray[np.float64], dates) -> None:
+        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        self._check_dates(dates)
+
+        if len(data) == 0:
+            return
 
         # Compute tendencies wherever we have enough history
-        if len(combined) > self._delta:
-            tendencies = combined[self._delta :] - combined[: -self._delta]
+        count = min(max(self._filled + len(data) - self._delta, 0), len(data))
+        tendencies = None
+        if count > 0:
+            dtype = np.result_type(data.dtype, self._window.dtype if self._window is not None else data.dtype)
+            tendencies = np.empty((count,) + data.shape[1:], dtype=dtype)
+
+        n = self._push(data, tendencies)
+        assert n == count, (n, count)
+
+        if tendencies is not None:
             _CollectorBase.update(self, tendencies)
 
-        # Track date summary and offset
-        if self._first_date is None and len(dates) > 0:
-            self._first_date = dates[0]
-            # Compute offset from group start to first filtered date
-            if first_offset_in_batch is not None:
-                self._first_date_offset = self._unfiltered_dates_seen + first_offset_in_batch
+        self._last_window_date = dates[-1]
 
-        if len(dates) > 0:
-            self._last_date = dates[-1]
-        self._n_dates += len(dates)
-        self._n_missing = min(self._delta, self._n_dates)
+    def prime(self, data: NDArray[np.float64], dates) -> None:
+        """Fill the sliding window with rows that precede the range being collected.
 
-        # Track unfiltered dates for offset computation across batches
-        if unfiltered_batch_size is not None:
-            self._unfiltered_dates_seen += unfiltered_batch_size
+        No tendency is computed: the rows only serve as history, so that the tendencies
+        of the first ``delta`` rows of the next :meth:`update` can be computed.
 
-        # Update sliding window: keep only last 'delta' rows
-        self._window = np.array(combined[-self._delta :], copy=True)
-        if len(dates) > 0:
-            self._last_window_date = dates[-1]
+        Parameters
+        ----------
+        data : NDArray[np.float64]
+            Rows (already filtered) preceding the collected range.
+        dates : Any
+            Dates corresponding to the rows of ``data``.
+        """
+        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        if len(data) == 0:
+            return
+        self._check_dates(dates)
+
+        self._push(data)
+        self._last_window_date = dates[-1]
 
     def finalise(self) -> None:
         pass
 
-    def adjust_partial_statistics(self, dataset, start, n_missing, filter_func) -> None:
-        """Adjust statistics by computing tendencies for the missing dates at the start of this group.
-
-        Uses data from the previous group (before start) as the window.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            The dataset containing data and dates.
-        start : int
-            The start index of this group in the dataset.
-        n_missing : int
-            The number of missing dates at the start (after filtering).
-        filter_func : Callable
-            The filter function to apply to dates/data.
-        """
-        if n_missing == 0:
-            return
-
-        assert (
-            self._first_date_offset is not None
-        ), f"_first_date_offset not set for tendency collector with first_date={self._first_date}"
-        first_date_idx = start + self._first_date_offset
-
-        # Read n_missing dates starting from the first filtered date
-        missing_dates = dataset.dates[first_date_idx : first_date_idx + n_missing]
-        missing_data = dataset.data[first_date_idx : first_date_idx + n_missing]
-
-        # Apply the filter with offset for tendency computation
-        dates = filter_func(missing_dates, missing_dates, offset=-self._delta)
-        data = filter_func(missing_data, missing_dates, offset=-self._delta)
-
-        if len(dates) == 0:
-            return
-
-        if first_date_idx - self._delta < 0:
-            return  # Not enough data before this point in the dataset
-
-        self._window = dataset.data[first_date_idx - self._delta : first_date_idx]
-        window_dates = dataset.dates[first_date_idx - self._delta : first_date_idx]
-
-        # Check if window data is within the filter range
-        # Since dates are ordered, we only need to check if the first window date is in range
-        if hasattr(filter_func, "statistics_start_date"):
-            if filter_func.statistics_start_date is not None and window_dates[0] < filter_func.statistics_start_date:
-                self._window = None
-                return
-
-        self._last_window_date = window_dates[-1]
-        self.update(data, dates)
-        self._window = None
-        self._last_window_date = None
-
     def __getstate__(self):
         state = self.__dict__.copy()
         state["_window"] = None
+        state["_filled"] = 0
+        state["_next"] = 0
         state["_last_window_date"] = None
-        # _unfiltered_dates_seen is only needed during collection, reset after pickle
-        state["_unfiltered_dates_seen"] = 0
         return state
 
 
@@ -543,9 +556,57 @@ class StatisticsCollector:
             _constants_collectors=constants_collectors,
         )
 
-    def missing_tendencies_count(self) -> dict[str, int]:
-        """Return count of missing dates for each tendency collector."""
-        return {name: c._n_missing or 0 for name, c in self._tendencies_collectors.items()}
+    def _init_collectors(self, num_columns: int) -> None:
+        names = self._variables_names
+        column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
+
+        self._collector = _Collector(column_names)
+
+        for i, name in enumerate(names):
+            self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
+
+        for name, delta in self._tendencies.items():
+            self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
+
+    def _filtered(self, array: NDArray[np.float64], dates: Any) -> tuple[NDArray[np.float64], Any]:
+        assert array.shape[1] == len(
+            self._variables_names
+        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+
+        filtered_array = self._filter(array, dates)
+        filtered_dates = self._filter(dates, dates)
+        assert len(filtered_array) == len(
+            filtered_dates
+        ), f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
+
+        if self._collector is None:  # lazily initialise collectors
+            self._init_collectors(filtered_array.shape[1])
+
+        return filtered_array, filtered_dates
+
+    def prime(self, array: NDArray[np.float64], dates: Any) -> None:
+        """Feed rows that precede the collected range into the tendency windows only.
+
+        Used to warm up the tendency collectors when statistics are computed over a
+        sub-range ``[lo, hi)`` of the dataset: the rows ``[lo - D, lo)`` (``D`` being the
+        largest tendency delta) are primed, so that the tendencies of the first rows of
+        ``[lo, hi)`` are computed. The plain and constants collectors are not updated.
+
+        The filter is applied to the rows as in :meth:`collect`, so that a tendency at
+        date ``t`` is only counted if both ``t`` and ``t - delta`` are within the
+        statistics period.
+
+        Parameters
+        ----------
+        array : NDArray[np.float64]
+            Data array of shape (n_samples, n_columns).
+        dates : Any
+            Date information corresponding to the data samples.
+        """
+        filtered_array, filtered_dates = self._filtered(array, dates)
+
+        for c in self._tendencies_collectors.values():
+            c.prime(filtered_array, filtered_dates)
 
     def collect(self, array: NDArray[np.float64], dates: Any) -> None:
         """Collect statistics from a batch of data.
@@ -561,28 +622,7 @@ class StatisticsCollector:
             Date information corresponding to the data samples.
         """
 
-        assert array.shape[1] == len(
-            self._variables_names
-        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
-
-        filtered_array = self._filter(array, dates)
-        filtered_dates = self._filter(dates, dates)
-        assert len(filtered_array) == len(
-            filtered_dates
-        ), f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
-
-        if self._collector is None:  # lazily initialise collectors
-            num_columns = filtered_array.shape[1]
-            names = self._variables_names
-            column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
-
-            self._collector = _Collector(column_names)
-
-            for i, name in enumerate(names):
-                self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
-
-            for name, delta in self._tendencies.items():
-                self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
+        filtered_array, filtered_dates = self._filtered(array, dates)
 
         # Update all columns at once
         self._collector.update(filtered_array)
@@ -590,15 +630,8 @@ class StatisticsCollector:
         for c in self._constants_collectors.values():
             c.update(filtered_array)
 
-        # For tendencies, pass offset information for efficient index computation
-        first_offset_in_batch = int(np.searchsorted(dates, filtered_dates[0])) if len(filtered_dates) > 0 else None
         for c in self._tendencies_collectors.values():
-            c.update(
-                filtered_array,
-                filtered_dates,
-                unfiltered_batch_size=len(dates),
-                first_offset_in_batch=first_offset_in_batch,
-            )
+            c.update(filtered_array, filtered_dates)
 
     def statistics(self) -> dict[str, NDArray[np.float64]]:
         """Compute final statistics from all collected data.
@@ -674,18 +707,6 @@ class StatisticsCollector:
         if hasattr(self._filter, "statistics_end_date"):
             dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
 
-    def adjust_partial_statistics(self, dataset, state) -> None:
-        """Adjust statistics for a specific group and data range.
-
-        For tendency collectors, this fills in the tendencies for dates at the
-        start of the group that couldn't be computed during initial processing
-        (because we needed data from the previous group)
-        """
-
-        for name, n_missing in state.missing_tendencies_count.items():
-            tc = state.collector._tendencies_collectors[name]
-            tc.adjust_partial_statistics(dataset, state.start, n_missing, state.collector._filter)
-
     def serialise(self, path, group, start, end) -> None:
         state = _State(group=group, start=start, end=end, collector=self)
         with open(path, "wb") as f:
@@ -716,10 +737,6 @@ class StatisticsCollector:
         if offset != dataset.data.shape[0]:
             raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
 
-        # Adjust partial statistics
-        for state in tqdm.tqdm(states, desc="Adjusting partial statistics", total=len(states)):
-            state.collector.adjust_partial_statistics(dataset, state)
-
         # Merge all collectors
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])
 
@@ -737,7 +754,7 @@ class TrajectoryStatisticsCollector:
       trajectory** — for each delta ``k`` (in step indices), the difference
       ``data[:, :, :, k:, :] − data[:, :, :, :-k, :]`` is fed into a plain
       :class:`_Collector`.  No sliding window is needed since every trajectory
-      is self-contained, so cross-chunk adjustment is a no-op.
+      is self-contained, so no warm-up across chunks is needed.
 
     Tendency results are exposed under the same Zarr key naming
     (``statistics_tendencies_{name}_{stat}``) as the gridded collector, so
@@ -781,12 +798,6 @@ class TrajectoryStatisticsCollector:
             f"collector={self._collector}, tendencies_collectors={self._tendencies_collectors}, "
             f"constants_collectors={self._constants_collectors})"
         )
-
-    def missing_tendencies_count(self) -> dict[str, int]:
-        """Always zero for trajectories — each trajectory is self-contained
-        along the step axis, so there is no cross-chunk warm-up.
-        """
-        return {name: 0 for name in self._tendencies_collectors}
 
     def collect(self, array: NDArray[np.float64], base_dates: Any) -> None:
         """Collect statistics from a chunk of trajectories.
@@ -938,10 +949,6 @@ class TrajectoryStatisticsCollector:
 
         if hasattr(self._filter, "statistics_end_date"):
             dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
-
-    def adjust_partial_statistics(self, dataset, state) -> None:
-        """No-op: each trajectory is self-contained along the step axis."""
-        return
 
     def serialise(self, path, group, start, end) -> None:
         state = _State(group=group, start=start, end=end, collector=self)
