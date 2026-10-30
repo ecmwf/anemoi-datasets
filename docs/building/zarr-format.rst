@@ -81,10 +81,10 @@ target, the copy is aborted. Use ``--overwrite`` to start again instead.
  Compression
 *************
 
-The ``data`` array of a new dataset is compressed with Blosc (lz4,
-compression level 5, byte shuffle), whatever the Zarr format. Without
-an explicit compressor, zarr-python 3 writes the ``data`` array of a
-Zarr format 3 dataset with zstd and no shuffle.
+The ``data`` array of a new gridded or trajectories dataset is
+compressed with Blosc (lz4, compression level 5, byte shuffle), whatever
+the Zarr format. The ``data`` array of a new tabular dataset is
+compressed with Blosc (zstd, compression level 3, bit shuffle).
 
 When a copy rewrites the data, the ``data`` array of the target keeps the
 compressor of the source. Blosc, Zstd and Gzip are translated to the
