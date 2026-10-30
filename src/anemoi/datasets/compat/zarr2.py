@@ -17,6 +17,8 @@ ZarrFileNotFoundError = zarr.errors.PathNotFoundError
 
 DirectoryStore = zarr.storage.DirectoryStore
 
+ZipStore = zarr.storage.ZipStore
+
 LRUStoreCache = zarr.LRUStoreCache
 
 

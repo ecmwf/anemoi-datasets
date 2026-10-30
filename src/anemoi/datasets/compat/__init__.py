@@ -53,6 +53,7 @@ if zarr_version < 3:
     from .zarr2 import LRUStoreCache
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
+    from .zarr2 import ZipStore
     from .zarr2 import blosc_compressor
     from .zarr2 import get_zarr_format
     from .zarr2 import zarr_format_kwargs
@@ -65,6 +66,7 @@ else:
     from .zarr3 import LRUStoreCache
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
+    from .zarr3 import ZipStore
     from .zarr3 import blosc_compressor
     from .zarr3 import get_zarr_format
     from .zarr3 import zarr_format_kwargs
@@ -121,6 +123,7 @@ __all__ = [
     "DEFAULT_FORMAT",
     "DEFAULT_ZARR_FORMAT",
     "ZarrFileNotFoundError",
+    "ZipStore",
     "HTTPStore",
     "S3Store",
     "DebugStore",

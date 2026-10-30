@@ -10,7 +10,10 @@
 """Tests for opening datasets with ``open_zarr``."""
 
 import re
+import shutil
+import tempfile
 import threading
+import zipfile
 from collections.abc import Iterator
 from functools import partial
 from http.server import SimpleHTTPRequestHandler
@@ -87,6 +90,45 @@ def test_open_zarr_debug_loading(dataset: str, monkeypatch: pytest.MonkeyPatch) 
 
     assert isinstance(root.store, DebugStore)
     np.testing.assert_array_equal(root["data"][:], DATA)
+
+
+@pytest.fixture
+def zipped_dataset(dataset: str, tmp_path: Path) -> str:
+    """The ``dataset`` in a zip file, with entries relative to the store root."""
+    path = str(tmp_path / "test.zarr.zip")
+    shutil.make_archive(path[: -len(".zip")], "zip", root_dir=dataset)
+    with zipfile.ZipFile(path) as z:
+        assert ".zgroup" in z.namelist() or "zarr.json" in z.namelist()
+    return path
+
+
+def test_open_zarr_zip(zipped_dataset: str) -> None:
+    root = open_zarr(zipped_dataset)
+    np.testing.assert_array_equal(root["data"][:], DATA)
+
+
+@pytest.mark.parametrize("cache", [None, 1_000_000])
+def test_open_zarr_zip_http(
+    http_server: tuple[str, list[str]],
+    zipped_dataset: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    cache: int | None,
+) -> None:
+    url, requested = http_server
+
+    # The zip file is downloaded to the temporary directory, and reused if it is already there
+    download_dir = tmp_path / "download"
+    download_dir.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(download_dir))
+
+    root = open_zarr(f"{url}/test.zarr.zip", cache=cache)
+
+    np.testing.assert_array_equal(root["data"][:], DATA)
+    # A second read, from the cache when there is one
+    np.testing.assert_array_equal(root["data"][:], DATA)
+    assert "/test.zarr.zip" in requested
+    assert (download_dir / "test.zarr.zip").is_file()
 
 
 def test_open_zarr_missing_store(tmp_path: Path) -> None:

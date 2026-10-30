@@ -37,6 +37,8 @@ DebugStore = zarr.storage.LoggingStore
 
 DirectoryStore = zarr.storage.LocalStore
 
+ZipStore = zarr.storage.ZipStore
+
 
 def LRUStoreCache(store: zarr.abc.store.Store, max_size: int | None) -> zarr.storage.WrapperStore:
     """Wrap a store in an in-memory cache of at most ``max_size`` bytes, evicting the least recently used keys."""

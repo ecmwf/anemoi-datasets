@@ -27,6 +27,7 @@ from anemoi.datasets.compat import HTTPStore
 from anemoi.datasets.compat import LRUStoreCache
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import ZipStore
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.usage.analytics import collect_analytics
@@ -75,6 +76,9 @@ def name_to_zarr_store(path_or_url: str) -> Any:
 
     if os.path.isdir(store):
         return DirectoryStore(store)
+
+    if store.endswith(".zip") and os.path.isfile(store):
+        return ZipStore(store, mode="r")
 
     return store
 
