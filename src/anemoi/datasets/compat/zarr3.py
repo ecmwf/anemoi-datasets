@@ -59,12 +59,6 @@ def get_zarr_format(node: zarr.Group | zarr.Array) -> int:
     return node.metadata.zarr_format
 
 
-# zarr 3 removed NestedDirectoryStore. Format 3 arrays always use nested chunk keys (``data/c/0/0``),
-# so a plain LocalStore gives the nested layout. Format 2 arrays also need the ``v2`` chunk key encoding
-# with a ``/`` separator (see ``copy --nested``).
-NestedDirectoryStore = zarr.storage.LocalStore
-
-
 def blosc_compressor(
     cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int
 ) -> "zarr.abc.codec.Codec | numcodecs.abc.Codec":

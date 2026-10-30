@@ -198,9 +198,6 @@ def get_zarr_format(node: Group | zarr.core.Array) -> int:
     return 2
 
 
-NestedDirectoryStore = zarr.storage.NestedDirectoryStore
-
-
 def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int) -> "zarr.Blosc":
     """Return a Blosc compressor for zarr2.
 
