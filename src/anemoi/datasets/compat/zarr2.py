@@ -198,17 +198,7 @@ def get_zarr_format(node: Group | zarr.core.Array) -> int:
     return 2
 
 
-def nested_directory_store(path: str) -> zarr.storage.NestedDirectoryStore:
-    """Return a zarr 2 NestedDirectoryStore for the given path."""
-    return zarr.storage.NestedDirectoryStore(path)
-
-
-def nested_chunk_kwargs(zarr_format: int) -> dict:
-    """Return the ``create_array`` keyword arguments that give nested chunk keys (``0/0/0``).
-
-    None are needed with zarr 2: ``NestedDirectoryStore`` already nests the chunks.
-    """
-    return {}
+NestedDirectoryStore = zarr.storage.NestedDirectoryStore
 
 
 def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int) -> "zarr.Blosc":

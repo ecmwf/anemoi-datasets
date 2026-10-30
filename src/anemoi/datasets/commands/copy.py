@@ -21,11 +21,10 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
+from anemoi.datasets.compat import NestedDirectoryStore
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
-from anemoi.datasets.compat import nested_chunk_kwargs
-from anemoi.datasets.compat import nested_directory_store
 from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
@@ -275,12 +274,15 @@ class ZarrCopier:
             Storage path.
         """
         if nested:
-            return nested_directory_store(path)
+            return NestedDirectoryStore(path)
         return path
 
     def _nested_kwargs(self, target: Any) -> dict:
         """Extra ``create_array`` arguments for the nested chunk layout of ``--nested``, if needed for the target format."""
-        return nested_chunk_kwargs(get_zarr_format(target)) if self.nested else {}
+        if self.nested and zarr_version >= 3 and get_zarr_format(target) == 2:
+            # zarr 3 stores nest chunks only for format 3, zarr 2 NestedDirectoryStore nests them by itself
+            return {"chunk_key_encoding": {"name": "v2", "separator": "/"}}
+        return {}
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.

@@ -59,24 +59,10 @@ def get_zarr_format(node: zarr.Group | zarr.Array) -> int:
     return node.metadata.zarr_format
 
 
-def nested_directory_store(path: str) -> zarr.storage.LocalStore:
-    """Return a zarr 3 LocalStore for the given path.
-
-    zarr 3 removed NestedDirectoryStore. Format 3 arrays always use nested chunk keys
-    (``data/c/0/0``), so a plain LocalStore gives the nested layout. Format 2 arrays are
-    flat by default: use :func:`nested_chunk_kwargs` when creating them.
-    """
-    return zarr.storage.LocalStore(path)
-
-
-def nested_chunk_kwargs(zarr_format: int) -> dict:
-    """Return the ``create_array`` keyword arguments that give nested chunk keys (``0/0/0``).
-
-    Format 3 is nested already; format 2 needs the ``v2`` chunk key encoding with a ``/`` separator.
-    """
-    if zarr_format == 2:
-        return {"chunk_key_encoding": {"name": "v2", "separator": "/"}}
-    return {}
+# zarr 3 removed NestedDirectoryStore. Format 3 arrays always use nested chunk keys (``data/c/0/0``),
+# so a plain LocalStore gives the nested layout. Format 2 arrays also need the ``v2`` chunk key encoding
+# with a ``/`` separator (see ``copy --nested``).
+NestedDirectoryStore = zarr.storage.LocalStore
 
 
 def blosc_compressor(

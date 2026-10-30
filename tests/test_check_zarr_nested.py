@@ -14,8 +14,7 @@ import os
 import numpy as np
 import pytest
 
-from anemoi.datasets.compat import nested_chunk_kwargs
-from anemoi.datasets.compat import nested_directory_store
+from anemoi.datasets.compat import NestedDirectoryStore
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.misc.check import check_zarr
@@ -33,8 +32,12 @@ LAYOUTS = [
 
 
 def _write(path: str, zarr_format: int, nested: bool) -> None:
-    store = nested_directory_store(path) if nested else path
-    kwargs = nested_chunk_kwargs(zarr_format) if nested else {}
+    store = NestedDirectoryStore(path) if nested else path
+    kwargs = (
+        {"chunk_key_encoding": {"name": "v2", "separator": "/"}}
+        if nested and zarr_version >= 3 and zarr_format == 2
+        else {}
+    )
     root = zarr_open(store, "w", zarr_format=zarr_format)
     root.create_array("data", data=np.arange(24, dtype="float32").reshape(4, 2, 3), chunks=(1, 2, 3), **kwargs)
 
