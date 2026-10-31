@@ -52,6 +52,7 @@ The following `sources` are currently available:
    :maxdepth: 1
 
    sources/csv
+   sources/geo-store
    sources/odb
    sources/parquet
 

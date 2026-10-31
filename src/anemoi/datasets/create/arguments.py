@@ -363,7 +363,8 @@ class TimeSpan(Argument):
     says which ends are included, as in ``pandas.Interval`` ("right": start < t <= end).
     ``columns`` are the columns the caller needs (a source may read more). ``dates`` are the
     dataset dates the span serves, for sources whose files are named by date (e.g. one ODB
-    file per cycle).
+    file per cycle). ``window`` (with ``dates``) is the window of each date, for sources that
+    can skip the times between windows (``in_windows``).
     """
 
     def __init__(
@@ -373,14 +374,18 @@ class TimeSpan(Argument):
         closed: str = "right",
         columns: list[str] | None = None,
         dates: list[datetime.datetime] | None = None,
+        window: Any = None,
     ) -> None:
         if closed not in ("left", "right", "both", "neither"):
             raise ValueError(f"TimeSpan: invalid closed {closed!r}")
+        if window is not None and dates is None:
+            raise ValueError("TimeSpan: a window needs the dates")
         self.start = start
         self.end = end
         self.closed = closed
         self.columns = columns
         self.dates = list(dates) if dates is not None else None
+        self.window = window
 
     @classmethod
     def from_window(cls, window: Any, dates: list[datetime.datetime], columns: list[str] | None = None) -> TimeSpan:
@@ -389,13 +394,25 @@ class TimeSpan(Argument):
             (not window.exclude_before, not window.exclude_after)
         ]
         dates = sorted(dates)
-        return cls(dates[0] + window.before, dates[-1] + window.after, closed, columns, dates)
+        return cls(dates[0] + window.before, dates[-1] + window.after, closed, columns, dates, window)
 
     def mask(self, times: Any) -> Any:
         """Which of `times` (a pandas Series or array of datetimes) are in the span."""
         after = times >= self.start if self.closed in ("left", "both") else times > self.start
         before = times <= self.end if self.closed in ("right", "both") else times < self.end
         return after & before
+
+    def in_windows(self, times: Any) -> Any:
+        """Which of `times` are in the window of some date (the span itself without a window)."""
+        if self.window is None:
+            return self.mask(times)
+        out = None
+        for date in self.dates:
+            lo, hi = date + self.window.before, date + self.window.after
+            after = times > lo if self.window.exclude_before else times >= lo
+            before = times < hi if self.window.exclude_after else times <= hi
+            out = (after & before) if out is None else out | (after & before)
+        return out
 
     def __repr__(self) -> str:
         left = "[" if self.closed in ("left", "both") else "("

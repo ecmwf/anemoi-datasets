@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
 import re
 
@@ -32,6 +33,11 @@ class GridObservationsSource(Source):
     group, so windows that reach into the previous day need no extra configuration. The
     gridding itself is ``anemoi.transform.obs`` (pure, shared with real-time processing).
 
+    ``inputs`` instead combines several: each item is an ``input`` plus how its rows join
+    the dataset (``anemoi.transform.obs.Input``: dates, groups, channels, group_offset,
+    scan). Items with the same ``input`` read it once; an input whose dates miss the group
+    is not read.
+
     Examples
     --------
     .. code-block:: yaml
@@ -45,12 +51,28 @@ class GridObservationsSource(Source):
         input:
           parquet: {path: ..., flavour: {date: datetime, latitude: lat, longitude: lon}}
 
+    .. code-block:: yaml
+
+      grid_observations:
+        ...
+        inputs:
+          - input: {parquet: {path: .../msu_noaa_cdr/...}}
+            dates: [1979-01-01, 2006-11-01]
+            channels: {bt_1: bt_3, bt_2: bt_5}
+            group_offset: 10000
+          - input: {parquet: {path: .../amsua_od_ai/...}}
+            dates: [1998-08-01, null]
+
     Parameters
     ----------
-    input : dict
-        The tabular input (a source or a pipe).
+    context : Any
+        The build context.
     window : str
         The window of date T, relative to T (anemoi.utils.window.Window).
+    input : dict, optional
+        The tabular input (a source or a pipe).
+    inputs : list[dict], optional
+        Several inputs instead, each ``{input: ..., **anemoi.transform.obs.Input}``.
     frequency : str, optional
         The step that ``time_delta_norm`` divides by; the dataset frequency by default.
     **gridding
@@ -59,29 +81,44 @@ class GridObservationsSource(Source):
 
     emoji = "🗺️"  # For tracing
 
-    def __init__(self, context, input: dict, window: str, frequency: str | None = None, **gridding):
+    def __init__(
+        self,
+        context,
+        window: str,
+        input: dict | None = None,
+        inputs: list[dict] | None = None,
+        frequency: str | None = None,
+        **gridding,
+    ):
         from anemoi.transform.obs import Gridding
+        from anemoi.transform.obs import Input
 
         super().__init__(context)
-        self.input = context.create_source(input, "data_sources", str(id(self)))
+        if (input is None) == (inputs is None):
+            raise ValueError("grid_observations: set one of input and inputs")
         self.window = Window(window)
         self.window_string = window
         if frequency is None:
             frequency = context.recipe.dates.frequency
         self.frequency = frequency_to_timedelta(frequency)
         self.gridding = Gridding(**gridding)
+        self.sources = {}  # one source per distinct input config
+        self.inputs = []  # (Input, key of its source)
+        for item in inputs if inputs is not None else [{"input": input}]:
+            item = dict(item)
+            config = item.pop("input")
+            key = json.dumps(config, sort_keys=True, default=str)
+            if key not in self.sources:
+                self.sources[key] = context.create_source(config, "data_sources", f"{id(self)}-{len(self.sources)}")
+            self.inputs.append((Input(**item), key))
+            self.inputs[-1][0].check(self.gridding)
 
     def execute_valid_dates(self, argument) -> ekd.FieldList:
         from anemoi.transform.obs import grid_windows
         from anemoi.transform.obs.grid import grid_points
 
-        from anemoi.datasets.create.arguments import TimeSpan
-
         steps = pd.DatetimeIndex(sorted(argument.dates))
-        span = TimeSpan.from_window(self.window, list(steps.to_pydatetime()), self.gridding.input_columns())
-        rows = self.input(self.context, span)
-        if not isinstance(rows, pd.DataFrame):
-            raise TypeError(f"grid_observations: the input must give a DataFrame, not {type(rows).__name__}")
+        rows = self.read(steps)
         out = grid_windows(self.gridding, rows, steps, self.window, self.frequency)
         self.record_diagnostics(out, steps)
         self.context.trace(
@@ -105,9 +142,29 @@ class GridObservationsSource(Source):
         assert all(f["values"].dtype == np.float32 for f in fields)
         return ekd.from_source("list-of-dicts", fields)
 
+    def read(self, steps: pd.DatetimeIndex) -> pd.DataFrame:
+        """The rows of every input for the windows of `steps`, combined (Input.prepare)."""
+        from anemoi.transform.obs import combine
+
+        from anemoi.datasets.create.arguments import TimeSpan
+
+        dates = list(steps.to_pydatetime())
+        span = TimeSpan.from_window(self.window, dates)
+        wanted = [(inp, key) for inp, key in self.inputs if inp.overlaps(span.start, span.end)]
+        parts = []
+        for key in dict.fromkeys(k for _, k in wanted):
+            using = [inp for inp, k in wanted if k == key]
+            columns = list(dict.fromkeys(c for inp in using for c in inp.columns(self.gridding)))
+            rows = self.sources[key](self.context, TimeSpan.from_window(self.window, dates, columns))
+            if not isinstance(rows, pd.DataFrame):
+                raise TypeError(f"grid_observations: an input must give a DataFrame, not {type(rows).__name__}")
+            parts += [(inp, rows) for inp in using]
+        return combine(self.gridding, parts)
+
     def record_diagnostics(self, out, steps: pd.DatetimeIndex) -> None:
         """What `anemoi-datasets monitor` plots: per day and group, the selected values'
-        stats and the QC counts of the rows read; per cell, rows read and rejected by QC."""
+        stats and the QC counts of the rows read; per cell, rows read and rejected by QC.
+        """
         if not hasattr(self.context, "add_diagnostics"):
             return
         v = self.gridding.variables

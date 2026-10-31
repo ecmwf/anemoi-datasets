@@ -31,7 +31,50 @@ valid.
 For each group of dates, the inner input is called once with a
 ``TimeSpan`` covering every window of the group, from the first window's
 start to the last window's end. A window that reaches into the previous
-day therefore needs no extra configuration.
+day therefore needs no extra configuration. The span also carries the
+windows, so a source can skip the times between them (``geo_store``
+reads only the hours inside a window).
+
+********
+ Inputs
+********
+
+``inputs`` replaces ``input`` when a dataset combines several sources
+(instruments, products, or one stream's instrument versions). Each item
+is an ``input`` and how its rows join the dataset:
+
+**dates**
+   ``[start, end)`` of the rows kept, either end open (``null``). An
+   input whose dates miss a group is not read.
+
+**groups**
+   Keep the rows whose ``group_by`` column is listed (before the offset).
+
+**channels**
+   The dataset channels this input fills: every one from its same-named
+   column (unset), those listed, or ``{input column: dataset channel}``.
+   The others are missing in its rows.
+
+**group_offset**
+   Added to the ``group_by`` column, e.g. ``10000`` so that a climate
+   data record's satellites embed apart from the real-time stream's.
+
+**scan**
+   This input's scan geometry, with ``variables.scan: input``.
+
+Items with the same ``input`` read it once per group.
+
+.. code-block:: yaml
+
+   inputs:
+     - input: {parquet: {path: .../msu_noaa_cdr/year=%Y/month=%m/%Y-%m-%d.parquet}}
+       dates: [1979-01-01, 2006-11-01]
+       channels: {bt_1: bt_3, bt_2: bt_5, bt_3: bt_7, bt_4: bt_9}
+       group_offset: 10000
+       scan: {n_positions: 11, first_side: left}
+     - input: {parquet: {path: .../amsua_od_ai/year=%Y/month=%m/%Y-%m-%d.parquet}}
+       dates: [1998-08-01, null]
+       scan: {n_positions: 30, first_side: left}
 
 ***********
  Selection
@@ -74,6 +117,14 @@ monitoring plots show what each step removes.
    Keep the rows whose column is one of the values, e.g.
    ``{quality_flag: [0]}``.
 
+**bits**
+   Remove the rows where ``column & mask`` is not zero, for bit fields,
+   e.g. ``{qualind: 2147483648}`` (bit 31).
+
+**value_flags**
+   ``{channel: flag column}``: the channel's value becomes missing where
+   its flag column is not zero.
+
 **range**
    Values outside ``[lo, hi]`` become missing.
 
@@ -83,6 +134,9 @@ monitoring plots show what each step removes.
 
 **require_complete**
    Rows with any channel missing are not selected (default ``true``).
+   ``any`` keeps rows with at least one channel, a list keeps rows with
+   all of those channels, ``false`` keeps every row. With
+   ``reduce: mean`` each channel averages its own values.
 
 Any tabular filter can also be applied in the inner ``pipe``, before
 this QC.
@@ -103,7 +157,8 @@ this QC.
    -  ``time_delta`` and ``time_delta_norm``: the observation time minus
       *T*, in hours and in dataset steps.
    -  ``cos_vza``, ``scan_pos`` and ``signed_sin_vza``: viewing
-      geometry. The last two need ``scan``.
+      geometry. The last two need ``scan`` (``input``: each input's
+      own, see Inputs).
    -  ``offset_east_km``, ``offset_north_km`` and their ``_norm``
       versions: the position relative to the cell centre.
    -  ``n_obs``: the number of candidates.
