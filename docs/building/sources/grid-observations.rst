@@ -103,6 +103,12 @@ Items with the same ``input`` read it once per group.
 **min_obs**
    Cells with fewer candidates stay empty (default 1).
 
+**max_spread**
+   ``{channel: K}``: cells whose candidates' standard deviation of the
+   channel exceeds the limit stay empty, which removes stripes and
+   mis-navigated scans. A cell without that channel is kept. It applies
+   after the selection, so the QC counts don't include it.
+
 Nearest cells are found on the unit sphere, so cells at the dateline and
 the poles are exact.
 
@@ -162,7 +168,10 @@ this QC.
    -  ``offset_east_km``, ``offset_north_km`` and their ``_norm``
       versions: the position relative to the cell centre.
    -  ``n_obs``: the number of candidates.
-   -  ``cos_sza_obs``: the observation's own solar zenith.
+   -  ``cos_sza_obs``: the cosine of the observation's own solar zenith
+      angle, not clipped (negative at night). It is computed from the
+      observation's time and position, unless ``solar_zenith`` names a
+      column with the reported angle in degrees.
 
 **forcings**
    Known functions of (*T*, grid point), filled in every cell: e.g.
