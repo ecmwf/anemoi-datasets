@@ -41,10 +41,8 @@ bucket = args.bucket
 assert os.path.exists(source), f"Source {source} does not exist"
 
 if not target.startswith("s3://"):
-    if target.startswith("/"):
-        target = target[1:]
-    if bucket.endswith("/"):
-        bucket = bucket[:-1]
+    target = target.removeprefix("/")
+    bucket = bucket.removesuffix("/")
     target = os.path.join(bucket, target)
 
 LOG.info(f"Uploading {source} to {target}")

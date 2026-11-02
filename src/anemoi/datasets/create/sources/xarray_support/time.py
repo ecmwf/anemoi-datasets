@@ -10,8 +10,7 @@
 
 import datetime
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any
 
 from anemoi.utils.dates import as_datetime
@@ -95,7 +94,6 @@ class Time(ABC):
         Optional[str]
             The name of the time coordinate.
         """
-        pass
 
     @abstractmethod
     def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> None:
@@ -109,7 +107,6 @@ class Time(ABC):
             Metadata dictionary.
         """
 
-        pass
 
 
 class Constant(Time):
@@ -125,7 +122,7 @@ class Constant(Time):
         metadata : Dict[str, Any]
             Metadata dictionary.
         """
-        return None
+        return
 
     def select_valid_datetime(self, variable: Variable) -> None:
         """Select the valid datetime for a given variable.
@@ -135,7 +132,7 @@ class Constant(Time):
         variable : Variable
             The variable to select the datetime for.
         """
-        return None
+        return
 
 
 class Analysis(Time):

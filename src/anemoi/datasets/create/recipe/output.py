@@ -11,20 +11,12 @@ from __future__ import annotations
 
 import logging
 from math import prod
-from typing import Annotated
-from typing import Any
-from typing import Literal
-from typing import Union
+from typing import Annotated, Any, Literal
 
 import numpy as np
-from pydantic import BaseModel
-from pydantic import Discriminator
-from pydantic import Field
-from pydantic import Tag
-from pydantic import field_validator
+from pydantic import BaseModel, Discriminator, Field, Tag, field_validator
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import DEFAULT_FORMAT, zarr_version
 
 LOG = logging.getLogger(__name__)
 
@@ -244,15 +236,11 @@ def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
     if isinstance(v, dict):
         return v.get("layout", "gridded")
-    return getattr(v, "layout")
+    return v.layout
 
 
 # if layout is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
 Output = Annotated[
-    Union[
-        Annotated[GriddedOutput, Tag("gridded")],
-        Annotated[TabularOutput, Tag("tabular")],
-        Annotated[TrajectoriesOutput, Tag("trajectories")],
-    ],
+    Annotated[GriddedOutput, Tag("gridded")] | Annotated[TabularOutput, Tag("tabular")] | Annotated[TrajectoriesOutput, Tag("trajectories")],
     Discriminator(_output_discriminator),
 ]

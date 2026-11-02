@@ -11,19 +11,16 @@ import logging
 import operator
 import os
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from multiprocessing import Pool
-from typing import Any
-from typing import Iterator
-from typing import Literal
+from typing import Any, Literal
 
 import eccodes
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from .bufr_reader import BUFRMessage
-from .bufr_reader import BUFRReader
+from .bufr_reader import BUFRMessage, BUFRReader
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -331,7 +328,7 @@ class BUFRToDataFrame:
             return df
         except Exception as e:
             warnings.warn(
-                f"Unexpected error in message: {str(e)}. Skipping this message.",
+                f"Unexpected error in message: {e!s}. Skipping this message.",
                 RuntimeWarning,
             )
             return pd.DataFrame()
@@ -415,7 +412,7 @@ class BUFRToDataFrame:
                     df_lst.append(self.read_msg_to_df(message))
             df = pd.concat(df_lst)
         except Exception as e:
-            log.error(f"Error in read_bufr_to_df: {str(e)}")
+            log.error(f"Error in read_bufr_to_df: {e!s}")
             raise
 
         if len(df) > 0 and sort:
@@ -452,7 +449,7 @@ def bufr_to_dataframe_parallel(bufr_reader: BUFRReader, bufr_to_df: BUFRToDataFr
                 df = r.get()
                 all_lst.append(df)
             except Exception as e:
-                log.error(f"Error getting result from worker process: {str(e)}")
+                log.error(f"Error getting result from worker process: {e!s}")
                 continue
         if not all_lst:
             raise ValueError("No valid results were returned from any worker process")

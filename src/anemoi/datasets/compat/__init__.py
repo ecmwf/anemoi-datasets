@@ -47,29 +47,33 @@ def zarr_format_from_name(name: str) -> int:
 
 
 if zarr_version < 3:
-    from .zarr2 import DebugStore
-    from .zarr2 import DirectoryStore
-    from .zarr2 import HTTPStore
-    from .zarr2 import LRUStoreCache
-    from .zarr2 import S3Store
-    from .zarr2 import ZarrFileNotFoundError
-    from .zarr2 import ZipStore
-    from .zarr2 import blosc_compressor
-    from .zarr2 import get_zarr_format
-    from .zarr2 import zarr_format_kwargs
+    from .zarr2 import (
+        DebugStore,
+        DirectoryStore,
+        HTTPStore,
+        LRUStoreCache,
+        S3Store,
+        ZarrFileNotFoundError,
+        ZipStore,
+        blosc_compressor,
+        get_zarr_format,
+        zarr_format_kwargs,
+    )
 
     MemoryStore = zarr.storage.MemoryStore
 else:
-    from .zarr3 import DebugStore
-    from .zarr3 import DirectoryStore
-    from .zarr3 import HTTPStore
-    from .zarr3 import LRUStoreCache
-    from .zarr3 import S3Store
-    from .zarr3 import ZarrFileNotFoundError
-    from .zarr3 import ZipStore
-    from .zarr3 import blosc_compressor
-    from .zarr3 import get_zarr_format
-    from .zarr3 import zarr_format_kwargs
+    from .zarr3 import (
+        DebugStore,
+        DirectoryStore,
+        HTTPStore,
+        LRUStoreCache,
+        S3Store,
+        ZarrFileNotFoundError,
+        ZipStore,
+        blosc_compressor,
+        get_zarr_format,
+        zarr_format_kwargs,
+    )
 
     MemoryStore = zarr.storage.MemoryStore
 
@@ -122,18 +126,18 @@ def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
 __all__ = [
     "DEFAULT_FORMAT",
     "DEFAULT_ZARR_FORMAT",
-    "ZarrFileNotFoundError",
-    "ZipStore",
-    "HTTPStore",
-    "S3Store",
     "DebugStore",
     "DirectoryStore",
+    "HTTPStore",
     "LRUStoreCache",
     "MemoryStore",
+    "S3Store",
+    "ZarrFileNotFoundError",
+    "ZipStore",
     "blosc_compressor",
     "get_zarr_format",
     "zarr_format_from_name",
     "zarr_open",
-    "zarr_version",
     "zarr_private_files",
+    "zarr_version",
 ]

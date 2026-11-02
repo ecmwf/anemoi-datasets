@@ -563,7 +563,7 @@ def validate_dataset(dataset, costly_checks=False, detailed=False):
         default_test_indexing(dataset)
 
         for i, x in enumerate(dataset):
-            y = dataset[i]
+            y = x
             assert (x == y).all(), f"Dataset indexing failed at index {i}: {x} != {y}"
 
     for name in METHODS:
