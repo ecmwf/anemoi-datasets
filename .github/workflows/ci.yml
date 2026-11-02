@@ -38,6 +38,7 @@ jobs:
     outputs:
       # resolve-deps declares matrix-<kind> outputs only for some kinds; json holds them all.
       test-matrix: ${{ toJSON(fromJSON(steps.r.outputs.json).test) }}
+      zarr2-matrix: ${{ toJSON(fromJSON(steps.r.outputs.json).zarr2) }}
     steps:
       # No container: uv provides ci-infrastructure's Python.
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
@@ -51,7 +52,7 @@ jobs:
       - id: r
         uses: ecmwf/ci-infrastructure/actions/resolve-deps@main
         with:
-          matrix: test
+          matrix: test,zarr2
           token: ${{ steps.mint.outputs.token }}
           client-id: ${{ secrets.CI_PERMISSIONS_APP_CLIENT_ID }}
           app-private-key: ${{ secrets.CI_PERMISSIONS_APP_PRIVATE_KEY }}
@@ -105,10 +106,54 @@ jobs:
         with:
           resolved: ${{ toJSON(matrix._resolved) }}
 
+  test-zarr2:
+    needs: [ci-approval, resolve]
+    name: test-zarr2 (${{ matrix._resolved['job-name'] }})
+    runs-on: ${{ matrix['runs-on'] }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.zarr2-matrix) }}
+    steps:
+      # No container: uv provides the job script's Python and ci-infrastructure's.
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - id: mint
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CI_PERMISSIONS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_PERMISSIONS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: ecmwf/ci-infrastructure/actions/checkout-under-test@main
+        with:
+          # The version comes from the git tags (setuptools-scm).
+          fetch-depth: 0
+
+      - name: Fetch resolved deps
+        id: deps
+        uses: ecmwf/ci-infrastructure/actions/fetch-deps@main
+        with:
+          deps-json: ${{ toJSON(matrix._resolved.deps) }}
+          token: ${{ steps.mint.outputs.token }}
+
+      # Tests only (publishes = false in the manifest).
+      - name: Build and test the wheel
+        id: build
+        uses: ecmwf/ci-infrastructure/actions/run-job-script@main
+        with:
+          job-script: ${{ matrix.job-script }}
+          matrix-leg: ${{ toJSON(matrix) }}
+          package: anemoi-datasets
+          cmake-prefix-path: ${{ steps.deps.outputs.cmake-prefix-path }}
+
+      - name: Print dependency table
+        if: always()
+        uses: ecmwf/ci-infrastructure/actions/print-dep-table@main
+        with:
+          resolved: ${{ toJSON(matrix._resolved) }}
+
   ci-result:
     name: collect results
     if: always()
-    needs: [ci-approval, resolve, test]
+    needs: [ci-approval, resolve, test, test-zarr2]
     runs-on: ubuntu-slim
     permissions:
       statuses: write

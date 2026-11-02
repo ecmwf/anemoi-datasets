@@ -41,6 +41,20 @@ python-version = "3.12"
 [[matrix.test.include]]
 python-version = "3.13"
 
+# zarr 2 compatibility: the `zarr2` extra pins zarr, numcodecs and xarray to
+# their last zarr 2 versions. A test kind only: its wheel is the test leg's, and
+# publishing it would clash with that leg's artifact name.
+[matrix.zarr2]
+publishes = false
+
+[[matrix.zarr2.include]]
+job-script = "./.ci/test.sh.j2"
+runs-on = "ubuntu-24.04"
+platform = "ubuntu-24.04"
+python-version = "3.13"
+extras = "all,tests,zarr2"
+pytest-args = "-n 4"
+
 [[trigger-downstream]]
 repo = "ecmwf/anemoi-core"
 ref = "main"
