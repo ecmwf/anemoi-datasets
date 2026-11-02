@@ -88,12 +88,26 @@ class XArrayMetadata(RawMetadata):
     def _as_mars(self) -> dict[str, Any]:
         """Get the metadata as MARS namespace.
 
+        Only the keys listed in :attr:`MARS_KEYS` that the field actually has
+        are returned, so the result describes the field the way a GRIB
+        ``mars`` namespace would.
+
+        Returning the real keys matters because consumers use this namespace to
+        decide which fields describe *the same point in space and time*.  In
+        particular ``anemoi.transform``'s ``GroupByParam`` -- behind filters
+        such as ``r-to-q``, ``r-to-d`` and ``uv-to-ddff`` -- groups a field's
+        components by this namespace, and falls back to the *whole* metadata
+        dictionary when it is empty.  That fallback includes ``units``, which
+        necessarily differs between the components being combined (``K`` for a
+        temperature, ``1`` for a relative humidity), so every component lands
+        in a group of its own and the filter fails with "Missing component".
+
         Returns
         -------
         Dict[str, Any]
             The metadata in the MARS namespace.
         """
-        return {}
+        return {key: self[key] for key in self.MARS_KEYS if key in self}
 
     def _base_datetime(self) -> datetime.datetime | None:
         """Get the base datetime for the field.
