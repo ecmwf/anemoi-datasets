@@ -10,7 +10,9 @@
 import logging
 import threading
 from collections.abc import Iterator
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 from typing import Any
 
 import numpy as np
@@ -657,12 +659,14 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
         super().__init__(array, *args, **kwargs, no_reload=True)
         self._read_ahead = ThreadPoolExecutor(max_workers=1)
         # Read-ahead is only a prefetch optimisation (the caller loads the chunk
-        # itself anyway), so cap the number of in-flight tasks. Without this the
-        # unbounded executor queue grows by one item per read; a workload that
+        # itself if it is not prefetched), so cap the number of in-flight tasks. Without
+        # this the executor queue could grow by one item per read; a workload that
         # issues millions of small reads (e.g. one per row-range) would otherwise
         # accumulate millions of pending Futures and run the process out of memory.
         self._read_ahead_max_pending = max(2, self.chunks_in_cache)
-        self._read_ahead_pending = 0
+        # Chunks being prefetched: a read waits for them rather than loading them a
+        # second time (which `no_reload` forbids).
+        self._read_ahead_in_flight: dict[int, Future] = {}
         self._read_ahead_lock = threading.Lock()
         self._submit_read_ahead(slice(start, self.chunks_in_cache + start, 1))
 
@@ -680,58 +684,92 @@ class ReadAheadBuffer(ReadAheadWriteBehindBuffer):
         match first_key:
             case int():
                 chunk_index = first_key // self._nrows_in_chunks
-                self._submit_read_ahead(slice(chunk_index + 1, chunk_index + 2, 1))
+                chunks = slice(chunk_index, chunk_index + 1, 1)
 
             case slice():
                 # TODO: optimize for step > 1
                 start, stop, _ = first_key.indices(self._arr.shape[0])
                 start = start // self._nrows_in_chunks
                 stop = (stop - 1) // self._nrows_in_chunks + 1
-                self._submit_read_ahead(slice(start, stop, 1))
+                chunks = slice(start, stop, 1)
             case _:
-                pass
+                chunks = None
 
-        return super().__getitem__(key)
+        # Wait for the chunks being prefetched (all of them if we do not know which chunks the key needs)
+        with self._read_ahead_lock:
+            if chunks is None:
+                in_flight = list(self._read_ahead_in_flight.values())
+            else:
+                in_flight = [
+                    self._read_ahead_in_flight[i]
+                    for i in range(chunks.start, chunks.stop, chunks.step)
+                    if i in self._read_ahead_in_flight
+                ]
+        wait(in_flight)
+
+        result = super().__getitem__(key)
+
+        # Prefetch the next chunks while the caller processes this result. At most
+        # `chunks_in_cache - 1` are prefetched, so the chunks just read stay in the cache
+        # (the next read may need them again, e.g. the rest of the last chunk).
+        if chunks is not None and chunks.stop > chunks.start:
+            ahead = min(chunks.stop - chunks.start, self.chunks_in_cache - 1)
+            self._submit_read_ahead(slice(chunks.stop, chunks.stop + ahead, 1))
+
+        return result
 
     def _submit_read_ahead(self, index: slice) -> None:
-        """Submit a read-ahead task, dropping it if too many are already queued.
+        """Submit read-ahead tasks for the given chunks.
+
+        Chunks that are past the end of the array, already cached or already being
+        prefetched are skipped, as are all chunks once too many tasks are queued.
 
         Parameters
         ----------
         index : slice
             The slice of buffer indices to read ahead.
         """
-        with self._read_ahead_lock:
-            if self._read_ahead_pending >= self._read_ahead_max_pending:
-                # Queue is full; skip this prefetch. The chunk will still be
-                # loaded on demand by the caller if it is actually needed.
-                return
-            self._read_ahead_pending += 1
-
-        future = self._read_ahead.submit(self._read_ahead_worker, index)
-        future.add_done_callback(self._read_ahead_done)
-
-    def _read_ahead_done(self, future: Any) -> None:
-        """Decrement the in-flight read-ahead counter when a task completes."""
-        with self._read_ahead_lock:
-            self._read_ahead_pending -= 1
-
-    def _read_ahead_worker(self, index: slice) -> None:
-        """Worker function for read-ahead, loads the next buffer in the background.
-
-        Parameters
-        ----------
-        index : slice
-            The slice of buffer indices to read ahead.
-        """
-        if LOG.isEnabledFor(logging.DEBUG):
-            LOG.debug(f"Read-ahead loading buffer {index}")
-
         for i in range(index.start, index.stop, index.step):
             if i > self._max_chunk_index:
                 break
 
-            self._ensure_chunk_in_cache(i)
+            with self._lock:
+                if i in self._lru_chunks_cache:  # `in` does not change the LRU order
+                    continue
+
+            with self._read_ahead_lock:
+                if i in self._read_ahead_in_flight:
+                    continue
+                if len(self._read_ahead_in_flight) >= self._read_ahead_max_pending:
+                    # Queue is full; skip this prefetch. The chunk will still be
+                    # loaded on demand by the caller if it is actually needed.
+                    return
+                future = self._read_ahead.submit(self._read_ahead_worker, i)
+                self._read_ahead_in_flight[i] = future
+
+            future.add_done_callback(lambda _, i=i: self._read_ahead_done(i))
+
+    def _read_ahead_done(self, chunk_index: int) -> None:
+        """Forget a prefetch once it has completed."""
+        with self._read_ahead_lock:
+            self._read_ahead_in_flight.pop(chunk_index, None)
+
+    def _read_ahead_worker(self, chunk_index: int) -> None:
+        """Worker function for read-ahead, loads a chunk in the background.
+
+        Parameters
+        ----------
+        chunk_index : int
+            The index of the chunk to load.
+        """
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug(f"Read-ahead loading chunk {chunk_index}")
+
+        try:
+            self._ensure_chunk_in_cache(chunk_index)
+        except Exception:
+            # The caller will load the chunk itself if it needs it
+            LOG.warning(f"Read-ahead of chunk {chunk_index} failed", exc_info=True)
 
     def resize(self, *new_shape: int) -> None:
         raise RuntimeError("Resizing not supported with ReadAheadBuffer enabled")
