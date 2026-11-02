@@ -25,11 +25,11 @@ triggers = ["upstream-change", "rebuild-request"]
 
 [matrix.test.defaults]
 job-script = "./.ci/test.sh.j2"
-runs-on = "arc-runner-normal"
+runs-on = "ubuntu-latest"
 container = "eccr.ecmwf.int/public-ci-images/ubuntu24.04-base:latest"
 platform = "ubuntu-24.04"
 extras = "all,tests"
-# 4 xdist workers, the CPU limit of arc-runner-normal: more do not help, as one
+# 4 xdist workers, the vCPUs of ubuntu-latest: more do not help, as one
 # network-bound test (test_planetary_computer_multipart, ~5 min) dominates.
 pytest-args = "-n 4 --durations=25"
 
