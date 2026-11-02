@@ -107,6 +107,11 @@ optional-dependencies.xarray = [
   "s3fs>=2023",
   "xarray",
 ]
+optional-dependencies.zarr2 = [
+  "numcodecs<0.16",
+  "xarray<2026.9",
+  "zarr<=2.18.7",
+]
 urls.Changelog = "https://github.com/ecmwf/anemoi-datasets/CHANGELOG.md"
 urls.Documentation = "https://anemoi-datasets.readthedocs.io/"
 urls.Homepage = "https://github.com/ecmwf/anemoi-datasets/"
