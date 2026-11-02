@@ -7,16 +7,23 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
+import os
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.recipe.migrate import migrate_output_format
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.create.recipe import Recipe
 from anemoi.datasets.create.recipe.output import GriddedOutput
 from anemoi.datasets.create.recipe.output import TabularOutput
+
+from .utils.create import create_dataset
 
 
 def _coords(*, variables=101, ensembles=1, grid_points=100):
@@ -135,3 +142,65 @@ def test_legacy_format_conflicting_with_layout_is_rejected():
 )
 def test_migrate_output_format(output, expected):
     assert migrate_output_format({"output": output}) == {"output": expected}
+
+
+def test_invalid_compressor_is_rejected():
+    for compressor in ({"id": "not-a-codec"}, {"id": "blosc", "not_an_option": 1}):
+        with pytest.raises(ValidationError):
+            GriddedOutput(compressor=compressor)
+
+
+def _write_grib(path: str) -> None:
+    """Write 2t on a 3x2 grid at 2020-01-01 00 and 06 UTC, with values equal to the hour."""
+    import eccodes
+
+    sample = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+    eccodes.codes_set_key_vals(
+        sample,
+        {
+            "Ni": 3,
+            "Nj": 2,
+            "latitudeOfFirstGridPointInDegrees": 1.0,
+            "longitudeOfFirstGridPointInDegrees": 0.0,
+            "latitudeOfLastGridPointInDegrees": 0.0,
+            "longitudeOfLastGridPointInDegrees": 2.0,
+            "iDirectionIncrementInDegrees": 1.0,
+            "jDirectionIncrementInDegrees": 1.0,
+        },
+    )
+    with open(path, "wb") as f:
+        for hour in (0, 6):
+            h = eccodes.codes_clone(sample)
+            eccodes.codes_set_key_vals(h, {"dataDate": 20200101, "dataTime": hour * 100, "paramId": 167})
+            eccodes.codes_set_values(h, np.full(6, float(hour)))
+            eccodes.codes_write(h, f)
+            eccodes.codes_release(h)
+    eccodes.codes_release(sample)
+
+
+def _compressor_on_disk(path: str) -> dict | None:
+    with open(os.path.join(path, "data", ".zarray")) as f:
+        return json.load(f)["compressor"]
+
+
+def test_compressor_is_applied_to_data_array(tmp_path):
+    grib = str(tmp_path / "2t.grib")
+    _write_grib(grib)
+
+    def create(name: str, output: dict) -> str:
+        recipe = {
+            "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
+            "input": {"grib": {"path": grib}},
+            "output": output,
+        }
+        return create_dataset(recipe=recipe, output=str(tmp_path / f"{name}.zarr"))
+
+    compressor = {"id": "blosc", "cname": "zstd", "clevel": 3, "shuffle": 2}
+    path = create("custom", {"compressor": compressor})
+    assert _compressor_on_disk(path) == {**compressor, "blocksize": 0}
+    np.testing.assert_allclose(open_dataset(path)[1].squeeze(), 6.0)
+
+    # Without the option, the data array keeps the default compressor of zarr
+    reference = str(tmp_path / "reference.zarr")
+    zarr_open(reference, "w").create_array("data", shape=(1,), dtype="float32")
+    assert _compressor_on_disk(create("default", {})) == _compressor_on_disk(reference)

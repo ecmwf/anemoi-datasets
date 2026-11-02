@@ -84,7 +84,10 @@ target, the copy is aborted. Use ``--overwrite`` to start again instead.
 The ``data`` array of a new gridded or trajectories dataset is
 compressed with Blosc (lz4, compression level 5, byte shuffle), whatever
 the Zarr format. The ``data`` array of a new tabular dataset is
-compressed with Blosc (zstd, compression level 3, bit shuffle).
+compressed with Blosc (zstd, compression level 3, bit shuffle). For a
+gridded dataset in Zarr format 2, another numcodecs codec can be selected
+with ``output.compressor`` in the recipe, for example ``{id: blosc,
+cname: zstd, clevel: 3, shuffle: 2}``.
 
 When a copy rewrites the data, the ``data`` array of the target keeps the
 compressor of the source. Blosc, Zstd and Gzip are translated to the

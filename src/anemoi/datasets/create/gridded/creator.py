@@ -452,6 +452,12 @@ class SimpleGriddedCreator(GriddedCreator):
 
         # Create arrays
 
+        compressors = self.recipe.output.get_compressor()
+        if compressors is None:
+            # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5, byte shuffle)
+            # and format 3 arrays get zstd without shuffle.
+            compressors = blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=get_zarr_format(dataset.store))
+
         dataset.add_array(
             name="data",
             chunks=chunks,
@@ -459,9 +465,7 @@ class SimpleGriddedCreator(GriddedCreator):
             shape=shape,
             dimensions=("time", "variable", "ensemble", "cell"),
             fill_value=np.nan,
-            # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5, byte shuffle)
-            # and format 3 arrays get zstd without shuffle.
-            compressors=blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=get_zarr_format(dataset.store)),
+            compressors=compressors,
         )
 
         dataset.add_array(name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",))

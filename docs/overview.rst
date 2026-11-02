@@ -72,6 +72,11 @@ and each date is kept as a single file. This is to reduce the inode
 count for low-res datasets, and because synthetic benchmarking showed
 a performance degradation from chunking date files ~10MB large.
 
+Chunks are compressed with Blosc (lz4, compression level 5, byte
+shuffle). Another numcodecs_ codec can be selected with
+``output.compressor``, for example ``{id: blosc, cname: zstd, clevel: 3,
+shuffle: 2}``.
+
 .. figure:: _static/schemas/matrix.png
    :alt: Data chunking
    :align: center
@@ -97,3 +102,5 @@ This is illustrated in the following video:
 .. _xarray: https://docs.xarray.dev/en/stable/index.html
 
 .. _zarr: https://zarr.readthedocs.io/
+
+.. _numcodecs: https://numcodecs.readthedocs.io/
