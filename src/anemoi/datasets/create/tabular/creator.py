@@ -73,7 +73,6 @@ class TabularCreator(Creator):
         dataset : Dataset
             The dataset object to be initialised with arrays and coordinates.
         """
-        pass
 
     ######################################################
 

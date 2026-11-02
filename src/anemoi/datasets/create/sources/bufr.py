@@ -8,22 +8,16 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from typing import Annotated
-from typing import Any
-from typing import Literal
+from typing import Annotated, Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from anemoi.datasets.create.source import Source
-from anemoi.datasets.create.sources import create_source
-from anemoi.datasets.create.sources import source_registry
+from anemoi.datasets.create.sources import create_source, source_registry
 
 from .bufr_support.bufr_reader import BUFRReader
-from .bufr_support.bufr_to_df import BUFRToDataFrame
-from .bufr_support.bufr_to_df import bufr_to_dataframe_parallel
+from .bufr_support.bufr_to_df import BUFRToDataFrame, bufr_to_dataframe_parallel
 
 LOG = logging.getLogger(__name__)
 

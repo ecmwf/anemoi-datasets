@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 class Thinning(ThinningMixin, Forwards):
     """A class to represent a thinned dataset."""
 
-    def __init__(self, forward: Dataset, thinning: int | float | None, method: str) -> None:
+    def __init__(self, forward: Dataset, thinning: float | None, method: str) -> None:
         """Initialize the Thinning class.
 
         Parameters

@@ -11,8 +11,7 @@
 import logging
 import math
 from functools import cached_property
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import xarray as xr
@@ -148,11 +147,7 @@ class Variable:
         str
             A string representation of the variable.
         """
-        return "Variable[name={},coordinates={},metadata={}]".format(
-            self.variable.name,
-            self.coordinates,
-            self._metadata,
-        )
+        return f"Variable[name={self.variable.name},coordinates={self.coordinates},metadata={self._metadata}]"
 
     def __getitem__(self, i: int) -> "XArrayField":
         """Get a 2D field from the variable.

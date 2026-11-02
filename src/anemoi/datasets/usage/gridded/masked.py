@@ -17,18 +17,11 @@ import numpy as np
 from anemoi.transform.spatial import cropping_mask
 from numpy.typing import NDArray
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..dataset import Shape
-from ..dataset import TupleIndex
-from ..debug import Node
-from ..debug import debug_indexing
+from ..dataset import Dataset, FullIndex, Shape, TupleIndex
+from ..debug import Node, debug_indexing
 from ..forwards import Forwards
 from ..mixins.thinning import ThinningMixin
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from .indexing import apply_index_to_slices_changes, expand_list_indexing, index_to_slices, update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -137,7 +130,7 @@ class Masked(Forwards):
 class Thinning(ThinningMixin, Masked):
     """A class to represent a thinned dataset."""
 
-    def __init__(self, forward: Dataset, thinning: int | float | None, method: str) -> None:
+    def __init__(self, forward: Dataset, thinning: float | None, method: str) -> None:
         """Initialize the Thinning class.
 
         Parameters

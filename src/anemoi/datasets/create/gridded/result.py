@@ -14,12 +14,10 @@ import time
 from collections import defaultdict
 from functools import cached_property
 from typing import Any
-from typing import DefaultDict
 
 import numpy as np
 from anemoi.utils.dates import as_timedelta
-from anemoi.utils.humanize import seconds_to_human
-from anemoi.utils.humanize import shorten_list
+from anemoi.utils.humanize import seconds_to_human, shorten_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
@@ -69,7 +67,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
     def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result: dict[str, Any] = {}
-        for k in md1.keys():
+        for k in md1:
             v1 = md1[k]
             v2 = md2[k]
 
@@ -92,7 +90,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         return result
 
     mars: dict[str, Any] = {}
-    other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
+    other: defaultdict[str, dict[str, Any]] = defaultdict(dict)
 
     # Find the axis that corresponds to the variables dimension — the one whose
     # values are the variable names.  This is position-agnostic so it works for
@@ -281,8 +279,8 @@ def _data_request(data: Any) -> dict[str, Any]:
         The data request dictionary.
     """
     date: Any | None = None
-    params_levels: DefaultDict[str, set] = defaultdict(set)
-    params_steps: DefaultDict[str, set] = defaultdict(set)
+    params_levels: defaultdict[str, set] = defaultdict(set)
+    params_steps: defaultdict[str, set] = defaultdict(set)
 
     area: Any | None = None
     grid: Any | None = None
@@ -315,7 +313,7 @@ def _data_request(data: Any) -> dict[str, Any]:
         except Exception:
             LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
-    def sort(old_dic: DefaultDict[str, set]) -> dict[str, list[Any]]:
+    def sort(old_dic: defaultdict[str, set]) -> dict[str, list[Any]]:
         new_dic: dict[str, list[Any]] = {}
         for k, v in old_dic.items():
             new_dic[k] = sorted(list(v))

@@ -11,18 +11,14 @@
 import datetime
 import itertools
 import logging
-from abc import ABC
-from abc import abstractmethod
-from collections.abc import Callable
-from collections.abc import Iterator
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import as_datetime, frequency_to_timedelta
 
-from anemoi.datasets.create.recipe.dates import DatesProvider
-from anemoi.datasets.create.recipe.dates import TrajectoryDates
+from anemoi.datasets.create.recipe.dates import DatesProvider, TrajectoryDates
 
 LOG = logging.getLogger(__name__)
 
@@ -281,7 +277,6 @@ class Grouper(ABC):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
-        pass
 
 
 class ReferenceDateGroup(Grouper):

@@ -18,10 +18,8 @@ from numpy.typing import NDArray
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..debug import Node
-from ..debug import debug_indexing
+from ..dataset import Dataset, FullIndex
+from ..debug import Node, debug_indexing
 from ..forwards import Forwards
 
 LOG = logging.getLogger(__name__)
@@ -151,7 +149,7 @@ class RollingAverage(Forwards):
         result = []
 
         for i in self.forward.missing:
-            for j in range(0, self.i_end + self.i_start):
+            for j in range(self.i_end + self.i_start):
                 result.append(i + j)
 
         result = {x for x in result if x < self._len}

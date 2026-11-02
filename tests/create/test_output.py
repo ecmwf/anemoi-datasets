@@ -15,8 +15,7 @@ from pydantic import ValidationError
 from anemoi.datasets.commands.recipe.migrate import migrate_output_format
 from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.create.recipe import Recipe
-from anemoi.datasets.create.recipe.output import GriddedOutput
-from anemoi.datasets.create.recipe.output import TabularOutput
+from anemoi.datasets.create.recipe.output import GriddedOutput, TabularOutput
 
 
 def _coords(*, variables=101, ensembles=1, grid_points=100):

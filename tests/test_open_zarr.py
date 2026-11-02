@@ -16,16 +16,13 @@ import threading
 import zipfile
 from collections.abc import Iterator
 from functools import partial
-from http.server import SimpleHTTPRequestHandler
-from http.server import ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from anemoi.datasets.compat import DebugStore
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import DebugStore, ZarrFileNotFoundError, zarr_open
 from anemoi.datasets.usage import store as store_module
 from anemoi.datasets.usage.store import open_zarr
 

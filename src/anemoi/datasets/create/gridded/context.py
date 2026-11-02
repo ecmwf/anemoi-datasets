@@ -11,8 +11,7 @@
 import logging
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_metadata
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_with_metadata, new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.gridded.result import SimpleGriddedResult
