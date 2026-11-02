@@ -23,3 +23,9 @@ jobs:
     uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
     with:
       python-version: ${{ matrix.python-version }}
+
+  zarr2-compatibility:
+    uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
+    with:
+      python-version: "3.13"
+      optional-dependencies: "all,tests,zarr2"
