@@ -16,9 +16,9 @@ from typing import Any
 from typing import Literal
 from typing import Union
 
-import numcodecs
 import numpy as np
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Discriminator
 from pydantic import Field
 from pydantic import Tag
@@ -26,7 +26,11 @@ from pydantic import field_validator
 from pydantic import model_validator
 
 from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import blosc_compressor
+from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
 
 LOG = logging.getLogger(__name__)
 
@@ -55,6 +59,18 @@ class OutputBase(BaseModel):
         if format == "zarr3" and zarr_version < 3:
             raise ValueError("'output.format: \"zarr3\"' requires zarr-python>=3")
         return format
+
+
+class CodecSpec(BaseModel):
+    """A codec as in Zarr format 3 array metadata."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    """The codec name, e.g. ``blosc``, ``zstd``, ``gzip`` or ``numcodecs.<id>``."""
+
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    """The codec configuration."""
 
 
 class GriddedOutput(OutputBase):
@@ -90,31 +106,58 @@ class GriddedOutput(OutputBase):
     min_chunk_bytes: int = Field(default=2**25, gt=0)  # 32 MiB
     """The minimum target chunk size in bytes."""
 
-    compressor: dict[str, Any] | None = None
-    """The numcodecs codec configuration used to compress the data array, e.g.
-    ``{"id": "blosc", "cname": "zstd", "clevel": 3, "shuffle": 2}``. If None, zarr's default is used."""
+    compressors: list[CodecSpec] | None = None
+    """The bytes-to-bytes codecs that compress the data array, written as in Zarr format 3 metadata, e.g.
+    ``[{"name": "blosc", "configuration": {"cname": "zstd", "clevel": 3, "shuffle": "bitshuffle"}}]``.
+    Translated to a numcodecs compressor for Zarr format 2, which allows a single one. An empty list disables
+    compression. If None, Blosc (lz4, compression level 5, byte shuffle) is used."""
 
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Kept in sync with ``SimpleGriddedContext.order_by``.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
 
     @model_validator(mode="after")
-    def _check_compressor(self) -> GriddedOutput:
-        if self.compressor is None:
-            return self
-        if self.format != "zarr2":
-            raise ValueError("'output.compressor' is only supported with 'output.format: zarr2'")
-        try:
-            self.get_compressor()
-        except TypeError as e:
-            raise ValueError(f"Invalid 'output.compressor' {self.compressor}: {e}") from e
+    def _check_compressors(self) -> GriddedOutput:
+        if self.compressors is not None:
+            try:
+                self.get_compressors(zarr_format_from_name(self.format))
+            except (TypeError, NotImplementedError) as e:
+                raise ValueError(str(e)) from e
         return self
 
-    def get_compressor(self) -> numcodecs.abc.Codec | None:
-        """Return the codec configured to compress the data array, or None to use zarr's default."""
-        if self.compressor is None:
-            return None
-        return numcodecs.get_codec(self.compressor)
+    def get_compressors(self, zarr_format: int) -> Any:
+        """Return the ``compressors`` argument of ``create_array`` for the data array in Zarr format ``zarr_format``.
+
+        Parameters
+        ----------
+        zarr_format : int
+            The Zarr format of the dataset.
+
+        Returns
+        -------
+        Any
+            A numcodecs codec or None (format 2), or a tuple of zarr codecs (format 3).
+        """
+        if self.compressors is None:
+            # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5,
+            # byte shuffle) and format 3 arrays get zstd without shuffle.
+            return blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format)
+
+        specs = [c.model_dump() for c in self.compressors]
+        if zarr_format == 2:
+            if len(specs) > 1:
+                raise ValueError(
+                    f"'output.compressors' has {len(specs)} codecs, but Zarr format 2 arrays take a single compressor"
+                )
+            return numcodecs_codec(specs[0]) if specs else None
+
+        from zarr.abc.codec import BytesBytesCodec
+
+        codecs = tuple(zarr3_codec(spec) for spec in specs)
+        for spec, codec in zip(specs, codecs):
+            if not isinstance(codec, BytesBytesCodec):
+                raise ValueError(f"Codec {spec['name']!r} in 'output.compressors' is not a bytes-to-bytes codec")
+        return codecs
 
     def _post_init(self, recipe: Any) -> None:
         """Validate the deprecated ``order_by`` field.
