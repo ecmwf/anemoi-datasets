@@ -143,7 +143,7 @@ strict = false
 [tool.pytest]
 ini_options.testpaths = "tests"
 ini_options.addopts = [
-  "--numprocesses=auto",
+  "--numprocesses=logical",
   "--maxprocesses=16",
   "--strict-config",
 ]

@@ -28,9 +28,7 @@ job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
 extras = "all,tests"
-# 6 xdist workers on 4 vCPUs, a trial: many tests wait on I/O, and the slowest
-# (test_cache_write, the btree window views) build a store once per worker.
-pytest-args = "-n 6 --durations=25"
+pytest-args = "--durations=25"
 
 [[matrix.test.include]]
 python-version = "3.11"
@@ -53,7 +51,6 @@ runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
 python-version = "3.13"
 extras = "all,tests,zarr2"
-pytest-args = "-n 6"
 
 [[trigger-downstream]]
 repo = "ecmwf/anemoi-core"
