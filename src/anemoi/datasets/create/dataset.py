@@ -158,8 +158,8 @@ class Dataset:
 
     def todo_remaining(self) -> int:
         with self.synchronizer:
-            flags = self.store["_build"]["flags"]
-            return np.sum(~flags)
+            flags = self.store["_build"]["flags"][:]
+            return int(np.sum(~flags))
 
     def mark_done(self, i: int):
         with self.synchronizer:
@@ -177,34 +177,12 @@ class Dataset:
 
     ##################################
 
-    def group_to_range(self, group: int) -> tuple[int, int]:
-        """Convert group indices to slice in the data array's first axis."""
-
-        with self.synchronizer:
-            shapes = self.store["_build"]["shapes"][:]
-            lengths = shapes[:, 0]
-            start = sum(lengths[:group])
-            end = start + lengths[group]
-            return (start, end)
-
-    ##################################
-
     def add_provenance(self, name: str) -> None:
 
         from anemoi.utils.provenance import gather_provenance_info
 
         if name not in self.store.attrs:
             self.store.attrs[name] = gather_provenance_info()
-
-    # For statistics about
-    def initialise_group_shapes(self, shapes: list[tuple[int, ...]]) -> None:
-        """Initialise the per-group shape tracking array."""
-
-        self.add_array(
-            name="_build/shapes",
-            data=np.array(shapes, dtype=np.int64),
-            dimensions=("group", "dim"),
-        )
 
     def initialise_done_flags(self, groups: int) -> None:
         """Initialize the progress tracking datasets."""

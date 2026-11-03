@@ -48,24 +48,34 @@ def zarr_format_from_name(name: str) -> int:
 
 if zarr_version < 3:
     from .zarr2 import DebugStore
+    from .zarr2 import DirectoryStore
     from .zarr2 import HTTPStore
+    from .zarr2 import LRUStoreCache
     from .zarr2 import S3Store
     from .zarr2 import ZarrFileNotFoundError
+    from .zarr2 import ZipStore
     from .zarr2 import blosc_compressor
     from .zarr2 import get_zarr_format
     from .zarr2 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
+    NestedDirectoryStore = zarr.storage.NestedDirectoryStore
 else:
     from .zarr3 import DebugStore
+    from .zarr3 import DirectoryStore
     from .zarr3 import HTTPStore
+    from .zarr3 import LRUStoreCache
     from .zarr3 import S3Store
     from .zarr3 import ZarrFileNotFoundError
+    from .zarr3 import ZipStore
     from .zarr3 import blosc_compressor
     from .zarr3 import get_zarr_format
     from .zarr3 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
+    # zarr 3 has no NestedDirectoryStore: format 3 arrays are always nested,
+    # format 2 arrays need to specify chunk_key_encoding in create_array
+    NestedDirectoryStore = zarr.storage.LocalStore
 
 
 def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
@@ -117,14 +127,18 @@ __all__ = [
     "DEFAULT_FORMAT",
     "DEFAULT_ZARR_FORMAT",
     "ZarrFileNotFoundError",
+    "ZipStore",
     "HTTPStore",
     "S3Store",
     "DebugStore",
+    "DirectoryStore",
+    "LRUStoreCache",
     "MemoryStore",
     "blosc_compressor",
     "get_zarr_format",
     "zarr_format_from_name",
     "zarr_open",
+    "NestedDirectoryStore",
     "zarr_version",
     "zarr_private_files",
 ]

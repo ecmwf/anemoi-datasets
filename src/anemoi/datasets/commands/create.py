@@ -119,10 +119,6 @@ class Create(Command):
         task("load", options)
         task("finalise", options)
 
-        task("init_additions", options)
-        task("load_additions", options)
-        task("finalise_additions", options)
-
         task("patch", options)
 
         task("cleanup", options)
@@ -173,21 +169,20 @@ class Create(Command):
             ):
                 future.result()
 
+        # Staged finalise: the statistics are computed in parallel over contiguous row ranges,
+        # then merged by the tidy stage.
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise", options).result()
+            executor.submit(task, "finalise", dict(options, finalise_stage="prepare")).result()
 
-        with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "init-additions", options).result()
-
+        futures = []
         with ExecutorClass(max_workers=parallel) as executor:
-            for n in range(total):
-                opt = options.copy()
-                opt["parts"] = f"{n+1}/{total}"
-                futures.append(executor.submit(task, "load-additions", opt))
+            for n in range(parallel):
+                opt = dict(options, finalise_stage="load", parts=f"{n+1}/{parallel}")
+                futures.append(executor.submit(task, "finalise", opt))
 
             for future in tqdm.tqdm(
                 as_completed(futures),
-                desc="Computing additions",
+                desc="Computing statistics",
                 total=len(futures),
                 colour="green",
                 position=parallel + 1,
@@ -195,7 +190,7 @@ class Create(Command):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise-additions", options).result()
+            executor.submit(task, "finalise", dict(options, finalise_stage="tidy")).result()
             executor.submit(task, "patch", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()

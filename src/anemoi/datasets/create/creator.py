@@ -164,18 +164,8 @@ class Creator(ABC):
 
         # Initialize progress tracking
         dataset.initialise_done_flags(len(self.groups))
-        dataset.initialise_group_shapes(self.group_shapes())
 
         dataset.touch()
-
-    def group_shapes(self) -> list[tuple[int, ...]]:
-        """Return the shape of each group's footprint in the data array.
-
-        Each entry is a tuple whose first element is the number of
-        entries along axis 0 of the data array.  Subclasses may add
-        extra dimensions (e.g. steps for trajectory datasets).
-        """
-        return [(len(g),) for g in self.groups]
 
     @abstractmethod
     def check_dataset_name(self, path: str) -> None:
@@ -244,16 +234,12 @@ class Creator(ABC):
             if dataset.is_done(i):
                 # In case of crash/restart
                 LOG.info(f" -> Skipping {i} total={total} (already done)")
-                self.load_done(dataset, i)
                 continue
 
             result = self.input.select(self.context(), argument=group)
 
             # There are several groups. There is one result to load for each group.
             self.load_result(result, dataset)
-
-            # Notify sub-class
-            self.load_done(dataset, i)
 
             # Mark group as done
             dataset.mark_done(i)
@@ -262,10 +248,6 @@ class Creator(ABC):
             dataset.touch()
 
         dataset.add_provenance(name="provenance_load")
-
-    def load_done(self, dataset: Dataset, group: int) -> None:
-        # Used by subclasses to perform actions after a group is loaded
-        pass
 
     ########################
     # Finalisation
@@ -403,17 +385,23 @@ class Creator(ABC):
 
     ########################
 
+    # Tendency statistics are computed by `finalise` (see `statistics.tendencies`);
+    # the additions tasks are kept as no-ops for backward compatibility and will be removed.
+
     def task_init_additions(self) -> None:
-        LOG.info("BACK: Initialising additions.")
-        return
+        self._warn_additions_deprecated("init-additions")
 
     def task_load_additions(self) -> None:
-        LOG.info("BACK: Loading additions.")
-        return
+        self._warn_additions_deprecated("load-additions")
 
     def task_finalise_additions(self) -> None:
-        LOG.info("BACK: Finalising additions.")
-        return
+        self._warn_additions_deprecated("finalise-additions")
+
+    def _warn_additions_deprecated(self, name: str) -> None:
+        LOG.warning(
+            f"`anemoi-datasets {name}` is deprecated and does nothing: tendency statistics are computed "
+            "by `anemoi-datasets finalise` (see `statistics.tendencies` in the recipe)."
+        )
 
     @cached_property
     def groups(self) -> Groups:
