@@ -30,6 +30,7 @@ from anemoi.datasets.compat import get_zarr_format
 
 from ..creator import Creator
 from ..dataset import Dataset
+from ..parts import part_bounds
 from ..statistics import StatisticsCollector
 from .context import SimpleGriddedContext
 
@@ -209,28 +210,6 @@ class GriddedCreator(Creator):
         ):
             LOG.warning("Dataset name warning: %s", message)
 
-    def load_done(self, dataset, group):
-        """Compure statistics after loading is done."""
-
-        if self.parts is None:
-            # We will to that only once, at the end of the full dataset load
-            return
-
-        os.makedirs(self.work_dir, exist_ok=True)
-
-        start, end = dataset.group_to_range(group)
-
-        LOG.info(f"Computing statistics for group {group} (dates {start} to {end})")
-
-        collector = self._compute_partial_statistics(dataset, start, end)
-
-        collector.serialise(
-            os.path.join(self.work_dir, f"statistics_{group:06d}-{start:09d}-{end:09d}.pkl"),
-            group=group,
-            start=start,
-            end=end,
-        )
-
     ######################################################
 
     @abstractmethod
@@ -315,37 +294,144 @@ class GriddedCreator(Creator):
 
         return tendencies
 
-    def _compute_partial_statistics(self, dataset: Dataset, start, end) -> StatisticsCollector:
+    def _compute_partial_statistics(self, dataset: Dataset, lo: int, hi: int) -> StatisticsCollector:
+        """Compute the statistics of the rows ``[lo, hi)`` of the dataset.
+
+        The ``D`` rows preceding ``lo`` (``D`` being the largest tendency delta, in rows) are
+        read first and only used to prime the tendency windows, so that the tendencies of the
+        first rows of ``[lo, hi)`` are computed. The collectors of contiguous ranges covering
+        the dataset can therefore be merged without any further adjustment.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset to read.
+        lo : int
+            First row of the range.
+        hi : int
+            End of the range (exclusive).
+
+        Returns
+        -------
+        StatisticsCollector
+            The collector for the range.
+        """
         dates = dataset.dates
+        tendencies = self._tendencies_to_compute(dataset)
 
         collector = StatisticsCollector(
             variables_names=self.variables_names,
             filter=self.recipe.statistics.statistics_filter(dates),
-            tendencies=self._tendencies_to_compute(dataset),
+            tendencies=tendencies,
         )
 
-        data = ReadAheadBuffer(dataset.data, start=start)
-        step = data.chunks[0]
+        if hi <= lo:
+            return collector
 
-        for i in tqdm.tqdm(range(start, end, step)):
-            chunk = data[i : min(i + step, data.shape[0])]
-            collector.collect(chunk, dates[i : min(i + step, data.shape[0])])
+        # Warm-up rows, only needed for tendencies. On-disk dates include the
+        # missing dates (as NaN rows), so a delta in rows is a delta in time.
+        warm_up = max(lo - max(tendencies.values(), default=0), 0)
+
+        # Batches are aligned on the chunks of the data array, and split at `lo`.
+        step = dataset.data.chunks[0]
+        bounds = sorted({warm_up, lo, hi} | set(range((warm_up // step + 1) * step, hi, step)))
+
+        data = ReadAheadBuffer(dataset.data, start=warm_up // step)
+
+        for i, j in tqdm.tqdm(list(zip(bounds[:-1], bounds[1:])), desc=f"Statistics [{lo}:{hi})"):
+            if j <= lo:
+                collector.prime(data[i:j], dates[i:j])
+            else:
+                collector.collect(data[i:j], dates[i:j])
 
         return collector
 
+    def _statistics_part_path(self, index: int, lo: int, hi: int) -> str:
+        return os.path.join(self.work_dir, f"statistics_part_{index:06d}-{lo:09d}-{hi:09d}.pkl")
+
+    def _statistics_part_files(self) -> list[str]:
+        # Loader pickles written by older versions (statistics_{group}-...pkl) are ignored.
+        return sorted(glob.glob(os.path.join(self.work_dir, "statistics_part_*.pkl")))
+
+    def finalise_prepare(self, dataset: Dataset) -> None:
+        """Prepare stage: check that the dataset is fully loaded and remove stale partial statistics.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset being finalised.
+        """
+        self.finalise_dataset(dataset)
+
+        if "_build" in dataset.store and not dataset.ready():
+            raise RuntimeError(
+                f"Dataset {self.path} is not fully loaded ({dataset.todo_remaining()} groups remaining), "
+                "run `anemoi-datasets load` before `finalise`."
+            )
+
+        # A previous run may have used a different number of parts.
+        stale = self._statistics_part_files() + glob.glob(os.path.join(self.work_dir, "statistics_part_*.pkl.tmp"))
+        for path in stale:
+            os.unlink(path)
+        if stale:
+            LOG.info(f"Removed {len(stale)} stale partial statistics file(s) from {self.work_dir}")
+
+    def finalise_load(self, dataset: Dataset) -> None:
+        """Load stage: compute the statistics of the rows of this process's ``--parts``.
+
+        The rows are split in contiguous ranges of whole chunks. The partial statistics are
+        written to the work directory, and merged by the tidy stage.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset being finalised.
+        """
+        nrows = dataset.data.shape[0]
+        chunk_rows = dataset.data.chunks[0]
+        nchunks = (nrows + chunk_rows - 1) // chunk_rows
+
+        index, chunk_lo, chunk_hi = part_bounds(self.parts, nchunks)
+        lo = min(chunk_lo * chunk_rows, nrows)
+        hi = min(chunk_hi * chunk_rows, nrows)
+
+        path = self._statistics_part_path(index, lo, hi)
+        if os.path.exists(path):
+            LOG.info(f"Statistics for part {index} (rows [{lo}:{hi})) already computed: {path}")
+            return
+
+        LOG.info(f"Computing statistics for part {index} ({self.parts}): rows [{lo}:{hi}) of {nrows}")
+
+        collector = self._compute_partial_statistics(dataset, lo, hi)
+
+        os.makedirs(self.work_dir, exist_ok=True)
+        collector.serialise(path + ".tmp", group=index, start=lo, end=hi)
+        os.replace(path + ".tmp", path)
+
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        if os.path.exists(self.work_dir):
-            precomputed = list(glob.glob(os.path.join(self.work_dir, "statistics_*.pkl")))
-            if precomputed:
-                LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
-                # Load precomputed statistics
-                collector = StatisticsCollector.load_precomputed(dataset, precomputed)
-                collector.add_to_dataset(dataset)
-                return
+        precomputed = self._statistics_part_files()
+        if precomputed:
+            LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
+            collector = self._statistics_collector_class().load_precomputed(dataset, precomputed)
+            collector.add_to_dataset(dataset)
+            return
+
+        if "_build" in dataset.store and dataset.total_todo() > 1:
+            # The loaders do not compute statistics: if they ran in parallel, this
+            # single process now reads the whole dataset.
+            LOG.warning(
+                f"Computing the statistics of the full dataset ({dataset.data.shape[0]:,} dates) in a single "
+                "process. If the dataset was loaded in parallel (`load --parts`), also run the finalise in "
+                "parallel: `finalise --prepare`, then `finalise --load --parts i/n` for each part, then "
+                "`finalise --tidy`."
+            )
 
         LOG.info("Computing statistics for the full dataset")
-        collector = self._compute_partial_statistics(dataset, 0, len(dataset.dates))
+        collector = self._compute_partial_statistics(dataset, 0, dataset.data.shape[0])
         collector.add_to_dataset(dataset)
+
+    def _statistics_collector_class(self) -> type:
+        return StatisticsCollector
 
 
 class SimpleGriddedCreator(GriddedCreator):

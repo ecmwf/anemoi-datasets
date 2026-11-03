@@ -8,9 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import datetime
-import glob
 import logging
-import os
 from functools import cached_property
 from typing import Any
 
@@ -377,19 +375,6 @@ class TrajectoryGriddedCreator(GriddedCreator):
     def context(self):
         return TrajectoryGriddedContext(self.recipe)
 
-    def group_shapes(self) -> list[tuple[int, ...]]:
-        """Return the shape of each group's footprint in the data array.
-
-        Each entry is ``(n_base_dates, n_steps)``.  The first element is
-        used by ``group_to_range`` to index axis 0.
-        """
-        shapes = []
-        for g in self.groups:
-            n_base_dates = len(set(bt for _, bt in g))
-            n_steps = len(set(vt - bt for vt, bt in g)) if len(g) > 0 else 0
-            shapes.append((n_base_dates, n_steps))
-        return shapes
-
     def _tendencies_to_compute(self, dataset: Dataset) -> dict[str, int]:
         """Return ``{name: step_delta}`` for the tendencies to compute.
 
@@ -457,15 +442,5 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
         return collector
 
-    def compute_and_store_statistics(self, dataset: Dataset) -> None:
-        if os.path.exists(self.work_dir):
-            precomputed = list(glob.glob(os.path.join(self.work_dir, "statistics_*.pkl")))
-            if precomputed:
-                LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
-                collector = TrajectoryStatisticsCollector.load_precomputed(dataset, precomputed)
-                collector.add_to_dataset(dataset)
-                return
-
-        LOG.info("Computing statistics for the full trajectory dataset")
-        collector = self._compute_partial_statistics(dataset, 0, dataset.data.shape[0])
-        collector.add_to_dataset(dataset)
+    def _statistics_collector_class(self) -> type:
+        return TrajectoryStatisticsCollector

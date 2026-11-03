@@ -74,15 +74,37 @@ split across processes, terminals or SLURM jobs. This mirrors the general
       # ... up to ...
       anemoi-datasets load dataset.zarr --parts 20/20
 
-   For gridded datasets, the per-group statistics are computed on the fly
-   as each part is loaded and cached in the work directory.
+   The loaders only write the data; the statistics are computed by the
+   ``finalise`` step.
 
-#. **Finalise** the dataset. This merges the partial statistics, writes
-   the metadata and attributes, and removes the temporary files:
+#. **Finalise** the dataset. This computes the statistics (including the
+   tendency statistics, see ``statistics.tendencies`` in the recipe),
+   writes the metadata and attributes, and removes the temporary files:
 
    .. code:: bash
 
       anemoi-datasets finalise dataset.zarr
+
+   A single ``finalise`` computes all the statistics in one process,
+   reading the whole dataset. The finalise can also be run in parallel,
+   in three stages:
+
+   .. code:: bash
+
+      anemoi-datasets finalise dataset.zarr --prepare
+      anemoi-datasets finalise dataset.zarr --load --parts 1/10
+      # ... up to ...
+      anemoi-datasets finalise dataset.zarr --load --parts 10/10
+      anemoi-datasets finalise dataset.zarr --tidy
+
+   ``--prepare`` checks that every part has been loaded and removes the
+   partial statistics left by a previous run. Each ``--load`` computes
+   the statistics of a contiguous range of dates (whole chunks); it also
+   reads the few dates that precede its range, so that the tendencies
+   that straddle two ranges are computed. The ``--load`` parts can run in
+   any order and in parallel, and a part that has completed is skipped if
+   it is run again. ``--tidy`` merges the partial statistics, writes them
+   with the metadata, and removes the temporary files.
 
 #. **Patch** the metadata (this removes the reference to the recipe file
    used at ``init`` time):
@@ -107,8 +129,9 @@ If temporary files are left behind, remove them with:
  Additional statistics
 ***********************
 
-Increment statistics (e.g. for 6h or 12h tendencies) are added with the
-``*-additions`` commands, as described in :ref:`create-incremental`.
+Increment statistics (e.g. for 6h or 12h tendencies) are computed by the
+``finalise`` step, for the deltas listed in ``statistics.tendencies``.
+The ``*-additions`` commands are deprecated and do nothing.
 
 .. seealso::
 
