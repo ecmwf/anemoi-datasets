@@ -26,11 +26,11 @@ triggers = ["upstream-change", "rebuild-request"]
 [matrix.test.defaults]
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
-platform = "ubuntu-24.04"
+platform = "gh-ubuntu-24.04"
 extras = "all,tests"
-# 4 xdist workers, the vCPUs of ubuntu-24.04: more do not help, as one
-# network-bound test (test_planetary_computer_multipart, ~5 min) dominates.
-pytest-args = "-n 4 --durations=25"
+# 6 xdist workers on 4 vCPUs, a trial: many tests wait on I/O, and the slowest
+# (test_cache_write, the btree window views) build a store once per worker.
+pytest-args = "-n 6 --durations=25"
 
 [[matrix.test.include]]
 python-version = "3.11"
@@ -50,11 +50,15 @@ publishes = false
 [[matrix.zarr2.include]]
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
-platform = "ubuntu-24.04"
+platform = "gh-ubuntu-24.04"
 python-version = "3.13"
 extras = "all,tests,zarr2"
-pytest-args = "-n 4"
+pytest-args = "-n 6"
 
 [[trigger-downstream]]
 repo = "ecmwf/anemoi-core"
+ref = "main"
+
+[[trigger-downstream]]
+repo = "ecmwf/anemoi-inference"
 ref = "main"
