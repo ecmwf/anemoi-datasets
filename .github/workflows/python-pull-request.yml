@@ -23,9 +23,12 @@ jobs:
     uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
     with:
       python-version: ${{ matrix.python-version }}
+      # 6 xdist workers on 4 vCPUs, as in .ci/manifest.toml: the tests mostly wait on I/O.
+      custom-pytest: pytest -n 6
 
   zarr2-compatibility:
     uses: ecmwf/reusable-workflows/.github/workflows/qa-pytest-pyproject.yml@v2
     with:
       python-version: "3.13"
       optional-dependencies: "all,tests,zarr2"
+      custom-pytest: pytest -n 6
