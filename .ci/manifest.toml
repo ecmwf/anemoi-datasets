@@ -63,7 +63,5 @@ ref = "main"
 repo = "ecmwf/anemoi-inference"
 ref = "main"
 
-# A pull request without a downstream-CI label runs every consumer, as with
-# run-downstream-ci:all; a label, also downstream-ci-not-needed, still decides.
 [downstream]
 run-default = "all"
