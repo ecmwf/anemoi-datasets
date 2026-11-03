@@ -75,7 +75,11 @@ a performance degradation from chunking date files ~10MB large.
 Chunks are compressed with Blosc (lz4, compression level 5, byte
 shuffle). Another numcodecs_ codec can be selected with
 ``output.compressor``, for example ``{id: blosc, cname: zstd, clevel: 3,
-shuffle: 2}``.
+shuffle: 2}``. The ``id`` is resolved by numcodecs, so this includes
+codecs from other packages registered through the ``numcodecs.codecs``
+entry point, such as a custom codec written for a dataset. The package
+providing the codec must be installed wherever the dataset is created or
+read.
 
 .. figure:: _static/schemas/matrix.png
    :alt: Data chunking

@@ -87,7 +87,10 @@ the Zarr format. The ``data`` array of a new tabular dataset is
 compressed with Blosc (zstd, compression level 3, bit shuffle). For a
 gridded dataset in Zarr format 2, another numcodecs codec can be selected
 with ``output.compressor`` in the recipe, for example ``{id: blosc,
-cname: zstd, clevel: 3, shuffle: 2}``.
+cname: zstd, clevel: 3, shuffle: 2}``. Any codec that numcodecs can
+resolve by its ``id`` is accepted, including codecs from other packages
+registered through the ``numcodecs.codecs`` entry point; such a package
+must be installed wherever the dataset is created or read.
 
 When a copy rewrites the data, the ``data`` array of the target keeps the
 compressor of the source. Blosc, Zstd and Gzip are translated to the
