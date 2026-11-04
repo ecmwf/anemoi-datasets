@@ -2,6 +2,8 @@
 name = "anemoi-datasets"
 repo = "ecmwf/anemoi-datasets"
 visibility = "public"
+# Approved fork pull requests run ci.yml through the generated ci-fork.yml.
+fork-pull-requests = true
 compiler-inputs = []
 
 [[deps]]

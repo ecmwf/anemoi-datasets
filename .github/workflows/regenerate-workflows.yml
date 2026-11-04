@@ -21,4 +21,4 @@ jobs:
     secrets: inherit
     with:
       # Downstream CI runs the default branch's orchestrator, so it cannot test this PR.
-      labels: downstream-ci-not-needed
+      labels: downstream-ci-not-needed,ATS Approval not needed
