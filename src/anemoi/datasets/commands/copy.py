@@ -29,6 +29,9 @@ from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
+from anemoi.datasets.compat.codecs import zarr3_spec
 from anemoi.datasets.misc.check import check_zarr
 from anemoi.datasets.usage.store import open_zarr_store
 
@@ -40,9 +43,6 @@ try:
     isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 except AttributeError:
     isatty = False
-
-
-_BLOSC_SHUFFLE_NAMES = ("noshuffle", "shuffle", "bitshuffle")
 
 
 def _translate_codec(codec: Any, zarr_format: int) -> Any:
@@ -63,45 +63,13 @@ def _translate_codec(codec: Any, zarr_format: int) -> Any:
     Raises
     ------
     NotImplementedError
-        If the codec is not Blosc, Zstd or Gzip.
+        If the codec has no equivalent in the target format.
     """
-    import numcodecs
     from numcodecs.abc import Codec
 
     if zarr_format == 2:
-        if isinstance(codec, Codec):
-            return codec
-        name = type(codec).__name__
-        if name == "BloscCodec":
-            shuffle = _BLOSC_SHUFFLE_NAMES.index(str(getattr(codec.shuffle, "value", codec.shuffle)))
-            return numcodecs.Blosc(
-                cname=str(getattr(codec.cname, "value", codec.cname)),
-                clevel=codec.clevel,
-                shuffle=shuffle,
-                blocksize=codec.blocksize,
-            )
-        if name == "ZstdCodec":
-            return numcodecs.Zstd(level=codec.level)
-        if name == "GzipCodec":
-            return numcodecs.GZip(level=codec.level)
-    else:
-        from zarr import codecs
-
-        if not isinstance(codec, Codec):
-            return codec
-        if isinstance(codec, numcodecs.Blosc) and codec.shuffle in (0, 1, 2):
-            return codecs.BloscCodec(
-                cname=codec.cname,
-                clevel=codec.clevel,
-                shuffle=_BLOSC_SHUFFLE_NAMES[codec.shuffle],
-                blocksize=codec.blocksize,
-            )
-        if isinstance(codec, numcodecs.Zstd):
-            return codecs.ZstdCodec(level=codec.level)
-        if isinstance(codec, numcodecs.GZip):
-            return codecs.GzipCodec(level=codec.level)
-
-    raise NotImplementedError(f"cannot translate {codec!r} to Zarr format {zarr_format}")
+        return codec if isinstance(codec, Codec) else numcodecs_codec(codec.to_dict())
+    return zarr3_codec(zarr3_spec(codec)) if isinstance(codec, Codec) else codec
 
 
 def target_compressors(source_data: Any, zarr_format: int) -> Any:

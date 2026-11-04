@@ -7,16 +7,27 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import json
 import logging
+import os
 
+import numcodecs
+import numpy as np
 import pytest
+import yaml
 from pydantic import ValidationError
 
+from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.recipe.migrate import migrate_output_format
 from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import BLOSC_SHUFFLE
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
+from anemoi.datasets.compat.codecs import zarr3_spec
 from anemoi.datasets.create.recipe import Recipe
 from anemoi.datasets.create.recipe.output import GriddedOutput
 from anemoi.datasets.create.recipe.output import TabularOutput
+from anemoi.datasets.create.tasks import run_task
 
 
 def _coords(*, variables=101, ensembles=1, grid_points=100):
@@ -135,3 +146,124 @@ def test_legacy_format_conflicting_with_layout_is_rejected():
 )
 def test_migrate_output_format(output, expected):
     assert migrate_output_format({"output": output}) == {"output": expected}
+
+
+FORMATS = ["zarr2", pytest.param("zarr3", marks=pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3"))]
+
+BLOSC_ZSTD = {"name": "blosc", "configuration": {"cname": "zstd", "clevel": 3, "shuffle": "bitshuffle"}}
+
+
+def test_compressors_are_translated_to_numcodecs():
+    assert numcodecs_codec(BLOSC_ZSTD) == numcodecs.Blosc(cname="zstd", clevel=3, shuffle=2)
+    # Missing settings take the defaults of the zarr-python 3 codecs
+    assert numcodecs_codec({"name": "blosc"}) == numcodecs.Blosc(cname="zstd", clevel=5, shuffle=2)
+    assert numcodecs_codec({"name": "zstd", "configuration": {"level": 3}}) == numcodecs.Zstd(level=3)
+    assert numcodecs_codec({"name": "gzip"}) == numcodecs.GZip(level=5)
+    assert numcodecs_codec({"name": "numcodecs.zlib", "configuration": {"level": 4}}) == numcodecs.Zlib(level=4)
+    with pytest.raises(NotImplementedError):
+        numcodecs_codec({"name": "crc32c"})
+
+    for spec in (BLOSC_ZSTD, {"name": "zstd", "configuration": {"level": 3}}, {"name": "gzip"}):
+        assert numcodecs_codec(zarr3_spec(numcodecs_codec(spec))) == numcodecs_codec(spec)
+        if zarr_version >= 3:
+            # Same codec as the one zarr-python 3 builds from the spec, defaults included
+            assert numcodecs_codec(zarr3_codec(spec).to_dict()) == numcodecs_codec(spec)
+
+
+@pytest.mark.parametrize("format", FORMATS)
+def test_compressors_validation(format):
+    invalid = [
+        [{"name": "not-a-codec"}],
+        [{"name": "numcodecs.not-a-codec"}],
+        [{"name": "blosc", "configuration": {"not_an_option": 1}}],
+        [{"name": "blosc", "configuration": {"shuffle": 2}}],
+        [{"name": "blosc", "id": "blosc"}],
+        [{"id": "blosc", "cname": "zstd"}],
+    ]
+    if format == "zarr2":
+        invalid.append([BLOSC_ZSTD, {"name": "zstd"}])
+    else:
+        invalid.append([{"name": "numcodecs.pcodec"}])  # array-to-bytes
+    for compressors in invalid:
+        with pytest.raises(ValidationError):
+            GriddedOutput(format=format, compressors=compressors)
+
+    zarr_format = int(format[-1])
+    none = GriddedOutput(format=format, compressors=[]).get_compressors(zarr_format)
+    assert none is None if zarr_format == 2 else none == ()
+    if format == "zarr3":
+        output = GriddedOutput(format=format, compressors=[{"name": "zstd"}, {"name": "crc32c"}])
+        assert len(output.get_compressors(3)) == 2
+
+
+def _write_grib(path: str) -> None:
+    """Write 2t on a 3x2 grid at 2020-01-01 00 and 06 UTC, with values equal to the hour."""
+    import eccodes
+
+    sample = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+    eccodes.codes_set_key_vals(
+        sample,
+        {
+            "Ni": 3,
+            "Nj": 2,
+            "latitudeOfFirstGridPointInDegrees": 1.0,
+            "longitudeOfFirstGridPointInDegrees": 0.0,
+            "latitudeOfLastGridPointInDegrees": 0.0,
+            "longitudeOfLastGridPointInDegrees": 2.0,
+            "iDirectionIncrementInDegrees": 1.0,
+            "jDirectionIncrementInDegrees": 1.0,
+        },
+    )
+    with open(path, "wb") as f:
+        for hour in (0, 6):
+            h = eccodes.codes_clone(sample)
+            eccodes.codes_set_key_vals(h, {"dataDate": 20200101, "dataTime": hour * 100, "paramId": 167})
+            eccodes.codes_set_values(h, np.full(6, float(hour)))
+            eccodes.codes_write(h, f)
+            eccodes.codes_release(h)
+    eccodes.codes_release(sample)
+
+
+def _compressors_on_disk(path: str) -> list[dict]:
+    """The compressors of the data array, as written in its metadata."""
+    if os.path.exists(os.path.join(path, "data", ".zarray")):
+        with open(os.path.join(path, "data", ".zarray")) as f:
+            compressor = json.load(f)["compressor"]
+        return [] if compressor is None else [compressor]
+    with open(os.path.join(path, "data", "zarr.json")) as f:
+        return [c for c in json.load(f)["codecs"] if c["name"] != "bytes"]
+
+
+@pytest.mark.parametrize("format", FORMATS)
+def test_compressors_are_applied_to_data_array(tmp_path, format):
+    grib = str(tmp_path / "2t.grib")
+    _write_grib(grib)
+
+    def create(name: str, **output) -> list[dict]:
+        recipe = {
+            "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
+            "input": {"grib": {"path": grib}},
+            "output": {"format": format, **output},
+        }
+        path = str(tmp_path / f"{name}.zarr")
+        with open(tmp_path / f"{name}.yaml", "w") as f:
+            yaml.dump(recipe, f)
+        for task in ("init", "load", "finalise"):
+            run_task(task, recipe=str(tmp_path / f"{name}.yaml"), path=path, overwrite=True)
+        np.testing.assert_allclose(open_dataset(path)[1].squeeze(), 6.0)
+        return _compressors_on_disk(path)
+
+    def blosc(cname, clevel, shuffle):
+        if format == "zarr2":
+            return {"id": "blosc", "cname": cname, "clevel": clevel, "shuffle": shuffle, "blocksize": 0}
+        config = {"typesize": 4, "cname": cname, "clevel": clevel, "shuffle": BLOSC_SHUFFLE[shuffle], "blocksize": 0}
+        return {"name": "blosc", "configuration": config}
+
+    assert create("blosc", compressors=[BLOSC_ZSTD]) == [blosc("zstd", 3, 2)]
+    assert create("default") == [blosc("lz4", 5, 1)]
+
+    zlib = create("zlib", compressors=[{"name": "numcodecs.zlib", "configuration": {"level": 4}}])
+    if format == "zarr2":
+        assert zlib == [{"id": "zlib", "level": 4}]
+    else:
+        assert zlib == [{"name": "numcodecs.zlib", "configuration": {"level": 4}}]
