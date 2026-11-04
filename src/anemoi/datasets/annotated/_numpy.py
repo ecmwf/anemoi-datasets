@@ -93,6 +93,11 @@ class AnnotatedNDArray(np.ndarray):
         return self._anemoi_annotation.boundaries
 
     @property
+    def unsharded_boundaries(self) -> list[slice]:
+        """Per-window placement of this shard's rows in the unsharded result."""
+        return self._anemoi_annotation.unsharded_boundaries
+
+    @property
     def index(self) -> list[slice]:
         """The index for the data."""
         return self._anemoi_annotation.index
