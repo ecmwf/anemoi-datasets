@@ -21,12 +21,17 @@ import tqdm
 from anemoi.utils.remote import Transfer
 from anemoi.utils.remote import TransferMethodNotImplementedError
 
+from anemoi.datasets.compat import NestedDirectoryStore
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
 from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_private_files
 from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
+from anemoi.datasets.compat.codecs import zarr3_spec
 from anemoi.datasets.misc.check import check_zarr
 from anemoi.datasets.usage.store import open_zarr_store
 
@@ -38,6 +43,77 @@ try:
     isatty = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
 except AttributeError:
     isatty = False
+
+
+def _translate_codec(codec: Any, zarr_format: int) -> Any:
+    """Return ``codec`` as a codec of the Zarr format ``zarr_format`` (numcodecs for format 2, zarr codecs for format 3).
+
+    Parameters
+    ----------
+    codec : Any
+        A numcodecs codec or a zarr codec.
+    zarr_format : int
+        The Zarr format of the target, 2 or 3.
+
+    Returns
+    -------
+    Any
+        The equivalent codec.
+
+    Raises
+    ------
+    NotImplementedError
+        If the codec has no equivalent in the target format.
+    """
+    from numcodecs.abc import Codec
+
+    if zarr_format == 2:
+        return codec if isinstance(codec, Codec) else numcodecs_codec(codec.to_dict())
+    return zarr3_codec(zarr3_spec(codec)) if isinstance(codec, Codec) else codec
+
+
+def target_compressors(source_data: Any, zarr_format: int) -> Any:
+    """Return the ``compressors`` argument that gives the target data array the codec of the source.
+
+    The compressor of the source array is translated to the codecs of ``zarr_format``. If the source has no
+    compressor, the target has none. If the codec cannot be translated, or the source has several compressors
+    and the target is in format 2, a warning is logged and Blosc(lz4, clevel 5, byte shuffle) is used.
+
+    Parameters
+    ----------
+    source_data : Any
+        The ``data`` array of the source.
+    zarr_format : int
+        The Zarr format of the target.
+
+    Returns
+    -------
+    Any
+        A numcodecs codec (format 2) or a tuple of zarr codecs (format 3), or None for no compression.
+    """
+    default = blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format)
+
+    if zarr_version < 3:
+        found = [] if source_data.compressor is None else [source_data.compressor]
+    else:
+        found = list(source_data.compressors)
+        serializer = getattr(source_data, "serializer", None)
+        if serializer is not None and hasattr(serializer, "codecs"):
+            # Sharded array: the compressors are those of the inner chunks
+            from zarr.abc.codec import BytesBytesCodec
+
+            found += [c for c in serializer.codecs if isinstance(c, BytesBytesCodec)]
+
+    try:
+        translated = [_translate_codec(c, zarr_format) for c in found]
+        if zarr_format == 2:
+            if len(translated) > 1:
+                raise NotImplementedError(f"Zarr format 2 allows a single compressor, the source has {found}")
+            return translated[0] if translated else None
+        return tuple(translated) if translated else None
+    except NotImplementedError as e:
+        LOG.warning(f"{e}; the target data array is written with Blosc(lz4, clevel 5, byte shuffle).")
+        return default
 
 
 class Identity:
@@ -166,10 +242,15 @@ class ZarrCopier:
             Storage path.
         """
         if nested:
-            import zarr
-
-            return zarr.storage.NestedDirectoryStore(path)
+            return NestedDirectoryStore(path)
         return path
+
+    def _nested_kwargs(self, target: Any) -> dict:
+        """Extra ``create_array`` arguments for the nested chunk layout of ``--nested``, if needed for the target format."""
+        if self.nested and zarr_version >= 3 and get_zarr_format(target) == 2:
+            # zarr 3 stores nest chunks only for format 3, zarr 2 NestedDirectoryStore nests them by itself
+            return {"chunk_key_encoding": {"name": "v2", "separator": "/"}}
+        return {}
 
     def copy_chunk(self, n: int, m: int, source: Any, target: Any, _copy: Any, verbosity: int) -> slice | None:
         """Copy a chunk of data from source to target.
@@ -344,6 +425,8 @@ class ZarrCopier:
                     LOG.warning(f"Existing target data array shards: {target_data.shards}")
         else:
             extra.setdefault("chunks", source_data.chunks)
+            extra.update(self._nested_kwargs(target))
+            extra.setdefault("compressors", target_compressors(source_data, get_zarr_format(target)))
             target_data = target.create_array(
                 "data",
                 shape=source_data.shape,
@@ -433,7 +516,7 @@ class ZarrCopier:
         # dates). Store each as a single chunk so the chunking does not depend on
         # zarr's automatic guess, which can produce a partial final chunk for large
         # arrays and later trip the divisibility check in check_zarr (see #718).
-        target.create_array(name, data=data, chunks=data.shape)
+        target.create_array(name, data=data, chunks=data.shape, **self._nested_kwargs(target))
         LOG.info(f"Copied {name}")
 
     def children(self, group):
@@ -520,6 +603,7 @@ class ZarrCopier:
                 "_copy",
                 shape=(source["data"].shape[0],),
                 dtype=bool,
+                **self._nested_kwargs(target),
             )
         _copy = target["_copy"]
         _copy_np = _copy[:]

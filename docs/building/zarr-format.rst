@@ -54,8 +54,10 @@ existing dataset.
 *******************
 
 When :ref:`copying a dataset <copy_command>` without changing its
-chunks, the files are transferred as they are, so the copy keeps the
-format of the source.
+chunks, the copy keeps the format of the source. Copies between a remote
+location (``ssh://``, ``s3://`` or ``abfs://``) and a local one transfer
+the files as they are. Every other copy, including a copy between two
+local paths, reads and rewrites the data.
 
 When the data is rewritten (``--rechunk``, ``--reshard`` or
 ``--obfuscate``), the target is also written in the format of the
@@ -74,6 +76,51 @@ writes the target in Zarr format 3 and cannot be combined with
 When resuming an interrupted copy with ``--resume``, the target keeps its
 format. If ``--format`` is given and does not match the format of the
 target, the copy is aborted. Use ``--overwrite`` to start again instead.
+
+*************
+ Compression
+*************
+
+The ``data`` array of a new gridded or trajectories dataset is
+compressed with Blosc (lz4, compression level 5, byte shuffle), whatever
+the Zarr format. The ``data`` array of a new tabular dataset is
+compressed with Blosc (zstd, compression level 3, bit shuffle).
+
+The codecs of the ``data`` array of a gridded dataset can be selected
+with ``output.compressors`` in the recipe. They are written as in Zarr
+format 3 array metadata, a list of bytes-to-bytes codecs with a ``name``
+and an optional ``configuration``:
+
+.. code:: yaml
+
+   output:
+     compressors:
+       - name: blosc
+         configuration: {cname: zstd, clevel: 3, shuffle: bitshuffle}
+
+An empty list disables compression. In Zarr format 3 the codecs are used
+as given, so any codec known to zarr-python can be used, including the
+numcodecs codecs (``numcodecs.<id>``, for example ``numcodecs.zlib``)
+and codecs from other packages registered through the ``zarr.codecs``
+entry point. In Zarr format 2, which allows a single compressor, the
+codec is translated to its numcodecs equivalent: ``blosc``, ``zstd`` and
+``gzip`` are translated with the same defaults as in zarr-python 3, and
+``numcodecs.<id>`` is resolved by numcodecs, which includes codecs from
+other packages registered through the ``numcodecs.codecs`` entry point.
+Other codecs, or several codecs, are rejected when the recipe is read.
+A package providing a codec must be installed wherever the dataset is
+created or read.
+
+When a copy rewrites the data, the ``data`` array of the target keeps the
+compressor of the source. Blosc, Zstd and Gzip are translated to the
+codecs of the Zarr format of the target, including the compressor of the
+chunks inside the shards of a sharded source, and a source without
+compression gives a target without compression. The numcodecs codecs
+(``numcodecs.<id>``) of a Zarr format 3 source are translated to Zarr
+format 2 as well. If the compressor of the source has no equivalent in
+the format of the target (for example LZ4 from a Zarr format 2 source to
+Zarr format 3), a warning is logged and the target uses Blosc (lz4,
+compression level 5, byte shuffle).
 
 **********************************
  Checking the format of a dataset

@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.49](https://github.com/ecmwf/anemoi-datasets/compare/0.5.48...0.5.49) (2026-11-02)
+
+
+### Bug Fixes
+
+* Ensure zarr-python 3 compatibility of open_zarr and tests ([#802](https://github.com/ecmwf/anemoi-datasets/issues/802)) ([34a41fa](https://github.com/ecmwf/anemoi-datasets/commit/34a41fa6e5bd7667d68afaa027e12a7abe598ec9))
+
 ## [0.5.48](https://github.com/ecmwf/anemoi-datasets/compare/0.5.47...0.5.48) (2026-10-29)
 
 
