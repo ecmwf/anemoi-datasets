@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.50](https://github.com/ecmwf/anemoi-datasets/compare/0.5.49...0.5.50) (2026-11-05)
+
+
+### Features
+
+* **create:** Add output.compressor to choose the codec of the data array ([#817](https://github.com/ecmwf/anemoi-datasets/issues/817)) ([67310d6](https://github.com/ecmwf/anemoi-datasets/commit/67310d6fb291ea238caa0945747413d3ce61fe09))
+
+
+### Bug Fixes
+
+* **copy:** Make copy --nested work under zarr 3 and keep the data compressor ([#806](https://github.com/ecmwf/anemoi-datasets/issues/806)) ([28082e2](https://github.com/ecmwf/anemoi-datasets/commit/28082e2a5e7ef9ab1a44c98cd8c5a42229e67409))
+
 ## [0.5.49](https://github.com/ecmwf/anemoi-datasets/compare/0.5.48...0.5.49) (2026-11-02)
 
 
