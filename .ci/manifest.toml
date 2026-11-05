@@ -30,9 +30,9 @@ job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
 extras = "all,tests"
-# 6 xdist workers on 4 vCPUs: the tests mostly wait on I/O, and 6 beat
-# -n logical (4) by 60-90 s per leg.
-pytest-args = "-n 6 --durations=25"
+# One xdist worker per vCPU: with 6, the hosted runner (4 vCPUs, 16 GB)
+# was shut down near the end of the run, most likely out of memory.
+pytest-args = "-n 4 --durations=25"
 
 [[matrix.test.include]]
 python-version = "3.11"
@@ -55,7 +55,7 @@ runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
 python-version = "3.13"
 extras = "all,tests,zarr2"
-pytest-args = "-n 6"
+pytest-args = "-n 4"
 
 [[trigger-downstream]]
 repo = "ecmwf/anemoi-core"
