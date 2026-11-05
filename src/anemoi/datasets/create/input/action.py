@@ -12,11 +12,35 @@ from abc import ABC
 from abc import abstractmethod
 from functools import cache
 
+import numpy as np
+
 from anemoi.datasets.create.recipe.dates import BaseDates
 from anemoi.datasets.create.recipe.dates import StartEndDates
 from anemoi.datasets.create.recipe.dates import Steps
 
 LOG = logging.getLogger(__name__)
+
+
+def _check_same_grid(ds1, ds2, path, rtol=1.0e-7):
+    """Compare the grid points of the first field of two fieldlists."""
+    if len(ds1) == 0 or len(ds2) == 0:
+        return
+
+    lat1, lon1 = ds1[0].to_latlon().values()  # or .metadata("latitudes","longitudes")
+    lat2, lon2 = ds2[0].to_latlon().values()
+
+    lat1, lon1 = np.asarray(lat1), np.asarray(lon1)
+    lat2, lon2 = np.asarray(lat2), np.asarray(lon2)
+
+    if lat1.shape != lat2.shape or lon1.shape != lon2.shape:
+        raise ValueError(f"Incompatible grids in join at {path}: {lat1.shape} vs {lat2.shape}")
+
+    if not np.allclose(lat1, lat2, rtol=rtol) or not np.allclose(np.mod(lon1, 360), np.mod(lon2, 360), rtol=rtol):
+        raise ValueError(
+            f"Incompatible grid ordering in join at {path}. "
+            "Sources have the same grid but different point ordering; "
+            "apply a regrid filter to align them before joining."
+        )
 
 
 class Action(ABC):
@@ -151,7 +175,13 @@ class Join(Action):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
-        results = context.join(action(context, argument) for action in self.actions)
+        results = [action(context, argument) for action in self.actions]
+
+        reference = results[0]
+        for result in results[1:]:
+            _check_same_grid(reference, result, self.path)
+
+        results = context.join(results)
         return context.register(results, self.path)
 
     def dump(self, dumper) -> None:
