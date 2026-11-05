@@ -59,6 +59,7 @@ if zarr_version < 3:
     from .zarr2 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
+    NestedDirectoryStore = zarr.storage.NestedDirectoryStore
 else:
     from .zarr3 import DebugStore
     from .zarr3 import DirectoryStore
@@ -72,6 +73,9 @@ else:
     from .zarr3 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
+    # zarr 3 has no NestedDirectoryStore: format 3 arrays are always nested,
+    # format 2 arrays need to specify chunk_key_encoding in create_array
+    NestedDirectoryStore = zarr.storage.LocalStore
 
 
 def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
@@ -134,6 +138,7 @@ __all__ = [
     "get_zarr_format",
     "zarr_format_from_name",
     "zarr_open",
+    "NestedDirectoryStore",
     "zarr_version",
     "zarr_private_files",
 ]
