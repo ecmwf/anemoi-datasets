@@ -91,15 +91,11 @@ env:
 jobs:
   resolve:
     if: contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request
-    runs-on: arc-runner-normal
-    container:
-      image: eccr.ecmwf.int/public-ci-images/ubuntu24.04-base:latest
+    runs-on: ubuntu-latest
     outputs:
       ref: ${{ steps.pick.outputs.ref }}
       matrix-test: ${{ toJSON(fromJSON(steps.r.outputs.json)['test']) }}
     steps:
-    - name: Announce image
-      uses: ecmwf/ci-infrastructure/actions/announce-image@main
     - id: mint
       uses: actions/create-github-app-token@v3
       with:
