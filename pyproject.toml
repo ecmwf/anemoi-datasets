@@ -111,7 +111,7 @@ optional-dependencies.xarray = [
   "xarray<2026.9; python_version<'3.12'", # last version to support zarr 2, see zarr above
 ]
 optional-dependencies.zarr2 = [
-  "numcodecs<0.16",
+  "numcodecs<0.17",
   "xarray<2026.9",
   "zarr<=2.18.7",
 ]
