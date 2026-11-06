@@ -63,31 +63,34 @@ def _check_array(array, verbosity: int, *path) -> None:
         count = sum(len(files) for _, _, files in os.walk(chunk_dir))
 
     else:
-        # zarr v2: dot-separated chunk files directly in the array directory.
+        # zarr v2: chunk files are dot-separated in the array directory ("0.0.0.0"), or in nested
+        # subdirectories ("0/0/0/0") when the store uses a nested layout (``copy --nested``).
         # ceil division per dimension: a partial final chunk is valid zarr, so the
         # shape need not be an exact multiple of the chunk size (see #718).
         file_count = math.prod(-(-s // c) for s, c in zip(array.shape, array.chunks))
 
         chunks = array.chunks
         count = 0
-        for f in os.listdir(full):
-            if verbosity > 1:
-                LOG.info(f"Check array: checking {f}")
+        for dirpath, _, filenames in os.walk(full):
+            for name in filenames:
+                if dirpath == full and name.startswith("."):
+                    if verbosity > 1:
+                        LOG.info(f"Check array: skipping {name}")
+                    continue
 
-            if f.startswith("."):
+                f = os.path.relpath(os.path.join(dirpath, name), full).replace(os.sep, ".")
                 if verbosity > 1:
-                    LOG.info(f"Check array: skipping {f}")
-                continue
+                    LOG.info(f"Check array: checking {f}")
 
-            bits = f.split(".")
+                bits = f.split(".")
 
-            if len(bits) != len(chunks):
-                raise ValueError(f"File {f} is not a valid chunk file.")
+                if len(bits) != len(chunks):
+                    raise ValueError(f"File {f} is not a valid chunk file.")
 
-            if not all(re.match(r"^\d+$", bit) for bit in bits):
-                raise ValueError(f"File {f} is not a valid chunk file.")
+                if not all(re.match(r"^\d+$", bit) for bit in bits):
+                    raise ValueError(f"File {f} is not a valid chunk file.")
 
-            count += 1
+                count += 1
     if count != file_count:
         raise ValueError(f"File count {count} does not match expected {file_count} for {array.name}.")
 

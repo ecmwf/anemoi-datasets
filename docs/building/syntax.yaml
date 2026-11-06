@@ -81,6 +81,8 @@ output:
   # if total date is larger then some minimum, otherwise 1 file per date
   # chunking: {dates: 1, ensembles: 1, values: 100000}  # gridded: explicit grid chunk size
   # chunking: {base_dates: 1, steps: 1, ensembles: 1}  # for layout: trajectories
+  # compressors: [{name: blosc, configuration: {cname: zstd, clevel: 3, shuffle: bitshuffle}}]  # gridded: codecs of
+  # the data array, as in Zarr format 3 metadata (a single one for format zarr2), Blosc lz4 if not set
   #
   # Note: `output.order_by` is deprecated. The cube ordering is
   # hard-coded per layout and no longer read from the recipe.

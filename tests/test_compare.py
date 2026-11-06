@@ -11,16 +11,16 @@ import os
 
 import numpy as np
 import pytest
-import zarr
 
 from anemoi.datasets.commands import compare as compare_module
 from anemoi.datasets.commands.compare import compare_anemoi_datasets
+from anemoi.datasets.compat import zarr_open
 
 
 def _make_store(path: str, data: np.ndarray, chunks: tuple) -> None:
     """Create a minimal zarr store with a single "data" array."""
-    group = zarr.open_group(path, mode="w")
-    group.create_dataset("data", data=data, chunks=chunks, dtype=data.dtype)
+    group = zarr_open(path, "w")
+    group.create_array("data", data=data, chunks=chunks)
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def test_compare_identical_datasets(datasets) -> None:
 def test_compare_detects_different_values(datasets) -> None:
     reference, actual, data = datasets
 
-    group = zarr.open_group(actual, mode="a")
+    group = zarr_open(actual, "r+")
     group["data"][10, 2, 3] = data[10, 2, 3] + 1000.0
 
     errors = compare_anemoi_datasets(reference, actual, data=True)
@@ -69,7 +69,7 @@ def test_compare_with_small_buffer_subdivides_non_leading_dimensions(datasets, m
     errors = compare_anemoi_datasets(reference, actual, data=True)
     assert not errors
 
-    group = zarr.open_group(actual, mode="a")
+    group = zarr_open(actual, "r+")
     group["data"][5, 1, 2] += 1.0
 
     errors = compare_anemoi_datasets(reference, actual, data=True)

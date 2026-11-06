@@ -72,6 +72,10 @@ and each date is kept as a single file. This is to reduce the inode
 count for low-res datasets, and because synthetic benchmarking showed
 a performance degradation from chunking date files ~10MB large.
 
+Chunks are compressed with Blosc (lz4, compression level 5, byte
+shuffle). Other codecs can be selected with ``output.compressors``,
+written as in Zarr format 3 metadata, see :ref:`zarr-format`.
+
 .. figure:: _static/schemas/matrix.png
    :alt: Data chunking
    :align: center
