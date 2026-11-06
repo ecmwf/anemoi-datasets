@@ -135,6 +135,22 @@ jobs:
     - ci-approval
     - context
     - label-gate
+  anemoi_core:
+    name: anemoi-core
+    needs:
+    - ci-approval
+    - context
+    - label-gate
+    - validate
+    uses: ecmwf/anemoi-core/.github/workflows/cross-repo-trigger.yml@main
+    with:
+      from-repo: ${{ github.repository }}
+      from-sha: ${{ needs.context.outputs.head-sha }}
+      from-jobs: '["anemoi-datasets/test"]'
+      branch: ${{ needs.context.outputs.head-branch }}
+      fallback-ref: main
+    secrets: inherit
+    if: ${{ needs['label-gate'].outputs.run == 'true' && (needs['label-gate'].outputs.depth == 'all' || needs['label-gate'].outputs.depth >= 1) }}
   anemoi_inference:
     name: anemoi-inference
     needs:
@@ -157,6 +173,7 @@ jobs:
     - context
     - label-gate
     - validate
+    - anemoi_core
     - anemoi_inference
     if: ${{ (always() && needs.context.outputs.ci-conclusion == 'success') && needs['label-gate'].outputs.run == 'true' }}
     runs-on: ubuntu-latest
@@ -168,7 +185,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         state=success
-        for r in ${{ needs.validate.result }} ${{ needs.anemoi_inference.result }}; do
+        for r in ${{ needs.validate.result }} ${{ needs.anemoi_core.result }} ${{ needs.anemoi_inference.result }}; do
           if [ "$r" = failure ] || [ "$r" = cancelled ]; then
             state=failure
           fi
