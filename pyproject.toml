@@ -41,8 +41,9 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  # TODO: replace with anemoi-transform release
-  "anemoi-transform @ git+https://github.com/ecmwf/anemoi-transform.git@earthkit-1.0",
+  # TODO: require the first anemoi-transform release with earthkit 1.0 support. Until then,
+  # the sync/earthkit-1.0 CI installs the matching anemoi-transform branch.
+  "anemoi-transform",
   "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
