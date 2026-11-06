@@ -410,8 +410,9 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             other[current_variable]["process"] = process
             other[current_variable]["period"] = (startStep, endStep)
 
-        # The GRIB units, unless missing (xarray) or stale (e.g. computed forcings)
-        units = _raw_key(f, "units", "parameter")
+        # The units as the source wrote them (the GRIB key, or the label the xarray source sets), unless missing
+        # or stale (e.g. computed forcings, or a filter that changed the units)
+        units = f.get("labels.units", default=None) or _raw_key(f, "units", "parameter")
         pu = f.get("parameter.units", default=None)
         if pu is not None and (units is None or pu != units):
             units = str(pu)

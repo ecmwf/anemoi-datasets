@@ -198,6 +198,21 @@ def load_one(
         else:
             result = ekd.concat(*[fs.sel(**{"time.valid_datetime": date}) for date in dates])
 
+    # earthkit-data 1.x turns the units attribute into a pint unit (``K`` becomes ``kelvin``), so keep the
+    # source's own spelling on the fields as a label; the dataset metadata records units as the source wrote them
+    units = {name: var.attrs["units"] for name, var in data.data_vars.items() if "units" in var.attrs}
+    if units:
+        result = ekd.create_fieldlist(
+            [
+                (
+                    f.set(**{"labels.units": units[name]})
+                    if (name := f.get("parameter.variable", default=None)) in units
+                    else f
+                )
+                for f in result
+            ]
+        )
+
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
         LOG.warning(f"Options: {options}")
