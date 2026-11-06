@@ -25,6 +25,7 @@ from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
+from anemoi.datasets.compat import get_zarr_format
 
 from ..creator import Creator
 from ..dataset import Dataset
@@ -457,6 +458,7 @@ class SimpleGriddedCreator(GriddedCreator):
             shape=shape,
             dimensions=("time", "variable", "ensemble", "cell"),
             fill_value=np.nan,
+            compressors=self.recipe.output.get_compressors(get_zarr_format(dataset.store)),
         )
 
         dataset.add_array(name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",))

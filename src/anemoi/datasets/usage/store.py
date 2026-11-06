@@ -22,10 +22,14 @@ from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets.compat import DebugStore
+from anemoi.datasets.compat import DirectoryStore
 from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import LRUStoreCache
 from anemoi.datasets.compat import S3Store
 from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import ZipStore
 from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.usage.analytics import collect_analytics
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import Shape
@@ -70,6 +74,12 @@ def name_to_zarr_store(path_or_url: str) -> Any:
 
         return HTTPStore(store)
 
+    if os.path.isdir(store):
+        return DirectoryStore(store)
+
+    if store.endswith(".zip") and os.path.isfile(store):
+        return ZipStore(store, mode="r")
+
     return store
 
 
@@ -79,24 +89,22 @@ def open_zarr(path: str, dont_fail: bool = False, cache: int = None) -> zarr.Gro
         store = name_to_zarr_store(path)
 
         if DEBUG_ZARR_LOADING:
-            if isinstance(store, str):
-                import os
-
-                if not os.path.isdir(store):
-                    raise NotImplementedError(
-                        "DEBUG_ZARR_LOADING is only implemented for DirectoryStore. "
-                        "Please disable it for other backends."
-                    )
-                store = zarr.storage.DirectoryStore(store)
-            store = DebugStore(store)
+            if zarr_version < 3 and not isinstance(store, DirectoryStore):
+                LOG.warning(
+                    "Ignoring DEBUG_ZARR_LOADING when opening %s. "
+                    "It is only implemented for DirectoryStore when using zarr < 3. ",
+                    path,
+                )
+            else:
+                store = DebugStore(store)
 
         if cache is not None:
-            store = zarr.LRUStoreCache(store, max_size=cache)
+            store = LRUStoreCache(store, max_size=cache)
 
         return zarr_open(store, "r")
-    except ZarrFileNotFoundError:
+    except ZarrFileNotFoundError as e:
         if not dont_fail:
-            raise zarr.errors.PathNotFoundError(path)
+            raise ZarrFileNotFoundError(path) from e
 
 
 QUIET = set()
