@@ -35,13 +35,13 @@ class DOPZarrSource(Source):
         **kwargs,
     ):
 
-        import zarr
+        from anemoi.datasets.compat import zarr_open
 
         super().__init__(context, *args, **kwargs)
 
         self.path = path
         self.columns = columns
-        self.store = zarr.open(self.path, mode="r")
+        self.store = zarr_open(self.path, "r")
         self.dates = self.store["dates"]
         self.data = self.store["data"]
 

@@ -631,17 +631,27 @@ class GribIndexSource(Source):
     def execute_intervals(self, dates: Intervals) -> SimpleFieldList:
         """Retrieve grib-indexed fields covering accumulation windows.
 
-        grib-index is valid-time indexed: each interval is resolved to its
-        validity time (``interval.max``) plus a ``step``, the time since the
-        interval's basetime or, for intervals without one, the accumulation
-        period length.
+        Each interval is resolved to its validity time (``interval.max``) plus:
+
+        - if the interval has a basetime (forecast archives, e.g. an
+          ``accumulated-from-previous-step`` covering): the model run as
+          ``date`` and ``time``. Together with the validity time, this
+          determines the step, so ``step`` is not part of the query.
+          ``time`` follows the MARS integer convention (``0``, ``1200``),
+          which is how the index stores it.
+        - otherwise (validity-time indexed archives): a ``step`` equal to the
+          accumulation period length.
         """
         full_requests = []
         for interval in dates.intervals:
             self.context.trace(self.emoji, "interval:", interval)
             request = self.request.copy()
-            step = interval.end - interval.start if interval.base is None else interval.max - interval.base
-            request["step"] = int(step.total_seconds() / 3600)
+            if interval.base is None:
+                request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
+            else:
+                request["date"] = int(interval.base.strftime("%Y%m%d"))
+                request["time"] = int(interval.base.strftime("%H%M"))
+                request.pop("step", None)
             self.context.trace(self.emoji, "  request =", request)
             full_requests.append(([interval.max], request))
         return self._run_requests(full_requests)

@@ -18,9 +18,19 @@ from typing import Union
 
 import numpy as np
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Discriminator
 from pydantic import Field
 from pydantic import Tag
+from pydantic import field_validator
+from pydantic import model_validator
+
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import blosc_compressor
+from anemoi.datasets.compat import zarr_format_from_name
+from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
 
 LOG = logging.getLogger(__name__)
 
@@ -39,16 +49,35 @@ class OutputBase(BaseModel):
     sanitise: bool = True
     """Whether to sanitise the metadata to remove sensitive information like paths, URLs..."""
 
+    format: Literal["zarr2", "zarr3"] = DEFAULT_FORMAT
+    """The on-disk format of the dataset. Zarr format 3 requires zarr-python>=3,
+    and the dataset cannot be read with zarr-python 2."""
+
+    @field_validator("format")
+    @classmethod
+    def _check_format(cls, format: str) -> str:
+        if format == "zarr3" and zarr_version < 3:
+            raise ValueError("'output.format: \"zarr3\"' requires zarr-python>=3")
+        return format
+
+
+class CodecSpec(BaseModel):
+    """A codec as in Zarr format 3 array metadata."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    """The codec name, e.g. ``blosc``, ``zstd``, ``gzip`` or ``numcodecs.<id>``."""
+
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    """The codec configuration."""
+
 
 class GriddedOutput(OutputBase):
     """Output configuration for gridded datasets."""
 
-    format: Literal["gridded"] = "gridded"
-    """The format of the dataset."""
-
-    @property
-    def layout(self) -> str:
-        return self.format
+    layout: Literal["gridded"] = "gridded"
+    """The layout of the dataset."""
 
     order_by: list[str] | None = Field(
         default=None,
@@ -77,11 +106,60 @@ class GriddedOutput(OutputBase):
     min_chunk_bytes: int = Field(default=2**25, gt=0)  # 32 MiB
     """The minimum target chunk size in bytes."""
 
+    compressors: list[CodecSpec] | None = None
+    """The bytes-to-bytes codecs that compress the data array, written as in Zarr format 3 metadata, e.g.
+    ``[{"name": "blosc", "configuration": {"cname": "zstd", "clevel": 3, "shuffle": "bitshuffle"}}]``.
+    Translated to a numcodecs compressor for Zarr format 2, which allows a single one. An empty list disables
+    compression. If None, Blosc (lz4, compression level 5, byte shuffle) is used."""
+
     # Fixed value that the deprecated ``order_by`` field must match, if set.
     # Uses the old bare-key form that users would have written in recipes;
     # ``SimpleGriddedContext.order_by`` now uses ``metadata.``-prefixed keys
     # internally but the user-facing recipe schema keeps the legacy names.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
+
+    @model_validator(mode="after")
+    def _check_compressors(self) -> GriddedOutput:
+        if self.compressors is not None:
+            try:
+                self.get_compressors(zarr_format_from_name(self.format))
+            except (TypeError, NotImplementedError) as e:
+                raise ValueError(str(e)) from e
+        return self
+
+    def get_compressors(self, zarr_format: int) -> Any:
+        """Return the ``compressors`` argument of ``create_array`` for the data array in Zarr format ``zarr_format``.
+
+        Parameters
+        ----------
+        zarr_format : int
+            The Zarr format of the dataset.
+
+        Returns
+        -------
+        Any
+            A numcodecs codec or None (format 2), or a tuple of zarr codecs (format 3).
+        """
+        if self.compressors is None:
+            # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5,
+            # byte shuffle) and format 3 arrays get zstd without shuffle.
+            return blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format)
+
+        specs = [c.model_dump() for c in self.compressors]
+        if zarr_format == 2:
+            if len(specs) > 1:
+                raise ValueError(
+                    f"'output.compressors' has {len(specs)} codecs, but Zarr format 2 arrays take a single compressor"
+                )
+            return numcodecs_codec(specs[0]) if specs else None
+
+        from zarr.abc.codec import BytesBytesCodec
+
+        codecs = tuple(zarr3_codec(spec) for spec in specs)
+        for spec, codec in zip(specs, codecs):
+            if not isinstance(codec, BytesBytesCodec):
+                raise ValueError(f"Codec {spec['name']!r} in 'output.compressors' is not a bytes-to-bytes codec")
+        return codecs
 
     def _post_init(self, recipe: Any) -> None:
         """Validate the deprecated ``order_by`` field.
@@ -172,12 +250,8 @@ class GriddedOutput(OutputBase):
 class TabularOutput(OutputBase):
     """Output configuration for tabular datasets."""
 
-    format: Literal["tabular"] = "tabular"
-    """The format of the dataset."""
-
-    @property
-    def layout(self) -> str:
-        return self.format
+    layout: Literal["tabular"] = "tabular"
+    """The layout of the dataset."""
 
     date_indexing: str = "bisect"
     """The date indexing method for tabular datasets. Options are "bisect", "btree"."""
@@ -238,8 +312,8 @@ class TrajectoriesOutput(OutputBase):
 def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
     if isinstance(v, dict):
-        return v.get("layout", v.get("format", "gridded"))
-    return getattr(v, "layout", getattr(v, "format", "gridded"))
+        return v.get("layout", "gridded")
+    return getattr(v, "layout")
 
 
 # if layout is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput

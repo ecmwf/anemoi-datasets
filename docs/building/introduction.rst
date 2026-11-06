@@ -106,6 +106,7 @@ operations can be combined to build complex datasets.
    handling-missing-values
    statistics
    incremental
+   zarr-format
    advanced-options
 
 ********************

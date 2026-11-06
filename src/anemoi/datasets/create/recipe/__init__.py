@@ -68,6 +68,33 @@ class Recipe(BaseModel):
             )
         return data
 
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_output_format(cls, data: Any) -> Any:
+        """Move a layout given as the legacy ``output.format`` to ``output.layout``.
+
+        ``output.format`` used to select the layout (``gridded``, ``tabular``,
+        ``trajectories``) and now selects the Zarr format (``zarr2``, ``zarr3``).
+        Recipes written before the change, including those stored in existing
+        datasets and reloaded by the later build steps, are migrated here,
+        mirroring :func:`anemoi.datasets.commands.recipe.migrate.migrate_output_format`.
+        """
+        if not isinstance(data, dict):
+            return data
+        output = data.get("output")
+        if isinstance(output, dict) and output.get("format") in ("gridded", "tabular", "trajectories"):
+            # Copy rather than mutate the caller's dicts in place.
+            output = dict(output)
+            layout = output.pop("format")
+            if output.setdefault("layout", layout) != layout:
+                raise ValueError(
+                    f"'output.format: {layout}' conflicts with 'output.layout: {output['layout']}'."
+                    " 'output.format' now selects the Zarr format, use only 'output.layout' for the layout."
+                )
+            data = {**data, "output": output}
+            LOG.warning("'output.format: %s' is deprecated; use 'output.layout: %s'.", layout, layout)
+        return data
+
     @model_validator(mode="after")
     def _check_steps(self) -> "Recipe":
         is_traj = isinstance(self.output, TrajectoriesOutput)
@@ -170,7 +197,7 @@ class Recipe(BaseModel):
             return "start_end"
 
         def _output_variant(config: dict) -> str:
-            return config.get("layout", config.get("format", "gridded"))
+            return config.get("layout", "gridded")
 
         def _only_non_defaults(d, default_d, path: tuple[str, ...] = ()):
 
@@ -276,9 +303,9 @@ def loader_recipe_from_zarr(path: str) -> dict:
     dict
         The dataset recipe.
     """
-    import zarr
+    from anemoi.datasets.compat import zarr_open
 
-    z = zarr.open(path, mode="r")
+    z = zarr_open(path, "r")
 
     for name in ("_recipe", "recipe"):
         if name not in z.attrs:

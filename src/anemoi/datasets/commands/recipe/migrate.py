@@ -190,6 +190,19 @@ def migrate_group_by(config: dict) -> dict:
     return config
 
 
+def migrate_output_format(config: dict) -> dict:
+    """Move a layout given as the legacy ``output.format`` to ``output.layout``."""
+    output = config.get("output", {})
+    layout = output.get("format")
+    if layout in ("gridded", "tabular", "trajectories") and output.get("layout", layout) == layout:
+        config = config.copy()
+        config["output"] = output.copy()
+        del config["output"]["format"]
+        config["output"]["layout"] = layout
+
+    return config
+
+
 def _fix_accumulate_availability(config) -> None:
     """Rewrite legacy ``availability:`` to ``covering: { auto: <value> }`` inside accumulate blocks.
 
@@ -215,6 +228,7 @@ def migrate(config: dict) -> dict:
     _fix_accumulate_availability(config)
     config = migrate_allow_nans(config)
     config = migrate_group_by(config)
+    config = migrate_output_format(config)
     config = remove_useless_common_block(config)
     return config
 

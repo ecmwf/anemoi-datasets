@@ -17,6 +17,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
 
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
@@ -65,7 +66,7 @@ class WindowView:
             The window specification.
         """
         # Open the zarr group if a path is provided
-        self.store = store if isinstance(store, zarr.Group) else zarr.open(store, mode="r")
+        self.store = store if isinstance(store, zarr.Group) else zarr_open(store, "r")
 
         # Use provided date_indexing or create a new one for indexing
         self.date_indexing = create_date_indexing(store.attrs["date_indexing"], self.store)

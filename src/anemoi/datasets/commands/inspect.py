@@ -18,6 +18,7 @@ from typing import Any
 import numpy as np
 import semantic_version
 import tqdm
+import zarr
 from anemoi.utils.humanize import bytes
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.humanize import when
@@ -176,10 +177,13 @@ class Version:
     @property
     def data(self) -> Any:
         """Get the data of the dataset."""
-        try:
-            return self.zarr.data
-        except AttributeError:
-            return self.zarr
+        # Item access works on groups in both zarr 2 and zarr 3; attribute access (``group.data``) is zarr 2 only.
+        if isinstance(self.zarr, zarr.Group):
+            try:
+                return self.zarr["data"]
+            except KeyError:
+                pass
+        return self.zarr
 
     @property
     def first_date(self) -> datetime.datetime:
@@ -464,7 +468,8 @@ class Version:
 
         build_flags = np.array([], dtype=bool) if self.build_flags is None else self.build_flags
 
-        build_lengths = np.array([], dtype=bool) if self.build_lengths is None else self.build_lengths
+        # Datasets without per-group lengths: each group counts as one unit of progress.
+        build_lengths = np.ones(build_flags.size, dtype=int) if self.build_lengths is None else self.build_lengths
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")

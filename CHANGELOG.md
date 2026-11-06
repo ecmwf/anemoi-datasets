@@ -8,6 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.50](https://github.com/ecmwf/anemoi-datasets/compare/0.5.49...0.5.50) (2026-11-05)
+
+
+### Features
+
+* **create:** Add output.compressor to choose the codec of the data array ([#817](https://github.com/ecmwf/anemoi-datasets/issues/817)) ([67310d6](https://github.com/ecmwf/anemoi-datasets/commit/67310d6fb291ea238caa0945747413d3ce61fe09))
+
+
+### Bug Fixes
+
+* **copy:** Make copy --nested work under zarr 3 and keep the data compressor ([#806](https://github.com/ecmwf/anemoi-datasets/issues/806)) ([28082e2](https://github.com/ecmwf/anemoi-datasets/commit/28082e2a5e7ef9ab1a44c98cd8c5a42229e67409))
+
+## [0.5.49](https://github.com/ecmwf/anemoi-datasets/compare/0.5.48...0.5.49) (2026-11-02)
+
+
+### Bug Fixes
+
+* Ensure zarr-python 3 compatibility of open_zarr and tests ([#802](https://github.com/ecmwf/anemoi-datasets/issues/802)) ([34a41fa](https://github.com/ecmwf/anemoi-datasets/commit/34a41fa6e5bd7667d68afaa027e12a7abe598ec9))
+
+## [0.5.48](https://github.com/ecmwf/anemoi-datasets/compare/0.5.47...0.5.48) (2026-10-29)
+
+
+### Features
+
+* Finalise in parallel for efficiency, impact mostly long hourly datasets ([#784](https://github.com/ecmwf/anemoi-datasets/issues/784)) ([ef87d54](https://github.com/ecmwf/anemoi-datasets/commit/ef87d54de8d69b0e121d21ee282014525a7bc7d1))
+* Refactor task_size to support symlinked zarr stores and improve tqdm ([#798](https://github.com/ecmwf/anemoi-datasets/issues/798)) ([8133f69](https://github.com/ecmwf/anemoi-datasets/commit/8133f69b450bb7681569c4e3722414c9dd8c8ed1))
+
+
+### Bug Fixes
+
+* Add numpy array to statistics property. ([#766](https://github.com/ecmwf/anemoi-datasets/issues/766)) ([a1507f2](https://github.com/ecmwf/anemoi-datasets/commit/a1507f2804117b534e636e113d9ce4b9067c8070))
+* **grib-index:** Support accumulation intervals with a basetime ([#805](https://github.com/ecmwf/anemoi-datasets/issues/805)) ([b7ddd18](https://github.com/ecmwf/anemoi-datasets/commit/b7ddd18f27ce738faaa41624152f4f0ba0cea87d))
+* **grib-index:** Support accumulation intervals with a basetime ([#805](https://github.com/ecmwf/anemoi-datasets/issues/805)) ([97f2e29](https://github.com/ecmwf/anemoi-datasets/commit/97f2e29eba402ccdc212d66f69833cc9ade9efb0))
+* **inspect:** Read the data array by item access so zarr 3 groups work ([#800](https://github.com/ecmwf/anemoi-datasets/issues/800)) ([ed29c10](https://github.com/ecmwf/anemoi-datasets/commit/ed29c1001c81bdcdd1f491501363c4d89d8a3ec0))
+* Make odb source handle select wildcard correctly and make pivot robust to duplicates ([#759](https://github.com/ecmwf/anemoi-datasets/issues/759)) ([e147483](https://github.com/ecmwf/anemoi-datasets/commit/e147483b7cb33bc554aedb9cc6c88e2553015148))
+
+## [0.5.47](https://github.com/ecmwf/anemoi-datasets/compare/0.5.46...0.5.47) (2026-10-22)
+
+
+### Bug Fixes
+
+* **copy:** List folders when copying a dataset over HTTP ([#796](https://github.com/ecmwf/anemoi-datasets/issues/796)) ([6bc8ff7](https://github.com/ecmwf/anemoi-datasets/commit/6bc8ff7526ff8968f8423816d51acc93d8d99342))
+* **dependencies:** Lower-bound s3fs to fix problem with uv installing old version ([#801](https://github.com/ecmwf/anemoi-datasets/issues/801)) ([9df5ce8](https://github.com/ecmwf/anemoi-datasets/commit/9df5ce8f9481b8473a321045161d0c68b84ea995))
+
+## [0.5.46](https://github.com/ecmwf/anemoi-datasets/compare/0.5.45...0.5.46) (2026-10-21)
+
+
+### Features
+
+* Introduce zarr_open as abstraction for zarr.open and add option to write zarr formats 2 and 3 ([#786](https://github.com/ecmwf/anemoi-datasets/issues/786)) ([00d0b05](https://github.com/ecmwf/anemoi-datasets/commit/00d0b05e1cb8ea2cf661fe5970930c48cc5dbeae))
+* Test mars-requests against baseline ([#774](https://github.com/ecmwf/anemoi-datasets/issues/774)) ([f7e4a3e](https://github.com/ecmwf/anemoi-datasets/commit/f7e4a3e164191122c3889e7022080dd40a758ebd))
+
+
+### Bug Fixes
+
+* **deps:** Pin xarray to last version with zarr2 support ([#777](https://github.com/ecmwf/anemoi-datasets/issues/777)) ([86b1f31](https://github.com/ecmwf/anemoi-datasets/commit/86b1f31d8a70ebea5053ef237f4f7c3b8c8639ba))
+
 ## [0.5.45](https://github.com/ecmwf/anemoi-datasets/compare/0.5.44...0.5.45) (2026-09-24)
 
 

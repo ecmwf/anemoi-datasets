@@ -8,10 +8,10 @@
 # nor does it submit to any jurisdiction.
 
 
+import numcodecs
 import zarr
 
 ZarrFileNotFoundError = FileNotFoundError
-zarr_append_mode = "a"
 
 
 class S3Store(zarr.storage.ObjectStore):
@@ -35,8 +35,45 @@ def HTTPStore(url: str) -> zarr.storage.FsspecStore:
 
 DebugStore = zarr.storage.LoggingStore
 
+DirectoryStore = zarr.storage.LocalStore
 
-def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> "zarr.abc.codec.Codec":
+ZipStore = zarr.storage.ZipStore
+
+
+def LRUStoreCache(store: zarr.abc.store.Store, max_size: int | None) -> zarr.storage.WrapperStore:
+    """Wrap a store in an in-memory cache of at most ``max_size`` bytes, evicting the least recently used keys."""
+    # zarr-python 3 replaced LRUStoreCache with CacheStore, which is still experimental
+    from zarr.experimental.cache_store import CacheStore
+
+    return CacheStore(store, cache_store=zarr.storage.MemoryStore(), max_size=max_size)
+
+
+def zarr_format_kwargs(zarr_format: int) -> dict:
+    """Return the keyword arguments selecting the on-disk format of a new zarr store.
+
+    Parameters
+    ----------
+    zarr_format : int
+        The Zarr format to write (2 or 3).
+
+    Returns
+    -------
+    dict
+        The keyword arguments to pass to ``zarr.open_group``.
+    """
+    if zarr_format not in (2, 3):
+        raise ValueError(f"Unsupported zarr_format={zarr_format}, expected 2 or 3")
+    return {"zarr_format": zarr_format}
+
+
+def get_zarr_format(node: zarr.Group | zarr.Array) -> int:
+    """Return the Zarr format of a group or array."""
+    return node.metadata.zarr_format
+
+
+def blosc_compressor(
+    cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int
+) -> "zarr.abc.codec.Codec | numcodecs.abc.Codec":
     """Return a Blosc compressor for zarr3.
 
     Parameters
@@ -47,12 +84,19 @@ def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2) -> 
         The compression level.
     shuffle : int
         The shuffle mode (0=none, 1=byte, 2=bit).
+    zarr_format : int
+        The Zarr format of the array the compressor is used for.
 
     Returns
     -------
-    zarr.abc.codec.Codec
-        The Blosc compressor codec.
+    zarr.abc.codec.Codec | numcodecs.abc.Codec
+        The Blosc compressor codec. Zarr format 2 arrays only accept numcodecs codecs.
     """
+    zarr_format_kwargs(zarr_format)
+
+    if zarr_format == 2:
+        return numcodecs.Blosc(cname=cname, clevel=clevel, shuffle=shuffle)
+
     from zarr.codecs import BloscCodec
 
     shuffle_names = {0: "noshuffle", 1: "shuffle", 2: "bitshuffle"}
