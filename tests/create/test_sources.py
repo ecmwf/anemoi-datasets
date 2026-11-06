@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+import zarr
 from anemoi.utils.testing import skip_if_offline
 from anemoi.utils.testing import skip_missing_packages
 
@@ -172,6 +173,8 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                                 "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
+                                # a flavour masks the raw GRIB keys the accumulation reads
+                                "flavour": [[{"levtype": "sfc"}, {"levelist": None}]],
                             },
                         },
                     }
@@ -197,6 +200,239 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
 
     with pytest.raises(Exception):
         created = create_dataset(recipe=config_grib_index, output=None)
+
+
+def _write_grib(path, messages: list[dict]) -> str:
+    """Write one GRIB2 message per dict of eccodes keys, with every value set to the dict's ``value``."""
+    import eccodes
+
+    with open(path, "wb") as f:
+        for keys in messages:
+            keys = dict(keys)
+            value = keys.pop("value")
+            h = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+            for k, v in keys.items():
+                eccodes.codes_set(h, k, v)
+            eccodes.codes_set_values(h, np.full(eccodes.codes_get(h, "numberOfValues"), float(value)))
+            eccodes.codes_write(h, f)
+            eccodes.codes_release(h)
+    return str(path)
+
+
+def test_grib_ensemble_with_filter(tmp_path) -> None:
+    """Ensemble members keep their order and count after a filter, and the MARS metadata follows the filter."""
+    members = [1, 2, 10]
+    path = _write_grib(
+        tmp_path / "ens.grib",
+        [
+            dict(
+                dataDate=20200101,
+                dataTime=0,
+                shortName="sp",
+                productDefinitionTemplateNumber=1,
+                perturbationNumber=number,
+                numberOfForecastsInEnsemble=len(members),
+                value=number,
+            )
+            for number in members
+        ],
+    )
+
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path}}, {"rename": {"param": {"sp": "surface_pressure"}}}]},
+    }
+
+    created = create_dataset(recipe=recipe, output=None)
+    ds = open_dataset(created)
+    assert ds.variables == ["surface_pressure"]
+    assert ds.shape[2] == len(members)
+    assert [float(ds[0, 0, m, 0]) for m in range(len(members))] == members
+
+    mars = ds.variables_metadata["surface_pressure"]["mars"]
+    assert (mars["param"], mars["levtype"]) == ("surface_pressure", "sfc")
+    assert ds.variables_metadata["surface_pressure"]["units"] == "Pa"
+    assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["surface_pressure"]}
+
+
+def _write_icon_grid(path, npoints: int) -> tuple[str, np.ndarray, np.ndarray]:
+    """Write a minimal ICON grid file (cell centres only) with ``npoints`` points."""
+    import xarray as xr
+
+    latitudes, longitudes = np.linspace(40.0, 50.0, npoints), np.linspace(0.0, 10.0, npoints)
+    xr.Dataset({"clat": ("cell", np.deg2rad(latitudes)), "clon": ("cell", np.deg2rad(longitudes))}).to_netcdf(path)
+    return str(path), latitudes, longitudes
+
+
+def test_fdb(tmp_path, monkeypatch) -> None:
+    """The fdb source returns the fields of its requests (FDB itself is mocked), flavoured, then on the grid."""
+    import earthkit.data as ekd
+
+    path = _write_grib(tmp_path / "fdb.grib", [dict(dataDate=20200101, dataTime=0, shortName="sp", value=1)])
+    gridfile, latitudes, longitudes = _write_icon_grid(tmp_path / "grid.nc", 496)
+    from_source = ekd.from_source
+
+    def mock_from_source(name, *args, **kwargs):
+        if name != "fdb":
+            return from_source(name, *args, **kwargs)
+        assert "read_all" not in kwargs  # rejected by the earthkit-data 1.x fdb source
+        return from_source("stream", open(path, "rb"))
+
+    monkeypatch.setattr(ekd, "from_source", mock_from_source)
+
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {
+            "fdb": {
+                "fdb_request": {"class": "od", "stream": "oper", "type": "an", "param": ["sp"]},
+                "param_id_map": {"sp": 134},
+                "flavour": [[{"shortName": "sp"}, {"param": "surface_pressure"}]],
+                "grid_definition": {"icon": {"path": gridfile}},
+            }
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["surface_pressure"]
+    assert float(ds[0, 0, 0, 0]) == 1
+    assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
+
+
+def _grib_index(tmp_path, messages: list[dict]) -> str:
+    """Index GRIB messages written with ``_write_grib`` in a new grib-index database."""
+    from anemoi.datasets.create.sources.grib_index import GribIndex
+
+    path = str(tmp_path / "index.db")
+    GribIndex(path, update=True, overwrite=True).add_grib_file(_write_grib(tmp_path / "index.grib", messages))
+    return path
+
+
+def test_accumulate_with_grid_and_flavour(tmp_path) -> None:
+    """Accumulated fields keep the grid and the flavour their source applied."""
+    hourly = [
+        dict(
+            dataDate=20200101, dataTime=hour * 100, stepType="accum", shortName="tp", startStep=0, endStep=1, value=hour
+        )
+        for hour in range(3)
+    ]
+    gridfile, latitudes, longitudes = _write_icon_grid(tmp_path / "grid.nc", 496)
+    recipe = {
+        "dates": {"start": "2020-01-01T03:00:00", "end": "2020-01-01T03:00:00", "frequency": "3h"},
+        "input": {
+            "accumulate": {
+                "period": "3h",
+                "availability": "1h",
+                "source": {
+                    "grib-index": {
+                        "indexdb": _grib_index(tmp_path, hourly),
+                        "param": "tp",
+                        "flavour": [[{"shortName": "tp"}, {"param": "precip"}]],
+                        "grid_definition": {"icon": {"path": gridfile}},
+                    }
+                },
+            }
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["precip"]
+    assert np.all(ds[0, 0, 0] == 0 + 1 + 2)
+    assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
+    assert ds.variables_metadata["precip"]["process"] == "accumulation"
+
+
+def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
+    """A grib-index of forecasts (accumulated from their base time) serves accumulations over any window."""
+    forecast = [
+        dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=step, value=step)
+        for step in range(1, 7)
+    ]
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T06:00:00", "frequency": "3h"},
+        "input": {
+            "accumulate": {
+                "period": "3h",
+                "covering": {"auto": {"accumulated-from-start": {"basetime": [0], "frequency": 1, "last_step": 6}}},
+                "source": {"grib-index": {"indexdb": _grib_index(tmp_path, forecast), "param": "tp"}},
+            }
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert np.all(ds[0, 0, 0] == 6 - 3)
+
+
+def test_forcings_metadata_from_accumulation_template(tmp_path) -> None:
+    """Computed forcings do not take the GRIB metadata of their template."""
+    path = _write_grib(
+        tmp_path / "tp.grib",
+        [dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=6, value=1)],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
+        "input": {
+            "join": [
+                {"grib": {"path": path}},
+                {"forcings": {"param": ["cos_latitude"], "template": "${input.join.0.grib}"}},
+            ]
+        },
+    }
+
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables_metadata["tp"]["process"] == "accumulation"
+    assert not {"mars", "grib", "process", "period"} & set(ds.variables_metadata["cos_latitude"])
+
+
+def test_check_variables_compatibility(tmp_path) -> None:
+    """The recipe can relax the check that the variables of every part of the dataset are compatible."""
+    path = _write_grib(
+        tmp_path / "tp.grib",
+        [
+            dict(dataDate=20200101, dataTime=0, stepType="accum", shortName="tp", startStep=0, endStep=step, value=1)
+            for step in (6, 12)
+        ],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T12:00:00", "frequency": "6h"},
+        "build": {"group_by": 1},
+        "input": {"grib": {"path": path}},
+    }
+
+    with pytest.raises(ValueError, match="not compatible"):
+        create_dataset(recipe=recipe, output=None)
+
+    recipe["build"]["check_variables_compatibility"] = {"ignore_processing_period": True}
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).shape[0] == 2
+
+
+def test_selection_by_other_keys(tmp_path) -> None:
+    """Recipe keys outside the legacy names still select fields in the grib and xarray sources."""
+    import xarray as xr
+
+    path = _write_grib(
+        tmp_path / "levels.grib",
+        [dict(dataDate=20200101, dataTime=0, shortName=name, value=1) for name in ("sp", "msl")],
+    )
+    dates = {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"}
+
+    recipe = {"dates": dates, "input": {"grib": {"path": path, "typeOfLevel": "surface"}}}
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.variables == ["sp"]
+
+    lat, lon = np.arange(50.0, 40.0, -1.0), np.arange(0.0, 10.0, 1.0)
+    xr.Dataset(
+        {"t2m": (("number", "time", "latitude", "longitude"), np.ones((3, 1, lat.size, lon.size)), {"units": "K"})},
+        coords={
+            "number": [0, 1, 2],
+            "time": [np.datetime64("2020-01-01T00:00", "ns")],
+            "latitude": ("latitude", lat, {"standard_name": "latitude", "units": "degrees_north"}),
+            "longitude": ("longitude", lon, {"standard_name": "longitude", "units": "degrees_east"}),
+        },
+    ).to_netcdf(tmp_path / "ens.nc")
+
+    recipe = {"dates": dates, "input": {"netcdf": {"path": str(tmp_path / "ens.nc"), "number": [1, 2]}}}
+    ds = open_dataset(create_dataset(recipe=recipe, output=None))
+    assert ds.shape[2] == 2
 
 
 @skip_if_offline
@@ -234,6 +470,14 @@ def test_grib_gridfile(get_test_data) -> None:
     ds = open_dataset(created)
     assert ds.shape == (8, 1, 1, 1147980)
     assert ds.variables == ["2t"]
+
+    # unstructured grid: resolution "unknown", no MARS grid, the area is the bounding box
+    data_request = zarr.open(created, mode="r").attrs["data_request"]
+    assert ds.resolution == "unknown"
+    assert data_request["grid"] is None
+    assert data_request["area"] == pytest.approx(
+        [ds.latitudes.max(), ds.longitudes.min(), ds.latitudes.min(), ds.longitudes.max()]
+    )
 
 
 @skip_if_offline
@@ -332,7 +576,12 @@ def test_grib_gridfile_with_refinement_level(
 def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
 
-    This function tests eccodes key type formatters.
+    This function tests eccodes key type formatters.  The ``level:d`` source
+    key selects fields by float-typed level.  The variable naming uses the
+    plain ``{param}_{level}`` template because grid-wrapped fields (produced
+    by ``grid_definition``) do not carry eccodes typed-key metadata
+    (``metadata.level:d``); only the component path ``vertical.level`` (int)
+    is available.
     """
 
     p = "anemoi-datasets/create/test_grib_gridfile_with_refinement_level/"
@@ -361,18 +610,18 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
             },
         },
         "build": {
-            "variable_naming": "{param}_{level:d}",
+            "variable_naming": "{param}_{level}",
         },
     }
 
     created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
-    assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
+    assert ds.to_index(date=0, variable="u_101", member=0) != ds.to_index(date=0, variable="u_119", member=0)
 
     with pytest.raises(ValueError):
-        ds.to_index(date=0, variable="u_101", member=0)  # param does not exist
+        ds.to_index(date=0, variable="u_101.0", member=0)  # float names not produced
     with pytest.raises(ValueError):
-        ds.to_index(date=0, variable="u_119", member=0)  # param does not exist
+        ds.to_index(date=0, variable="u_119.0", member=0)  # float names not produced
 
 
 @skip_if_offline

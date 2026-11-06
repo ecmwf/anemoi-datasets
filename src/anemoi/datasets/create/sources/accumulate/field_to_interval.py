@@ -69,12 +69,19 @@ class FieldToInterval:
                 raise ValueError(f"Unknown patch key: {key}")
 
     def __call__(self, field) -> SignedInterval:
-        date_str = str(field.metadata("date")).zfill(8)
-        time_str = str(field.metadata("time")).zfill(4)
+        # Filters, flavours and grids mask the raw GRIB keys, but the metadata.time collection keeps them
+        time_md = field.get(collections="metadata.time") or {}
+
+        def get(key: str, collection_key: str | None = None):
+            collection_key = collection_key or key
+            return time_md[collection_key] if collection_key in time_md else field.metadata(key)
+
+        date_str = str(get("date", "dataDate")).zfill(8)
+        time_str = str(get("time", "dataTime")).zfill(4)
         base_datetime = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
 
-        endStep = field.metadata("endStep")
-        startStep = field.metadata("startStep")
+        endStep = get("endStep")
+        startStep = get("startStep")
 
         LOG.debug(f" 🌧️:    field before patching: {startStep=}, {endStep=}")
 
@@ -104,8 +111,8 @@ class FieldToInterval:
 
         interval = SignedInterval(start=base_datetime + start_step, end=base_datetime + end_step, base=base_datetime)
 
-        date_str = str(field.metadata("validityDate")).zfill(8)
-        time_str = str(field.metadata("validityTime")).zfill(4)
+        date_str = str(get("validityDate")).zfill(8)
+        time_str = str(get("validityTime")).zfill(4)
         valid_date = datetime.datetime.strptime(date_str + time_str, "%Y%m%d%H%M")
         assert valid_date == interval.max, (valid_date, interval)
 

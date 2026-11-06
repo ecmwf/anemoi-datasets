@@ -41,7 +41,9 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.4",
+  # TODO: require the first anemoi-transform release with earthkit 1.0 support. Until then,
+  # the sync/earthkit-1.0 CI installs the matching anemoi-transform branch.
+  "anemoi-transform",
   "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
@@ -70,9 +72,8 @@ optional-dependencies.comparelam = [
 ]
 optional-dependencies.create = [
   "cachetools",
-  "earthkit-data[mars]>=0.14,<1",
-  "earthkit-geo>=0.3,<1",
-  "earthkit-meteo>=0.3,<1",
+  "earthkit-data[mars]>=1,<2",
+  "earthkit-geo>=1,<2",
   "eccodes>=2.39.1",
   "entrypoints",
   "fasteners",

@@ -12,7 +12,7 @@ from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
@@ -64,7 +64,7 @@ class FdbSource(Source):
         """
         super().__init__(context)
         self.request = fdb_request.copy()
-        self.configs = {"config": fdb_config, "userconfig": fdb_userconfig}
+        self.configs = {"config": fdb_config, "user_config": fdb_userconfig}
 
         self.flavour = RuleBasedFlavour(flavour) if flavour else None
         if grid_definition is not None:
@@ -122,15 +122,15 @@ class FdbSource(Source):
         requests = requests or [self.request]
         requests = compress_prebuilt_requests(requests)
 
-        fl = ekd.from_source("empty")
-        for request in requests:
-            fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
-
-        if self.grid is not None:
-            fl = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in fl])
+        fl = ekd.concat(
+            *[ekd.from_source("fdb", request, **self.configs).to_fieldlist(read_all=True) for request in requests]
+        )
 
         if self.flavour:
             fl = self.flavour.map(fl)
+
+        if self.grid is not None:
+            fl = new_fieldlist_from_list([new_field_from_latitudes_longitudes(f, *self.grid.latlon()) for f in fl])
 
         return fl
 

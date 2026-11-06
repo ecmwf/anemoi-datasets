@@ -48,31 +48,21 @@ class AnemoiDatasetSource(LegacySource):
         resolution = ds.resolution
 
         for idx, date in indices:
-
-            metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes, resolution=resolution)
-
             for j, y in enumerate(ds[idx]):
-
                 param = vars[j]
                 if param not in params:
                     continue
 
-                # metadata['name'] = param
-                # metadata['param_level'] = param
-                metadata["param"] = param
-
                 for k, e in enumerate(y):
+                    field = {
+                        "data": {"values": e},
+                        "time": {"valid_datetime": date},
+                        "parameter": {"variable": param},
+                        "geography": {"latitudes": latitudes, "longitudes": longitudes},
+                        "labels": {"resolution": resolution},
+                    }
                     if ensemble:
-                        metadata["number"] = k + 1
+                        field["ensemble"] = {"member": k + 1}
+                    results.append(field)
 
-                    metadata["values"] = e
-
-                    results.append(metadata.copy())
-
-        print(results[0].keys())
-
-        # "list-of-dicts" does support resolution
-        results = ekd.from_source("list-of-dicts", results)
-
-        # return new_fieldlist_from_list([new_field_from_latitudes_longitudes(x, latitudes, longitudes) for x in results])
-        return results
+        return ekd.from_source("list-of-dicts", results).to_fieldlist()
