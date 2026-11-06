@@ -62,6 +62,15 @@ is an ``input`` and how its rows join the dataset:
 **scan**
    This input's scan geometry, with ``variables.scan: input``.
 
+**qc**
+   This input's own flag rules on its own column names, for inputs that
+   carry different flag columns: ``flags`` and ``bits`` as in QC and
+   ``range`` as ``{column: [lo, hi]}`` (a failing row loses every
+   channel; a missing value passes the range), ``value_flags`` as
+   ``{input column: flag column}``. Applied before the dataset's QC, whose
+   ``require_complete`` then drops the rows left without a channel and
+   counts them as incomplete; so it cannot be ``false``.
+
 Items with the same ``input`` read it once per group.
 
 .. code-block:: yaml
