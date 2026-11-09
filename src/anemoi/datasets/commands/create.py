@@ -22,6 +22,8 @@ from . import Command
 
 LOG = logging.getLogger(__name__)
 
+SLURM_OPTIONS = ("slurm", "slurm_parts", "slurm_finalise_parts", "slurm_max_running", "sbatch", "sbatch_parallel")
+
 
 def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
     """Make sure `import Creator` is done in the sub-processes, and not in the main one.
@@ -87,6 +89,37 @@ class Create(Command):
         group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
         command_parser.add_argument("--trace", action="store_true")
 
+        slurm = command_parser.add_argument_group("SLURM")
+        slurm.add_argument(
+            "--slurm",
+            metavar="DIR",
+            help="Do not create the dataset, write SLURM scripts in DIR to build it step by step, and a submit.sh to run them.",
+        )
+        slurm.add_argument(
+            "--slurm-parts", type=int, default=400, help="Maximum number of jobs in the load job array (default: 400)."
+        )
+        slurm.add_argument(
+            "--slurm-finalise-parts",
+            type=int,
+            default=50,
+            help="Number of jobs in the finalise job array, for tabular datasets (default: 50).",
+        )
+        slurm.add_argument("--slurm-max-running", type=int, help="Maximum number of array jobs running simultaneously.")
+        slurm.add_argument(
+            "--sbatch",
+            action="append",
+            default=[],
+            metavar="OPTION",
+            help="Extra sbatch option for all jobs, e.g. --sbatch=--qos=nf. Can be repeated.",
+        )
+        slurm.add_argument(
+            "--sbatch-parallel",
+            action="append",
+            default=[],
+            metavar="OPTION",
+            help="Extra sbatch option for the job arrays only, e.g. --sbatch-parallel=--mem=64G. Can be repeated.",
+        )
+
     def run(self, args: Any) -> None:
         """Execute the create command.
 
@@ -95,12 +128,42 @@ class Create(Command):
         args : Any
             Command line arguments.
         """
+        if args.slurm:
+            self.slurm_create(args)
+            return
+
+        for name in SLURM_OPTIONS:
+            delattr(args, name)
+
         now = time.time()
         if args.threads + args.processes:
             self.parallel_create(args)
         else:
             self.serial_create(args)
         LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
+
+    def slurm_create(self, args: Any) -> None:
+        """Write SLURM scripts to create the dataset step by step.
+
+        Parameters
+        ----------
+        args : Any
+            Command line arguments.
+        """
+        from anemoi.datasets.create.slurm import write_slurm_scripts
+
+        submit = write_slurm_scripts(
+            args.recipe,
+            args.path,
+            args.slurm,
+            parts=args.slurm_parts,
+            finalise_parts=args.slurm_finalise_parts,
+            max_running=args.slurm_max_running,
+            sbatch=args.sbatch,
+            sbatch_parallel=args.sbatch_parallel,
+            overwrite=args.overwrite,
+        )
+        print(f"Run {submit} to submit the jobs.")
 
     def serial_create(self, args: Any) -> None:
         """Create the dataset in serial mode.
