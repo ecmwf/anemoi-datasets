@@ -54,8 +54,10 @@ NaiveDatetime = Annotated[datetime.datetime, BeforeValidator(as_datetime)]
 def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
-    Args:
-        x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
+    Parameters
+    ----------
+    x : str | list[Any] | tuple[Any, ...]
+        A date range string or list/tuple of dates.
 
     Returns
     -------
@@ -96,8 +98,10 @@ class DatesProvider(BaseModel):
     def __getitem__(self, i: int) -> datetime.datetime:
         """Get a date by index.
 
-        Args:
-            i (int): Index of the date.
+        Parameters
+        ----------
+        i : int
+            Index of the date.
 
         Returns
         -------
