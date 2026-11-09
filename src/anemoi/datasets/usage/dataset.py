@@ -325,6 +325,12 @@ class Dataset(ABC, Sized):
             rolling_average = kwargs.pop("rolling_average")
             return RollingAverage(self, rolling_average)._subset(**kwargs).mutate()
 
+        if "constants" in kwargs:
+            Constants = self.usage_factory_load("Constants")
+
+            constants = kwargs.pop("constants")
+            return Constants(self, constants)._subset(**kwargs).mutate()
+
         # Keep last
         if "shuffle" in kwargs:
             Subset = self.usage_factory_load("Subset")
