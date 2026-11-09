@@ -1,5 +1,4 @@
-from anemoi.datasets import add_dataset_path
-from anemoi.datasets import open_dataset
+from anemoi.datasets import add_dataset_path, open_dataset
 
 add_dataset_path("https://object-store.os-api.cci1.ecmwf.int/ml-examples/")
 

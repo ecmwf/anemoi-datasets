@@ -17,8 +17,7 @@ import pytest
 import zarr
 
 from anemoi.datasets.date_indexing import create_date_indexing
-from anemoi.datasets.epochs import date_to_epoch
-from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import date_to_epoch, epoch_to_date
 from anemoi.datasets.windows.view import WindowView
 
 VARIABLES = 3

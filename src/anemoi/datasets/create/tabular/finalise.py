@@ -20,12 +20,9 @@ import socket
 import threading
 import time
 from collections.abc import Generator
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from functools import cached_property
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -33,13 +30,11 @@ import psutil
 import tqdm
 
 from anemoi.datasets.buffering import WriteBehindBuffer
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import blosc_compressor, get_zarr_format
 from anemoi.datasets.create.parts import part_bounds
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
-from anemoi.datasets.epochs import array_to_epoch
-from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import array_to_epoch, epoch_to_date
 from anemoi.datasets.memory import available_memory
 
 LOG = logging.getLogger(__name__)

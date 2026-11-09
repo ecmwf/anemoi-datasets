@@ -24,8 +24,7 @@ from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from anemoi.datasets.create.arguments import Intervals
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import Intervals, ValidDates
 
 from ..source import Source
 from . import source_registry

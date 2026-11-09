@@ -17,9 +17,7 @@ import numpy as np
 import pytest
 
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import blosc_compressor, zarr_open, zarr_version
 
 NDATES = 4
 NPOINTS = 10

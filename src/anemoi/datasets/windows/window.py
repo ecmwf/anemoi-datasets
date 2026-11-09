@@ -10,8 +10,7 @@
 import logging
 import re
 
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
 

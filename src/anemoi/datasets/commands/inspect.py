@@ -19,12 +19,8 @@ import numpy as np
 import semantic_version
 import tqdm
 import zarr
-from anemoi.utils.humanize import bytes
-from anemoi.utils.humanize import bytes_to_human
-from anemoi.utils.humanize import when
-from anemoi.utils.text import dotted_line
-from anemoi.utils.text import progress
-from anemoi.utils.text import table
+from anemoi.utils.humanize import bytes, bytes_to_human, when
+from anemoi.utils.text import dotted_line, progress, table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset

@@ -9,8 +9,7 @@
 
 import datetime
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList

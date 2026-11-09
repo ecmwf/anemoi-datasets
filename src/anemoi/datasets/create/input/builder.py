@@ -11,12 +11,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import cached_property
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from anemoi.datasets.create.input.action import Action
-    from anemoi.datasets.create.input.action import Recipe
+    from anemoi.datasets.create.input.action import Action, Recipe
 
 
 class InputBuilder:
@@ -42,8 +40,7 @@ class InputBuilder:
     @cached_property
     def action(self) -> "Recipe":
         """Returns the action object based on the configuration."""
-        from .action import Recipe
-        from .action import action_factory
+        from .action import Recipe, action_factory
 
         sources = action_factory(self.data_sources, "data_sources")
         input = action_factory(self.config, "input")

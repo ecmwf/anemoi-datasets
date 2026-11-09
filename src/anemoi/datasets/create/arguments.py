@@ -40,8 +40,7 @@ request before passing it to an inner source:
 from __future__ import annotations
 
 import datetime
-from typing import Any
-from typing import Callable
+from typing import Any, Callable
 
 from anemoi.datasets.create.intervals import timedelta_to_step
 

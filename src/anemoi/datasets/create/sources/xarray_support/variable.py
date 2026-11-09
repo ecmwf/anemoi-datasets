@@ -11,8 +11,7 @@
 import logging
 import math
 from functools import cached_property
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import xarray as xr

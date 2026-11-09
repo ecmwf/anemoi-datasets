@@ -18,10 +18,8 @@ from numpy.typing import NDArray
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..debug import Node
-from ..debug import debug_indexing
+from ..dataset import Dataset, FullIndex
+from ..debug import Node, debug_indexing
 from ..forwards import Forwards
 
 LOG = logging.getLogger(__name__)
