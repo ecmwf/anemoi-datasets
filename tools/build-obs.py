@@ -25,11 +25,7 @@ def main():
     parser.add_argument("input", help="input dataset")
     parser.add_argument("output", help="output dataset")
     parser.add_argument("--backend", help="backend to use", type=str, default="npz1")
-    parser.add_argument(
-        "--overwrite",
-        help="overwrite output directory if it exists",
-        action="store_true",
-    )
+    parser.add_argument("--overwrite", help="overwrite output directory if it exists", action="store_true")
     args = parser.parse_args()
     build(**vars(args))
 
@@ -51,9 +47,7 @@ def build(input, output, backend, overwrite=False):
             LOG.warning(f"Output directory {output} already exists, removing it")
             shutil.rmtree(output)
         else:
-            raise FileExistsError(
-                f"Output directory {output} already exists, use --overwrite to remove it"
-            )
+            raise FileExistsError(f"Output directory {output} already exists, use --overwrite to remove it")
     writer = writer_backend_factory(**backend, target=output)
 
     for i in tqdm.tqdm(range(len(ds))):

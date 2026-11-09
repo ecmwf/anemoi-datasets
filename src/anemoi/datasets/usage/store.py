@@ -21,20 +21,22 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.compat import (
-    DebugStore,
-    DirectoryStore,
-    HTTPStore,
-    LRUStoreCache,
-    S3Store,
-    ZarrFileNotFoundError,
-    ZipStore,
-    zarr_open,
-    zarr_version,
-)
+from anemoi.datasets.compat import DebugStore
+from anemoi.datasets.compat import DirectoryStore
+from anemoi.datasets.compat import HTTPStore
+from anemoi.datasets.compat import LRUStoreCache
+from anemoi.datasets.compat import S3Store
+from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import ZipStore
+from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.usage.analytics import collect_analytics
-from anemoi.datasets.usage.dataset import Dataset, Shape, TupleIndex
-from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING, Node, Source
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.misc import load_config
 from anemoi.datasets.usage.options import Options
 
@@ -49,6 +51,7 @@ def name_to_zarr_store(path_or_url: str) -> Any:
         return S3Store(store)
 
     if store.startswith("http://") or store.startswith("https://"):
+
         if store.endswith(".zip"):
             import multiurl
 
@@ -58,9 +61,7 @@ def name_to_zarr_store(path_or_url: str) -> Any:
             tmpdir = tempfile.gettempdir()
             name = os.path.basename(parsed.path)
             path = os.path.join(tmpdir, name)
-            LOG.warning(
-                "Zarr does not support zip files over HTTP, downloading to %s", path
-            )
+            LOG.warning("Zarr does not support zip files over HTTP, downloading to %s", path)
             if os.path.exists(path):
                 LOG.warning("File %s already exists, reusing it", path)
                 return name_to_zarr_store(path)
@@ -124,6 +125,7 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         name = name[:-1]
 
     if name.endswith(".zarr") or name.endswith(".zip") or name.endswith(".vz"):
+
         if os.path.exists(name):
             return name
 
@@ -134,6 +136,7 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         name = os.path.splitext(os.path.basename(name))[0]
 
     if name in config["named"]:
+
         return str(config["named"][name])
 
     tried = []
@@ -185,11 +188,7 @@ def open_zarr_store(
 
     store = open_zarr(path, cache=cache)
     collect_analytics(
-        "open-zarr-store",
-        path=path,
-        name=name,
-        uuid=store.attrs.get("uuid"),
-        print_analytics_only=print_analytics_only,
+        "open-zarr-store", path=path, name=name, uuid=store.attrs.get("uuid"), print_analytics_only=print_analytics_only
     )
 
     if return_path:
@@ -201,9 +200,7 @@ def open_zarr_store(
 class ZarrStore(Dataset):
     """A zarr dataset."""
 
-    def __init__(
-        self, group: zarr.Group, path: str = None, options: Options = None
-    ) -> None:
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
         self.store = group
         self.path = path if path is not None else "<zarr>"
         self.options = options
@@ -212,9 +209,7 @@ class ZarrStore(Dataset):
         self.data = self.store["data"]
 
     @classmethod
-    def from_group(
-        cls, group: zarr.Group, path: str = None, options: Options = None
-    ) -> "ZarrStore":
+    def from_group(cls, group: zarr.Group, path: str = None, options: Options = None) -> "ZarrStore":
         layout = group.attrs.get("layout", group.attrs.get("format", "gridded"))
 
         match layout:
@@ -272,9 +267,7 @@ class ZarrStore(Dataset):
             minimum=self.store["minimum"][:],
         )
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the statistical tendencies of the dataset."""
         if delta is None:
             delta = self.frequency
@@ -339,9 +332,11 @@ class ZarrStore(Dataset):
 
     def collect_supporting_arrays(self, collected: set, *path: str) -> None:
         """Collect supporting arrays."""
+        pass
 
     def collect_input_sources(self, collected: set) -> None:
         """Collect input sources."""
+        pass
 
     @cached_property
     def origins(self):
@@ -399,9 +394,7 @@ class ZarrStore(Dataset):
             for entry in os.listdir(pkg_dir):
                 if entry == "__init__.py":
                     continue
-                if not (
-                    entry.endswith(".py") or os.path.isdir(os.path.join(pkg_dir, entry))
-                ):
+                if not (entry.endswith(".py") or os.path.isdir(os.path.join(pkg_dir, entry))):
                     continue
                 found = try_import(f"{pkg}.{os.path.splitext(entry)[0]}")
                 if found is not None:
@@ -419,9 +412,7 @@ class ZarrStore(Dataset):
             if result is not None:
                 return result
 
-        raise ValueError(
-            f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})"
-        )
+        raise ValueError(f"Operation '{name}' is not supported for dataset '{self}', ({type(self).__name__})")
 
     def obfuscator_filter(self):
         class ObfuscatorFilter:
@@ -435,17 +426,13 @@ class ZarrStore(Dataset):
 
             def obfuscate(self, data: NDArray[Any]) -> NDArray[Any]:
                 if data.shape[1] != len(self.mean) + self.skip_columns:
-                    raise ValueError(
-                        f"Data shape {data.shape} does not match expected shape"
-                    )
+                    raise ValueError(f"Data shape {data.shape} does not match expected shape")
 
                 result = data.copy()
                 col_idx = self.skip_columns
 
                 for i, (mean, stdev) in enumerate(zip(self.mean, self.stdev)):
-                    result[:, col_idx + i] = np.random.normal(
-                        mean, stdev, data.shape[0]
-                    )
+                    result[:, col_idx + i] = np.random.normal(mean, stdev, data.shape[0])
 
                 return result
 

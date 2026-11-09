@@ -28,6 +28,7 @@ class Schema(Command):
         command_parser : Any
             The command parser.
         """
+        pass
 
     def run(self, args: Any) -> None:
         import json

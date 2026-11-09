@@ -17,15 +17,17 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
-from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    update_tuple,
-)
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -214,12 +216,7 @@ class InterpolateFrequency(Forwards):
 
 
 class InterpolateNearest(Forwards):
-    def __init__(
-        self,
-        dataset: Dataset,
-        interpolate_variables: list[str],
-        max_distance: float | None = None,
-    ) -> None:
+    def __init__(self, dataset: Dataset, interpolate_variables: list[str], max_distance: float | None = None) -> None:
         """Initialize the InterpolateNearest class.
 
         Parameters
@@ -236,8 +233,7 @@ class InterpolateNearest(Forwards):
         super().__init__(dataset)
         self.vars = interpolate_variables
         self.var_mask = {
-            v: np.where(~np.isnan(dataset[0, dataset.name_to_index[v]].squeeze()))[0]
-            for v in interpolate_variables
+            v: np.where(~np.isnan(dataset[0, dataset.name_to_index[v]].squeeze()))[0] for v in interpolate_variables
         }
         self.dataset = dataset
         self.ngp_var = {
@@ -265,11 +261,7 @@ class InterpolateNearest(Forwards):
     @staticmethod
     def slice_len(slice_obj: slice) -> int:
         # Compute the length of the slice
-        return max(
-            0,
-            (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1)
-            // (slice_obj.step or 1),
-        )
+        return max(0, (slice_obj.stop - slice_obj.start + (slice_obj.step or 1) - 1) // (slice_obj.step or 1))
 
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
@@ -278,9 +270,7 @@ class InterpolateNearest(Forwards):
         target_data = source_data.copy()
         vars_to_interpolate = [self.forward.name_to_index[v] for v in self.vars]
         for v, i in zip(self.vars, vars_to_interpolate):
-            target_data[:, i, ...] = source_data[:, i][
-                ..., self.var_mask[v][self.ngp_var[v]]
-            ]
+            target_data[:, i, ...] = source_data[:, i][..., self.var_mask[v][self.ngp_var[v]]]
         result = target_data[(slice(None),) + index[1:]]
         return apply_index_to_slices_changes(result, changes)
 

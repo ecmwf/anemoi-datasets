@@ -15,8 +15,10 @@ from typing import Any
 
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, Shape
-from anemoi.datasets.usage.debug import Node, Source
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
 from anemoi.datasets.usage.forwards import Forwards
 
 LOG = logging.getLogger(__name__)
@@ -25,9 +27,7 @@ LOG = logging.getLogger(__name__)
 class SelectBase(Forwards):
     """Class to select a subset of variables from a dataset."""
 
-    def __init__(
-        self, dataset: Dataset, indices: list[int], reason: dict[str, Any]
-    ) -> None:
+    def __init__(self, dataset: Dataset, indices: list[int], reason: dict[str, Any]) -> None:
         """Initialize the Select class.
 
         Parameters
@@ -91,11 +91,7 @@ class SelectBase(Forwards):
     @cached_property
     def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata of the variables."""
-        return {
-            k: v
-            for k, v in self.dataset.variables_metadata.items()
-            if k in self.variables
-        }
+        return {k: v for k, v in self.dataset.variables_metadata.items() if k in self.variables}
 
     @cached_property
     def name_to_index(self) -> dict[str, int]:
@@ -107,9 +103,7 @@ class SelectBase(Forwards):
         """Get the statistics of the dataset."""
         return {k: v[self.indices] for k, v in self.dataset.statistics.items()}
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Get the statistical tendencies of the dataset.
 
         Parameters
@@ -124,10 +118,7 @@ class SelectBase(Forwards):
         """
         if delta is None:
             delta = self.frequency
-        return {
-            k: v[self.indices]
-            for k, v in self.dataset.statistics_tendencies(delta).items()
-        }
+        return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Get the specific metadata of the dataset.
@@ -182,14 +173,10 @@ class SelectBase(Forwards):
 
     def forward_subclass_origin(self, index):
         assert (
-            isinstance(index, tuple)
-            and len(index) == 4
-            and all(a > b >= 0 for a, b in zip(self.shape, index))
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
         ), tuple
 
-        return self.dataset.origin(
-            (index[0], self.indices[index[1]], index[2], index[3])
-        )
+        return self.dataset.origin((index[0], self.indices[index[1]], index[2], index[3]))
 
     def project(self, projection):
         projection = projection.from_indices(axis=1, indices=self.indices)

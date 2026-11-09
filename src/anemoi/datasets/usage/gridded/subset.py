@@ -12,22 +12,26 @@ import datetime
 import logging
 from collections.abc import Sequence
 from functools import cached_property
-from typing import Any, Union
+from typing import Any
+from typing import Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
-from anemoi.datasets.usage.debug import Node, Source, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    make_slice_or_index_from_list_or_tuple,
-    update_tuple,
-)
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import make_slice_or_index_from_list_or_tuple
+from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -88,9 +92,7 @@ def _end(a: int, b: int, dates: NDArray[np.datetime64]) -> int:
         return b
 
 
-def _combine_reasons(
-    reason1: dict[str, Any], reason2: dict[str, Any], dates: NDArray[np.datetime64]
-) -> dict[str, Any]:
+def _combine_reasons(reason1: dict[str, Any], reason2: dict[str, Any], dates: NDArray[np.datetime64]) -> dict[str, Any]:
     """Combine two reason dictionaries.
 
     Parameters:
@@ -121,12 +123,7 @@ class Subset(Forwards):
     reason (Dict[str, Any]): Dictionary of reasons.
     """
 
-    def __init__(
-        self,
-        dataset: Union[Dataset, "Subset"],
-        indices: Sequence[int],
-        reason: dict[str, Any],
-    ) -> None:
+    def __init__(self, dataset: Union[Dataset, "Subset"], indices: Sequence[int], reason: dict[str, Any]) -> None:
         """Initialize the Subset.
 
         Parameters:
@@ -253,9 +250,7 @@ class Subset(Forwards):
         """Get the frequency of the subset."""
         dates = self.dates
         if len(dates) < 2:
-            raise ValueError(
-                f"Cannot determine frequency of a subset with less than two dates ({self.dates})."
-            )
+            raise ValueError(f"Cannot determine frequency of a subset with less than two dates ({self.dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     def source(self, index: int) -> Source:
@@ -308,13 +303,9 @@ class Subset(Forwards):
 
     def forward_subclass_origin(self, index):
         assert (
-            isinstance(index, tuple)
-            and len(index) == 4
-            and all(a > b >= 0 for a, b in zip(self.shape, index))
+            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
         ), tuple
-        return self.dataset.origin(
-            (self.indices[index[0]], index[1], index[2], index[3])
-        )
+        return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
 
     def project(self, projection):
         projection = projection.from_indices(axis=0, indices=self.indices)

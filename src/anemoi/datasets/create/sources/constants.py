@@ -15,6 +15,7 @@ from .forcings import ForcingsSource
 
 @source_registry.register("constants")
 class ConstantsSource(ForcingsSource):
+
     def execute(self, dates):
         warnings.warn(
             "The source `constants` is deprecated, use `forcings` instead.",

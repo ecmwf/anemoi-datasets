@@ -31,7 +31,9 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.trajectories.metadata import trajectory_metadata
@@ -117,11 +119,7 @@ class GriddedAsTrajectory(Forwards):
     @cached_property
     def shape(self) -> Shape:
         """Return the 5-D shape ``(base_dates, variables, ensembles, steps, cells)``."""
-        variables, ensembles, cells = (
-            self.forward.shape[1],
-            self.forward.shape[2],
-            self.forward.shape[3],
-        )
+        variables, ensembles, cells = self.forward.shape[1], self.forward.shape[2], self.forward.shape[3]
         return (len(self), variables, ensembles, len(self._steps), cells)
 
     def _single(self, i: int) -> NDArray[Any]:
@@ -199,9 +197,7 @@ class GriddedAsTrajectory(Forwards):
         """Return the interval between consecutive base dates."""
         dates = self._base_dates
         if len(dates) < 2:
-            raise ValueError(
-                f"Cannot determine base_frequency with fewer than two base dates ({dates})."
-            )
+            raise ValueError(f"Cannot determine base_frequency with fewer than two base dates ({dates}).")
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     # ------------------------------------------------------------------
@@ -270,19 +266,13 @@ class GriddedAsTrajectory(Forwards):
         gridded_missing = self.forward.missing
         if not gridded_missing:
             return set()
-        return {
-            i
-            for i in range(len(self))
-            if set(self._index_map[i].tolist()) & gridded_missing
-        }
+        return {i for i in range(len(self)) if set(self._index_map[i].tolist()) & gridded_missing}
 
     # ------------------------------------------------------------------
     # Metadata
     # ------------------------------------------------------------------
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the underlying gridded dataset's tendencies.
 
         The broadcast gridded variables carry the gridded dataset's own

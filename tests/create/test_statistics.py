@@ -30,9 +30,7 @@ class DatasetMock:
         self.dates = dates
 
 
-def _collect_range(
-    data, dates, lo, hi, *, batch_size=1, **kwargs
-) -> StatisticsCollector:
+def _collect_range(data, dates, lo, hi, *, batch_size=1, **kwargs) -> StatisticsCollector:
     """Collect the rows ``[lo, hi)``, priming the tendency windows with the rows that precede ``lo``."""
     collector = StatisticsCollector(**kwargs)
     warm_up = max(lo - max(kwargs.get("tendencies", {}).values(), default=0), 0)
@@ -52,16 +50,12 @@ def _merge_ranges(data, dates, cutoffs, **kwargs) -> StatisticsCollector:
         paths = []
         for group, (lo, hi) in enumerate(zip(bounds[:-1], bounds[1:])):
             path = f"{tmpdir}/collector{group}.pkl"
-            _collect_range(data, dates, lo, hi, **kwargs).serialise(
-                path, group=group, start=lo, end=hi
-            )
+            _collect_range(data, dates, lo, hi, **kwargs).serialise(path, group=group, start=lo, end=hi)
             paths.append(path)
         return StatisticsCollector.load_precomputed(DatasetMock(data, dates), paths)
 
 
-def _create_random_stats(
-    N, C=5, nan_fraction=0.0
-) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+def _create_random_stats(N, C=5, nan_fraction=0.0) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     """Generate random data with known statistics.
 
     Parameters
@@ -105,9 +99,7 @@ def _create_random_stats(
     if nan_fraction > 0:
         constants_without_nan = [np.random.rand() < 0.1 for _ in constants]
         nan_mask = np.random.rand(N, C) < nan_fraction
-        nan_mask[:, constants_without_nan] = (
-            False  # Do not introduce NaNs in constant columns
-        )
+        nan_mask[:, constants_without_nan] = False  # Do not introduce NaNs in constant columns
         data[nan_mask] = np.nan
         nan_count = np.sum(nan_mask)
         print(f"Introduced {nan_count} NaN values ({100 * nan_count / (N * C):.1f}%)")
@@ -152,18 +144,10 @@ def _check_statistics(data, target_stats):
     # Check if data has NaNs to determine which computation method to use
     has_nans = np.any(np.isnan(data))
     calc_stats = _compute_statistics(data, nan=has_nans)
-    assert np.allclose(calc_stats["mean"], target_stats["mean"], equal_nan=True), (
-        "Mean check failed"
-    )
-    assert np.allclose(calc_stats["stdev"], target_stats["stdev"], equal_nan=True), (
-        "Std deviation check failed"
-    )
-    assert np.allclose(
-        calc_stats["minimum"], target_stats["minimum"], equal_nan=True
-    ), "Min check failed"
-    assert np.allclose(
-        calc_stats["maximum"], target_stats["maximum"], equal_nan=True
-    ), "Max check failed"
+    assert np.allclose(calc_stats["mean"], target_stats["mean"], equal_nan=True), "Mean check failed"
+    assert np.allclose(calc_stats["stdev"], target_stats["stdev"], equal_nan=True), "Std deviation check failed"
+    assert np.allclose(calc_stats["minimum"], target_stats["minimum"], equal_nan=True), "Min check failed"
+    assert np.allclose(calc_stats["maximum"], target_stats["maximum"], equal_nan=True), "Max check failed"
 
 
 def test_statistics_collector_single_batch(N=1_000_000, C=5):
@@ -184,9 +168,9 @@ def test_statistics_collector_single_batch(N=1_000_000, C=5):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-10, equal_nan=True), (
-            f"{name.capitalize()} does not match!"
-        )
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-10, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ Single batch test PASSED")
 
@@ -221,9 +205,9 @@ def test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_0
         print(f"   Computed: {computed_stats[name]}")
         diff = np.abs(computed_stats[name] - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-10, equal_nan=True), (
-            f"{name.capitalize()} does not match!"
-        )
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-10, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ Multiple batches test PASSED")
 
@@ -232,9 +216,7 @@ def test_statistics_with_nans(N=100_000, C=3, nan_fraction=0.1):
     """Test statistics collector with NaN values."""
     data, target_stats = _create_random_stats(N, C, nan_fraction=nan_fraction)
 
-    collector = StatisticsCollector(
-        variables_names=[f"var{i}" for i in range(C)], allow_nans=True
-    )
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], allow_nans=True)
 
     # Test with batches
     batch_size = 10_000
@@ -250,9 +232,9 @@ def test_statistics_with_nans(N=100_000, C=3, nan_fraction=0.1):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(computed_stats[name], target, rtol=1e-9, equal_nan=True), (
-            f"{name.capitalize()} does not match!"
-        )
+        assert np.allclose(
+            computed_stats[name], target, rtol=1e-9, equal_nan=True
+        ), f"{name.capitalize()} does not match!"
 
     print("✓ NaN handling test PASSED")
 
@@ -269,9 +251,9 @@ def test_edge_cases():
 
     computed_stats = collector.statistics()
     for name in target_stats:
-        assert np.allclose(computed_stats[name], target_stats[name], equal_nan=True), (
-            f"Single-row batch test failed for {name}"
-        )
+        assert np.allclose(
+            computed_stats[name], target_stats[name], equal_nan=True
+        ), f"Single-row batch test failed for {name}"
     print("   ✓ Single-row batches work correctly")
 
     # Test with varying batch sizes
@@ -285,9 +267,9 @@ def test_edge_cases():
 
     computed_stats2 = collector2.statistics()
     for name in target_stats:
-        assert np.allclose(computed_stats2[name], target_stats[name], equal_nan=True), (
-            f"Varying batch size test failed for {name}"
-        )
+        assert np.allclose(
+            computed_stats2[name], target_stats[name], equal_nan=True
+        ), f"Varying batch size test failed for {name}"
     print("   ✓ Varying batch sizes work correctly")
 
     print("\n✓ All edge cases PASSED")
@@ -305,10 +287,7 @@ def test_tendencies_single_batch(N=1000, C=3, delta=1):
     print(f"Expected {N - delta} tendency samples")
 
     # Create collector with tendencies
-    collector = StatisticsCollector(
-        variables_names=[f"var{i}" for i in range(C)],
-        tendencies={f"delta_{delta}": delta},
-    )
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta})
 
     # Collect all data at once
     collector.collect(data, range(N))
@@ -324,9 +303,7 @@ def test_tendencies_single_batch(N=1000, C=3, delta=1):
         print(f"   Computed: {computed}")
         diff = np.abs(computed - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
-            f"Tendency {stat_name} does not match!"
-        )
+        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), f"Tendency {stat_name} does not match!"
 
     print("✓ Tendencies single batch test PASSED")
 
@@ -345,10 +322,7 @@ def test_tendencies_multiple_batches(batch_size, delta, N=100, C=3):
     print(f"Expected {N - delta} tendency samples")
 
     # Create collector with tendencies
-    collector = StatisticsCollector(
-        variables_names=[f"var{i}" for i in range(C)],
-        tendencies={f"delta_{delta}": delta},
-    )
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta})
 
     # Collect data in batches
     num_batches = (N + batch_size - 1) // batch_size
@@ -370,9 +344,7 @@ def test_tendencies_multiple_batches(batch_size, delta, N=100, C=3):
         print(f"   Computed: {computed}")
         diff = np.abs(computed - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
-            f"Tendency {stat_name} does not match!"
-        )
+        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), f"Tendency {stat_name} does not match!"
 
     print("✓ Tendencies multiple batches test PASSED")
 
@@ -388,9 +360,7 @@ def test_tendencies_multiple_deltas(N=500, C=2):
         expected[name] = _compute_tendency_statistics(data, delta)
 
     # Create collector with multiple tendencies
-    collector = StatisticsCollector(
-        variables_names=[f"var{i}" for i in range(C)], tendencies=deltas
-    )
+    collector = StatisticsCollector(variables_names=[f"var{i}" for i in range(C)], tendencies=deltas)
 
     # Collect data in batches
     batch_size = 50
@@ -409,26 +379,18 @@ def test_tendencies_multiple_deltas(N=500, C=2):
             computed = computed_stats[key]
             diff = np.abs(computed - target)
             print(f"  {stat_name}: max_diff={np.max(diff):.2e}")
-            assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
-                f"Tendency {tendency_name}, {stat_name} does not match!"
-            )
+            assert np.allclose(
+                computed, target, rtol=1e-9, equal_nan=True
+            ), f"Tendency {tendency_name}, {stat_name} does not match!"
 
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
 
 @pytest.mark.parametrize("delta", [1, 2, 5])
-@pytest.mark.parametrize(
-    "filter_end", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99]
-)
-@pytest.mark.parametrize(
-    "filter_start", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99, 100]
-)
+@pytest.mark.parametrize("filter_end", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99])
+@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 50, 94, 95, 96, 97, 98, 99, 100])
 def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
-    if (
-        filter_start is not None
-        and filter_end is not None
-        and filter_end < filter_start
-    ):
+    if filter_start is not None and filter_end is not None and filter_end < filter_start:
         return
 
     data, _ = _create_random_stats(100, C)
@@ -447,17 +409,12 @@ def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
     # Actual filtered range is [filter_start, filter_end] (inclusive on both ends)
     # For tendencies, we also need the lookback data to be in range
     # So valid tendencies are for indices in [filter_start + delta, filter_end + 1)
-    expected_tendencies = (
-        data[filter_start + delta : filter_end + 1]
-        - data[filter_start : filter_end + 1 - delta]
-    )
+    expected_tendencies = data[filter_start + delta : filter_end + 1] - data[filter_start : filter_end + 1 - delta]
     expected = _compute_statistics(expected_tendencies, nan=False)
 
     # Create collector with tendency and filter
     collector = StatisticsCollector(
-        variables_names=[f"var{i}" for i in range(C)],
-        tendencies={f"delta_{delta}": delta},
-        filter=filter,
+        variables_names=[f"var{i}" for i in range(C)], tendencies={f"delta_{delta}": delta}, filter=filter
     )
 
     # Collect all data at once
@@ -474,18 +431,16 @@ def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
         print(f"   Target:   {target}")
         print(f"   Computed: {computed}")
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
-            f"Tendency {stat_name} with filter does not match!"
-        )
+        assert np.allclose(
+            computed, target, rtol=1e-9, equal_nan=True
+        ), f"Tendency {stat_name} with filter does not match!"
 
     print("✓ Tendencies with filter test PASSED")
 
 
 def test_serialisation():
     data, _ = _create_random_stats(1000, 3, nan_fraction=0.05)
-    c = StatisticsCollector(
-        variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1}
-    )
+    c = StatisticsCollector(variables_names=["a", "b", "c"], allow_nans=True, tendencies={"delta_1": 1})
     c.collect(data, range(len(data)))
     c_stats = deepcopy(c.statistics())
     c_constants = deepcopy(c.constant_variables())
@@ -506,21 +461,13 @@ def test_merge_tendencies_with_batches_smaller_than_delta():
     filter = StatisticsFilter(dates[0], dates[-1])
     tendencies = {"delta_6": delta}
 
-    c0 = StatisticsCollector(
-        variables_names=["a"], tendencies=tendencies, filter=filter
-    )
+    c0 = StatisticsCollector(variables_names=["a"], tendencies=tendencies, filter=filter)
     for i in range(n_dates):
         c0.collect(data[i : i + 1], dates[i : i + 1])
     c0_stats = deepcopy(c0.statistics())
 
     reloaded = _merge_ranges(
-        data,
-        dates,
-        [partition],
-        batch_size=1,
-        variables_names=["a"],
-        tendencies=tendencies,
-        filter=filter,
+        data, dates, [partition], batch_size=1, variables_names=["a"], tendencies=tendencies, filter=filter
     )
 
     compare_statistics(reloaded.statistics(), c0_stats)
@@ -534,9 +481,7 @@ def test_merge_tendencies_with_batches_smaller_than_delta():
         pytest.param({"delta_1": 1, "delta_5": 5, "delta_10": 10}, id="deltas_1_5_10"),
     ],
 )
-@pytest.mark.parametrize(
-    "filter_end", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100]
-)
+@pytest.mark.parametrize("filter_end", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
 @pytest.mark.parametrize(
     "cutoffs",
     [
@@ -545,16 +490,10 @@ def test_merge_tendencies_with_batches_smaller_than_delta():
         pytest.param([3, 7, 50, 52, 95], id="cutoffs-many"),
     ],
 )
-@pytest.mark.parametrize(
-    "filter_start", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100]
-)
+@pytest.mark.parametrize("filter_start", [None, 1, 2, 3, 4, 5, 6, 10, 20, 50, 94, 95, 96, 97, 98, 99, 100])
 def test_merge_statistic_with_filter(filter_start, filter_end, deltas, cutoffs):
     """Contiguous ranges collected with a tendency warm-up and merged match a single pass."""
-    if (
-        filter_start is not None
-        and filter_end is not None
-        and filter_end < filter_start
-    ):
+    if filter_start is not None and filter_end is not None and filter_end < filter_start:
         return
 
     data, _ = _create_random_stats(100, 2)
@@ -566,21 +505,13 @@ def test_merge_statistic_with_filter(filter_start, filter_end, deltas, cutoffs):
         filter_end = dates[-1]
     filter = StatisticsFilter(filter_start, filter_end)
 
-    c0 = StatisticsCollector(
-        variables_names=["a", "b"], tendencies=deltas, filter=filter
-    )
+    c0 = StatisticsCollector(variables_names=["a", "b"], tendencies=deltas, filter=filter)
     c0.collect(data, dates)
     c0_stats = deepcopy(c0.statistics())
     c0_constants = deepcopy(c0.constant_variables())
 
     reloaded = _merge_ranges(
-        data,
-        dates,
-        cutoffs,
-        batch_size=4,
-        variables_names=["a", "b"],
-        tendencies=deltas,
-        filter=filter,
+        data, dates, cutoffs, batch_size=4, variables_names=["a", "b"], tendencies=deltas, filter=filter
     )
 
     compare_statistics(reloaded.statistics(), c0_stats)

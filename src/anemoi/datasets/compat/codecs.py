@@ -66,9 +66,7 @@ def numcodecs_codec(spec: dict[str, Any]) -> numcodecs.abc.Codec:
     if name == "blosc":
         config.pop("typesize", None)  # numcodecs takes it from the data
         if config["shuffle"] not in BLOSC_SHUFFLE:
-            raise ValueError(
-                f"Invalid blosc shuffle {config['shuffle']!r}, expected one of {BLOSC_SHUFFLE}"
-            )
+            raise ValueError(f"Invalid blosc shuffle {config['shuffle']!r}, expected one of {BLOSC_SHUFFLE}")
         config["shuffle"] = BLOSC_SHUFFLE.index(config["shuffle"])
         return numcodecs.Blosc(**config)
     if name == "zstd":
@@ -85,23 +83,10 @@ def zarr3_spec(codec: numcodecs.abc.Codec) -> dict[str, Any]:
         If the codec has no built-in Zarr format 3 equivalent.
     """
     if isinstance(codec, numcodecs.Blosc) and codec.shuffle in (0, 1, 2):
-        config = {
-            "cname": codec.cname,
-            "clevel": codec.clevel,
-            "shuffle": BLOSC_SHUFFLE[codec.shuffle],
-        }
-        return {
-            "name": "blosc",
-            "configuration": {**config, "blocksize": codec.blocksize},
-        }
+        config = {"cname": codec.cname, "clevel": codec.clevel, "shuffle": BLOSC_SHUFFLE[codec.shuffle]}
+        return {"name": "blosc", "configuration": {**config, "blocksize": codec.blocksize}}
     if isinstance(codec, numcodecs.Zstd):
-        return {
-            "name": "zstd",
-            "configuration": {
-                "level": codec.level,
-                "checksum": getattr(codec, "checksum", False),
-            },
-        }
+        return {"name": "zstd", "configuration": {"level": codec.level, "checksum": getattr(codec, "checksum", False)}}
     if isinstance(codec, numcodecs.GZip):
         return {"name": "gzip", "configuration": {"level": codec.level}}
     raise NotImplementedError(f"cannot translate {codec!r} to Zarr format 3")

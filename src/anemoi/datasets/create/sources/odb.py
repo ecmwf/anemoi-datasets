@@ -106,9 +106,7 @@ class OdbSource(Source):
             LOG.warning("No SELECT clause provided; defaulting to all columns.")
         if not where:
             where = ""
-            LOG.warning(
-                "No WHERE clause provided; defaulting to no additional filtering."
-            )
+            LOG.warning("No WHERE clause provided; defaulting to no additional filtering.")
         self.select = select
         self.where = where
         self.flavour = {
@@ -136,33 +134,21 @@ class OdbSource(Source):
             The output dataframe.
         """
 
-        def _add_dates(
-            date: str, offset: datetime.timedelta, exclude: bool
-        ) -> datetime.datetime:
+        def _add_dates(date: str, offset: datetime.timedelta, exclude: bool) -> datetime.datetime:
             small_time = np.timedelta64(100, "ms")
             dt = datetime.datetime.fromisoformat(date)
             print(offset, type(offset))
             if exclude:
-                return (
-                    dt
-                    + offset
-                    + (1 if offset < datetime.timedelta(0) else -1) * small_time
-                )
+                return dt + offset + (1 if offset < datetime.timedelta(0) else -1) * small_time
             else:
                 return dt + offset
 
         df_list = []
-        for idate, (expanded_path, date_list) in enumerate(
-            iterate_patterns(self.path, dates)
-        ):
+        for idate, (expanded_path, date_list) in enumerate(iterate_patterns(self.path, dates)):
             LOG.info(f"Working on {expanded_path} {date_list[idate]}")
             if self.window is not None:
-                start = _add_dates(
-                    date_list[idate], self.window.before, self.window.exclude_before
-                )
-                end = _add_dates(
-                    date_list[idate], self.window.after, self.window.exclude_after
-                )
+                start = _add_dates(date_list[idate], self.window.before, self.window.exclude_before)
+                end = _add_dates(date_list[idate], self.window.after, self.window.exclude_after)
             df = odb2df(
                 start=start,
                 end=end,
@@ -266,18 +252,14 @@ def odb2df(
     )
     LOG.info(f"Using SQL query: {sql}")
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".odb", delete=not keep_temp_odb
-    ) as intermediate_odb_path:
+    with tempfile.NamedTemporaryFile(suffix=".odb", delete=not keep_temp_odb) as intermediate_odb_path:
         subselect_odb_using_odc_sql(
             input_odb_path=path,
             output_odb_path=intermediate_odb_path.name,
             sql_query_string=sql,
         )
         if os.path.getsize(intermediate_odb_path.name) == 0:
-            LOG.info(
-                f"SQL query returned no results for ODB file at {path} with query: {sql}"
-            )
+            LOG.info(f"SQL query returned no results for ODB file at {path} with query: {sql}")
             return None
         df = odc.read_odb(intermediate_odb_path.name, single=True, aggregated=True)
         LOG.info(f"Intermediate ODB file created at: {intermediate_odb_path.name}")
@@ -294,9 +276,7 @@ def odb2df(
         + df[flavour["time_column_name"]].astype(str).str.zfill(6),
         format="%Y%m%d%H%M%S",
     )
-    df.drop(
-        columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True
-    )
+    df.drop(columns=[flavour["date_column_name"], flavour["time_column_name"]], inplace=True)
 
     # The latitude and longitude columns may need renaming to standard names
     if flavour["latitude_column_name"] != "latitude":
@@ -367,19 +347,11 @@ def odb_sql_str(
             default_select = ""
         else:
             # Check for overlap between required_columns and select
-            select_columns = [
-                col.strip() for col in select.split(",")
-            ]  # Strip whitespace
-            overlapping_columns = [
-                col for col in required_columns if col in select_columns
-            ]
+            select_columns = [col.strip() for col in select.split(",")]  # Strip whitespace
+            overlapping_columns = [col for col in required_columns if col in select_columns]
             if overlapping_columns:
-                required_columns = [
-                    col for col in required_columns if col not in overlapping_columns
-                ]
-            missing_columns = [
-                col for col in required_columns if col not in overlapping_columns
-            ]
+                required_columns = [col for col in required_columns if col not in overlapping_columns]
+            missing_columns = [col for col in required_columns if col not in overlapping_columns]
             if missing_columns:
                 LOG.warning(
                     f"Not all required columns are included in the SELECT statement. Missing columns: {missing_columns}"
@@ -391,9 +363,7 @@ def odb_sql_str(
     if select == "":
         select = default_select
     else:
-        select = f"{default_select}, {select}".strip(
-            ", "
-        )  # Ensure no leading ", " if default_select is empty
+        select = f"{default_select}, {select}".strip(", ")  # Ensure no leading ", " if default_select is empty
 
     # strip any trailing commas and whitespace - these are in the final query
     select = select.rstrip(", ").strip()
@@ -468,9 +438,7 @@ def subselect_odb_using_odc_sql(
 
     except subprocess.CalledProcessError as e:
         LOG.error(f"Error output: {e.stderr}")
-        raise RuntimeError(
-            f"ODC SQL command failed with exit code {e.returncode}"
-        ) from e
+        raise RuntimeError(f"ODC SQL command failed with exit code {e.returncode}") from e
 
 
 def pivot_obs_df(df: pandas.DataFrame, values: list, columns: list) -> pandas.DataFrame:

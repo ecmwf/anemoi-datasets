@@ -25,10 +25,7 @@ LOG = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # ``...-<purpose>-<labelling>-<source>-<resolution>-<start>-<end>-<freq>-v<n>[-extra]``
-GRIDDED_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)-([0-9ron]\w*)-(\d\d\d\d)-(\d\d\d\d)-"
-    r"(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
-)
+GRIDDED_PATTERN = r"^(\w+)-([\w-]+)-(\w+)-([0-9ron]\w*)-(\d\d\d\d)-(\d\d\d\d)-" r"(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
 GRIDDED_KEYS = [
     "purpose",
     "labelling",
@@ -43,8 +40,7 @@ GRIDDED_KEYS = [
 
 # ``...-<source>-<resolution>-<start>-<end>-<date-freq>-<step-freq>-v<n>[-extra]``
 TRAJECTORIES_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)-([0-9ron]\w*)-(\d\d\d\d)-(\d\d\d\d)-"
-    r"(\d+h|\d+m)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
+    r"^(\w+)-([\w-]+)-(\w+)-([0-9ron]\w*)-(\d\d\d\d)-(\d\d\d\d)-" r"(\d+h|\d+m)-(\d+h|\d+m)-v(\d+)-?([a-zA-Z0-9-]+)?$"
 )
 TRAJECTORIES_KEYS = [
     "purpose",
@@ -62,10 +58,7 @@ TRAJECTORIES_KEYS = [
 # ``...-<source>[-<resolution>]-<start>-<end>-v<n>[-extra]``
 # Resolution is optional: tabular datasets may have no meaningful spatial
 # resolution (e.g. station observations).
-TABULAR_PATTERN = (
-    r"^(\w+)-([\w-]+)-(\w+)(?:-([0-9ron]\w*))?-(\d\d\d\d)-(\d\d\d\d)-"
-    r"v(\d+)-?([a-zA-Z0-9-]+)?$"
-)
+TABULAR_PATTERN = r"^(\w+)-([\w-]+)-(\w+)(?:-([0-9ron]\w*))?-(\d\d\d\d)-(\d\d\d\d)-" r"v(\d+)-?([a-zA-Z0-9-]+)?$"
 TABULAR_KEYS = [
     "purpose",
     "labelling",
@@ -105,9 +98,7 @@ def _guess_layout_from_name(name: str) -> str | None:
     str or None
         The layout name when exactly one pattern matches, otherwise ``None``.
     """
-    matches = [
-        layout for layout, pattern in LAYOUT_PATTERNS.items() if re.match(pattern, name)
-    ]
+    matches = [layout for layout, pattern in LAYOUT_PATTERNS.items() if re.match(pattern, name)]
     if len(matches) == 1:
         return matches[0]
     return None
@@ -126,27 +117,19 @@ def _check_characters(name: str) -> list[str]:
         messages.append(f"The dataset name '{name}' should use '-' instead of '_'.")
     for c in name:
         if not c.isalnum() and c not in "-":
-            messages.append(
-                f"The dataset name '{name}' should only contain alphanumeric characters and '-'."
-            )
+            messages.append(f"The dataset name '{name}' should only contain alphanumeric characters and '-'.")
     return messages
 
 
-def _check_resolution_match(
-    parsed: dict, resolution: str | None, name: str
-) -> list[str]:
+def _check_resolution_match(parsed: dict, resolution: str | None, name: str) -> list[str]:
     if resolution is None:
         return []
     messages: list[str] = []
     resolution_str = str(resolution).replace(".", "p").lower()
     if resolution_str not in name:
-        messages.append(
-            f"The resolution is '{resolution_str}', but it is missing in '{name}'."
-        )
+        messages.append(f"The resolution is '{resolution_str}', but it is missing in '{name}'.")
     if parsed.get("resolution") and parsed["resolution"] != resolution_str:
-        messages.append(
-            f"The resolution is '{resolution_str}', but it is '{parsed['resolution']}' in '{name}'."
-        )
+        messages.append(f"The resolution is '{resolution_str}', but it is '{parsed['resolution']}' in '{name}'.")
     return messages
 
 
@@ -158,19 +141,13 @@ def _check_frequency_match(
     messages: list[str] = []
     frequency_str = frequency_to_string(frequency)
     if frequency_str not in name:
-        messages.append(
-            f"The {label} is '{frequency_str}', but it is missing in '{name}'."
-        )
+        messages.append(f"The {label} is '{frequency_str}', but it is missing in '{name}'.")
     if parsed.get(key) and parsed[key] != frequency_str:
-        messages.append(
-            f"The {label} is '{frequency_str}', but it is '{parsed[key]}' in '{name}'."
-        )
+        messages.append(f"The {label} is '{frequency_str}', but it is '{parsed[key]}' in '{name}'.")
     return messages
 
 
-def _check_year_match(
-    parsed: dict, year_date: datetime.date | None, key: str, label: str, name: str
-) -> list[str]:
+def _check_year_match(parsed: dict, year_date: datetime.date | None, key: str, label: str, name: str) -> list[str]:
     if year_date is None:
         return []
     messages: list[str] = []
@@ -178,9 +155,7 @@ def _check_year_match(
     if year_str not in name:
         messages.append(f"The {label} is '{year_str}', but it is missing in '{name}'.")
     if parsed.get(key) and parsed[key] != year_str:
-        messages.append(
-            f"The {label} is '{year_str}', but it is '{parsed[key]}' in '{name}'."
-        )
+        messages.append(f"The {label} is '{year_str}', but it is '{parsed[key]}' in '{name}'.")
     return messages
 
 
@@ -209,11 +184,7 @@ def _layout_mismatch_diagnostic(name: str, requested_layout: str) -> list[str]:
 
 
 def _format_parsed(name: str, parsed: dict) -> str:
-    return (
-        f"'{name}' is parsed as: "
-        + "/".join(f"{k}={v}" for k, v in parsed.items())
-        + "."
-    )
+    return f"'{name}' is parsed as: " + "/".join(f"{k}={v}" for k, v in parsed.items()) + "."
 
 
 # ---------------------------------------------------------------------------
@@ -235,12 +206,8 @@ def _check_gridded_name(
         return messages
     parsed = dict(zip(GRIDDED_KEYS, match.groups()))
     messages.extend(_check_resolution_match(parsed, resolution, name))
-    messages.extend(
-        _check_frequency_match(parsed, frequency, "frequency", "frequency", name)
-    )
-    messages.extend(
-        _check_year_match(parsed, start_date, "start_date", "start date", name)
-    )
+    messages.extend(_check_frequency_match(parsed, frequency, "frequency", "frequency", name))
+    messages.extend(_check_year_match(parsed, start_date, "start_date", "start date", name))
     messages.extend(_check_year_match(parsed, end_date, "end_date", "end date", name))
     if messages:
         messages.append(_format_parsed(name, parsed))
@@ -262,17 +229,9 @@ def _check_trajectories_name(
         return messages
     parsed = dict(zip(TRAJECTORIES_KEYS, match.groups()))
     messages.extend(_check_resolution_match(parsed, resolution, name))
-    messages.extend(
-        _check_frequency_match(parsed, frequency, "frequency", "frequency", name)
-    )
-    messages.extend(
-        _check_frequency_match(
-            parsed, step_frequency, "step_frequency", "step frequency", name
-        )
-    )
-    messages.extend(
-        _check_year_match(parsed, start_date, "start_date", "start date", name)
-    )
+    messages.extend(_check_frequency_match(parsed, frequency, "frequency", "frequency", name))
+    messages.extend(_check_frequency_match(parsed, step_frequency, "step_frequency", "step frequency", name))
+    messages.extend(_check_year_match(parsed, start_date, "start_date", "start date", name))
     messages.extend(_check_year_match(parsed, end_date, "end_date", "end date", name))
     if messages:
         messages.append(_format_parsed(name, parsed))
@@ -292,9 +251,7 @@ def _check_tabular_name(
         return messages
     parsed = dict(zip(TABULAR_KEYS, match.groups()))
     messages.extend(_check_resolution_match(parsed, resolution, name))
-    messages.extend(
-        _check_year_match(parsed, start_date, "start_date", "start date", name)
-    )
+    messages.extend(_check_year_match(parsed, start_date, "start_date", "start date", name))
     messages.extend(_check_year_match(parsed, end_date, "end_date", "end date", name))
     if messages:
         messages.append(_format_parsed(name, parsed))
@@ -314,14 +271,10 @@ def _dispatch(
     if layout == "gridded":
         return _check_gridded_name(name, resolution, start_date, end_date, frequency)
     if layout == "trajectories":
-        return _check_trajectories_name(
-            name, resolution, start_date, end_date, frequency, step_frequency
-        )
+        return _check_trajectories_name(name, resolution, start_date, end_date, frequency, step_frequency)
     if layout == "tabular":
         return _check_tabular_name(name, resolution, start_date, end_date)
-    raise ValueError(
-        f"Unknown layout {layout!r}; expected 'gridded', 'trajectories' or 'tabular'."
-    )
+    raise ValueError(f"Unknown layout {layout!r}; expected 'gridded', 'trajectories' or 'tabular'.")
 
 
 # ---------------------------------------------------------------------------
@@ -393,16 +346,12 @@ def check_dataset_name(
         return []
 
     if layout is not None:
-        return _dispatch(
-            layout, name, resolution, start_date, end_date, frequency, step_frequency
-        )
+        return _dispatch(layout, name, resolution, start_date, end_date, frequency, step_frequency)
 
     # Layout unknown: accept the name if any layout accepts it.
     results: dict[str, list[str]] = {}
     for candidate in ("gridded", "trajectories", "tabular"):
-        messages = _dispatch(
-            candidate, name, resolution, start_date, end_date, frequency, step_frequency
-        )
+        messages = _dispatch(candidate, name, resolution, start_date, end_date, frequency, step_frequency)
         if not messages:
             return []
         results[candidate] = messages

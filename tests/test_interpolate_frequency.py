@@ -12,7 +12,8 @@
 from unittest.mock import patch
 
 import numpy as np
-from test_data import create_zarr, mockup_open_zarr
+from test_data import create_zarr
+from test_data import mockup_open_zarr
 
 from anemoi.datasets import open_dataset
 
@@ -71,14 +72,9 @@ def test_interpolate_frequency_preserves_float32():
     root = create_zarr(vars=["a", "b"], start=2021, end=2021, dtype=np.float32)
 
     with patch("zarr.open", lambda name, mode: root):
-        with patch(
-            "anemoi.datasets.usage.store.dataset_lookup",
-            lambda name, fail: name + ".zarr",
-        ):
+        with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, fail: name + ".zarr"):
             ds = open_dataset("test", interpolate_frequency="3h")
 
     # All timesteps (original and interpolated) must remain float32
     for i in range(min(len(ds), 10)):
-        assert ds[i].dtype == np.float32, (
-            f"Timestep {i}: dtype is {ds[i].dtype}, expected float32"
-        )
+        assert ds[i].dtype == np.float32, f"Timestep {i}: dtype is {ds[i].dtype}, expected float32"

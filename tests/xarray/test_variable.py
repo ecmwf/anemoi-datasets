@@ -13,18 +13,14 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import (
-    DateCoordinate,
-    LatitudeCoordinate,
-    LevelCoordinate,
-    LongitudeCoordinate,
-    StepCoordinate,
-    TimeCoordinate,
-)
+from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
 from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
-from anemoi.datasets.create.sources.xarray_support.time import (
-    ForecastFromValidTimeAndStep,
-)
+from anemoi.datasets.create.sources.xarray_support.time import ForecastFromValidTimeAndStep
 from anemoi.datasets.create.sources.xarray_support.variable import Variable
 
 
@@ -32,10 +28,7 @@ from anemoi.datasets.create.sources.xarray_support.variable import Variable
 def sample_variable():
     ds = xr.Dataset(
         {
-            "temperature": (
-                ("time", "pressure", "latitude", "longitude"),
-                np.ones((1, 3, 3, 4)),
-            ),
+            "temperature": (("time", "pressure", "latitude", "longitude"), np.ones((1, 3, 3, 4))),
         },
         coords={
             "time": ("time", [datetime.datetime(2025, 2, 3)]),
@@ -61,14 +54,7 @@ def sample_variable():
         LongitudeCoordinate(ds["longitude"]),
     ]
 
-    variable = Variable(
-        ds=ds,
-        variable=ds["temperature"],
-        coordinates=coordinates,
-        grid=None,
-        time=time,
-        metadata={},
-    )
+    variable = Variable(ds=ds, variable=ds["temperature"], coordinates=coordinates, grid=None, time=time, metadata={})
     return variable
 
 
@@ -86,19 +72,15 @@ def test_sel_multiple_values(sample_variable):
 def test_sel_from_scalar_time(sample_variable):
     result = sample_variable.sel({}, valid_datetime=datetime.datetime(2025, 2, 3))
     assert np.array_equal(
-        result.variable["time"].values,
-        np.array([datetime.datetime(2025, 2, 3)], dtype="datetime64[ns]"),
+        result.variable["time"].values, np.array([datetime.datetime(2025, 2, 3)], dtype="datetime64[ns]")
     )
 
 
 def test_sel_multiple_coordinates(sample_variable):
-    result = sample_variable.sel(
-        {}, valid_datetime=datetime.datetime(2025, 2, 3), pressure=[850, 925]
-    )
+    result = sample_variable.sel({}, valid_datetime=datetime.datetime(2025, 2, 3), pressure=[850, 925])
     assert np.array_equal(result.variable["pressure"].values, np.array([850, 925]))
     assert np.array_equal(
-        result.variable["time"].values,
-        np.array([datetime.datetime(2025, 2, 3)], dtype="datetime64[ns]"),
+        result.variable["time"].values, np.array([datetime.datetime(2025, 2, 3)], dtype="datetime64[ns]")
     )
 
 
@@ -112,14 +94,8 @@ def mixed_fieldlist():
     ds = xr.Dataset(
         {
             # Pressure-level variable
-            "q": (
-                ("level", "latitude", "longitude", "time"),
-                np.ones((nlev, nlat, nlon, ntime)),
-            ),
-            "t": (
-                ("level", "latitude", "longitude", "time"),
-                np.ones((nlev, nlat, nlon, ntime)),
-            ),
+            "q": (("level", "latitude", "longitude", "time"), np.ones((nlev, nlat, nlon, ntime))),
+            "t": (("level", "latitude", "longitude", "time"), np.ones((nlev, nlat, nlon, ntime))),
             # Surface variable (no level dimension)
             "tcw": (("latitude", "longitude", "time"), np.ones((nlat, nlon, ntime))),
         },
@@ -133,16 +109,8 @@ def mixed_fieldlist():
     )
 
     # Set variable attributes as a real CF-compliant NetCDF would have
-    ds["q"].attrs.update(
-        {
-            "units": "kg kg**-1",
-            "standard_name": "specific_humidity",
-            "long_name": "Specific humidity",
-        }
-    )
-    ds["t"].attrs.update(
-        {"units": "K", "standard_name": "air_temperature", "long_name": "Temperature"}
-    )
+    ds["q"].attrs.update({"units": "kg kg**-1", "standard_name": "specific_humidity", "long_name": "Specific humidity"})
+    ds["t"].attrs.update({"units": "K", "standard_name": "air_temperature", "long_name": "Temperature"})
     ds["tcw"].attrs.update(
         {
             "units": "kg m-2",
@@ -161,9 +129,9 @@ def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
 
     for field in q_fields:
         levtype = field.metadata("levtype", default=None)
-        assert levtype is not None, (
-            f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
-        )
+        assert (
+            levtype is not None
+        ), f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
 
         units = field.metadata("units", default=None)
         assert units == "kg kg**-1", f"Expected units='kg kg**-1' for q, got {units!r}"
@@ -176,9 +144,7 @@ def test_levtype_metadata_on_surface_field(mixed_fieldlist):
 
     for field in tcw_fields:
         levtype = field.metadata("levtype")
-        assert levtype == "sfc", (
-            f"Expected levtype='sfc' for surface field tcw, got levtype={levtype!r}"
-        )
+        assert levtype == "sfc", f"Expected levtype='sfc' for surface field tcw, got levtype={levtype!r}"
 
         units = field.metadata("units")
         assert units == "kg m-2", f"Expected units='kg m-2' for tcw, got {units!r}"

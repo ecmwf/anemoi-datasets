@@ -14,10 +14,12 @@ import time
 from collections import defaultdict
 from functools import cached_property
 from typing import Any
+from typing import DefaultDict
 
 import numpy as np
 from anemoi.utils.dates import as_timedelta
-from anemoi.utils.humanize import seconds_to_human, shorten_list
+from anemoi.utils.humanize import seconds_to_human
+from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
@@ -44,9 +46,7 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 }
 
 
-def _fields_metatata(
-    variables: tuple[str, ...], cube: Any, units_seen: dict
-) -> dict[str, Any]:
+def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
     """Retrieve metadata for the given variables and cube.
 
     Parameters
@@ -69,7 +69,7 @@ def _fields_metatata(
     def _merge(md1: dict[str, Any], md2: dict[str, Any]) -> dict[str, Any]:
         assert set(md1.keys()) == set(md2.keys()), (set(md1.keys()), set(md2.keys()))
         result: dict[str, Any] = {}
-        for k in md1:
+        for k in md1.keys():
             v1 = md1[k]
             v2 = md2[k]
 
@@ -92,7 +92,7 @@ def _fields_metatata(
         return result
 
     mars: dict[str, Any] = {}
-    other: defaultdict[str, dict[str, Any]] = defaultdict(dict)
+    other: DefaultDict[str, dict[str, Any]] = defaultdict(dict)
 
     # Find the axis that corresponds to the variables dimension — the one whose
     # values are the variable names.  This is position-agnostic so it works for
@@ -107,8 +107,7 @@ def _fields_metatata(
             break
     if variables_axis_idx is None:
         raise ValueError(
-            f"Could not find variables axis among {list(cube.user_coords.keys())}; "
-            f"variables={variables}"
+            f"Could not find variables axis among {list(cube.user_coords.keys())}; " f"variables={variables}"
         )
 
     # We hold the first axis fixed (so we only walk one "row" of the cube) and
@@ -116,6 +115,7 @@ def _fields_metatata(
     seen_variables: set[str] = set()
     primary_axis_value: Any = None
     for c in cube.iterate_cubelets():
+
         if primary_axis_value is None:
             primary_axis_value = c._coords_names[0]
 
@@ -146,9 +146,7 @@ def _fields_metatata(
             endStep = as_timedelta(endStep)
 
         stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
-        typeOfStatisticalProcessing = f.metadata(
-            "typeOfStatisticalProcessing", default=None
-        )
+        typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)
         timeRangeIndicator = f.metadata("timeRangeIndicator", default=None)
 
         # GRIB1 precipitation accumulations are not correctly encoded
@@ -214,9 +212,7 @@ def _fields_metatata(
             if process is None:
                 process = PATCHES.get(md["param"])
                 if process is not None:
-                    LOG.error(
-                        f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead"
-                    )
+                    LOG.error(f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead")
 
             if process is None:
                 raise ValueError(
@@ -285,8 +281,8 @@ def _data_request(data: Any) -> dict[str, Any]:
         The data request dictionary.
     """
     date: Any | None = None
-    params_levels: defaultdict[str, set] = defaultdict(set)
-    params_steps: defaultdict[str, set] = defaultdict(set)
+    params_levels: DefaultDict[str, set] = defaultdict(set)
+    params_steps: DefaultDict[str, set] = defaultdict(set)
 
     area: Any | None = None
     grid: Any | None = None
@@ -317,12 +313,9 @@ def _data_request(data: Any) -> dict[str, Any]:
             if step:
                 params_steps[levtype].add((param, step))
         except Exception:
-            LOG.error(
-                f"Error in retrieving metadata (cannot build data request info) for {field}",
-                exc_info=True,
-            )
+            LOG.error(f"Error in retrieving metadata (cannot build data request info) for {field}", exc_info=True)
 
-    def sort(old_dic: defaultdict[str, set]) -> dict[str, list[Any]]:
+    def sort(old_dic: DefaultDict[str, set]) -> dict[str, list[Any]]:
         new_dic: dict[str, list[Any]] = {}
         for k, v in old_dic.items():
             new_dic[k] = sorted(list(v))
@@ -331,9 +324,7 @@ def _data_request(data: Any) -> dict[str, Any]:
     params_steps = sort(params_steps)
     params_levels = sort(params_levels)
 
-    return dict(
-        param_level=params_levels, param_step=params_steps, area=area, grid=grid
-    )
+    return dict(param_level=params_levels, param_step=params_steps, area=area, grid=grid)
 
 
 class GriddedResult(Result):
@@ -361,9 +352,9 @@ class GriddedResult(Result):
         self.context: Any = context
         self.datasource = datasource
         self.group_of_dates = argument
-        assert isinstance(self.group_of_dates, (GroupOfDates, ForecastDates)), (
-            f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
-        )
+        assert isinstance(
+            self.group_of_dates, (GroupOfDates, ForecastDates)
+        ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
 
         self._origins = []
         # Used to check if units are consistent across fields for the same variable
@@ -406,7 +397,7 @@ class GriddedResult(Result):
                 patches=self.patches,
             )
             cube = cube.squeeze()
-            LOG.debug(f"Sorting done in {seconds_to_human(time.time() - self.start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
         except AttributeError:
             import pandas as pd
 
@@ -416,9 +407,7 @@ class GriddedResult(Result):
                 )
             raise
         except ValueError:
-            self.explain(
-                ds, self.order_by, remapping=self.remapping, patches=self.patches
-            )
+            self.explain(ds, self.order_by, remapping=self.remapping, patches=self.patches)
             raise
 
         if LOG.isEnabledFor(logging.DEBUG):
@@ -476,9 +465,7 @@ class GriddedResult(Result):
 
         print(f"Building a {len(names)}D hypercube using", names)
         ds = ds.order_by(*args, remapping=remapping, patches=patches)
-        user_coords = ds.unique_values(
-            *names, remapping=remapping, patches=patches, progress_bar=False
-        )
+        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches, progress_bar=False)
 
         print()
         print("Number of unique values found for each coordinate:")
@@ -491,15 +478,10 @@ class GriddedResult(Result):
         user_shape: tuple[int, ...] = tuple(len(v) for k, v in user_coords.items())
         print("Shape of the hypercube           :", user_shape)
         print(
-            "Number of expected fields        :",
-            math.prod(user_shape),
-            "=",
-            " x ".join([str(i) for i in user_shape]),
+            "Number of expected fields        :", math.prod(user_shape), "=", " x ".join([str(i) for i in user_shape])
         )
         print("Number of fields in the dataset  :", len(ds))
-        print(
-            "Difference                       :", abs(len(ds) - math.prod(user_shape))
-        )
+        print("Difference                       :", abs(len(ds) - math.prod(user_shape)))
         print()
 
         remapping = build_remapping(remapping, patches)
@@ -507,9 +489,7 @@ class GriddedResult(Result):
         extra = set()
 
         if math.prod(user_shape) > len(ds):
-            print(
-                f"This means that all the fields in the datasets do not exists for all combinations of {names}."
-            )
+            print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
 
             for f in ds:
                 metadata = remapping(f.metadata)
@@ -567,10 +547,7 @@ class GriddedResult(Result):
             )
 
         else:
-            print(
-                f"More fields in dataset that expected for {names}. "
-                "This means that some fields are duplicated."
-            )
+            print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
             duplicated = defaultdict(list)
             for f in ds:
                 # print(f.metadata(namespace="default"))
@@ -584,11 +561,7 @@ class GriddedResult(Result):
             for i, (k, v) in enumerate(sorted(duplicated.items())):
                 print(" ", k)
                 for f in v:
-                    x = {
-                        k: f.metadata(k, default=None)
-                        for k in METADATA
-                        if f.metadata(k, default=None) is not None
-                    }
+                    x = {k: f.metadata(k, default=None) for k in METADATA if f.metadata(k, default=None) is not None}
                     print("   ", f, x)
                 if i >= 9 and len(duplicated) > 10:
                     print("...", len(duplicated) - i - 1, "more")
@@ -597,10 +570,7 @@ class GriddedResult(Result):
             print()
             print("To solve this issue, you can:")
             print("  - Provide a better selection, like 'step: 0' or 'level: 1000'")
-            print(
-                "  - Change the way 'param' is computed using 'variable_naming' "
-                "in the 'build' section."
-            )
+            print("  - Change the way 'param' is computed using 'variable_naming' " "in the 'build' section.")
 
         print()
         print("❌" * 40)
@@ -633,9 +603,7 @@ class GriddedResult(Result):
 
         keys_from_config: list = list(from_config.keys())
         keys_from_data: list = list(from_data.keys())
-        assert keys_from_data == keys_from_config, (
-            f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
-        )
+        assert keys_from_data == keys_from_config, f"Critical error: {keys_from_data=} != {keys_from_config=}. {self=}"
 
         # The last two order_by keys are always (variables, ensembles);
         # extra leading keys (e.g. 'step' for trajectories) sit before them.
@@ -643,14 +611,7 @@ class GriddedResult(Result):
         ensembles_key: str = keys_from_config[-1]
 
         if isinstance(from_config[variables_key], (list, tuple)):
-            assert all(
-                [
-                    v == w
-                    for v, w in zip(
-                        from_data[variables_key], from_config[variables_key]
-                    )
-                ]
-            ), (
+            assert all([v == w for v, w in zip(from_data[variables_key], from_config[variables_key])]), (
                 from_data[variables_key],
                 from_config[variables_key],
             )
@@ -667,11 +628,7 @@ class GriddedResult(Result):
         lons: Any = grid_points[1]
 
         assert len(lats) == len(lons), (len(lats), len(lons), first_field)
-        assert len(lats) == math.prod(first_field.shape), (
-            len(lats),
-            first_field.shape,
-            first_field,
-        )
+        assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
 
         north: float = np.amax(lats)
         south: float = np.amin(lats)
@@ -696,9 +653,7 @@ class GriddedResult(Result):
                 pass
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
-        self._proj_string: Any = (
-            first_field.proj_string if hasattr(first_field, "proj_string") else None
-        )
+        self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None
 
         self._cube: Any = cube
 

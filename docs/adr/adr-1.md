@@ -151,7 +151,12 @@ MB).
 Example of a call to `open_dataset`:
 
 ```python
-ds = open_dataset(path, start=1979, end=2020, window="(-3,+3]", frequency="6h")
+ds = open_dataset(
+    path,
+    start=1979,
+    end=2020,
+    window="(-3,+3]",
+    frequency="6h")
 ```
 
 The parameters `path`, `start`, `end`, and `frequency` have the same meaning as for fields. As with
@@ -166,9 +171,8 @@ indicates an open end, while a square bracket indicates a closed end. The defaul
 Examples:
 
 ```python
-"[-3,+3]"  # Both ends are included
-
-"(-1d,0]"  # Start is open, end is closed
+"[-3,+3]" # Both ends are included
+"(-1d,0]" # Start is open, end is closed
 ```
 
 #### Dates
@@ -184,8 +188,8 @@ The dates of the dataset are then defined as all dates between `start` and `end`
 result = []
 date = start
 while date <= end:
-    result.append(date)
-    date += frequency
+   result.append(date)
+   date += frequency
 ```
 
 The pseudo-code above builds the list returned by `ds.dates`.
@@ -248,18 +252,20 @@ assert sample.shape[1] == len(ds.variables)
 
 # Same for statistics
 
-assert len(ds.statistics["mean"]) == len(ds.variables)
+assert len(ds.statistics['mean']) == len(ds.variables)
+
 ```
 
 Auxiliary information can be accessed as:
 
 ```python
+
 sample = ds[42]
 
 number_of_observations_in_window = sample.shape[0]
 
 
-# Returns the corresponding latitudes
+ # Returns the corresponding latitudes
 
 sample.latitudes
 
@@ -272,7 +278,7 @@ sample.longitudes
 assert len(sample.longitudes) == number_of_observations_in_window
 
 
-x.dates  # Returns the corresponding row dates
+x.dates # Returns the corresponding row dates
 
 # Returns the corresponding dates
 
@@ -291,6 +297,8 @@ assert sample.reference_date == ds.start_date + 42 * ds.frequency
 sample.timedeltas
 
 assert len(sample.timedeltas) == number_of_observations_in_window
+
+
 ```
 
 For the sake of symmetry, the same behaviour will be implemented for gridded data.

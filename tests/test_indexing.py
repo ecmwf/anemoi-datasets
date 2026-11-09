@@ -30,9 +30,7 @@ def test_length_to_slices() -> None:
                 result = [d[i] for (d, i) in zip(datasets, slices) if i is not None]
                 result = np.concatenate(result)
 
-                if (combined[index].shape != result.shape) or not (
-                    combined[index] == result
-                ).all():
+                if (combined[index].shape != result.shape) or not (combined[index] == result).all():
                     print(index)
                     print(combined[index])
                     print(result)

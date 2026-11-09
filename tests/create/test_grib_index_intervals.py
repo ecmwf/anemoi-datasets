@@ -14,7 +14,8 @@ import numpy as np
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.grib_index import GribIndex, GribIndexSource
+from anemoi.datasets.create.sources.grib_index import GribIndex
+from anemoi.datasets.create.sources.grib_index import GribIndexSource
 
 from .utils.create import create_dataset
 
@@ -40,23 +41,16 @@ def test_grib_index_intervals_with_basetime_request() -> None:
 
     base = datetime.datetime(2020, 1, 1, 0)
     interval = SignedInterval(
-        start=base + datetime.timedelta(hours=23),
-        end=base + datetime.timedelta(hours=24),
-        base=base,
+        start=base + datetime.timedelta(hours=23), end=base + datetime.timedelta(hours=24), base=base
     )
     source.execute_intervals(Intervals([interval.max], [interval]))
 
     assert source.captured == [
-        (
-            [interval.max],
-            {"param": ["tp"], "levtype": "sfc", "date": 20200101, "time": 0},
-        ),
+        ([interval.max], {"param": ["tp"], "levtype": "sfc", "date": 20200101, "time": 0}),
     ]
 
     base = datetime.datetime(2020, 1, 1, 12)
-    interval = SignedInterval(
-        start=base, end=base + datetime.timedelta(hours=1), base=base
-    )
+    interval = SignedInterval(start=base, end=base + datetime.timedelta(hours=1), base=base)
     source.execute_intervals(Intervals([interval.max], [interval]))
 
     assert source.captured[0][1]["time"] == 1200
@@ -67,19 +61,13 @@ def test_grib_index_intervals_without_basetime_request() -> None:
     source = CapturingGribIndexSource(param=["tp"], levtype="sfc")
 
     start = datetime.datetime(2020, 1, 1, 0)
-    interval = SignedInterval(
-        start=start, end=start + datetime.timedelta(hours=3), base=None
-    )
+    interval = SignedInterval(start=start, end=start + datetime.timedelta(hours=3), base=None)
     source.execute_intervals(Intervals([interval.max], [interval]))
 
-    assert source.captured == [
-        ([interval.max], {"param": ["tp"], "levtype": "sfc", "step": 3})
-    ]
+    assert source.captured == [([interval.max], {"param": ["tp"], "levtype": "sfc", "step": 3})]
 
 
-def _write_forecast_accumulations(
-    path: str, base: datetime.datetime, last_step: int
-) -> None:
+def _write_forecast_accumulations(path: str, base: datetime.datetime, last_step: int) -> None:
     """Write hourly tp accumulations of one model run (step k holds k-1 to k, value k)."""
     import eccodes
 
@@ -121,9 +109,7 @@ def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
     paths = []
     for day in (1, 2):
         path = str(tmp_path / f"tp-202001{day:02d}.grib")
-        _write_forecast_accumulations(
-            path, datetime.datetime(2020, 1, day), last_step=24
-        )
+        _write_forecast_accumulations(path, datetime.datetime(2020, 1, day), last_step=24)
         paths.append(path)
 
     indexdb = str(tmp_path / "grib-index.db")
@@ -132,11 +118,7 @@ def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
         index.add_grib_file(path)
 
     recipe = {
-        "dates": {
-            "start": "2020-01-02T00:00:00",
-            "end": "2020-01-02T03:00:00",
-            "frequency": "3h",
-        },
+        "dates": {"start": "2020-01-02T00:00:00", "end": "2020-01-02T03:00:00", "frequency": "3h"},
         "input": {
             "accumulate": {
                 "period": "3h",
@@ -148,13 +130,7 @@ def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
                         "last_step": 24,
                     }
                 },
-                "source": {
-                    "grib-index": {
-                        "indexdb": indexdb,
-                        "param": ["tp"],
-                        "levtype": "sfc",
-                    }
-                },
+                "source": {"grib-index": {"indexdb": indexdb, "param": ["tp"], "levtype": "sfc"}},
             }
         },
     }

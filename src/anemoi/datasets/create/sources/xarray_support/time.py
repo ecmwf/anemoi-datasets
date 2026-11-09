@@ -10,7 +10,8 @@
 
 import datetime
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from typing import Any
 
 from anemoi.utils.dates import as_datetime
@@ -42,51 +43,23 @@ class Time(ABC):
         step_coordinate = [c for c in coordinates if c.is_step]
         date_coordinate = [c for c in coordinates if c.is_date]
 
-        if (
-            len(date_coordinate) == 0
-            and len(time_coordinate) == 1
-            and len(step_coordinate) == 1
-        ):
+        if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
             return ForecastFromValidTimeAndStep(time_coordinate[0], step_coordinate[0])
 
-        if (
-            len(date_coordinate) == 0
-            and len(time_coordinate) == 1
-            and len(step_coordinate) == 0
-        ):
+        if len(date_coordinate) == 0 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
             return Analysis(time_coordinate[0])
 
-        if (
-            len(date_coordinate) == 0
-            and len(time_coordinate) == 0
-            and len(step_coordinate) == 0
-        ):
+        if len(date_coordinate) == 0 and len(time_coordinate) == 0 and len(step_coordinate) == 0:
             return Constant()
 
-        if (
-            len(date_coordinate) == 1
-            and len(time_coordinate) == 1
-            and len(step_coordinate) == 0
-        ):
-            return ForecastFromValidTimeAndBaseTime(
-                date_coordinate[0], time_coordinate[0]
-            )
+        if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 0:
+            return ForecastFromValidTimeAndBaseTime(date_coordinate[0], time_coordinate[0])
 
-        if (
-            len(date_coordinate) == 1
-            and len(time_coordinate) == 0
-            and len(step_coordinate) == 1
-        ):
+        if len(date_coordinate) == 1 and len(time_coordinate) == 0 and len(step_coordinate) == 1:
             return ForecastFromBaseTimeAndDate(date_coordinate[0], step_coordinate[0])
 
-        if (
-            len(date_coordinate) == 1
-            and len(time_coordinate) == 1
-            and len(step_coordinate) == 1
-        ):
-            return ForecastFromValidTimeAndStep(
-                time_coordinate[0], step_coordinate[0], date_coordinate[0]
-            )
+        if len(date_coordinate) == 1 and len(time_coordinate) == 1 and len(step_coordinate) == 1:
+            return ForecastFromValidTimeAndStep(time_coordinate[0], step_coordinate[0], date_coordinate[0])
 
         LOG.error("")
         LOG.error(f"{len(date_coordinate)} date_coordinate")
@@ -106,9 +79,7 @@ class Time(ABC):
             LOG.error("    %s %s %s %s", c, c.is_date, c.is_time, c.is_step)
             # LOG.error('    %s', c.variable)
 
-        raise NotImplementedError(
-            f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}"
-        )
+        raise NotImplementedError(f"{len(date_coordinate)=} {len(time_coordinate)=} {len(step_coordinate)=}")
 
     @abstractmethod
     def select_valid_datetime(self, variable: Variable) -> str | None:
@@ -124,11 +95,10 @@ class Time(ABC):
         Optional[str]
             The name of the time coordinate.
         """
+        pass
 
     @abstractmethod
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> None:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> None:
         """Fill metadata with time information.
 
         Args
@@ -139,13 +109,13 @@ class Time(ABC):
             Metadata dictionary.
         """
 
+        pass
+
 
 class Constant(Time):
     """Represents a constant time."""
 
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> None:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> None:
         """Fill metadata with time information.
 
         Parameters
@@ -155,7 +125,7 @@ class Constant(Time):
         metadata : Dict[str, Any]
             Metadata dictionary.
         """
-        return
+        return None
 
     def select_valid_datetime(self, variable: Variable) -> None:
         """Select the valid datetime for a given variable.
@@ -165,7 +135,7 @@ class Constant(Time):
         variable : Variable
             The variable to select the datetime for.
         """
-        return
+        return None
 
 
 class Analysis(Time):
@@ -181,9 +151,7 @@ class Analysis(Time):
         """
         self.time_coordinate_name = time_coordinate.variable.name
 
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Parameters
@@ -226,10 +194,7 @@ class ForecastFromValidTimeAndStep(Time):
     """Represents a forecast time derived from valid time and step."""
 
     def __init__(
-        self,
-        time_coordinate: Coordinate,
-        step_coordinate: Coordinate,
-        date_coordinate: Coordinate | None = None,
+        self, time_coordinate: Coordinate, step_coordinate: Coordinate, date_coordinate: Coordinate | None = None
     ) -> None:
         """Initialize ForecastFromValidTimeAndStep with time, step, and optional date coordinates.
 
@@ -244,13 +209,9 @@ class ForecastFromValidTimeAndStep(Time):
         """
         self.time_coordinate_name = time_coordinate.variable.name
         self.step_coordinate_name = step_coordinate.variable.name
-        self.date_coordinate_name = (
-            date_coordinate.variable.name if date_coordinate else None
-        )
+        self.date_coordinate_name = date_coordinate.variable.name if date_coordinate else None
 
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns
@@ -308,9 +269,7 @@ class ForecastFromValidTimeAndStep(Time):
 class ForecastFromValidTimeAndBaseTime(Time):
     """Represents a forecast time derived from valid time and base time."""
 
-    def __init__(
-        self, date_coordinate: Coordinate, time_coordinate: Coordinate
-    ) -> None:
+    def __init__(self, date_coordinate: Coordinate, time_coordinate: Coordinate) -> None:
         """Initialize ForecastFromValidTimeAndBaseTime with date and time coordinates.
 
         Args
@@ -323,9 +282,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
         self.date_coordinate_name = date_coordinate.name
         self.time_coordinate_name = time_coordinate.name
 
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns
@@ -373,9 +330,7 @@ class ForecastFromValidTimeAndBaseTime(Time):
 class ForecastFromBaseTimeAndDate(Time):
     """Represents a forecast time derived from base time and date."""
 
-    def __init__(
-        self, date_coordinate: Coordinate, step_coordinate: Coordinate
-    ) -> None:
+    def __init__(self, date_coordinate: Coordinate, step_coordinate: Coordinate) -> None:
         """Initialize ForecastFromBaseTimeAndDate with date and step coordinates.
 
         Args
@@ -388,9 +343,7 @@ class ForecastFromBaseTimeAndDate(Time):
         self.date_coordinate_name = date_coordinate.name
         self.step_coordinate_name = step_coordinate.name
 
-    def fill_time_metadata(
-        self, coords_values: dict[str, Any], metadata: dict[str, Any]
-    ) -> Any:
+    def fill_time_metadata(self, coords_values: dict[str, Any], metadata: dict[str, Any]) -> Any:
         """Fill metadata with time information.
 
         Returns

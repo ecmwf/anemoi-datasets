@@ -24,7 +24,8 @@ from anemoi.transform.grids import grid_registry
 from cachetools import LRUCache
 from earthkit.data.indexing.fieldlist import FieldArray
 
-from anemoi.datasets.create.arguments import Intervals, ValidDates
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
 
 from ..source import Source
 from . import source_registry
@@ -32,17 +33,7 @@ from . import source_registry
 LOG = logging.getLogger(__name__)
 
 KEYS1 = ("class", "type", "stream", "expver", "levtype")
-KEYS2 = (
-    "shortName",
-    "paramId",
-    "level",
-    "step",
-    "number",
-    "date",
-    "time",
-    "valid_datetime",
-    "levelist",
-)
+KEYS2 = ("shortName", "paramId", "level", "step", "number", "date", "time", "valid_datetime", "levelist")
 
 KEYS = KEYS1 + KEYS2
 
@@ -141,7 +132,7 @@ class GribIndex:
             _path_id INTEGER not null,
             _offset INTEGER not null,
             _length INTEGER not null,
-            {", ".join(f"{self._quote_column(key)} TEXT not null default ''" for key in columns)},
+            {', '.join(f"{self._quote_column(key)} TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
         """)  # ,
 
@@ -152,12 +143,12 @@ class GribIndex:
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({", ".join(self._quote_column(col) for col in columns)})
+        ON grib_index ({', '.join(self._quote_column(col) for col in columns)})
         """)
 
         for key in columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(":", "_")}
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
             ON grib_index ({self._quote_column(key)})
             """)
 
@@ -210,10 +201,11 @@ class GribIndex:
         assert self.update
 
         try:
+
             self.cursor.execute(
                 f"""
-            INSERT INTO grib_index ({", ".join(self._quote_column(k) for k in kwargs)})
-            VALUES ({", ".join("?" for _ in kwargs)})
+            INSERT INTO grib_index ({', '.join(self._quote_column(k) for k in kwargs.keys())})
+            VALUES ({', '.join('?' for _ in kwargs)})
             """,
                 tuple(kwargs.values()),
             )
@@ -226,7 +218,7 @@ class GribIndex:
                 kwargs.pop(n)
             self.cursor.execute(
                 "SELECT * FROM grib_index WHERE "
-                + " AND ".join(f"{self._quote_column(key)} = ?" for key in kwargs),
+                + " AND ".join(f"{self._quote_column(key)} = ?" for key in kwargs.keys()),
                 tuple(kwargs.values()),
             )
             existing_record = self.cursor.fetchone()
@@ -279,12 +271,12 @@ class GribIndex:
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({", ".join(self._quote_column(col) for col in all_columns)})
+        ON grib_index ({', '.join(self._quote_column(col) for col in all_columns)})
         """)
 
         for key in all_columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(":", "_")}
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
             ON grib_index ({self._quote_column(key)})
             """)
 
@@ -303,6 +295,7 @@ class GribIndex:
             fields = self.flavour.map(fields)
 
         for i, field in enumerate(tqdm.tqdm(fields, leave=False)):
+
             keys = field.metadata(namespace="mars").copy()
             keys.update({k: field.metadata(k, default=None) for k in self.keys})
 
@@ -383,9 +376,7 @@ class GribIndex:
         try:
             import requests
 
-            r = requests.get(
-                f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/grib2/"
-            )
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/grib2/")
             r.raise_for_status()
             self.cache[("grib2", paramId)] = r.json()
             return self.cache[("grib2", paramId)]
@@ -413,9 +404,7 @@ class GribIndex:
         try:
             import requests
 
-            r = requests.get(
-                f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/"
-            )
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/param/{paramId}/")
             r.raise_for_status()
             self.cache[("info", paramId)] = r.json()
             return self.cache[("info", paramId)]
@@ -444,9 +433,7 @@ class GribIndex:
         try:
             import requests
 
-            r = requests.get(
-                f"https://codes.ecmwf.int/parameter-database/api/v1/unit/{unitId}/"
-            )
+            r = requests.get(f"https://codes.ecmwf.int/parameter-database/api/v1/unit/{unitId}/")
             r.raise_for_status()
             self.cache[("unit", unitId)] = r.json()
             return self.cache[("unit", unitId)]
@@ -478,7 +465,7 @@ class GribIndex:
                 return s
 
         LOG.warning(
-            f"Unknown param for message {i + 1} in {path} at offset {int(field.metadata('offset', default=None))}"
+            f"Unknown param for message {i+1} in {path} at offset {int(field.metadata('offset', default=None))}"
         )
         LOG.warning(
             f"shortName/paramId: {field.metadata('shortName', default=None)}/{field.metadata('paramId', default=None)}"
@@ -486,13 +473,15 @@ class GribIndex:
         name = field.metadata("parameterName", default=None)
         units = field.metadata("parameterUnits", default=None)
         LOG.warning(f"Discipline/category/parameter: {param} ({name}, {units})")
-        LOG.warning(f"grib_copy -w count={i + 1} {path} tmp.grib")
+        LOG.warning(f"grib_copy -w count={i+1} {path} tmp.grib")
 
         info = self._paramdb(discipline=param[0], category=param[1])
         found = set()
         if info is not None:
             for n in tqdm.tqdm(info, desc="Scanning parameter database"):
+
                 for p in self._param_grib2_info(n["id"]):
+
                     keys = {k["name"]: _(k["value"]) for k in p["keys"]}
                     if keys.get("parameterNumber") == param[2]:
                         found.add(n["id"])
@@ -553,9 +542,7 @@ class GribIndex:
         dates = [d.isoformat() for d in dates]
 
         query = """SELECT _path_id, _offset, _length
-                   FROM grib_index WHERE valid_datetime IN ({})""".format(
-            ", ".join("?" for _ in dates)
-        )
+                   FROM grib_index WHERE valid_datetime IN ({})""".format(", ".join("?" for _ in dates))
         params = dates
 
         for k, v in kwargs.items():
@@ -563,9 +550,7 @@ class GribIndex:
                 LOG.warning(f"Warning : {k} not in database columns, key discarded")
                 continue
             if isinstance(v, list):
-                query += (
-                    f" AND {self._quote_column(k)} IN ({', '.join('?' for _ in v)})"
-                )
+                query += f" AND {self._quote_column(k)} IN ({', '.join('?' for _ in v)})"
                 params.extend([str(_) for _ in v])
             else:
                 query += f" AND {self._quote_column(k)} = ?"
@@ -623,9 +608,7 @@ class GribIndexSource(Source):
         super().__init__(context)
         self.indexdb = indexdb
         self.flavour = RuleBasedFlavour(flavour) if flavour is not None else None
-        self.grid = (
-            grid_registry.from_config(grid_definition) if grid_definition else None
-        )
+        self.grid = grid_registry.from_config(grid_definition) if grid_definition else None
         self.request = kwargs
 
     def execute_valid_dates(self, dates: ValidDates) -> FieldArray:
@@ -652,9 +635,7 @@ class GribIndexSource(Source):
             self.context.trace(self.emoji, "interval:", interval)
             request = self.request.copy()
             if interval.base is None:
-                request["step"] = int(
-                    (interval.end - interval.start).total_seconds() / 3600
-                )
+                request["step"] = int((interval.end - interval.start).total_seconds() / 3600)
             else:
                 request["date"] = int(interval.base.strftime("%Y%m%d"))
                 request["time"] = int(interval.base.strftime("%H%M"))
@@ -668,13 +649,9 @@ class GribIndexSource(Source):
         index = GribIndex(self.indexdb)
 
         full_requests = factorise(full_requests)
-        self.context.trace(
-            self.emoji, f"number of (factorised) requests: {len(full_requests)}"
-        )
+        self.context.trace(self.emoji, f"number of (factorised) requests: {len(full_requests)}")
         for valid_dates, request in full_requests:
-            self.context.trace(
-                self.emoji, f"  dates: {valid_dates}, request: {request}"
-            )
+            self.context.trace(self.emoji, f"  dates: {valid_dates}, request: {request}")
 
         result = []
         for valid_dates, request in full_requests:
@@ -703,6 +680,6 @@ def factorise(lst):
 
     res = []
     for key, dates in d.items():
-        dates = sorted(set(dates))
+        dates = list(sorted(set(dates)))
         res.append((dates, content[key]))
     return res

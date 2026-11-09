@@ -27,9 +27,7 @@ LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 parser = argparse.ArgumentParser(description="Upload sample dataset to S3")
-parser.add_argument(
-    "--bucket", type=str, help="S3 target path", default="s3://ml-tests/test-data/"
-)
+parser.add_argument("--bucket", type=str, help="S3 target path", default="s3://ml-tests/test-data/")
 parser.add_argument("source", type=str, help="Path to the sample dataset")
 parser.add_argument("target", type=str, help="Path to the sample dataset")
 parser.add_argument("--overwrite", action="store_true", help="Overwrite existing data")
@@ -43,8 +41,10 @@ bucket = args.bucket
 assert os.path.exists(source), f"Source {source} does not exist"
 
 if not target.startswith("s3://"):
-    target = target.removeprefix("/")
-    bucket = bucket.removesuffix("/")
+    if target.startswith("/"):
+        target = target[1:]
+    if bucket.endswith("/"):
+        bucket = bucket[:-1]
     target = os.path.join(bucket, target)
 
 LOG.info(f"Uploading {source} to {target}")

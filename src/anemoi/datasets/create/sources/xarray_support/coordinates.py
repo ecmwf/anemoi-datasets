@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
@@ -68,9 +69,7 @@ def extract_single_value(variable: Any) -> Any:
     if np.issubdtype(variable.values.dtype, np.timedelta64):
         if len(shape) == 0:
             # Convert to python timedelta64
-            return datetime.timedelta(
-                seconds=variable.values.astype("timedelta64[s]").astype(int).item()
-            )
+            return datetime.timedelta(seconds=variable.values.astype("timedelta64[s]").astype(int).item())
         assert False, (shape, variable.values)
 
     if shape == (1,):
@@ -107,9 +106,7 @@ class Coordinate:
         """
         self.variable = variable
         self.scalar = is_scalar(variable)
-        self.kwargs: dict[
-            str, Any
-        ] = {}  # Used when creating a new coordinate (reduced method)
+        self.kwargs: dict[str, Any] = {}  # Used when creating a new coordinate (reduced method)
 
     def __len__(self) -> int:
         """Get the length of the coordinate.
@@ -129,7 +126,12 @@ class Coordinate:
         str
             The string representation of the coordinate.
         """
-        return f"{self.__class__.__name__}[name={self.variable.name},values={self.variable.values if self.scalar else len(self)},shape={self.variable.shape}]"
+        return "{}[name={},values={},shape={}]".format(
+            self.__class__.__name__,
+            self.variable.name,
+            self.variable.values if self.scalar else len(self),
+            self.variable.shape,
+        )
 
     def reduced(self, i: int) -> Coordinate:
         """Create a new coordinate with a single value.

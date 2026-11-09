@@ -11,9 +11,15 @@ from __future__ import annotations
 
 import logging
 from functools import cache
-from typing import Annotated, Any
+from typing import Annotated
+from typing import Any
+from typing import Union
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Tag, create_model
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Discriminator
+from pydantic import Tag
+from pydantic import create_model
 from pydantic_core import PydanticCustomError
 
 LOG = logging.getLogger(__name__)
@@ -51,9 +57,7 @@ def _factories():
     from anemoi.transform.filters import filter_registry as transform_filter_registry
     from anemoi.transform.sources import source_registry as transform_source_registry
 
-    from anemoi.datasets.create.sources import (
-        source_registry as dataset_source_registry,
-    )
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
     # TODO: For now, for source to be loaded firt
     # to load dev sources/filters before the main ones
@@ -93,11 +97,7 @@ def _schemas():
 
 
 def _action_discriminator(config_or_model: Any) -> str:
-    config = (
-        config_or_model.model_dump()
-        if isinstance(config_or_model, BaseModel)
-        else config_or_model
-    )
+    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
     assert len(config) == 1, config
 
     verb = list(config.keys())[0]
@@ -118,4 +118,4 @@ def _action_discriminator(config_or_model: Any) -> str:
     return verb
 
 
-Action = Annotated[_schemas(), Discriminator(_action_discriminator)]
+Action = Annotated[Union[_schemas()], Discriminator(_action_discriminator)]

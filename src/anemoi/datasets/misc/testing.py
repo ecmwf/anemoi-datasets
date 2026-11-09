@@ -55,14 +55,8 @@ def assert_field_list(
         # TODO: add a check for constant fields
         pass
     else:
-        assert start is None or first.metadata("valid_datetime") == start, (
-            first.metadata("valid_datetime"),
-            start,
-        )
-        assert end is None or last.metadata("valid_datetime") == end, (
-            last.metadata("valid_datetime"),
-            end,
-        )
+        assert start is None or first.metadata("valid_datetime") == start, (first.metadata("valid_datetime"), start)
+        assert end is None or last.metadata("valid_datetime") == end, (last.metadata("valid_datetime"), end)
         print(first.datetime())
 
     print(last.metadata())
@@ -160,6 +154,7 @@ def default_test_indexing(ds):
 
 
 class Trace:
+
     def __init__(self, ds):
         self.ds = ds
         self.f = open("trace.txt", "a")

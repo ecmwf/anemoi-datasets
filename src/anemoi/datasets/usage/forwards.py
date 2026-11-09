@@ -18,15 +18,16 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
 from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    length_to_slices,
-    update_tuple,
-)
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import length_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -180,9 +181,7 @@ class Forwards(Dataset):
         """Returns the statistics of the forward dataset."""
         return self.forward.statistics
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Returns the statistics tendencies of the forward dataset.
 
         Parameters
@@ -278,6 +277,7 @@ class Forwards(Dataset):
     @abstractmethod
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Returns metadata specific to the subclass."""
+        pass
 
     def get_dataset_names(self, names: set[str]) -> None:
         """Collects the names of the datasets.
@@ -412,9 +412,7 @@ class Combined(Forwards):
         if not np.allclose(d1.latitudes, d2.latitudes, rtol=rtol) or not np.allclose(
             d1.longitudes, d2.longitudes, rtol=rtol
         ):
-            raise ValueError(
-                f"{self.__class__.__name__}: Incompatible grid ({d1.longitudes} {d2.longitudes})"
-            )
+            raise ValueError(f"{self.__class__.__name__}: Incompatible grid ({d1.longitudes} {d2.longitudes})")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the shapes of two datasets are the same.
@@ -432,9 +430,7 @@ class Combined(Forwards):
             If the shapes are not the same.
         """
         if d1.shape[1:] != d2.shape[1:]:
-            raise ValueError(
-                f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})"
-            )
+            raise ValueError(f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
 
         if d1.variables != d2.variables:
             raise ValueError(
@@ -462,9 +458,7 @@ class Combined(Forwards):
         shape2 = d2.sub_shape(drop_axis)
 
         if shape1 != shape2:
-            raise ValueError(
-                f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})"
-            )
+            raise ValueError(f"{self.__class__.__name__}: Incompatible shapes: {d1.shape} and {d2.shape} ({d1} {d2})")
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the variables of two datasets are the same.
@@ -504,9 +498,7 @@ class Combined(Forwards):
         from anemoi.transform.variables import Variable
 
         Variable.check_compatibility(
-            d1.typed_variables,
-            d2.typed_variables,
-            self.options.get("check_variables_compatibility") or {},
+            d1.typed_variables, d2.typed_variables, self.options.get("check_variables_compatibility") or {}
         )
 
     def check_same_lengths(self, d1: Dataset, d2: Dataset) -> None:
@@ -525,9 +517,7 @@ class Combined(Forwards):
             If the lengths are not the same.
         """
         if d1._len != d2._len:
-            raise ValueError(
-                f"{self.__class__.__name__}: Incompatible lengths: {d1._len} and {d2._len}"
-            )
+            raise ValueError(f"{self.__class__.__name__}: Incompatible lengths: {d1._len} and {d2._len}")
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the dates of two datasets are the same.
@@ -633,9 +623,7 @@ class Combined(Forwards):
         *path : Any
             Variable length argument list specifying the paths for the arrays.
         """
-        warnings.warn(
-            f"The behaviour of {self.__class__.__name__}.collect_supporting_arrays() is not well defined"
-        )
+        warnings.warn(f"The behaviour of {self.__class__.__name__}.collect_supporting_arrays() is not well defined")
         for i, d in enumerate(self.datasets):
             name = d.name if d.name is not None else i
             d.collect_supporting_arrays(collected, *path, name)
@@ -732,11 +720,7 @@ class GivenAxis(Combined):
         index, changes = index_to_slices(index, self.shape)
         lengths = [d.shape[self.axis] for d in self.datasets]
         slices = length_to_slices(index[self.axis], lengths)
-        result = [
-            d[update_tuple(index, self.axis, i)[0]]
-            for (d, i) in zip(self.datasets, slices)
-            if i is not None
-        ]
+        result = [d[update_tuple(index, self.axis, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
         result = np.concatenate(result, axis=self.axis)
         return apply_index_to_slices_changes(result, changes)
 

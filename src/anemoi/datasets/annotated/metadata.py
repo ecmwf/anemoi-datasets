@@ -11,7 +11,9 @@ import logging
 
 import numpy as np
 
-from anemoi.datasets.epochs import array_to_epoch, epoch_to_date, epochs_to_datetime64
+from anemoi.datasets.epochs import array_to_epoch
+from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import epochs_to_datetime64
 
 from .base import WindowMetaDataBase
 
@@ -58,9 +60,7 @@ class WindowMetaData(WindowMetaDataBase):
     @property
     def timedeltas(self) -> np.ndarray:
         """Array of time deltas for the window."""
-        return (
-            array_to_epoch(self._aux_array) - self.owner._epochs[self.index]
-        ).astype("float32")
+        return (array_to_epoch(self._aux_array) - self.owner._epochs[self.index]).astype("float32")
 
     @property
     def reference_date(self) -> np.datetime64:
@@ -121,16 +121,12 @@ class MultipleWindowMetaData(WindowMetaDataBase):
         refs = self.reference_dates
         if len(refs) == 1:
             return refs[0]
-        raise ValueError(
-            f"MultipleWindowMetaData: reference_date is ambiguous for multiple windows {refs}"
-        )
+        raise ValueError(f"MultipleWindowMetaData: reference_date is ambiguous for multiple windows {refs}")
 
     @property
     def reference_dates(self) -> np.ndarray:
         """The reference date for the first window."""
-        return np.concatenate(
-            [child.reference_dates for child in self.children], axis=0
-        )
+        return np.concatenate([child.reference_dates for child in self.children], axis=0)
 
     @property
     def boundaries(self) -> list[slice]:

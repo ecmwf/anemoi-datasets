@@ -15,6 +15,4 @@ so they apply unchanged to a 5-D trajectory array.  Re-exporting from
 ``common`` lets the trajectory factory loader find the symbol.
 """
 
-from anemoi.datasets.usage.gridded.fill_missing import (
-    fill_missing_dates_factory,  # noqa: F401
-)
+from anemoi.datasets.usage.gridded.fill_missing import fill_missing_dates_factory  # noqa: F401

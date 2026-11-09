@@ -15,12 +15,12 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
 
 
-def _tuple_with_slices(
-    t: TupleIndex, shape: Shape
-) -> tuple[TupleIndex, tuple[int, ...]]:
+def _tuple_with_slices(t: TupleIndex, shape: Shape) -> tuple[TupleIndex, tuple[int, ...]]:
     """Replace all integers in a tuple with slices, so we preserve the dimensionality.
 
     Parameters:
@@ -30,9 +30,7 @@ def _tuple_with_slices(
     Returns:
     Tuple[TupleIndex, Tuple[int, ...]]: A tuple containing the modified index and the changes.
     """
-    t = tuple(
-        i + shape[j] if isinstance(i, int) and i < 0 else i for (j, i) in enumerate(t)
-    )
+    t = tuple(i + shape[j] if isinstance(i, int) and i < 0 else i for (j, i) in enumerate(t))
     result = tuple(slice(i, i + 1) if isinstance(i, int) else i for i in t)
     changes = tuple(j for (j, i) in enumerate(t) if isinstance(i, int))
     result = tuple(slice(*s.indices(shape[i])) for (i, s) in enumerate(result))
@@ -87,9 +85,7 @@ def _index_to_tuple(index: FullIndex, shape: Shape) -> TupleIndex:
     raise ValueError(f"Invalid index: {index}")
 
 
-def index_to_slices(
-    index: int | slice | tuple, shape: Shape
-) -> tuple[TupleIndex, tuple[int, ...]]:
+def index_to_slices(index: int | slice | tuple, shape: Shape) -> tuple[TupleIndex, tuple[int, ...]]:
     """Convert an index to a tuple of slices, with the same dimensionality as the shape.
 
     Parameters:
@@ -102,9 +98,7 @@ def index_to_slices(
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
-def apply_index_to_slices_changes(
-    result: NDArray[Any], changes: tuple[int, ...]
-) -> NDArray[Any]:
+def apply_index_to_slices_changes(result: NDArray[Any], changes: tuple[int, ...]) -> NDArray[Any]:
     """Apply changes to the result array based on the slices.
 
     Parameters:
@@ -203,9 +197,7 @@ def _as_tuples(index: tuple) -> tuple:
     return tuple(_(i) for i in index)
 
 
-def expand_list_indexing(
-    method: Callable[..., NDArray[Any]],
-) -> Callable[..., NDArray[Any]]:
+def expand_list_indexing(method: Callable[..., NDArray[Any]]) -> Callable[..., NDArray[Any]]:
     """Allows to use slices, lists, and tuples to select data from the dataset.
     Zarr does not support indexing with lists/arrays directly,
     so we need to implement it ourselves.
@@ -261,9 +253,7 @@ def make_slice_or_index_from_list_or_tuple(indices: list[int]) -> list[int] | sl
 
     step = indices[1] - indices[0]
 
-    if step > 0 and all(
-        indices[i] - indices[i - 1] == step for i in range(1, len(indices))
-    ):
+    if step > 0 and all(indices[i] - indices[i - 1] == step for i in range(1, len(indices))):
         return slice(indices[0], indices[-1] + step, step)
 
     return indices

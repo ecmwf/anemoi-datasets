@@ -23,9 +23,7 @@ LOG = logging.getLogger(__name__)
 class Cropping(Forwards):
     """A class to represent a cropped dataset."""
 
-    def __init__(
-        self, forward: Dataset, area: Dataset | tuple[float, float, float, float]
-    ) -> None:
+    def __init__(self, forward: Dataset, area: Dataset | tuple[float, float, float, float]) -> None:
         """Initialize the Cropping class.
 
         Parameters
@@ -66,19 +64,10 @@ class Cropping(Forwards):
         east = east % 360
         if west > east:
             # Crossing the meridian
-            mask = (
-                (latitudes <= north)
-                & (latitudes >= south)
-                & ((longitudes >= west) | (longitudes <= east))
-            )
+            mask = (latitudes <= north) & (latitudes >= south) & ((longitudes >= west) | (longitudes <= east))
         else:
             # Create mask for points inside the area
-            mask = (
-                (latitudes <= north)
-                & (latitudes >= south)
-                & (longitudes >= west)
-                & (longitudes <= east)
-            )
+            mask = (latitudes <= north) & (latitudes >= south) & (longitudes >= west) & (longitudes <= east)
 
         return result[mask]
 

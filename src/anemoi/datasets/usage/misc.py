@@ -12,7 +12,8 @@ import calendar
 import datetime
 import logging
 from pathlib import PurePath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import numpy as np
 import zarr
@@ -72,9 +73,7 @@ def add_dataset_path(path: str) -> None:
         config["datasets"]["path"].append(path)
 
 
-def round_datetime(
-    d: np.datetime64, dates: NDArray[np.datetime64], up: bool
-) -> np.datetime64:
+def round_datetime(d: np.datetime64, dates: NDArray[np.datetime64], up: bool) -> np.datetime64:
     """Round up (or down) a datetime to the nearest date in a list of dates.
 
     Parameters
@@ -158,9 +157,7 @@ def _as_date(
                 npdate = np.datetime64(f"{year:04}-01-01T00:00:00")
                 return _as_date(npdate - delta, dates, last, frequency)
             else:
-                return _as_date(
-                    np.datetime64(f"{year:04}-01-01T00:00:00"), dates, last, frequency
-                )
+                return _as_date(np.datetime64(f"{year:04}-01-01T00:00:00"), dates, last, frequency)
 
         if len(str(d)) == 6:
             year = d // 100
@@ -173,12 +170,7 @@ def _as_date(
                 npdate = np.datetime64(f"{year:04}-{month:02}-01T00:00:00")
                 return _as_date(npdate - delta, dates, last, frequency)
             else:
-                return _as_date(
-                    np.datetime64(f"{year:04}-{month:02}-01T00:00:00"),
-                    dates,
-                    last,
-                    frequency,
-                )
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-01T00:00:00"), dates, last, frequency)
 
         if len(str(d)) == 8:
             year = d // 10000
@@ -195,12 +187,7 @@ def _as_date(
                 npdate = np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00")
                 return _as_date(npdate - delta, dates, last, frequency)
             else:
-                return _as_date(
-                    np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00"),
-                    dates,
-                    last,
-                    frequency,
-                )
+                return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T00:00:00"), dates, last, frequency)
 
     if isinstance(d, str):
 
@@ -219,9 +206,7 @@ def _as_date(
 
             epsilon = 2 ** (-30)
             if len(dates) > 1 / epsilon:
-                LOG.warning(
-                    "Too many dates to use percentage, one date may be lost in rounding"
-                )
+                LOG.warning("Too many dates to use percentage, one date may be lost in rounding")
 
             if last:
                 index = int(i_float + epsilon) - 1
@@ -235,9 +220,7 @@ def _as_date(
             year, month, day = (int(_) for _ in date.split("-"))
             hour, minute, second = (int(_) for _ in time.split(":"))
             return _as_date(
-                np.datetime64(
-                    f"{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}"
-                ),
+                np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}"),
                 dates,
                 last,
                 frequency,
@@ -250,17 +233,10 @@ def _as_date(
                 return _as_date(int(bits[0]), dates, last, frequency)
 
             if len(bits) == 2:
-                return _as_date(
-                    int(bits[0]) * 100 + int(bits[1]), dates, last, frequency
-                )
+                return _as_date(int(bits[0]) * 100 + int(bits[1]), dates, last, frequency)
 
             if len(bits) == 3:
-                return _as_date(
-                    int(bits[0]) * 10000 + int(bits[1]) * 100 + int(bits[2]),
-                    dates,
-                    last,
-                    frequency,
-                )
+                return _as_date(int(bits[0]) * 10000 + int(bits[1]) * 100 + int(bits[2]), dates, last, frequency)
 
         if ":" in d:
             assert len(d) == 5
@@ -272,12 +248,7 @@ def _as_date(
             month = first.month
             day = first.day
 
-            return _as_date(
-                np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour}:00:00"),
-                dates,
-                last,
-                frequency,
-            )
+            return _as_date(np.datetime64(f"{year:04}-{month:02}-{day:02}T{hour}:00:00"), dates, last, frequency)
 
     raise NotImplementedError(f"Unsupported date: {d} ({type(d)})")
 
@@ -368,9 +339,7 @@ def _concat_or_join(
     return Concat(datasets, options), kwargs
 
 
-def _open(
-    a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...], options: Options
-) -> "Dataset":
+def _open(a: str | PurePath | dict[str, Any] | list[Any] | tuple[Any, ...], options: Options) -> "Dataset":
     """Open a dataset from various input types.
 
     Parameters
@@ -708,9 +677,7 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
     # Create or append to "dates" dataset.
     if "dates" not in root:
         full_length = len(big_dataset.dates)
-        root.create_array(
-            "dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,)
-        )
+        root.create_array("dates", data=np.array([], dtype="datetime64[s]"), chunks=(full_length,))
 
     if "data" not in root:
         dims = (1, len(big_dataset.variables), ensembles, big_dataset.shape[-1])
@@ -741,9 +708,7 @@ def initialize_zarr_store(root: Any, big_dataset: "Dataset") -> None:
         root.attrs["first_date"] = big_dataset.metadata()["start_date"]
         root.attrs["last_date"] = big_dataset.metadata()["end_date"]
         root.attrs["resolution"] = big_dataset.resolution
-        root.attrs["name_to_index"] = {
-            k: i for i, k in enumerate(big_dataset.variables)
-        }
+        root.attrs["name_to_index"] = {k: i for i, k in enumerate(big_dataset.variables)}
         root.attrs["field_shape"] = big_dataset.field_shape
         root.attrs["recipe"] = {}
 
@@ -782,17 +747,13 @@ def _save_dataset(dataset: "Dataset", zarr_path: str, n_workers: int = 1) -> Non
     existing_dates = np.array(sorted(root["dates"]), dtype="datetime64[s]")
     all_dates = full_ds.dates
     # To resume creation of the Zarr store in case the job is interrupted.
-    dates_to_process = np.array(
-        sorted(set(all_dates).difference(existing_dates)), dtype="datetime64[s]"
-    )
+    dates_to_process = np.array(sorted(set(all_dates).difference(existing_dates)), dtype="datetime64[s]")
 
     use_pool = False
 
     if use_pool:
         with ProcessPoolExecutor(n_workers) as pool:
-            futures = [
-                pool.submit(process_date, date, full_ds) for date in dates_to_process
-            ]
+            futures = [pool.submit(process_date, date, full_ds) for date in dates_to_process]
             for future in futures:
                 subset, date = future.result()
                 # All appends happen sequentially here to

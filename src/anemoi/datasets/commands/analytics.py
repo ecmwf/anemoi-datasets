@@ -10,7 +10,8 @@
 import logging
 from typing import Any
 
-from anemoi.datasets.usage.analytics import analytics_options, analytics_rest_options
+from anemoi.datasets.usage.analytics import analytics_options
+from anemoi.datasets.usage.analytics import analytics_rest_options
 from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command
@@ -32,15 +33,8 @@ class Analytics(Command):
             The command parser.
         """
         group = command_parser.add_mutually_exclusive_group()
-        group.add_argument(
-            "--enable", action="store_true", default=False, help="Opt-in to analytics."
-        )
-        group.add_argument(
-            "--disable",
-            action="store_true",
-            default=False,
-            help="Opt-out of analytics.",
-        )
+        group.add_argument("--enable", action="store_true", default=False, help="Opt-in to analytics.")
+        group.add_argument("--disable", action="store_true", default=False, help="Opt-out of analytics.")
 
         command_parser.add_argument(
             "--anemoi-user",
@@ -48,9 +42,7 @@ class Analytics(Command):
         )
 
         command_parser.add_argument(
-            "--test",
-            metavar="DATASET",
-            help="Show the message that will be send to the analytics server",
+            "--test", metavar="DATASET", help="Show the message that will be send to the analytics server"
         )
 
     def run(self, args: Any) -> None:

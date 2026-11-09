@@ -8,7 +8,8 @@
 # nor does it submit to any jurisdiction.
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 
 def step_to_timedelta(step: str | int | timedelta) -> timedelta:
@@ -36,9 +37,7 @@ def step_to_timedelta(step: str | int | timedelta) -> timedelta:
 
     match = re.match(r"^(?:(\d+)h)?(?:(\d+)m)?$", step)
     if not match or not any(match.groups()):
-        raise ValueError(
-            f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'."
-        )
+        raise ValueError(f"Cannot parse step {step!r}; expected forms like '12', '24h', '10m', '10h10m'.")
     hours, minutes = match.groups()
     return timedelta(hours=int(hours or 0), minutes=int(minutes or 0))
 
@@ -150,9 +149,7 @@ class SignedInterval:
             else:
                 earlier = self.end - self.base
                 steps = [
-                    timedelta_to_step(earlier)
-                    if not earlier
-                    else f"-{timedelta_to_step(earlier)}",
+                    timedelta_to_step(earlier) if not earlier else f"-{timedelta_to_step(earlier)}",
                     timedelta_to_step(self.start - self.base),
                 ]
             base_str = f", base={base}, [{steps[0]}-{steps[1]}]"

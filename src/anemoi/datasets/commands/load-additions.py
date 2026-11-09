@@ -34,9 +34,7 @@ class LoadAdditions(Command):
         subparser : Any
             The argument parser.
         """
-        subparser.add_argument(
-            "--parts", nargs="+", help="Only load the specified parts of the dataset."
-        )
+        subparser.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
         subparser.add_argument(
             "--delta",
             help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
@@ -67,9 +65,7 @@ class LoadAdditions(Command):
 
         task(step, options)
 
-        LOG.info(
-            f"Create step '{step}' completed in {seconds_to_human(time.time() - now)}"
-        )
+        LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time()-now)}")
 
 
 command = LoadAdditions

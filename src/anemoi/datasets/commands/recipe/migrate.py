@@ -41,10 +41,7 @@ def _parse_mars_times(raw_times) -> list[int]:
     """
     if not isinstance(raw_times, (list, tuple)):
         raw_times = [raw_times]
-    return [
-        int(str(t).replace(":", "")) // 100 if ":" in str(t) else int(t)
-        for t in raw_times
-    ]
+    return [int(str(t).replace(":", "")) // 100 if ":" in str(t) else int(t) for t in raw_times]
 
 
 def migrate_accumulations(config):
@@ -60,8 +57,7 @@ def migrate_accumulations(config):
             values = dict(config["accumulations"])
             if "accumulation_period" not in values:
                 LOG.warning(
-                    "No 'accumulation_period' specified in accumulations source — "
-                    "using default value of 6 hours."
+                    "No 'accumulation_period' specified in accumulations source — " "using default value of 6 hours."
                 )
             accumulation_period = values.pop("accumulation_period", 6)
             if "step" in values:
@@ -93,9 +89,7 @@ def migrate_accumulations(config):
             elif isinstance(accumulation_period, (list, tuple)):
                 step1, step2 = accumulation_period
                 if not isinstance(step1, int) or not isinstance(step2, int):
-                    raise ValueError(
-                        f"Invalid accumulation_period: {accumulation_period}"
-                    )
+                    raise ValueError(f"Invalid accumulation_period: {accumulation_period}")
                 period = step2 - step1
                 steps = [f"0-{step2}"] if step1 == 0 else [f"0-{step1}", f"0-{step2}"]
                 if "time" in values:
@@ -117,11 +111,7 @@ def migrate_accumulations(config):
                     "accumulated fields come from forecasts, not analyses."
                 )
                 values["type"] = "fc"
-            result = {
-                k: migrate_accumulations(v)
-                for k, v in config.items()
-                if k != "accumulations"
-            }
+            result = {k: migrate_accumulations(v) for k, v in config.items() if k != "accumulations"}
             result["accumulate"] = {
                 "period": period,
                 "availability": availability,
@@ -204,10 +194,7 @@ def migrate_output_format(config: dict) -> dict:
     """Move a layout given as the legacy ``output.format`` to ``output.layout``."""
     output = config.get("output", {})
     layout = output.get("format")
-    if (
-        layout in ("gridded", "tabular", "trajectories")
-        and output.get("layout", layout) == layout
-    ):
+    if layout in ("gridded", "tabular", "trajectories") and output.get("layout", layout) == layout:
         config = config.copy()
         config["output"] = output.copy()
         del config["output"]["format"]
@@ -226,12 +213,7 @@ def _fix_accumulate_availability(config) -> None:
     """
     if isinstance(config, dict):
         for k, v in config.items():
-            if (
-                k == "accumulate"
-                and isinstance(v, dict)
-                and "availability" in v
-                and "covering" not in v
-            ):
+            if k == "accumulate" and isinstance(v, dict) and "availability" in v and "covering" not in v:
                 v["covering"] = {"auto": v.pop("availability")}
             else:
                 _fix_accumulate_availability(v)

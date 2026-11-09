@@ -17,10 +17,14 @@ from typing import Any
 import numpy as np
 import tqdm
 from anemoi.transform.variables import Variable
-from anemoi.utils.dates import as_datetime, frequency_to_string, frequency_to_timedelta
-from anemoi.utils.humanize import compress_dates, seconds_to_human
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.humanize import compress_dates
+from anemoi.utils.humanize import seconds_to_human
 
-from anemoi.datasets.buffering import ReadAheadBuffer, WriteBehindBuffer
+from anemoi.datasets.buffering import ReadAheadBuffer
+from anemoi.datasets.buffering import WriteBehindBuffer
 from anemoi.datasets.compat import get_zarr_format
 
 from ..creator import Creator
@@ -33,6 +37,7 @@ LOG = logging.getLogger(__name__)
 
 
 class GriddedCreator(Creator):
+
     def _metadata_dates(self):
         """Return the datetime values used for statistics metadata.
 
@@ -288,9 +293,7 @@ class GriddedCreator(Creator):
 
         return tendencies
 
-    def _compute_partial_statistics(
-        self, dataset: Dataset, lo: int, hi: int
-    ) -> StatisticsCollector:
+    def _compute_partial_statistics(self, dataset: Dataset, lo: int, hi: int) -> StatisticsCollector:
         """Compute the statistics of the rows ``[lo, hi)`` of the dataset.
 
         The ``D`` rows preceding ``lo`` (``D`` being the largest tendency delta, in rows) are
@@ -330,15 +333,11 @@ class GriddedCreator(Creator):
 
         # Batches are aligned on the chunks of the data array, and split at `lo`.
         step = dataset.data.chunks[0]
-        bounds = sorted(
-            {warm_up, lo, hi} | set(range((warm_up // step + 1) * step, hi, step))
-        )
+        bounds = sorted({warm_up, lo, hi} | set(range((warm_up // step + 1) * step, hi, step)))
 
         data = ReadAheadBuffer(dataset.data, start=warm_up // step)
 
-        for i, j in tqdm.tqdm(
-            list(zip(bounds[:-1], bounds[1:])), desc=f"Statistics [{lo}:{hi})"
-        ):
+        for i, j in tqdm.tqdm(list(zip(bounds[:-1], bounds[1:])), desc=f"Statistics [{lo}:{hi})"):
             if j <= lo:
                 collector.prime(data[i:j], dates[i:j])
             else:
@@ -347,9 +346,7 @@ class GriddedCreator(Creator):
         return collector
 
     def _statistics_part_path(self, index: int, lo: int, hi: int) -> str:
-        return os.path.join(
-            self.work_dir, f"statistics_part_{index:06d}-{lo:09d}-{hi:09d}.pkl"
-        )
+        return os.path.join(self.work_dir, f"statistics_part_{index:06d}-{lo:09d}-{hi:09d}.pkl")
 
     def _statistics_part_files(self) -> list[str]:
         # Loader pickles written by older versions (statistics_{group}-...pkl) are ignored.
@@ -372,15 +369,11 @@ class GriddedCreator(Creator):
             )
 
         # A previous run may have used a different number of parts.
-        stale = self._statistics_part_files() + glob.glob(
-            os.path.join(self.work_dir, "statistics_part_*.pkl.tmp")
-        )
+        stale = self._statistics_part_files() + glob.glob(os.path.join(self.work_dir, "statistics_part_*.pkl.tmp"))
         for path in stale:
             os.unlink(path)
         if stale:
-            LOG.info(
-                f"Removed {len(stale)} stale partial statistics file(s) from {self.work_dir}"
-            )
+            LOG.info(f"Removed {len(stale)} stale partial statistics file(s) from {self.work_dir}")
 
     def finalise_load(self, dataset: Dataset) -> None:
         """Load stage: compute the statistics of the rows of this process's ``--parts``.
@@ -403,14 +396,10 @@ class GriddedCreator(Creator):
 
         path = self._statistics_part_path(index, lo, hi)
         if os.path.exists(path):
-            LOG.info(
-                f"Statistics for part {index} (rows [{lo}:{hi})) already computed: {path}"
-            )
+            LOG.info(f"Statistics for part {index} (rows [{lo}:{hi})) already computed: {path}")
             return
 
-        LOG.info(
-            f"Computing statistics for part {index} ({self.parts}): rows [{lo}:{hi}) of {nrows}"
-        )
+        LOG.info(f"Computing statistics for part {index} ({self.parts}): rows [{lo}:{hi}) of {nrows}")
 
         collector = self._compute_partial_statistics(dataset, lo, hi)
 
@@ -421,12 +410,8 @@ class GriddedCreator(Creator):
     def compute_and_store_statistics(self, dataset: Dataset) -> None:
         precomputed = self._statistics_part_files()
         if precomputed:
-            LOG.info(
-                f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)"
-            )
-            collector = self._statistics_collector_class().load_precomputed(
-                dataset, precomputed
-            )
+            LOG.info(f"Loading precomputed statistics from {self.work_dir} ({len(precomputed):,} files)")
+            collector = self._statistics_collector_class().load_precomputed(dataset, precomputed)
             collector.add_to_dataset(dataset)
             return
 
@@ -473,13 +458,9 @@ class SimpleGriddedCreator(GriddedCreator):
             shape=shape,
             dimensions=("time", "variable", "ensemble", "cell"),
             fill_value=np.nan,
-            compressors=self.recipe.output.get_compressors(
-                get_zarr_format(dataset.store)
-            ),
+            compressors=self.recipe.output.get_compressors(get_zarr_format(dataset.store)),
         )
 
-        dataset.add_array(
-            name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",)
-        )
+        dataset.add_array(name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",))
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))

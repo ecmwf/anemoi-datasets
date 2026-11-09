@@ -32,9 +32,7 @@ class Select(GriddedSelect):
     frequencies and no single ``frequency`` property.
     """
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the statistical tendencies, subsetted to the selected variables.
 
         Parameters
@@ -52,13 +50,8 @@ class Select(GriddedSelect):
         if delta is None:
             delta = self.step_frequency
             if delta is None:
-                raise ValueError(
-                    "statistics_tendencies: steps are not uniformly spaced, pass `delta` explicitly."
-                )
-        return {
-            k: v[self.indices]
-            for k, v in self.dataset.statistics_tendencies(delta).items()
-        }
+                raise ValueError("statistics_tendencies: steps are not uniformly spaced, pass `delta` explicitly.")
+        return {k: v[self.indices] for k, v in self.dataset.statistics_tendencies(delta).items()}
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         return super().metadata_specific(**trajectory_metadata(self), **kwargs)

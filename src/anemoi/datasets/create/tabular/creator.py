@@ -22,6 +22,7 @@ LOG = logging.getLogger(__name__)
 
 
 class TabularCreator(Creator):
+
     allow_nans = True
 
     ######################################################
@@ -60,9 +61,9 @@ class TabularCreator(Creator):
 
         metadata["dimensions"] = ["dates", "variables"]
 
-        assert variables == metadata["meta_variables"] + metadata["variables"], (
-            "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
-        )
+        assert (
+            variables == metadata["meta_variables"] + metadata["variables"]
+        ), "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
 
     def initialise_dataset(self, dataset: Dataset) -> None:
         """Initialise the dataset arrays and coordinates for tabular data.
@@ -72,6 +73,7 @@ class TabularCreator(Creator):
         dataset : Dataset
             The dataset object to be initialised with arrays and coordinates.
         """
+        pass
 
     ######################################################
 
@@ -94,9 +96,7 @@ class TabularCreator(Creator):
         # or order) from the schema recorded at initialisation. The fragments
         # are saved as bare arrays, so this is the only place the column names
         # still exist; checking here also catches a task running mismatched code.
-        expected = (
-            dataset.store.attrs["meta_variables"] + dataset.store.attrs["variables"]
-        )
+        expected = dataset.store.attrs["meta_variables"] + dataset.store.attrs["variables"]
         actual = result.variables
         assert actual == expected, (
             f"Column schema mismatch for {result.start_range}..{result.end_range}:\n"
@@ -111,26 +111,17 @@ class TabularCreator(Creator):
 
         array = result.to_numpy()
         if array.shape[0] == 0:
-            np.save(
-                os.path.join(
-                    self.work_dir, f"{result.start_range}-{result.end_range}.npy"
-                ),
-                array,
-            )
+            np.save(os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}.npy"), array)
             return
 
         # Record the row density over time now, while the dates are in memory, so `finalise` can size
         # the zarr chunks without re-reading the fragments (see compute_rows_per_chunk).
         from .finalise import write_fragment_density
 
-        write_fragment_density(
-            self.work_dir, f"{result.start_range}-{result.end_range}", array
-        )
+        write_fragment_density(self.work_dir, f"{result.start_range}-{result.end_range}", array)
 
         one_row_size = array.shape[1] * array.itemsize
-        rows_per_file = max(
-            round(self.recipe.build.max_fragment_size / one_row_size), 1
-        )
+        rows_per_file = max(round(self.recipe.build.max_fragment_size / one_row_size), 1)
 
         # Split on the change of date/time so we minimmise the numper of depluplications done in the "finalise" step
 
@@ -175,10 +166,7 @@ class TabularCreator(Creator):
                 f"{result.start_range}-{result.end_range}: Saving rows {part.start} to {part.stop} as part {i:04d} (len={part.stop - part.start}, max={rows_per_file})."
             )
             np.save(
-                os.path.join(
-                    self.work_dir,
-                    f"{result.start_range}-{result.end_range}-{i:04d}.npy",
-                ),
+                os.path.join(self.work_dir, f"{result.start_range}-{result.end_range}-{i:04d}.npy"),
                 array[part],
             )
 
@@ -225,34 +213,22 @@ class TabularCreator(Creator):
         output = self.recipe.output
 
         if self.rows_per_chunk_print:
-            print(
-                self._compute_rows_per_chunk(dataset, self.recipe.build.chunk_windows)
-            )
+            print(self._compute_rows_per_chunk(dataset, self.recipe.build.chunk_windows))
             return
 
         explicit = self.finalise_stage == "rows_per_chunk"
 
         if output.rows_per_chunk is not None:
-            message = (
-                f"output.rows_per_chunk is already set to {output.rows_per_chunk:,}."
-            )
+            message = f"output.rows_per_chunk is already set to {output.rows_per_chunk:,}."
             if explicit:
-                raise ValueError(
-                    f"{message} Nothing to compute; use --print to just report the optima."
-                )
-            LOG.info(
-                f"{message} Keeping the user's value; skipping automatic rows-per-chunk."
-            )
+                raise ValueError(f"{message} Nothing to compute; use --print to just report the optima.")
+            LOG.info(f"{message} Keeping the user's value; skipping automatic rows-per-chunk.")
             return
 
         if output.auto_rows_per_chunk is None:
-            message = (
-                "output.auto_rows_per_chunk is null and output.rows_per_chunk is unset."
-            )
+            message = "output.auto_rows_per_chunk is null and output.rows_per_chunk is unset."
             if explicit:
-                raise ValueError(
-                    f"{message} Set one of them, or use --print to just report the optima."
-                )
+                raise ValueError(f"{message} Set one of them, or use --print to just report the optima.")
             LOG.info(f"{message} Skipping automatic rows-per-chunk.")
             return
 
@@ -273,9 +249,7 @@ class TabularCreator(Creator):
         from .finalise import set_rows_per_chunk
 
         set_rows_per_chunk(dataset, self.work_dir, value)
-        LOG.info(
-            f"Set output.rows_per_chunk={value:,} from the {window} window and re-chunked the data array."
-        )
+        LOG.info(f"Set output.rows_per_chunk={value:,} from the {window} window and re-chunked the data array.")
 
     def _compute_rows_per_chunk(self, dataset: Dataset, windows: Any) -> dict:
         from .finalise import compute_rows_per_chunk
@@ -332,6 +306,4 @@ class TabularCreator(Creator):
             The dataset object for which statistics will be computed and stored.
         """
         # TODO: implement if needed to recompute statistics
-        raise NotImplementedError(
-            "Statistics are computed during finalisation for tabular datasets."
-        )
+        raise NotImplementedError("Statistics are computed during finalisation for tabular datasets.")

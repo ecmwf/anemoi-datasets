@@ -39,9 +39,7 @@ def trajectory_metadata(ds: Any) -> dict[str, Any]:
     step_frequency = ds.step_frequency
     return dict(
         base_frequency=frequency_to_string(ds.base_frequency),
-        step_frequency=frequency_to_string(step_frequency)
-        if step_frequency is not None
-        else None,
+        step_frequency=frequency_to_string(step_frequency) if step_frequency is not None else None,
         base_start_date=str(ds.base_start_date),
         base_end_date=str(ds.base_end_date),
         step_start=frequency_to_string(ds.step_start),

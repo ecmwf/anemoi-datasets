@@ -195,9 +195,7 @@ def zarr_format_kwargs(zarr_format: int) -> dict:
         The keyword arguments to pass to ``zarr.open_group``.
     """
     if zarr_format != 2:
-        raise ValueError(
-            f"zarr_format={zarr_format} requires zarr-python>=3 (installed: {zarr.__version__})"
-        )
+        raise ValueError(f"zarr_format={zarr_format} requires zarr-python>=3 (installed: {zarr.__version__})")
     return {"zarr_version": 2}
 
 
@@ -206,9 +204,7 @@ def get_zarr_format(node: Group | zarr.core.Array) -> int:
     return 2
 
 
-def blosc_compressor(
-    cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int
-) -> "zarr.Blosc":
+def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, zarr_format: int) -> "zarr.Blosc":
     """Return a Blosc compressor for zarr2.
 
     Parameters

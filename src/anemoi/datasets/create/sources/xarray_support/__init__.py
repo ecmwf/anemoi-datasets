@@ -9,7 +9,8 @@
 
 import datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import earthkit.data as ekd
 from earthkit.data.core.fieldlist import MultiFieldList
@@ -46,9 +47,7 @@ def check(what: str, ds: "xr.Dataset", paths: list[str], **kwargs: Any) -> None:
             count *= len(v)
 
     if len(ds) != count:
-        raise ValueError(
-            f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})"
-        )
+        raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, {what}s={paths})")
 
 
 def load_one(
@@ -97,9 +96,7 @@ def load_one(
 
     context.trace(emoji, dataset, options, kwargs)
 
-    if isinstance(dataset, str) and (
-        dataset.startswith("ec:") or dataset.startswith("ectmp:")
-    ):
+    if isinstance(dataset, str) and (dataset.startswith("ec:") or dataset.startswith("ectmp:")):
         from anemoi.datasets.create.ecfs import get_ecfs_file
 
         dataset = get_ecfs_file(dataset)
@@ -119,9 +116,7 @@ def load_one(
     if len(dates) == 0:
         result = fs.sel(**kwargs)
     else:
-        result = MultiFieldList(
-            [fs.sel(valid_datetime=date, **kwargs) for date in dates]
-        )
+        result = MultiFieldList([fs.sel(valid_datetime=date, **kwargs) for date in dates])
 
     if len(result) == 0:
         LOG.warning(f"No data found for {dataset} and dates {dates} and {kwargs}")
@@ -129,7 +124,7 @@ def load_one(
 
         for i, k in enumerate(fs):
             a = ["valid_datetime", k.metadata("valid_datetime", default=None)]
-            for n in kwargs:
+            for n in kwargs.keys():
                 a.extend([n, k.metadata(n, default=None)])
             LOG.warning(f"{[str(x) for x in a]}")
 
@@ -141,13 +136,7 @@ def load_one(
     return result
 
 
-def load_many(
-    emoji: str,
-    context: Any,
-    dates: list[datetime.datetime],
-    pattern: str,
-    **kwargs: Any,
-) -> ekd.FieldList:
+def load_many(emoji: str, context: Any, dates: list[datetime.datetime], pattern: str, **kwargs: Any) -> ekd.FieldList:
     """Loads multiple datasets.
 
     Parameters
@@ -181,9 +170,7 @@ class LegacyXarraySource(LegacySource):
     name = "xarray"
 
     @staticmethod
-    def _execute(
-        context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any
-    ) -> ekd.FieldList:
+    def _execute(context: Any, dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
         """Executes the loading of datasets.
 
         Parameters

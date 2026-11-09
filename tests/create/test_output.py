@@ -20,14 +20,13 @@ from pydantic import ValidationError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.recipe.migrate import migrate_output_format
 from anemoi.datasets.compat import zarr_version
-from anemoi.datasets.compat.codecs import (
-    BLOSC_SHUFFLE,
-    numcodecs_codec,
-    zarr3_codec,
-    zarr3_spec,
-)
+from anemoi.datasets.compat.codecs import BLOSC_SHUFFLE
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
+from anemoi.datasets.compat.codecs import zarr3_spec
 from anemoi.datasets.create.recipe import Recipe
-from anemoi.datasets.create.recipe.output import GriddedOutput, TabularOutput
+from anemoi.datasets.create.recipe.output import GriddedOutput
+from anemoi.datasets.create.recipe.output import TabularOutput
 from anemoi.datasets.create.tasks import run_task
 
 
@@ -60,10 +59,7 @@ def test_default_chunking_handles_non_divisible_grid():
 def test_default_grid_chunking(name, grid_points, expected_chunks):
     chunks = GriddedOutput().get_chunking(_coords(grid_points=grid_points))
 
-    print(
-        f"{name}: {grid_points:,} grid points -> "
-        f"{expected_chunks} chunks of {chunks[-1]:,} grid points"
-    )
+    print(f"{name}: {grid_points:,} grid points -> " f"{expected_chunks} chunks of {chunks[-1]:,} grid points")
 
     assert grid_points // chunks[-1] == expected_chunks
 
@@ -72,23 +68,13 @@ def test_default_chunking_increases_chunking_for_large_dates():
     output = GriddedOutput()
     # Four grid cells per chunk would exceed the signed 32-bit codec limit;
     # eight grid splits produce chunks containing two cells instead.
-    assert output.get_chunking(_coords(variables=200_000_000, grid_points=16)) == (
-        1,
-        200_000_000,
-        1,
-        2,
-    )
+    assert output.get_chunking(_coords(variables=200_000_000, grid_points=16)) == (1, 200_000_000, 1, 2)
 
 
 def test_default_chunking_decreases_chunking_for_small_dates():
     # Four grid splits would create 16 MiB chunks. Two grid splits produce
     # 32 MiB chunks, matching the configured minimum.
-    assert GriddedOutput().get_chunking(_coords(grid_points=166_112)) == (
-        1,
-        101,
-        1,
-        83_056,
-    )
+    assert GriddedOutput().get_chunking(_coords(grid_points=166_112)) == (1, 101, 1, 83_056)
 
 
 def test_default_chunking_explicit_grid_chunking_works():
@@ -132,9 +118,7 @@ def test_layout_selects_output():
     assert output.format == "zarr2"
 
 
-@pytest.mark.parametrize(
-    ("layout", "cls"), [("gridded", GriddedOutput), ("tabular", TabularOutput)]
-)
+@pytest.mark.parametrize(("layout", "cls"), [("gridded", GriddedOutput), ("tabular", TabularOutput)])
 def test_legacy_format_is_migrated_to_layout(layout, cls, caplog):
     # Recipes written before output.format selected the Zarr format, including those stored in existing datasets
     with caplog.at_level(logging.WARNING):
@@ -147,9 +131,7 @@ def test_legacy_format_is_migrated_to_layout(layout, cls, caplog):
 
 
 def test_legacy_format_conflicting_with_layout_is_rejected():
-    with pytest.raises(
-        ValidationError, match="conflicts with 'output.layout: gridded'"
-    ):
+    with pytest.raises(ValidationError, match="conflicts with 'output.layout: gridded'"):
         _recipe({"format": "tabular", "layout": "gridded"})
 
 
@@ -157,61 +139,32 @@ def test_legacy_format_conflicting_with_layout_is_rejected():
     ("output", "expected"),
     [
         ({"format": "tabular"}, {"layout": "tabular"}),
-        (
-            {"format": "tabular", "dtype": "float64"},
-            {"layout": "tabular", "dtype": "float64"},
-        ),
+        ({"format": "tabular", "dtype": "float64"}, {"layout": "tabular", "dtype": "float64"}),
         ({"format": "zarr3"}, {"format": "zarr3"}),
-        (
-            {"format": "tabular", "layout": "gridded"},
-            {"format": "tabular", "layout": "gridded"},
-        ),
+        ({"format": "tabular", "layout": "gridded"}, {"format": "tabular", "layout": "gridded"}),
     ],
 )
 def test_migrate_output_format(output, expected):
     assert migrate_output_format({"output": output}) == {"output": expected}
 
 
-FORMATS = [
-    "zarr2",
-    pytest.param(
-        "zarr3",
-        marks=pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3"),
-    ),
-]
+FORMATS = ["zarr2", pytest.param("zarr3", marks=pytest.mark.skipif(zarr_version < 3, reason="requires zarr-python>=3"))]
 
-BLOSC_ZSTD = {
-    "name": "blosc",
-    "configuration": {"cname": "zstd", "clevel": 3, "shuffle": "bitshuffle"},
-}
+BLOSC_ZSTD = {"name": "blosc", "configuration": {"cname": "zstd", "clevel": 3, "shuffle": "bitshuffle"}}
 
 
 def test_compressors_are_translated_to_numcodecs():
-    assert numcodecs_codec(BLOSC_ZSTD) == numcodecs.Blosc(
-        cname="zstd", clevel=3, shuffle=2
-    )
+    assert numcodecs_codec(BLOSC_ZSTD) == numcodecs.Blosc(cname="zstd", clevel=3, shuffle=2)
     # Missing settings take the defaults of the zarr-python 3 codecs
-    assert numcodecs_codec({"name": "blosc"}) == numcodecs.Blosc(
-        cname="zstd", clevel=5, shuffle=2
-    )
-    assert numcodecs_codec(
-        {"name": "zstd", "configuration": {"level": 3}}
-    ) == numcodecs.Zstd(level=3)
+    assert numcodecs_codec({"name": "blosc"}) == numcodecs.Blosc(cname="zstd", clevel=5, shuffle=2)
+    assert numcodecs_codec({"name": "zstd", "configuration": {"level": 3}}) == numcodecs.Zstd(level=3)
     assert numcodecs_codec({"name": "gzip"}) == numcodecs.GZip(level=5)
-    assert numcodecs_codec(
-        {"name": "numcodecs.zlib", "configuration": {"level": 4}}
-    ) == numcodecs.Zlib(level=4)
+    assert numcodecs_codec({"name": "numcodecs.zlib", "configuration": {"level": 4}}) == numcodecs.Zlib(level=4)
     with pytest.raises(NotImplementedError):
         numcodecs_codec({"name": "crc32c"})
 
-    for spec in (
-        BLOSC_ZSTD,
-        {"name": "zstd", "configuration": {"level": 3}},
-        {"name": "gzip"},
-    ):
-        assert numcodecs_codec(zarr3_spec(numcodecs_codec(spec))) == numcodecs_codec(
-            spec
-        )
+    for spec in (BLOSC_ZSTD, {"name": "zstd", "configuration": {"level": 3}}, {"name": "gzip"}):
+        assert numcodecs_codec(zarr3_spec(numcodecs_codec(spec))) == numcodecs_codec(spec)
         if zarr_version >= 3:
             # Same codec as the one zarr-python 3 builds from the spec, defaults included
             assert numcodecs_codec(zarr3_codec(spec).to_dict()) == numcodecs_codec(spec)
@@ -239,9 +192,7 @@ def test_compressors_validation(format):
     none = GriddedOutput(format=format, compressors=[]).get_compressors(zarr_format)
     assert none is None if zarr_format == 2 else none == ()
     if format == "zarr3":
-        output = GriddedOutput(
-            format=format, compressors=[{"name": "zstd"}, {"name": "crc32c"}]
-        )
+        output = GriddedOutput(format=format, compressors=[{"name": "zstd"}, {"name": "crc32c"}])
         assert len(output.get_compressors(3)) == 2
 
 
@@ -266,9 +217,7 @@ def _write_grib(path: str) -> None:
     with open(path, "wb") as f:
         for hour in (0, 6):
             h = eccodes.codes_clone(sample)
-            eccodes.codes_set_key_vals(
-                h, {"dataDate": 20200101, "dataTime": hour * 100, "paramId": 167}
-            )
+            eccodes.codes_set_key_vals(h, {"dataDate": 20200101, "dataTime": hour * 100, "paramId": 167})
             eccodes.codes_set_values(h, np.full(6, float(hour)))
             eccodes.codes_write(h, f)
             eccodes.codes_release(h)
@@ -292,11 +241,7 @@ def test_compressors_are_applied_to_data_array(tmp_path, format):
 
     def create(name: str, **output) -> list[dict]:
         recipe = {
-            "dates": {
-                "start": "2020-01-01T00:00:00",
-                "end": "2020-01-01T06:00:00",
-                "frequency": "6h",
-            },
+            "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
             "input": {"grib": {"path": grib}},
             "output": {"format": format, **output},
         }
@@ -304,36 +249,20 @@ def test_compressors_are_applied_to_data_array(tmp_path, format):
         with open(tmp_path / f"{name}.yaml", "w") as f:
             yaml.dump(recipe, f)
         for task in ("init", "load", "finalise"):
-            run_task(
-                task, recipe=str(tmp_path / f"{name}.yaml"), path=path, overwrite=True
-            )
+            run_task(task, recipe=str(tmp_path / f"{name}.yaml"), path=path, overwrite=True)
         np.testing.assert_allclose(open_dataset(path)[1].squeeze(), 6.0)
         return _compressors_on_disk(path)
 
     def blosc(cname, clevel, shuffle):
         if format == "zarr2":
-            return {
-                "id": "blosc",
-                "cname": cname,
-                "clevel": clevel,
-                "shuffle": shuffle,
-                "blocksize": 0,
-            }
-        config = {
-            "typesize": 4,
-            "cname": cname,
-            "clevel": clevel,
-            "shuffle": BLOSC_SHUFFLE[shuffle],
-            "blocksize": 0,
-        }
+            return {"id": "blosc", "cname": cname, "clevel": clevel, "shuffle": shuffle, "blocksize": 0}
+        config = {"typesize": 4, "cname": cname, "clevel": clevel, "shuffle": BLOSC_SHUFFLE[shuffle], "blocksize": 0}
         return {"name": "blosc", "configuration": config}
 
     assert create("blosc", compressors=[BLOSC_ZSTD]) == [blosc("zstd", 3, 2)]
     assert create("default") == [blosc("lz4", 5, 1)]
 
-    zlib = create(
-        "zlib", compressors=[{"name": "numcodecs.zlib", "configuration": {"level": 4}}]
-    )
+    zlib = create("zlib", compressors=[{"name": "numcodecs.zlib", "configuration": {"level": 4}}])
     if format == "zarr2":
         assert zlib == [{"id": "zlib", "level": 4}]
     else:

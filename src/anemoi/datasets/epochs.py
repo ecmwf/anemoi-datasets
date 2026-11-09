@@ -12,7 +12,8 @@ We cannot use timestamp() and fromtimestamp() directly because they
 depend on the local timezone.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+from datetime import timezone
 
 import numpy as np
 
@@ -27,14 +28,14 @@ def date_to_epoch(date):
         date.minute,
         date.second,
         date.microsecond,
-        tzinfo=UTC,
+        tzinfo=timezone.utc,
     )
     return d.timestamp()
 
 
 def epoch_to_date(timestamp):
     """Convert Unix timestamp (epoch) to naive UTC datetime."""
-    return datetime.fromtimestamp(timestamp, tz=UTC).replace(tzinfo=None)
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).replace(tzinfo=None)
 
 
 def date_time_epoch_to_date(date, time):

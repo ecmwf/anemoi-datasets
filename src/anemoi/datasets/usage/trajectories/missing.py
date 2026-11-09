@@ -32,9 +32,7 @@ class MissingBaseDates(MissingDates):
         return dataset.base_dates
 
     def _report_missing(self, n: int) -> None:
-        raise MissingDateError(
-            f"Base date {self._axis_dates(self.forward)[n]} is missing (index={n})"
-        )
+        raise MissingDateError(f"Base date {self._axis_dates(self.forward)[n]} is missing (index={n})")
 
     @property
     def reason(self) -> dict[str, Any]:

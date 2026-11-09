@@ -18,8 +18,12 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
-from anemoi.datasets.usage.debug import Node, Source, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
 from ..store import ZarrStore
@@ -287,9 +291,7 @@ class TrajectoriesZarr(ZarrStore):
         """Return per-variable metadata dict."""
         return self.store.attrs.get("variables_metadata", {})
 
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the statistical tendencies of the dataset.
 
         For trajectories, tendencies are computed along the step axis at
@@ -327,7 +329,8 @@ class TrajectoriesZarr(ZarrStore):
         A base date is kept if and only if its entire step range falls within
         [start, end]:  ``base + step_start >= start AND base + step_end <= end``.
         """
-        from anemoi.datasets.usage.misc import as_first_date, as_last_date
+        from anemoi.datasets.usage.misc import as_first_date
+        from anemoi.datasets.usage.misc import as_last_date
 
         base_dates = self.base_dates
         step_start = self.steps[0]
@@ -416,9 +419,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
 
         missing = self.store.attrs.get("missing_dates", [])
         missing = {np.datetime64(x, "s") for x in missing}
-        self.missing_to_dates = {
-            i: d for i, d in enumerate(self.base_dates) if d in missing
-        }
+        self.missing_to_dates = {i: d for i, d in enumerate(self.base_dates) if d in missing}
         self._missing = set(self.missing_to_dates)
 
     @property
@@ -438,9 +439,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
         if isinstance(first, (int, np.integer)):
             hit = int(first) if int(first) in self._missing else None
         elif isinstance(first, slice):
-            hit = next(
-                iter(set(range(*first.indices(len(self)))) & self._missing), None
-            )
+            hit = next(iter(set(range(*first.indices(len(self)))) & self._missing), None)
         elif isinstance(first, (list, tuple, np.ndarray)):
             hit = next(iter({int(i) for i in first} & self._missing), None)
         else:
@@ -453,9 +452,7 @@ class TrajectoriesZarrWithMissingDates(TrajectoriesZarr):
     def _report_missing(self, n: int) -> None:
         from anemoi.datasets import MissingDateError
 
-        raise MissingDateError(
-            f"Base date {self.missing_to_dates[n]} is missing (index={n})"
-        )
+        raise MissingDateError(f"Base date {self.missing_to_dates[n]} is missing (index={n})")
 
     def tree(self) -> Node:
         return Node(self, [], path=self.path, missing=sorted(self._missing))

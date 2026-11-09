@@ -14,7 +14,8 @@ from collections.abc import Generator
 from typing import Any
 
 import numpy as np
-from anemoi.utils.dates import as_datetime, frequency_to_timedelta
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -55,13 +56,7 @@ class DateMapper:
 class DateMapperClosest(DateMapper):
     """A DateMapper implementation that maps dates to the closest available dates."""
 
-    def __init__(
-        self,
-        source: Any,
-        frequency: str = "1h",
-        maximum: str = "30d",
-        skip_all_nans: bool = False,
-    ) -> None:
+    def __init__(self, source: Any, frequency: str = "1h", maximum: str = "30d", skip_all_nans: bool = False) -> None:
         """Initialize DateMapperClosest.
 
         Parameters
@@ -82,9 +77,7 @@ class DateMapperClosest(DateMapper):
         self.tried: set[Any] = set()
         self.found: set[Any] = set()
 
-    def transform(
-        self, context, group_of_dates: Any
-    ) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the closest available dates.
 
         Parameters
@@ -158,9 +151,7 @@ class DateMapperClosest(DateMapper):
             for k, v in info.items():
                 LOG.warning(f"{k}: {v}")
 
-            raise ValueError(
-                f"No matching data found for {asked_dates} in {self.source}"
-            )
+            raise ValueError(f"No matching data found for {asked_dates} in {self.source}")
 
         new_dates = defaultdict(list)
 
@@ -184,9 +175,7 @@ class DateMapperClosest(DateMapper):
 class DateMapperClimatology(DateMapper):
     """A DateMapper implementation that maps dates to specified climatology dates."""
 
-    def __init__(
-        self, source: Any, year: int, day: int, hour: int | None = None
-    ) -> None:
+    def __init__(self, source: Any, year: int, day: int, hour: int | None = None) -> None:
         """Initialize DateMapperClimatology.
 
         Parameters
@@ -204,9 +193,7 @@ class DateMapperClimatology(DateMapper):
         self.day: int = day
         self.hour: int | None = hour
 
-    def transform(
-        self, context, group_of_dates: Any
-    ) -> Generator[tuple[Any, Any], None, None]:
+    def transform(self, context, group_of_dates: Any) -> Generator[tuple[Any, Any], None, None]:
         """Transform the group of dates to the specified climatology dates.
 
         Parameters

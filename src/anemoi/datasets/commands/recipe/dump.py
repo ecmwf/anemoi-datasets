@@ -17,6 +17,7 @@ from anemoi.datasets.create.recipe import Recipe
 
 
 class Dumper:
+
     def recipe(self, input, sources):
         return json.dumps({"input": input, "sources": sources}, indent=2, default=str)
 
@@ -36,13 +37,7 @@ class Dumper:
         return repr((str(start), str(end), frequency_to_string(frequency)))
 
     def steps(self, start, end, frequency):
-        return repr(
-            (
-                frequency_to_string(start),
-                frequency_to_string(end),
-                frequency_to_string(frequency),
-            )
-        )
+        return repr((frequency_to_string(start), frequency_to_string(end), frequency_to_string(frequency)))
 
 
 def dump_recipe(config: dict, dumper=None) -> str:

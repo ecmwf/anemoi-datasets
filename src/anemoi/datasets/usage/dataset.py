@@ -13,7 +13,8 @@ import json
 import logging
 import pprint
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
 
 try:
@@ -21,18 +22,20 @@ try:
 except ImportError:
     # Python 3.9
     EllipsisType = type(Ellipsis)
-from collections.abc import Sequence, Sized
-from typing import TYPE_CHECKING, Any, Union
+from collections.abc import Sequence
+from collections.abc import Sized
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Union
 
 import numpy as np
-from anemoi.utils.dates import (
-    frequency_to_seconds,
-    frequency_to_string,
-    frequency_to_timedelta,
-)
+from anemoi.utils.dates import frequency_to_seconds
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.debug import Node, Source
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import Source
 
 if TYPE_CHECKING:
     import matplotlib
@@ -41,7 +44,7 @@ LOG = logging.getLogger(__name__)
 
 
 Shape = tuple[int, ...]
-TupleIndex = tuple[int | slice | EllipsisType, ...]
+TupleIndex = tuple[Union[int, slice, EllipsisType], ...]
 FullIndex = Union[int, slice, TupleIndex]
 
 
@@ -170,17 +173,11 @@ class Dataset(ABC, Sized):
 
             extend_start = kwargs.pop("extend_start", None)
             extend_end = kwargs.pop("extend_end", None)
-            return (
-                Extend(self, extend_start=extend_start, extend_end=extend_end)
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Extend(self, extend_start=extend_start, extend_end=extend_end)._subset(**kwargs).mutate()
 
         # Must be before the rest
         if "fill_missing_dates" in kwargs:
-            fill_missing_dates_factory = self.usage_factory_load(
-                "fill_missing_dates_factory"
-            )
+            fill_missing_dates_factory = self.usage_factory_load("fill_missing_dates_factory")
 
             fill_missing_dates = kwargs.pop("fill_missing_dates")
             ds = fill_missing_dates_factory(self, fill_missing_dates, kwargs)
@@ -193,28 +190,18 @@ class Dataset(ABC, Sized):
             Subset = self.usage_factory_load("Subset")
 
             return (
-                Subset(
-                    self, self._dates_to_indices(start, end), dict(start=start, end=end)
-                )
-                ._subset(**kwargs)
-                .mutate()
+                Subset(self, self._dates_to_indices(start, end), dict(start=start, end=end))._subset(**kwargs).mutate()
             )
 
         if "frequency" in kwargs:
             Subset = self.usage_factory_load("Subset")
 
             if "interpolate_frequency" in kwargs:
-                raise ValueError(
-                    "Cannot use both `frequency` and `interpolate_frequency`"
-                )
+                raise ValueError("Cannot use both `frequency` and `interpolate_frequency`")
 
             frequency = kwargs.pop("frequency")
             return (
-                Subset(
-                    self,
-                    self._frequency_to_indices(frequency),
-                    dict(frequency=frequency),
-                )
+                Subset(self, self._frequency_to_indices(frequency), dict(frequency=frequency))
                 ._subset(**kwargs)
                 .mutate()
             )
@@ -223,31 +210,19 @@ class Dataset(ABC, Sized):
             Select = self.usage_factory_load("Select")
 
             select = kwargs.pop("select")
-            return (
-                Select(self, self._select_to_columns(select), {"select": select})
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Select(self, self._select_to_columns(select), {"select": select})._subset(**kwargs).mutate()
 
         if "drop" in kwargs:
             Select = self.usage_factory_load("Select")
 
             drop = kwargs.pop("drop")
-            return (
-                Select(self, self._drop_to_columns(drop), {"drop": drop})
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Select(self, self._drop_to_columns(drop), {"drop": drop})._subset(**kwargs).mutate()
 
         if "reorder" in kwargs:
             Select = self.usage_factory_load("Select")
 
             reorder = kwargs.pop("reorder")
-            return (
-                Select(self, self._reorder_to_columns(reorder), {"reorder": reorder})
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Select(self, self._reorder_to_columns(reorder), {"reorder": reorder})._subset(**kwargs).mutate()
 
         if "rename" in kwargs:
             Rename = self.usage_factory_load("Rename")
@@ -262,16 +237,13 @@ class Dataset(ABC, Sized):
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs or "statistics_tendencies" in kwargs:
+
             Statistics = self.usage_factory_load("Statistics")
 
             statistics = kwargs.pop("statistics", None)
             statistics_tendencies = kwargs.pop("statistics_tendencies", None)
 
-            return (
-                Statistics(self, statistics, statistic_tendencies=statistics_tendencies)
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Statistics(self, statistics, statistic_tendencies=statistics_tendencies)._subset(**kwargs).mutate()
 
         if "mask" in kwargs:
             Masking = self.usage_factory_load("Masking")
@@ -299,12 +271,7 @@ class Dataset(ABC, Sized):
             bbox = kwargs.pop("area")
             return Cropping(self, bbox)._subset(**kwargs).mutate()
 
-        if (
-            "number" in kwargs
-            or "numbers" in kwargs
-            or "member" in kwargs
-            or "members" in kwargs
-        ):
+        if "number" in kwargs or "numbers" in kwargs or "member" in kwargs or "members" in kwargs:
             Number = self.usage_factory_load("Number")
 
             members = {}
@@ -325,50 +292,32 @@ class Dataset(ABC, Sized):
             MissingBaseDates = self.usage_factory_load("MissingBaseDates")
 
             set_missing_base_dates = kwargs.pop("set_missing_base_dates")
-            return (
-                MissingBaseDates(self, set_missing_base_dates)
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return MissingBaseDates(self, set_missing_base_dates)._subset(**kwargs).mutate()
 
         if "skip_missing_dates" in kwargs:
             SkipMissingDates = self.usage_factory_load("SkipMissingDates")
 
             if "expected_access" not in kwargs:
-                raise ValueError(
-                    "`expected_access` is required with `skip_missing_dates`"
-                )
+                raise ValueError("`expected_access` is required with `skip_missing_dates`")
 
             skip_missing_dates = kwargs.pop("skip_missing_dates")
             expected_access = kwargs.pop("expected_access")
 
             if skip_missing_dates:
-                return (
-                    SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
-                )
+                return SkipMissingDates(self, expected_access)._subset(**kwargs).mutate()
 
         if "interpolate_frequency" in kwargs:
             InterpolateFrequency = self.usage_factory_load("InterpolateFrequency")
 
             interpolate_frequency = kwargs.pop("interpolate_frequency")
-            return (
-                InterpolateFrequency(self, interpolate_frequency)
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return InterpolateFrequency(self, interpolate_frequency)._subset(**kwargs).mutate()
 
         if "interpolate_variables" in kwargs:
             InterpolateNearest = self.usage_factory_load("InterpolateNearest")
 
             interpolate_variables = kwargs.pop("interpolate_variables")
             max_distance = kwargs.pop("max_distance", None)
-            return (
-                InterpolateNearest(
-                    self, interpolate_variables, max_distance=max_distance
-                )
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return InterpolateNearest(self, interpolate_variables, max_distance=max_distance)._subset(**kwargs).mutate()
 
         if "rolling_average" in kwargs:
             RollingAverage = self.usage_factory_load("RollingAverage")
@@ -383,11 +332,7 @@ class Dataset(ABC, Sized):
             shuffle = kwargs.pop("shuffle")
 
             if shuffle:
-                return (
-                    Subset(self, self._shuffle_indices(), dict(shuffle=True))
-                    ._subset(**kwargs)
-                    .mutate()
-                )
+                return Subset(self, self._shuffle_indices(), dict(shuffle=True))._subset(**kwargs).mutate()
 
         if tensors := kwargs.pop("tensors", None):
             Tensors = self.usage_factory_load("Tensors")
@@ -399,21 +344,13 @@ class Dataset(ABC, Sized):
 
             step = kwargs.pop("step")
             kwargs.pop("steps", None)
-            return (
-                SingleStepView(self, self._step_to_index(step))
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return SingleStepView(self, self._step_to_index(step))._subset(**kwargs).mutate()
 
         if "steps" in kwargs:
             StepSubset = self.usage_factory_load("StepSubset")
 
             steps = kwargs.pop("steps")
-            return (
-                StepSubset(self, self._steps_to_indices(steps))
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return StepSubset(self, self._steps_to_indices(steps))._subset(**kwargs).mutate()
 
         # Trajectory-specific: step range selection
         if "step_start" in kwargs or "step_end" in kwargs or "step_frequency" in kwargs:
@@ -432,22 +369,14 @@ class Dataset(ABC, Sized):
             base_start = kwargs.pop("base_start", None)
             base_end = kwargs.pop("base_end", None)
             indices = self._base_dates_to_indices(base_start, base_end)
-            return (
-                Subset(self, indices, dict(base_start=base_start, base_end=base_end))
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Subset(self, indices, dict(base_start=base_start, base_end=base_end))._subset(**kwargs).mutate()
 
         if "base_frequency" in kwargs:
             Subset = self.usage_factory_load("Subset")
 
             base_frequency = kwargs.pop("base_frequency")
             indices = self._base_frequency_to_indices(base_frequency)
-            return (
-                Subset(self, indices, dict(base_frequency=base_frequency))
-                ._subset(**kwargs)
-                .mutate()
-            )
+            return Subset(self, indices, dict(base_frequency=base_frequency))._subset(**kwargs).mutate()
 
         raise NotImplementedError("Unsupported arguments: " + ", ".join(kwargs))
 
@@ -506,7 +435,8 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        from anemoi.datasets.usage.misc import as_first_date, as_last_date
+        from anemoi.datasets.usage.misc import as_first_date
+        from anemoi.datasets.usage.misc import as_last_date
 
         # TODO: optimize
 
@@ -562,32 +492,19 @@ class Dataset(ABC, Sized):
         steps = self.steps
         td = [s.astype("timedelta64[s]").astype(datetime.timedelta) for s in steps]
 
-        lo = (
-            datetime.timedelta(hours=int(step_start))
-            if step_start is not None
-            else td[0]
-        )
+        lo = datetime.timedelta(hours=int(step_start)) if step_start is not None else td[0]
         hi = datetime.timedelta(hours=int(step_end)) if step_end is not None else td[-1]
-        freq = (
-            datetime.timedelta(hours=int(step_frequency))
-            if step_frequency is not None
-            else None
-        )
+        freq = datetime.timedelta(hours=int(step_frequency)) if step_frequency is not None else None
 
         indices = [i for i, s in enumerate(td) if lo <= s <= hi]
 
         if freq is not None and len(indices) > 1:
             # Subsample: keep every freq-th step starting from the first
             base = td[indices[0]]
-            indices = [
-                i for i in indices if (td[i] - base) % freq == datetime.timedelta(0)
-            ]
+            indices = [i for i in indices if (td[i] - base) % freq == datetime.timedelta(0)]
 
         if not indices:
-            raise ValueError(
-                f"No steps found in range [{lo}, {hi}] with frequency {freq}. "
-                f"Available steps: {td}"
-            )
+            raise ValueError(f"No steps found in range [{lo}, {hi}] with frequency {freq}. " f"Available steps: {td}")
         return indices
 
     def _base_dates_to_indices(
@@ -596,15 +513,12 @@ class Dataset(ABC, Sized):
         base_end: None | str | datetime.datetime,
     ) -> list[int]:
         """Convert base_start/base_end to base-date indices (direct, no envelope logic)."""
-        from anemoi.datasets.usage.misc import as_first_date, as_last_date
+        from anemoi.datasets.usage.misc import as_first_date
+        from anemoi.datasets.usage.misc import as_last_date
 
         base_dates = self.base_dates
 
-        lo = (
-            base_dates[0]
-            if base_start is None
-            else as_first_date(base_start, base_dates)
-        )
+        lo = base_dates[0] if base_start is None else as_first_date(base_start, base_dates)
         hi = base_dates[-1] if base_end is None else as_last_date(base_end, base_dates)
 
         return [i for i, d in enumerate(base_dates) if lo <= d <= hi]
@@ -647,9 +561,7 @@ class Dataset(ABC, Sized):
 
         for v in vars:
             if v not in self.name_to_index:
-                raise ValueError(
-                    f"select: unknown variable: {v}, available: {list(self.name_to_index)}"
-                )
+                raise ValueError(f"select: unknown variable: {v}, available: {list(self.name_to_index)}")
         return [self.name_to_index[v] for v in vars]
 
     def _drop_to_columns(self, vars: str | Sequence[str]) -> list[int]:
@@ -669,15 +581,11 @@ class Dataset(ABC, Sized):
             vars = [vars]
 
         if not set(vars) <= set(self.name_to_index):
-            raise ValueError(
-                f"drop: unknown variables: {set(vars) - set(self.name_to_index)}"
-            )
+            raise ValueError(f"drop: unknown variables: {set(vars) - set(self.name_to_index)}")
 
         return sorted([v for k, v in self.name_to_index.items() if k not in vars])
 
-    def _reorder_to_columns(
-        self, vars: str | list[str] | tuple[str] | dict[str, int]
-    ) -> list[int]:
+    def _reorder_to_columns(self, vars: str | list[str] | tuple[str] | dict[str, int]) -> list[int]:
         """Convert variable names to a list of reordered column indices.
 
         Parameters
@@ -695,19 +603,14 @@ class Dataset(ABC, Sized):
             # This is cruical for pre-training then transfer learning in combination with
             # cutout and adjust = 'all'
 
-            indices = [
-                self.name_to_index[k]
-                for k, v in sorted(self.name_to_index.items(), key=lambda x: x[0])
-            ]
+            indices = [self.name_to_index[k] for k, v in sorted(self.name_to_index.items(), key=lambda x: x[0])]
             assert set(indices) == set(range(len(self.name_to_index)))
             return indices
 
         if isinstance(vars, (list, tuple)):
             vars = {k: i for i, k in enumerate(vars)}
 
-        indices = [
-            self.name_to_index[k] for k, v in sorted(vars.items(), key=lambda x: x[1])
-        ]
+        indices = [self.name_to_index[k] for k, v in sorted(vars.items(), key=lambda x: x[1])]
 
         # Make sure we don't forget any variables
         assert set(indices) == set(range(len(self.name_to_index)))
@@ -769,6 +672,7 @@ class Dataset(ABC, Sized):
 
         result = {}
         for k, v in self.variables_metadata.items():
+
             # TODO: Once all datasets are updated, we can remove this
             v = v.copy()
             if k in constants:
@@ -906,9 +810,7 @@ class Dataset(ABC, Sized):
         arrays, _ = self._supporting_arrays_and_sources()
         return arrays
 
-    def _supporting_arrays_and_sources(
-        self,
-    ) -> tuple[dict[str, NDArray], dict[int, list[str]]]:
+    def _supporting_arrays_and_sources(self) -> tuple[dict[str, NDArray], dict[int, list[str]]]:
         """Return the supporting arrays and their sources.
 
         Returns
@@ -935,9 +837,7 @@ class Dataset(ABC, Sized):
 
         return result, source_to_arrays
 
-    def collect_supporting_arrays(
-        self, collected: list[tuple[tuple[str, ...], str, NDArray[Any]]], *path: str
-    ) -> None:
+    def collect_supporting_arrays(self, collected: list[tuple[tuple[str, ...], str, NDArray[Any]]], *path: str) -> None:
         """Collect supporting arrays.
 
         Parameters
@@ -948,6 +848,7 @@ class Dataset(ABC, Sized):
             The path components.
         """
         # Override this method to add more arrays
+        pass
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Return specific metadata of the dataset.
@@ -969,9 +870,7 @@ class Dataset(ABC, Sized):
             variables=self.variables,
             shape=self.shape,
             frequency=(
-                frequency_to_string(frequency_to_timedelta(self.frequency))
-                if self.frequency is not None
-                else None
+                frequency_to_string(frequency_to_timedelta(self.frequency)) if self.frequency is not None else None
             ),
             start_date=self.start_date.astype(str),
             end_date=self.end_date.astype(str),
@@ -999,22 +898,14 @@ class Dataset(ABC, Sized):
     def _check(self) -> None:
         """Check for overridden private methods in the dataset."""
         common = Dataset.__dict__.keys() & self.__class__.__dict__.keys()
-        overriden = [
-            m for m in common if Dataset.__dict__[m] is not self.__class__.__dict__[m]
-        ]
+        overriden = [m for m in common if Dataset.__dict__[m] is not self.__class__.__dict__[m]]
 
         # Methods intentionally exposed as subclass hooks.
         allowed_overrides = {"_abc_impl", "_dates_to_indices", "_frequency_to_indices"}
 
         for n in overriden:
-            if (
-                n.startswith("_")
-                and not n.startswith("__")
-                and n not in allowed_overrides
-            ):
-                warnings.warn(
-                    f"Private method {n} is overriden in {self.__class__.__name__}"
-                )
+            if n.startswith("_") and not n.startswith("__") and n not in allowed_overrides:
+                warnings.warn(f"Private method {n} is overriden in {self.__class__.__name__}")
 
     def _repr_html_(self) -> str:
         """Return the HTML representation of the dataset.
@@ -1178,9 +1069,7 @@ class Dataset(ABC, Sized):
             variable_index = variable
         else:
             if variable not in self.variables:
-                raise ValueError(
-                    f"Unknown variable {variable} (available: {self.variables})"
-                )
+                raise ValueError(f"Unknown variable {variable} (available: {self.variables})")
 
             variable_index = self.name_to_index[variable]
 
@@ -1215,56 +1104,67 @@ class Dataset(ABC, Sized):
     @abstractmethod
     def variables(self) -> list[str]:
         """Return the list of variables in the dataset."""
+        pass
 
     @property
     @abstractmethod
     def frequency(self) -> datetime.timedelta:
         """Return the frequency of the dataset."""
+        pass
 
     @property
     @abstractmethod
     def dates(self) -> NDArray[np.datetime64]:
         """Return the dates in the dataset."""
+        pass
 
     @property
     @abstractmethod
     def resolution(self) -> str:
         """Return the resolution of the dataset."""
+        pass
 
     @property
     @abstractmethod
     def name_to_index(self) -> dict[str, int]:
         """Return the mapping of variable names to indices."""
+        pass
 
     @property
     @abstractmethod
     def shape(self) -> Shape:
         """Return the shape of the dataset."""
+        pass
 
     @property
     @abstractmethod
     def field_shape(self) -> Shape:
         """Return the shape of the fields in the dataset."""
+        pass
 
     @property
     @abstractmethod
     def dtype(self) -> np.dtype:
         """Return the data type of the dataset."""
+        pass
 
     @property
     @abstractmethod
     def latitudes(self) -> NDArray[Any]:
         """Return the latitudes in the dataset."""
+        pass
 
     @property
     @abstractmethod
     def longitudes(self) -> NDArray[Any]:
         """Return the longitudes in the dataset."""
+        pass
 
     @property
     @abstractmethod
     def variables_metadata(self) -> dict[str, Any]:
         """Return the metadata of the variables in the dataset."""
+        pass
 
     def origins(self) -> Any:
         for p in self.components().ensure_list():
@@ -1279,29 +1179,28 @@ class Dataset(ABC, Sized):
     # @abstractmethod
     def project(self, projection) -> Any:
         """Return the project of the variable at the specified index."""
-        raise NotImplementedError(
-            f"project() is not implemented for `{self.__class__.__name__}`"
-        )
+        raise NotImplementedError(f"project() is not implemented for `{self.__class__.__name__}`")
 
     @abstractmethod
     @cached_property
     def missing(self) -> set[int]:
         """Return the set of missing indices in the dataset."""
+        pass
 
     @abstractmethod
     @cached_property
     def constant_fields(self) -> list[str]:
         """Return the list of constant fields in the dataset."""
+        pass
 
     @abstractmethod
     @cached_property
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Return the statistics of the dataset."""
+        pass
 
     @abstractmethod
-    def statistics_tendencies(
-        self, delta: datetime.timedelta | None = None
-    ) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
         """Return the tendencies of the statistics in the dataset.
 
         Parameters
@@ -1314,6 +1213,7 @@ class Dataset(ABC, Sized):
         dict
             The tendencies.
         """
+        pass
 
     @abstractmethod
     def source(self, index: int) -> Source:
@@ -1329,6 +1229,7 @@ class Dataset(ABC, Sized):
         Source
             The source.
         """
+        pass
 
     @abstractmethod
     def tree(self) -> Node:
@@ -1339,6 +1240,7 @@ class Dataset(ABC, Sized):
         Node
             The tree representation.
         """
+        pass
 
     @abstractmethod
     def collect_input_sources(self, sources: list[Any]) -> None:
@@ -1349,6 +1251,7 @@ class Dataset(ABC, Sized):
         sources : list
             The input sources.
         """
+        pass
 
     @abstractmethod
     def get_dataset_names(self, names: set[str]) -> None:
@@ -1359,10 +1262,12 @@ class Dataset(ABC, Sized):
         names : set of str
             The dataset names.
         """
+        pass
 
     @abstractmethod
     def usage_factory_load(self, name: str) -> Any:
         """Load a usage factory by name."""
+        pass
 
     def get_latitudes(self, i):
         return self.get_aux(i)[0]
@@ -1375,6 +1280,4 @@ class Dataset(ABC, Sized):
 
     def get_aux(self, i):
         # need to decide if Fields datasets need to implement this
-        raise NotImplementedError(
-            f"get_aux is not implemented for this dataset, {type(self)}"
-        )
+        raise NotImplementedError(f"get_aux is not implemented for this dataset, {type(self)}")

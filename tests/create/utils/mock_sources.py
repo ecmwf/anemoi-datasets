@@ -17,13 +17,7 @@ from earthkit.data import from_source as original_from_source
 class LoadSource:
     """Class to load data sources and handle mockup data."""
 
-    def __init__(
-        self,
-        get_test_data_func,
-        *,
-        expected: set | None = None,
-        fetch_missing: bool = False,
-    ) -> None:
+    def __init__(self, get_test_data_func, *, expected: set | None = None, fetch_missing: bool = False) -> None:
         self._get_test_data = get_test_data_func
 
         # The md5s the baseline recorded for this recipe, or None to skip the check.
@@ -89,9 +83,7 @@ class LoadSource:
         print("⚠️ To upload the test data, run this:")
         path = os.path.relpath(upload_path, os.getcwd())
         name = os.path.basename(upload_path).replace(".to_upload", "")
-        print(
-            f"scp {path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}"
-        )
+        print(f"scp {path} data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/{name}")
         print()
         raise ValueError("Test data is missing")
 
@@ -130,10 +122,7 @@ class LoadSource:
             )
 
         try:
-            return original_from_source(
-                "file",
-                self._get_test_data(f"anemoi-datasets/create/mock-mars/{h}.grib"),
-            )
+            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{h}.grib"))
         except RuntimeError:
             raise  # If offline
         except Exception:

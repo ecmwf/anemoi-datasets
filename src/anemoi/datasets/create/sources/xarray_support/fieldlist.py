@@ -10,7 +10,8 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 import yaml
 from earthkit.data import FieldList
@@ -19,7 +20,8 @@ from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
 from .patch import patch_dataset
 from .time import Time
-from .variable import FilteredVariable, Variable
+from .variable import FilteredVariable
+from .variable import Variable
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -40,7 +42,7 @@ class XarrayFieldList(FieldList):
         variables : List[Variable]
             The list of variables.
         """
-        self.ds: xr.Dataset = ds
+        self.ds: "xr.Dataset" = ds
         self.variables: list[Variable] = variables.copy()
         self.total_length: int = sum(v.length for v in variables)
 
@@ -119,9 +121,7 @@ class XarrayFieldList(FieldList):
                     flavour = json.load(f)
 
         if isinstance(flavour, dict):
-            flavour_coords: list[str] = [
-                coords["name"] for coords in flavour["rules"].values()
-            ]
+            flavour_coords: list[str] = [coords["name"] for coords in flavour["rules"].values()]
             ds_dims: list[str] = [dim for dim in ds._dims]
             for dim in ds_dims:
                 if dim in flavour_coords and dim not in ds._coord_names:
@@ -148,6 +148,7 @@ class XarrayFieldList(FieldList):
 
         # Select only geographical variables
         for name in ds.data_vars:
+
             if name in skip:
                 continue
 
@@ -155,15 +156,11 @@ class XarrayFieldList(FieldList):
             coordinates: list[Any] = []
 
             for coord in variable.coords:
+
                 c = guess.guess(ds[coord], coord)
                 assert c, f"Could not guess coordinate for {coord}"
                 if coord not in variable.dims:
-                    LOG.debug(
-                        "%s: coord=%s (not a dimension): dims=%s",
-                        variable,
-                        coord,
-                        variable.dims,
-                    )
+                    LOG.debug("%s: coord=%s (not a dimension): dims=%s", variable, coord, variable.dims)
                     c.is_dim = False
                 coordinates.append(c)
 
@@ -171,11 +168,7 @@ class XarrayFieldList(FieldList):
             # assert grid_coords <= 2, [c for c in coordinates if c.is_grid]
 
             if grid_coords < 2:
-                LOG.debug(
-                    "Skipping %s (not 2D): %s",
-                    variable,
-                    [(c, c.is_grid, c.is_dim) for c in coordinates],
-                )
+                LOG.debug("Skipping %s (not 2D): %s", variable, [(c, c.is_grid, c.is_dim) for c in coordinates])
                 continue
 
             v = Variable(
@@ -220,6 +213,7 @@ class XarrayFieldList(FieldList):
         count: int = 0
 
         for v in self.variables:
+
             # First, select matching variables
 
             # This will consume 'param' or 'variable' from kwargs

@@ -16,17 +16,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
-from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    length_to_slices,
-    update_tuple,
-)
-from anemoi.datasets.usage.misc import _auto_adjust, _open
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import length_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.misc import _auto_adjust
+from anemoi.datasets.usage.misc import _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -63,11 +66,7 @@ class ConcatMixin:
         lengths = [d.shape[0] for d in self.datasets]
         slices = length_to_slices(index[0], lengths)
         # print("slies", slices)
-        result = [
-            d[update_tuple(index, 0, i)[0]]
-            for (d, i) in zip(self.datasets, slices)
-            if i is not None
-        ]
+        result = [d[update_tuple(index, 0, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
         result = np.concatenate(result, axis=0)
         return apply_index_to_slices_changes(result, changes)
 
@@ -157,6 +156,7 @@ class Concat(ConcatMixin, Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the first axis
+        pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the dates of two datasets are the same.
@@ -169,6 +169,7 @@ class Concat(ConcatMixin, Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the dates axis
+        pass
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
@@ -192,9 +193,7 @@ class Concat(ConcatMixin, Combined):
         return Node(self, [d.tree() for d in self.datasets])
 
     @classmethod
-    def check_dataset_compatibility(
-        cls, datasets: list[Any], fill_missing_gaps: bool = False
-    ) -> list[Any]:
+    def check_dataset_compatibility(cls, datasets: list[Any], fill_missing_gaps: bool = False) -> list[Any]:
         """Checks the compatibility of the datasets for concatenation and fills missing gaps if required.
 
         Parameters
@@ -210,9 +209,7 @@ class Concat(ConcatMixin, Combined):
             List of compatible datasets.
         """
         # Study the dates
-        ranges = [
-            (d.dates[0].astype(object), d.dates[-1].astype(object)) for d in datasets
-        ]
+        ranges = [(d.dates[0].astype(object), d.dates[-1].astype(object)) for d in datasets]
 
         # Make sure the dates are disjoint
         for i in range(len(ranges)):
@@ -220,9 +217,7 @@ class Concat(ConcatMixin, Combined):
             for j in range(i + 1, len(ranges)):
                 s = ranges[j]
                 if r[0] <= s[0] <= r[1] or r[0] <= s[1] <= r[1]:
-                    raise ValueError(
-                        f"Overlapping dates: {r} and {s} ({datasets[i]} {datasets[j]})"
-                    )
+                    raise ValueError(f"Overlapping dates: {r} and {s} ({datasets[i]} {datasets[j]})")
 
         # For now we should have the datasets in order with no gaps
 
@@ -237,15 +232,13 @@ class Concat(ConcatMixin, Combined):
                 if fill_missing_gaps:
                     from anemoi.datasets.usage.gridded.missing import MissingDataset
 
-                    result.append(
-                        MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency)
-                    )
+                    result.append(MissingDataset(datasets[i], r[1] + frequency, s[0] - frequency))
                 else:
                     r = [str(e) for e in r]
                     s = [str(e) for e in s]
                     raise ValueError(
                         "Datasets must be sorted by dates, with no gaps: "
-                        f"{r} and {s} ({datasets[i]} {datasets[i + 1]})"
+                        f"{r} and {s} ({datasets[i]} {datasets[i+1]})"
                     )
 
         result.append(datasets[-1])

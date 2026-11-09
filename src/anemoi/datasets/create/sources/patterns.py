@@ -32,7 +32,8 @@ def _expand(paths: list[str]) -> Generator[str, None, None]:
         paths = [paths]
 
     for path in paths:
-        path = path.removeprefix("file://")
+        if path.startswith("file://"):
+            path = path[7:]
 
         if path.startswith("http://"):
             yield path

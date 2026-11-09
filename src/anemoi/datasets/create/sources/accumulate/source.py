@@ -19,17 +19,17 @@ from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.core.temporary import temp_file
 from earthkit.data.readers.grib.output import new_grib_output
 
-from anemoi.datasets.create.arguments import (
-    ForecastDates,
-    ForecastIntervals,
-    Intervals,
-    ValidDates,
-)
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ForecastIntervals
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from .accumulator import Accumulator, Logs
-from .covering import ForecastCovering, covering_factory
+from .accumulator import Accumulator
+from .accumulator import Logs
+from .covering import ForecastCovering
+from .covering import covering_factory
 from .field_to_interval import FieldToInterval
 
 LOG = logging.getLogger(__name__)
@@ -49,21 +49,18 @@ def patch_groupby_keys(group_by: dict | None = None):
     else:
         namespace = group_by.get("namespace", None)
         if namespace is None:
-            raise ValueError(
-                "No namespace in group_by (set namespace: mars for default)"
-            )
+            raise ValueError("No namespace in group_by (set namespace: mars for default)")
         if namespace != "mars":
             raise ValueError(f"Namespace {namespace} not supported, use 'mars'")
         ignore = group_by.get("ignore", [])
         for key in ["date", "time", "step"]:
-            assert key in ignore, (
-                f"{key} absent in ignore list {ignore}, at least 'date', 'time', 'step' required"
-            )
+            assert key in ignore, f"{key} absent in ignore list {ignore}, at least 'date', 'time', 'step' required"
         return group_by
 
 
 @source_registry.register("accumulate")
 class AccumulateSource(Source):
+
     def __init__(
         self,
         context: Any,
@@ -78,14 +75,11 @@ class AccumulateSource(Source):
         super().__init__(context)
 
         if "accumulation_period" in source:
-            raise ValueError(
-                "'accumulation_period' should be define outside source for accumulate action as 'period'"
-            )
+            raise ValueError("'accumulation_period' should be define outside source for accumulate action as 'period'")
 
         if availability is not None and covering is not None:
             raise ValueError(
-                "Cannot specify both 'availability' (deprecated) and 'covering' "
-                "in the same accumulate block."
+                "Cannot specify both 'availability' (deprecated) and 'covering' " "in the same accumulate block."
             )
         if availability is not None:
             warnings.warn(
@@ -109,29 +103,23 @@ class AccumulateSource(Source):
     def _prepare_source(self):
         """Validate source config and apply MARS defaults."""
         source = self.source
-        assert isinstance(source, dict) and len(source) == 1, (
-            f"Source must have exactly one key, got {list(source.keys())}"
-        )
+        assert (
+            isinstance(source, dict) and len(source) == 1
+        ), f"Source must have exactly one key, got {list(source.keys())}"
         source_name, source_config = next(iter(source.items()))
         if source_name == "mars":
             if "type" not in source_config:
                 source_config["type"] = "fc"
-                LOG.warning(
-                    "Assuming 'type: fc' for mars source as it was not specified in the recipe"
-                )
+                LOG.warning("Assuming 'type: fc' for mars source as it was not specified in the recipe")
             if "levtype" not in source_config:
                 source_config["levtype"] = "sfc"
-                LOG.warning(
-                    "Assuming 'levtype: sfc' for mars source as it was not specified in the recipe"
-                )
+                LOG.warning("Assuming 'levtype: sfc' for mars source as it was not specified in the recipe")
         return source_name
 
     def _create_source_object(self, *extra_hash_parts):
         """Create a cached source object keyed by content hash."""
         h = hashlib.md5(
-            json.dumps(
-                (str(self.period), self.source, *extra_hash_parts), sort_keys=True
-            ).encode()
+            json.dumps((str(self.period), self.source, *extra_hash_parts), sort_keys=True).encode()
         ).hexdigest()
         return self.context.create_source(self.source, "data_sources", h)
 
@@ -156,16 +144,12 @@ class AccumulateSource(Source):
 
         for acc in accumulators.values():
             if not acc.is_complete():
-                raise ValueError(
-                    f"Accumulator not complete: {acc.__repr__(verbose=True)}"
-                )
+                raise ValueError(f"Accumulator not complete: {acc.__repr__(verbose=True)}")
 
         LOG.info(f"Created {len(accumulators)} accumulated fields")
 
         if not accumulators:
-            raise ValueError(
-                "No accumulators were created, cannot produce accumulated datasource"
-            )
+            raise ValueError("No accumulators were created, cannot produce accumulated datasource")
 
         output.close()
         ds = earthkit.data.from_source("file", tmp.path)
@@ -214,11 +198,7 @@ class AccumulateSource(Source):
             logs.append([str(field), log, field_interval, [], []])
 
             if field_interval.end <= field_interval.start:
-                logs.raise_error(
-                    "Invalid field interval with end <= start",
-                    field=field,
-                    field_interval=field_interval,
-                )
+                logs.raise_error("Invalid field interval with end <= start", field=field, field_interval=field_interval)
 
             field_used = False
             for target in targets:
@@ -250,11 +230,7 @@ class AccumulateSource(Source):
                         acc.write_to_output(output, template=field)
 
             if not field_used:
-                logs.raise_error(
-                    "Field not used for any accumulation",
-                    field=field,
-                    field_interval=field_interval,
-                )
+                logs.raise_error("Field not used for any accumulation", field=field, field_interval=field_interval)
 
         return accumulators, output, tmp
 
@@ -271,9 +247,7 @@ class AccumulateSource(Source):
 
         LOG.debug("💬 source for accumulations: %s", self.source)
         source_object = self._create_source_object()
-        covering_obj = covering_factory(
-            self.covering, self._source_name, self.source[self._source_name]
-        )
+        covering_obj = covering_factory(self.covering, self._source_name, self.source[self._source_name])
 
         # generate the interval coverage for every date
         coverages = {}
@@ -288,9 +262,7 @@ class AccumulateSource(Source):
         intervals = Intervals(dates, [i for d in dates for i in coverages[(d, None)]])
         targets = [(d, None) for d in dates]
 
-        accumulators, output, tmp = self._accumulate_fields(
-            source_object, intervals, targets, coverages
-        )
+        accumulators, output, tmp = self._accumulate_fields(source_object, intervals, targets, coverages)
 
         # Final checks
         for date in dates:
@@ -298,15 +270,11 @@ class AccumulateSource(Source):
             LOG.debug(f"Date {date} has {count} accumulators")
             if count != len(accumulators) // len(dates):
                 LOG.error(f"All requested dates: {dates}")
-                LOG.error(
-                    f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}"
-                )
+                LOG.error(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
                 for k in accumulators.keys():
                     if k[0] == date:
                         LOG.error(f"  Accumulator for key {k}")
-                raise ValueError(
-                    f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}"
-                )
+                raise ValueError(f"Date {date} has {count} accumulators, expected {len(accumulators) // len(dates)}")
 
         return self._finalise(accumulators, output, tmp)
 
@@ -318,9 +286,7 @@ class AccumulateSource(Source):
                 "is mandatory for accumulate sources used in trajectory recipes."
             )
         if self.covering is not None:
-            LOG.debug(
-                "Trajectory branch: ignoring 'covering:' (basetime imposed by caller)."
-            )
+            LOG.debug("Trajectory branch: ignoring 'covering:' (basetime imposed by caller).")
 
         LOG.debug("💬 source for forecast accumulations: %s", self.source)
         source_object = self._create_source_object(self.accumulation)
@@ -339,8 +305,6 @@ class AccumulateSource(Source):
         )
         targets = [(vt, bt) for vt, bt in dates.items]
 
-        accumulators, output, tmp = self._accumulate_fields(
-            source_object, forecast_intervals, targets, coverages
-        )
+        accumulators, output, tmp = self._accumulate_fields(source_object, forecast_intervals, targets, coverages)
 
         return self._finalise(accumulators, output, tmp)

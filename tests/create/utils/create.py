@@ -70,12 +70,7 @@ def create_dataset(
             run_task("load", path=output, parts=f"{i + 1}/{groups}")
         run_task("finalise", path=output, finalise_stage="prepare")
         for i in range(finalise_parts):
-            run_task(
-                "finalise",
-                path=output,
-                finalise_stage="load",
-                parts=f"{i + 1}/{finalise_parts}",
-            )
+            run_task("finalise", path=output, finalise_stage="load", parts=f"{i + 1}/{finalise_parts}")
         run_task("finalise", path=output, finalise_stage="tidy")
 
     run_task("patch", path=output)
@@ -93,8 +88,6 @@ def create_dataset(
     run_task("verify", path=output)
 
     # New datasets are written in Zarr format 2, whatever the installed zarr-python version
-    assert os.path.exists(os.path.join(output, ".zgroup")), (
-        f"{output} is not in Zarr format 2"
-    )
+    assert os.path.exists(os.path.join(output, ".zgroup")), f"{output} is not in Zarr format 2"
 
     return output

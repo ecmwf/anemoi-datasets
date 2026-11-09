@@ -26,9 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class TabularZarr(ZarrStore):
-    def __init__(
-        self, group: zarr.Group, path: str = None, options: Options = None
-    ) -> None:
+    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
         super().__init__(group, path=path, options=options)
 
         self._window_view = WindowView(self.store)

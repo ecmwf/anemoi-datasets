@@ -21,9 +21,7 @@ class Options:
         self._options.update(kwargs)
 
     @staticmethod
-    def extract(
-        args_or_kwargs: Any, options: Any = None
-    ) -> tuple[dict[str, Any], "Options"]:
+    def extract(args_or_kwargs: Any, options: Any = None) -> tuple[dict[str, Any], "Options"]:
 
         if options is None:
             options = Options()

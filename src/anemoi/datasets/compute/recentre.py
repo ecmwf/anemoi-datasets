@@ -29,25 +29,11 @@ CLIP_VARIABLES = (
     "swl1",
 )
 
-SKIP = (
-    "class",
-    "stream",
-    "type",
-    "number",
-    "expver",
-    "_leg_number",
-    "anoffset",
-    "time",
-    "date",
-    "step",
-)
+SKIP = ("class", "stream", "type", "number", "expver", "_leg_number", "anoffset", "time", "date", "step")
 
 
 def check_compatible(
-    f1: Any,
-    f2: Any,
-    centre_field_as_mars: dict[str, Any],
-    ensemble_field_as_mars: dict[str, Any],
+    f1: Any, f2: Any, centre_field_as_mars: dict[str, Any], ensemble_field_as_mars: dict[str, Any]
 ) -> None:
     """Check if two fields are compatible.
 
@@ -128,9 +114,7 @@ def recentre(
             LOG.error("Member: %r", f)
         for f in centre:
             LOG.error("centre: %r", f)
-        raise ValueError(
-            f"Inconsistent number of fields: {len(centre)} * {n_numbers} != {len(members)}"
-        )
+        raise ValueError(f"Inconsistent number of fields: {len(centre)} * {n_numbers} != {len(members)}")
 
     if output is None:
         # prepare output tmp file so we can read it back

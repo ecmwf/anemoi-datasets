@@ -18,13 +18,16 @@ from anemoi.utils.dates import frequency_to_timedelta
 from earthkit.data.utils.dates import to_datetime
 
 from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.usage.misc import as_first_date, as_last_date
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 from ..annotated._numpy import AnnotatedNDArray
-from ..annotated.metadata import MultipleWindowMetaData, WindowMetaData
+from ..annotated.metadata import MultipleWindowMetaData
+from ..annotated.metadata import WindowMetaData
 from ..buffering import RandomReadBuffer
 from ..date_indexing import create_date_indexing
-from ..epochs import date_to_epoch, epoch_to_date
+from ..epochs import date_to_epoch
+from ..epochs import epoch_to_date
 from .window import Window
 
 LOG = logging.getLogger(__name__)
@@ -66,20 +69,14 @@ class WindowView:
         self.store = store if isinstance(store, zarr.Group) else zarr_open(store, "r")
 
         # Use provided date_indexing or create a new one for indexing
-        self.date_indexing = create_date_indexing(
-            store.attrs["date_indexing"], self.store
-        )
+        self.date_indexing = create_date_indexing(store.attrs["date_indexing"], self.store)
 
         # Use a chunk cache for efficient data access
         self.data = RandomReadBuffer(self.store["data"])
 
         # Determine the start and end dates for the window view
-        self.start_date = to_datetime(
-            start_date if start_date is not None else self.actual_start_end_dates[0]
-        )
-        self.end_date = to_datetime(
-            end_date if end_date is not None else self.actual_start_end_dates[1]
-        )
+        self.start_date = to_datetime(start_date if start_date is not None else self.actual_start_end_dates[0])
+        self.end_date = to_datetime(end_date if end_date is not None else self.actual_start_end_dates[1])
 
         # if self.start_date > self.end_date:
         #     raise ValueError(f"WindowView: {start_date=} must be less than or equal to {end_date=}")
@@ -252,16 +249,12 @@ class WindowView:
         query_start = round(date_to_epoch(query_start))
         query_end = round(date_to_epoch(query_end))
 
-        assert abs(epoch_to_date(query_start) - query_start_save) < datetime.timedelta(
-            seconds=1
-        ), (
+        assert abs(epoch_to_date(query_start) - query_start_save) < datetime.timedelta(seconds=1), (
             query_start,
             query_start_save,
             epoch_to_date(query_start),
         )
-        assert abs(epoch_to_date(query_end) - query_end_save) < datetime.timedelta(
-            seconds=1
-        ), (
+        assert abs(epoch_to_date(query_end) - query_end_save) < datetime.timedelta(seconds=1), (
             query_end,
             query_end_save,
             epoch_to_date(query_end),
@@ -281,9 +274,7 @@ class WindowView:
 
         # Find the boundaries in the date_indexing for the window
         try:
-            range_slice = self.date_indexing.range_search(
-                query_start, query_end, len(self.data)
-            )
+            range_slice = self.date_indexing.range_search(query_start, query_end, len(self.data))
 
             assert range_slice.step in (None, 1), range_slice.step
             assert range_slice.start >= 0, range_slice.start
@@ -295,15 +286,11 @@ class WindowView:
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
             # We should be in control here
-            raise ValueError(
-                f"Error retrieving data for window index {index}, slice={range_slice}: {e}"
-            ) from e
+            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
 
     def _getitem_int(self, index: any) -> np.ndarray:
 
-        def annotate(
-            array: np.ndarray, slice_obj: slice | None = None
-        ) -> AnnotatedNDArray:
+        def annotate(array: np.ndarray, slice_obj: slice | None = None) -> AnnotatedNDArray:
             return AnnotatedNDArray(
                 array[:, 4:],
                 anemoi_annotation=WindowMetaData(
@@ -322,9 +309,7 @@ class WindowView:
         except (IndexError, StopIteration) as e:
             # We don't have that error to stop iterations in the caller
             # We should be in control here
-            raise ValueError(
-                f"Error retrieving data for window index {index}, slice={range_slice}: {e}"
-            ) from e
+            raise ValueError(f"Error retrieving data for window index {index}, slice={range_slice}: {e}") from e
 
         assert values.shape[0] == range_slice.stop - range_slice.start, (
             values.shape,
@@ -373,10 +358,7 @@ class WindowView:
     def _epochs(self) -> np.ndarray:
         """Cached property for the array of epoch timestamps corresponding to each window."""
         return np.array(
-            [
-                int(date_to_epoch(self.start_date + i * self.frequency))
-                for i in range(self._len)
-            ],
+            [int(date_to_epoch(self.start_date + i * self.frequency)) for i in range(self._len)],
             dtype=np.int64,
         )
 
@@ -414,12 +396,7 @@ class WindowView:
             assert result.start == 0, (self.start_date, actual_start, result)
 
         if self.end_date >= actual_end:
-            assert result.stop == len(self.data), (
-                self.end_date,
-                actual_end,
-                result,
-                len(self.data),
-            )
+            assert result.stop == len(self.data), (self.end_date, actual_end, result, len(self.data))
 
         return result
 

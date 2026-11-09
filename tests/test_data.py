@@ -11,30 +11,36 @@
 import datetime
 import os
 from collections.abc import Callable
-from functools import cache, wraps
+from functools import cache
+from functools import wraps
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 import rich
 import zarr
-from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import __version__ as _anemoi_datasets_version
 from anemoi.datasets import open_dataset
-from anemoi.datasets.misc.testing import FastGroup, default_test_indexing
+from anemoi.datasets.misc.testing import FastGroup
+from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
-from anemoi.datasets.usage.gridded.grids import Cutout, GridsBase
+from anemoi.datasets.usage.gridded.grids import Cutout
+from anemoi.datasets.usage.gridded.grids import GridsBase
 from anemoi.datasets.usage.gridded.join import Join
 from anemoi.datasets.usage.gridded.masked import Masking
 from anemoi.datasets.usage.gridded.select import Select
 from anemoi.datasets.usage.gridded.statistics import Statistics
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 from anemoi.datasets.usage.gridded.subset import Subset
-from anemoi.datasets.usage.misc import as_first_date, as_last_date
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 VALUES = 10
 
@@ -58,19 +64,14 @@ def mockup_open_zarr(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch("zarr.open", zarr_from_str):
-            with patch(
-                "anemoi.datasets.usage.store.dataset_lookup",
-                lambda name, fail: name + ".zarr",
-            ):
+            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, fail: name + ".zarr"):
                 return func(*args, **kwargs)
 
     return wrapper
 
 
 @cache
-def _(
-    date: datetime.datetime, var: str, k: int = 0, e: int = 0, values: int = VALUES
-) -> np.ndarray:
+def _(date: datetime.datetime, var: str, k: int = 0, e: int = 0, values: int = VALUES) -> np.ndarray:
     """Create a simple array of values based on the date, variable name, ensemble, grid, and other parameters.
 
     Parameters
@@ -96,9 +97,7 @@ def _(
     assert 0 <= k <= 9
     assert 0 <= e <= 9
 
-    return np.array(
-        [d * 100 + v + k / 10.0 + w / 100.0 + e / 1000.0 for w in range(values)]
-    )
+    return np.array([d * 100 + v + k / 10.0 + w / 100.0 + e / 1000.0 for w in range(values)])
 
 
 def create_zarr(
@@ -458,9 +457,7 @@ class DatasetTester:
             expected_variables = [v for v in expected_variables]
 
         if isinstance(expected_name_to_index, str):
-            expected_name_to_index = {
-                v: i for i, v in enumerate(expected_name_to_index)
-            }
+            expected_name_to_index = {v: i for i, v in enumerate(expected_name_to_index)}
 
         assert isinstance(self.ds, expected_class)
         assert len(self.ds) == expected_length
@@ -510,9 +507,7 @@ class DatasetTester:
         metadata = ds.metadata()
         assert isinstance(metadata, dict)
 
-    def same_stats(
-        self, ds1: Any, ds2: Any, vars1: list, vars2: list | None = None
-    ) -> None:
+    def same_stats(self, ds1: Any, ds2: Any, vars1: list, vars2: list | None = None) -> None:
         """Compare statistics between two datasets.
 
         Parameters
@@ -535,15 +530,9 @@ class DatasetTester:
             idx1 = ds1.name_to_index[v1]
             idx2 = ds2.name_to_index[v2]
             assert (ds1.statistics["mean"][idx1] == ds2.statistics["mean"][idx2]).all()
-            assert (
-                ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]
-            ).all()
-            assert (
-                ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]
-            ).all()
-            assert (
-                ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]
-            ).all()
+            assert (ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]).all()
+            assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
+            assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
     @classmethod
     def indexing(cls, ds: Any) -> None:
@@ -727,9 +716,7 @@ def test_subset_2() -> None:
 @mockup_open_zarr
 def test_subset_3() -> None:
     """Test subsetting a dataset (case 3)."""
-    test = DatasetTester(
-        "test-2021-2023-1h-o96-abcd", start=2022, end=2022, frequency=12
-    )
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", start=2022, end=2022, frequency=12)
     test.run(
         expected_class=Subset,
         expected_length=365 * 2,
@@ -783,9 +770,7 @@ def test_subset_5() -> None:
 @mockup_open_zarr
 def test_subset_6() -> None:
     """Test subsetting a dataset (case 6)."""
-    test = DatasetTester(
-        "test-2021-2023-1h-o96-abcd", start="2022-06-01", end="2022-08-31"
-    )
+    test = DatasetTester("test-2021-2023-1h-o96-abcd", start="2022-06-01", end="2022-08-31")
     test.run(
         expected_class=Subset,
         expected_length=(30 + 31 + 31) * 24,
@@ -871,9 +856,7 @@ def test_subset_negative_indexing() -> None:
 @mockup_open_zarr
 def test_interpolate_frequency_negative_indexing() -> None:
     """Test negative indexing on an interpolated-frequency subset."""
-    ds = open_dataset(
-        "test-2021-2023-6h-o96-abcd", start=2022, end=2022, interpolate_frequency="1h"
-    )
+    ds = open_dataset("test-2021-2023-6h-o96-abcd", start=2022, end=2022, interpolate_frequency="1h")
     assert (ds[-1] == ds[len(ds) - 1]).all()
     assert (ds[-2] == ds[len(ds) - 2]).all()
     assert (ds[-3] == ds[len(ds) - 3]).all()
@@ -1130,9 +1113,7 @@ def test_constructor_5() -> None:
     )
 
     test.same_stats(test.ds, open_dataset("test-2021-2021-6h-o96-abcd-1"), "xyd", "acd")
-    test.same_stats(
-        test.ds, open_dataset("test-2021-2021-6h-o96-abcd-2"), "abzt", "abcd"
-    )
+    test.same_stats(test.ds, open_dataset("test-2021-2021-6h-o96-abcd-2"), "abzt", "abcd")
 
 
 @mockup_open_zarr
@@ -1162,10 +1143,7 @@ def test_dates() -> None:
 @mockup_open_zarr
 def test_dates_using_list() -> None:
     """Test date handling functions using a list of dates."""
-    dates = [
-        np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(6, "h")
-        for i in range(3, 365 * 4 - 2)
-    ]
+    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(6, "h") for i in range(3, 365 * 4 - 2)]
     assert dates[0] == np.datetime64("2021-01-01T18:00:00")
     assert dates[-1] == np.datetime64("2021-12-31T06:00:00")
 
@@ -1178,10 +1156,7 @@ def test_dates_using_list() -> None:
 @mockup_open_zarr
 def test_dates_using_list_2() -> None:
     """Test date handling functions using a list of dates (case 2)."""
-    dates = [
-        np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h")
-        for i in range(10)
-    ]
+    dates = [np.datetime64("2021-01-01T00:00:00") + i * np.timedelta64(24, "h") for i in range(0, 10)]
     assert len(dates) == 10
 
     assert dates[0] == as_first_date("0%", dates)
@@ -1245,9 +1220,7 @@ def test_slice_1() -> None:
 @mockup_open_zarr
 def test_slice_2() -> None:
     """Test slicing a dataset (case 2)."""
-    test = DatasetTester(
-        [f"test-{year}-{year}-12h-o96-abcd" for year in range(1940, 2023)]
-    )
+    test = DatasetTester([f"test-{year}-{year}-12h-o96-abcd" for year in range(1940, 2023)])
     test.run(
         expected_class=Concat,
         expected_length=60632,
@@ -1266,10 +1239,7 @@ def test_slice_2() -> None:
 def test_slice_3() -> None:
     """Test slicing a dataset (case 3)."""
     test = DatasetTester(
-        [
-            f"test-2020-2020-6h-o96-{vars}"
-            for vars in ("abcd", "efgh", "ijkl", "mnop", "qrst", "uvwx", "yz")
-        ]
+        [f"test-2020-2020-6h-o96-{vars}" for vars in ("abcd", "efgh", "ijkl", "mnop", "qrst", "uvwx", "yz")]
     )
     test.run(
         expected_class=Join,
@@ -1288,9 +1258,7 @@ def test_slice_3() -> None:
 @mockup_open_zarr
 def test_slice_4() -> None:
     """Test slicing a dataset (case 4)."""
-    test = DatasetTester(
-        [f"test-2020-2020-1h-o96-{vars}" for vars in ("abcd", "cd", "a", "c")]
-    )
+    test = DatasetTester([f"test-2020-2020-1h-o96-{vars}" for vars in ("abcd", "cd", "a", "c")])
     test.run(
         expected_class=Select,
         expected_length=8784,
@@ -1372,18 +1340,10 @@ def test_ensemble_2() -> None:
         expected_variables="abcd",
         expected_name_to_index="abcd",
         date_to_row=lambda date: make_row(
-            [_(date, "a", 1, i) for i in range(10)]
-            + [_(date, "a", 2, 0)]
-            + [_(date, "a", 3, i) for i in range(5)],
-            [_(date, "b", 1, i) for i in range(10)]
-            + [_(date, "b", 2, 0)]
-            + [_(date, "b", 3, i) for i in range(5)],
-            [_(date, "c", 1, i) for i in range(10)]
-            + [_(date, "c", 2, 0)]
-            + [_(date, "c", 3, i) for i in range(5)],
-            [_(date, "d", 1, i) for i in range(10)]
-            + [_(date, "d", 2, 0)]
-            + [_(date, "d", 3, i) for i in range(5)],
+            [_(date, "a", 1, i) for i in range(10)] + [_(date, "a", 2, 0)] + [_(date, "a", 3, i) for i in range(5)],
+            [_(date, "b", 1, i) for i in range(10)] + [_(date, "b", 2, 0)] + [_(date, "b", 3, i) for i in range(5)],
+            [_(date, "c", 1, i) for i in range(10)] + [_(date, "c", 2, 0)] + [_(date, "c", 3, i) for i in range(5)],
+            [_(date, "d", 1, i) for i in range(10)] + [_(date, "d", 2, 0)] + [_(date, "d", 3, i) for i in range(5)],
             ensemble=True,
         ),
         start_date=datetime.datetime(2021, 1, 1),
@@ -1410,18 +1370,10 @@ def test_ensemble_3() -> None:
         expected_variables="abcd",
         expected_name_to_index="abcd",
         date_to_row=lambda date: make_row(
-            [_(date, "a", 1, i) for i in range(10)]
-            + [_(date, "a", 2, 0)]
-            + [_(date, "a", 3, i) for i in range(5)],
-            [_(date, "b", 1, i) for i in range(10)]
-            + [_(date, "b", 2, 0)]
-            + [_(date, "b", 3, i) for i in range(5)],
-            [_(date, "c", 1, i) for i in range(10)]
-            + [_(date, "c", 2, 0)]
-            + [_(date, "c", 3, i) for i in range(5)],
-            [_(date, "d", 1, i) for i in range(10)]
-            + [_(date, "d", 2, 0)]
-            + [_(date, "d", 3, i) for i in range(5)],
+            [_(date, "a", 1, i) for i in range(10)] + [_(date, "a", 2, 0)] + [_(date, "a", 3, i) for i in range(5)],
+            [_(date, "b", 1, i) for i in range(10)] + [_(date, "b", 2, 0)] + [_(date, "b", 3, i) for i in range(5)],
+            [_(date, "c", 1, i) for i in range(10)] + [_(date, "c", 2, 0)] + [_(date, "c", 3, i) for i in range(5)],
+            [_(date, "d", 1, i) for i in range(10)] + [_(date, "d", 2, 0)] + [_(date, "d", 3, i) for i in range(5)],
             ensemble=True,
         ),
         start_date=datetime.datetime(2021, 1, 1),
@@ -1474,9 +1426,7 @@ def test_grids() -> None:
     ds1 = open_dataset("test-2021-2021-6h-o96-abcd-1-1")
     ds2 = open_dataset("test-2021-2021-6h-o96-abcd-2-1-25-5,5")
 
-    assert (
-        test.ds.longitudes == np.concatenate([ds1.longitudes, ds2.longitudes])
-    ).all()
+    assert (test.ds.longitudes == np.concatenate([ds1.longitudes, ds2.longitudes])).all()
     assert (test.ds.latitudes == np.concatenate([ds1.latitudes, ds2.latitudes])).all()
 
 
@@ -1597,13 +1547,12 @@ def test_invalid_trim_edge() -> None:
 @mockup_open_zarr
 def test_masking() -> None:
     """Test masking a dataset."""
-    test_mask = np.array(
-        [True, False, True, True, True, True, False, False, True, False]
-    )
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
     with (
         patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
         patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
     ):
+
         test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
         test.run(
             expected_class=Masking,
@@ -1617,6 +1566,7 @@ def test_masking() -> None:
             statistics_reference_dataset="test-2021-2022-6h-o96-abcd",
             statistics_reference_variables="abcd",
         )
+    return
 
 
 @mockup_open_zarr
@@ -1629,17 +1579,17 @@ def test_masking_wrong_mask_dims() -> None:
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
 
 
 @mockup_open_zarr
 def test_masking_mask_file_not_found() -> None:
     """Test masking a dataset (mask file not found)."""
-    test_mask = np.array(
-        [True, False, True, True, True, True, False, False, True, False]
-    )
+    test_mask = np.array([True, False, True, True, True, True, False, False, True, False])
     with patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask):
         with pytest.raises(FileNotFoundError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
 
 
 @mockup_open_zarr
@@ -1652,6 +1602,7 @@ def test_masking_wrong_dtype() -> None:
     ):
         with pytest.raises(ValueError):
             _ = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
+    return
 
 
 @mockup_open_zarr
@@ -1664,9 +1615,7 @@ def test_trim_edge_simple() -> None:
 
     expected_field_shape = (10, 5)
     assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
-    assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), (
-        test.ds.shape
-    )
+    assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
 @mockup_open_zarr
@@ -1682,9 +1631,7 @@ def test_trim_edge_zeros() -> None:
 
         expected_field_shape = (14, 14)
         assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
-        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), (
-            test.ds.shape
-        )
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
     for dim in range(2, 4):
         trim_edge = [0, 0, 0, 0]
@@ -1696,18 +1643,10 @@ def test_trim_edge_zeros() -> None:
 
         expected_field_shape = (15, 13)
         assert test.ds.field_shape == expected_field_shape, test.ds.field_shape
-        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), (
-            test.ds.shape
-        )
+        assert test.ds.shape == (365 * 4, 4, 1, np.prod(expected_field_shape)), test.ds.shape
 
 
-def _make_cutout(
-    n_lams=1,
-    cropping_distance=2.0,
-    neighbours=5,
-    min_distance_km=None,
-    max_distance_km=None,
-):
+def _make_cutout(n_lams=1, cropping_distance=2.0, neighbours=5, min_distance_km=None, max_distance_km=None):
     """Build a Cutout instance with known masks, bypassing __init__."""
 
     def _ds(seed):
@@ -1856,9 +1795,7 @@ def pushdown_cutout():
 
     # Reference semantics: mask each dataset, concatenate, then index.
     masks = [*obj.masks, obj.global_mask]
-    reference = np.concatenate(
-        [d.data[..., m] for d, m in zip(obj.datasets, masks)], axis=3
-    )
+    reference = np.concatenate([d.data[..., m] for d, m in zip(obj.datasets, masks)], axis=3)
     assert obj.shape == reference.shape  # kept points: 5 + 6 + 8
     return obj, reference
 
@@ -1918,9 +1855,7 @@ def pushdown_cutout():
         "empty",
     ],
 )
-def test_cutout_get_tuple_pushes_grid_index_down(
-    pushdown_cutout, index, expected_grid_requests
-):
+def test_cutout_get_tuple_pushes_grid_index_down(pushdown_cutout, index, expected_grid_requests):
     obj, reference = pushdown_cutout
     for d in obj.datasets:
         d.grid_requests.clear()

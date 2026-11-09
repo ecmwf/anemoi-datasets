@@ -49,9 +49,7 @@ def compare(input, reference):
         if ds[i] != ref[i]:
             raise ValueError(f"Datasets differ at index {i}: {ds[i]} != {ref[i]}")
         if ds.dates[i] != ref.dates[i]:
-            raise ValueError(
-                f"Dates differ at index {i}: {ds.dates[i]} != {ref.dates[i]}"
-            )
+            raise ValueError(f"Dates differ at index {i}: {ds.dates[i]} != {ref.dates[i]}")
     print("✅ Data and dates are identical")
 
     ds_metadata = ds.metadata.copy()

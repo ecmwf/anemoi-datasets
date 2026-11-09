@@ -58,9 +58,7 @@ def _check_array(array, verbosity: int, *path) -> None:
 
         chunk_dir = os.path.join(full, "c")
         if not os.path.isdir(chunk_dir):
-            raise ValueError(
-                f"Expected chunk directory {chunk_dir} not found for {array.name}."
-            )
+            raise ValueError(f"Expected chunk directory {chunk_dir} not found for {array.name}.")
 
         count = sum(len(files) for _, _, files in os.walk(chunk_dir))
 
@@ -80,9 +78,7 @@ def _check_array(array, verbosity: int, *path) -> None:
                         LOG.info(f"Check array: skipping {name}")
                     continue
 
-                f = os.path.relpath(os.path.join(dirpath, name), full).replace(
-                    os.sep, "."
-                )
+                f = os.path.relpath(os.path.join(dirpath, name), full).replace(os.sep, ".")
                 if verbosity > 1:
                     LOG.info(f"Check array: checking {f}")
 
@@ -96,9 +92,7 @@ def _check_array(array, verbosity: int, *path) -> None:
 
                 count += 1
     if count != file_count:
-        raise ValueError(
-            f"File count {count} does not match expected {file_count} for {array.name}."
-        )
+        raise ValueError(f"File count {count} does not match expected {file_count} for {array.name}.")
 
 
 def check_zarr(path: str, verbosity: int = 0) -> None:

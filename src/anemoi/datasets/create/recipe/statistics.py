@@ -12,9 +12,11 @@ import logging
 
 import numpy as np
 from earthkit.data.utils.dates import to_datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 
-from anemoi.datasets.usage.misc import as_first_date, as_last_date
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 
@@ -32,9 +34,7 @@ class Statistics(BaseModel):
     )
 
     @classmethod
-    def default_statistics_dates(
-        cls, dates: list[datetime.datetime]
-    ) -> tuple[datetime.datetime, datetime.datetime]:
+    def default_statistics_dates(cls, dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
         """Calculate default statistics dates based on the given list of dates.
 
         Parameters
@@ -80,9 +80,7 @@ class Statistics(BaseModel):
         end = max(d for d in dates if to_datetime(d).year == end_year)
         return dates[0], end
 
-    def statistics_dates(
-        self, dates: list[datetime.datetime]
-    ) -> tuple[datetime.datetime, datetime.datetime]:
+    def statistics_dates(self, dates: list[datetime.datetime]) -> tuple[datetime.datetime, datetime.datetime]:
 
         start = self.start
         end = self.end
@@ -109,9 +107,7 @@ class Statistics(BaseModel):
 
         return StatisticsFilter(start, end)
 
-    def trajectory_statistics_filter(
-        self, base_dates, steps
-    ) -> "TrajectoryStatisticsFilter":
+    def trajectory_statistics_filter(self, base_dates, steps) -> "TrajectoryStatisticsFilter":
         """Build an envelope filter for a trajectory dataset.
 
         Defaults for ``start``/``end`` (when unset on the recipe) are picked
@@ -133,18 +129,14 @@ class Statistics(BaseModel):
         """
         base_dates = np.asarray(base_dates)
         steps = np.asarray(steps)
-        assert np.all(np.diff(steps) >= 0), (
-            f"steps must be sorted ascending, got {steps}"
-        )
+        assert np.all(np.diff(steps) >= 0), f"steps must be sorted ascending, got {steps}"
         valid_times = np.unique((base_dates[:, None] + steps[None, :]).ravel())
 
         start, end = self.statistics_dates(list(valid_times))
         np_start = np.datetime64(start).astype(base_dates.dtype)
         np_end = np.datetime64(end).astype(base_dates.dtype)
 
-        LOG.info(
-            f"Using trajectory statistics envelope: start={np_start}, end={np_end}"
-        )
+        LOG.info(f"Using trajectory statistics envelope: start={np_start}, end={np_end}")
 
         return TrajectoryStatisticsFilter(np_start, np_end, steps[0], steps[-1])
 
@@ -191,12 +183,8 @@ class TrajectoryStatisticsFilter:
         Last step of the dataset.
     """
 
-    def __init__(
-        self, statistics_start_date, statistics_end_date, step_start, step_end
-    ):
-        assert step_start <= step_end, (
-            f"step_start must be <= step_end, got {step_start} > {step_end}"
-        )
+    def __init__(self, statistics_start_date, statistics_end_date, step_start, step_end):
+        assert step_start <= step_end, f"step_start must be <= step_end, got {step_start} > {step_end}"
         self.statistics_start_date = statistics_start_date
         self.statistics_end_date = statistics_end_date
         self.step_start = step_start

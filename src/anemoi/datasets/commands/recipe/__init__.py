@@ -34,28 +34,14 @@ class Recipe(Command):
             Command parser object.
         """
 
-        command_parser.add_argument(
-            "--validate", action="store_true", help="Validate recipe."
-        )
-        command_parser.add_argument(
-            "--format", action="store_true", help="Format the recipe."
-        )
-        command_parser.add_argument(
-            "--migrate",
-            action="store_true",
-            help="Migrate the recipe to the latest version.",
-        )
-        command_parser.add_argument(
-            "--dump", action="store_true", help="Dump the recipe."
-        )
+        command_parser.add_argument("--validate", action="store_true", help="Validate recipe.")
+        command_parser.add_argument("--format", action="store_true", help="Format the recipe.")
+        command_parser.add_argument("--migrate", action="store_true", help="Migrate the recipe to the latest version.")
+        command_parser.add_argument("--dump", action="store_true", help="Dump the recipe.")
 
         group = command_parser.add_mutually_exclusive_group()
-        group.add_argument(
-            "--inplace", action="store_true", help="Overwrite the recipe file in place."
-        )
-        group.add_argument(
-            "--output", type=str, help="Output file path for the converted recipe."
-        )
+        group.add_argument("--inplace", action="store_true", help="Overwrite the recipe file in place.")
+        group.add_argument("--output", type=str, help="Output file path for the converted recipe.")
 
         command_parser.add_argument(
             "path",
@@ -68,17 +54,12 @@ class Recipe(Command):
             config = yaml.safe_load(file)
 
         if args.validate:
-            if args.inplace and (
-                not args.format and not args.migrate and not args.dump
-            ):
-                argparse.ArgumentError(
-                    None, "--inplace is not supported with --validate."
-                )
+
+            if args.inplace and (not args.format and not args.migrate and not args.dump):
+                argparse.ArgumentError(None, "--inplace is not supported with --validate.")
 
             if args.output and (not args.format and not args.migrate and not args.dump):
-                argparse.ArgumentError(
-                    None, "--output is not supported with --validate."
-                )
+                argparse.ArgumentError(None, "--output is not supported with --validate.")
 
             validate_recipe(config)
             LOG.info(f"{args.path}: Recipe is valid.")
@@ -106,6 +87,7 @@ class Recipe(Command):
             f.close()
 
         if args.dump:
+
             dumped = dump_recipe(config)
             f = sys.stdout
             if args.output:

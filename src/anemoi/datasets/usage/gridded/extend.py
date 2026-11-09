@@ -16,17 +16,20 @@ import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
-from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded import MissingDateError
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    update_tuple,
-)
-from anemoi.datasets.usage.misc import as_first_date, as_last_date
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.misc import as_first_date
+from anemoi.datasets.usage.misc import as_last_date
 
 LOG = logging.getLogger(__name__)
 
@@ -34,9 +37,7 @@ LOG = logging.getLogger(__name__)
 class Extend(Forwards):
     """A class to represent a dataset with interpolated frequency."""
 
-    def __init__(
-        self, dataset: Dataset, extend_start: Any = None, extend_end: Any = None
-    ) -> None:
+    def __init__(self, dataset: Dataset, extend_start: Any = None, extend_end: Any = None) -> None:
         """Initialize the Extend class.
 
         Parameters
@@ -66,13 +67,9 @@ class Extend(Forwards):
         no_reference = np.array([], dtype=dates.dtype)
 
         if extend_start is not None:
-            extend_start = as_first_date(
-                extend_start, no_reference, frequency=frequency
-            )
+            extend_start = as_first_date(extend_start, no_reference, frequency=frequency)
             if extend_start > first:
-                raise ValueError(
-                    f"Start date {extend_start} is after first date {first}"
-                )
+                raise ValueError(f"Start date {extend_start} is after first date {first}")
             self._extend_start = extend_start
 
         if extend_end is not None:
@@ -176,8 +173,7 @@ class Extend(Forwards):
         if self._after > 0:
             result.append(
                 np.arange(
-                    self.forward.dates[-1]
-                    + frequency_to_timedelta(self.forward.frequency),
+                    self.forward.dates[-1] + frequency_to_timedelta(self.forward.frequency),
                     self._extend_end + frequency_to_timedelta(self.forward.frequency),
                     frequency_to_timedelta(self.forward.frequency),
                     dtype="datetime64",
@@ -198,21 +194,12 @@ class Extend(Forwards):
         Node
             The tree representation of the dataset.
         """
-        return Node(
-            self,
-            [self.forward.tree()],
-            extend_start=self._extend_start,
-            extend_end=self._extend_end,
-        )
+        return Node(self, [self.forward.tree()], extend_start=self._extend_start, extend_end=self._extend_end)
 
     @cached_property
     def missing(self) -> set[int]:
         """Get the missing data indices."""
-        return (
-            set(range(self._before))
-            | self.forward.missing
-            | set(range(len(self.forward) + self._before, self._len))
-        )
+        return set(range(self._before)) | self.forward.missing | set(range(len(self.forward) + self._before, self._len))
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the InterpolateFrequency subclass.

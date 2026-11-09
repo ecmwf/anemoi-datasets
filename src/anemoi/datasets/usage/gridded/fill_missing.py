@@ -15,15 +15,16 @@ import numpy as np
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, TupleIndex
-from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import TupleIndex
+from anemoi.datasets.usage.debug import Node
+from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    expand_list_indexing,
-    index_to_slices,
-    update_tuple,
-)
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -138,9 +139,7 @@ class MissingDatesFill(Forwards):
     def _register_warning(self, n):
         self._warnings.add(n)
         if len(self._warnings) == MAX_WARNINGS:
-            LOG.warning(
-                "Reached maximum number of warnings for missing dates. Further warnings will be suppressed."
-            )
+            LOG.warning("Reached maximum number of warnings for missing dates. Further warnings will be suppressed.")
 
 
 class MissingDatesClosest(MissingDatesFill):
@@ -262,12 +261,8 @@ class MissingDatesInterpolate(MissingDatesFill):
             alpha = (n - a) / (b - a)
             assert 0 < alpha < 1, alpha
 
-            LOG.warning(
-                f"Interpolating between index {a} ({self.dates[a]}) and {b} ({self.dates[b]})"
-            )
-            LOG.warning(
-                f"Interpolation {1 - alpha:g} * ({self.dates[a]}) + {alpha:g} * ({self.dates[b]})"
-            )
+            LOG.warning(f"Interpolating between index {a} ({self.dates[a]}) and {b} ({self.dates[b]})")
+            LOG.warning(f"Interpolation {1 - alpha:g} * ({self.dates[a]}) + {alpha:g} * ({self.dates[b]})")
 
             self._alpha[n] = alpha
 
@@ -318,9 +313,7 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
             An array filled with NaNs for the missing date.
         """
         if self._issue_warning(n):
-            LOG.warning(
-                f"Missing date at index {n} ({self.dates[n]}), filling with NaNs"
-            )
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
             self._register_warning(n)
 
         return np.full(self.shape[1:], np.nan, dtype=self.dtype)
@@ -362,9 +355,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
         super().__init__(dataset)
         self._method = method
         self._statistics = self.statistics[method]
-        self._statistics = self._statistics.reshape(
-            (-1,) + (1,) * (len(self.shape) - 2)
-        )
+        self._statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
         self._statistics = self._statistics.astype(self.dtype)
 
     def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
@@ -386,9 +377,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
         """
 
         if self._issue_warning(n):
-            LOG.warning(
-                f"Missing date at index {n} ({self.dates[n]}), filling with `{self._method}`"
-            )
+            LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with `{self._method}`")
             self._register_warning(n)
 
         return np.broadcast_to(self._statistics, self.shape[1:])
@@ -414,9 +403,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
         return Node(self, [self.forward.tree()], method=self._method)
 
 
-def fill_missing_dates_factory(
-    dataset: Any, method: str, kwargs: dict[str, Any]
-) -> Dataset:
+def fill_missing_dates_factory(dataset: Any, method: str, kwargs: dict[str, Any]) -> Dataset:
     """Factory function to create an instance of a class to fill missing dates.
 
     Parameters

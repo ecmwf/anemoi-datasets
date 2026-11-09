@@ -46,9 +46,7 @@ class AnalyseDataset(Command):
         command_parser : Any
             The command parser.
         """
-        command_parser.add_argument(
-            "path", metavar="DATASET", help="Path (or name) of a zarr dataset."
-        )
+        command_parser.add_argument("path", metavar="DATASET", help="Path (or name) of a zarr dataset.")
         command_parser.add_argument(
             "-o",
             "--output",
@@ -64,16 +62,13 @@ class AnalyseDataset(Command):
         args : Any
             The command arguments.
         """
-        from anemoi.datasets import __version__, open_dataset
+        from anemoi.datasets import __version__
+        from anemoi.datasets import open_dataset
         from anemoi.datasets.usage.store import open_zarr_store
 
         z, path = open_zarr_store(args.path, return_path=True)
 
-        if (
-            not path.startswith("s3://")
-            and not path.startswith("http://")
-            and not path.startswith("https://")
-        ):
+        if not path.startswith("s3://") and not path.startswith("http://") and not path.startswith("https://"):
             path = os.path.abspath(path)
 
         name, _ = os.path.splitext(os.path.basename(path))
@@ -104,8 +99,7 @@ class AnalyseDataset(Command):
             while delta <= datetime.timedelta(hours=24):
                 try:
                     tendencies[frequency_to_string(delta)] = {
-                        k: v.tolist()
-                        for k, v in ds.statistics_tendencies(delta).items()
+                        k: v.tolist() for k, v in ds.statistics_tendencies(delta).items()
                     }
                 except Exception:
                     LOG.debug(f"No tendency statistics for delta {delta}.")
@@ -124,10 +118,7 @@ class AnalyseDataset(Command):
         metadata["dtype"] = str(ds.dtype)
 
         if "chunks" in metadata:
-            assert tuple(metadata["chunks"]) == tuple(ds.chunks), (
-                metadata["chunks"],
-                ds.chunks,
-            )
+            assert tuple(metadata["chunks"]) == tuple(ds.chunks), (metadata["chunks"], ds.chunks)
         metadata["chunks"] = list(ds.chunks)
 
         result = {
@@ -136,7 +127,7 @@ class AnalyseDataset(Command):
             "version": "1.0",
             "anemoi_datasets_version": __version__,
             "path": path,
-            "created": datetime.datetime.now(datetime.UTC).isoformat(),
+            "created": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "record": {
                 "name": name,
                 "metadata": metadata,

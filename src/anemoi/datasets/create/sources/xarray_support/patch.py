@@ -9,16 +9,15 @@
 
 
 import logging
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 import xarray as xr
 
 LOG = logging.getLogger(__name__)
 
 
-def patch_attributes(
-    ds: xr.Dataset, attributes: dict[str, dict[str, Any]]
-) -> xr.Dataset:
+def patch_attributes(ds: xr.Dataset, attributes: dict[str, dict[str, Any]]) -> xr.Dataset:
     """Patch the attributes of the dataset.
 
     Parameters
@@ -143,12 +142,7 @@ def patch_subset_dataset(ds: xr.Dataset, selection: dict[str, Any]) -> xr.Datase
 
 def patch_analysis_lead_to_valid_time(
     ds: xr.Dataset,
-    time_coord_names: dict[
-        Literal[
-            "analysis_time_coordinate", "lead_time_coordinate", "valid_time_coordinate"
-        ],
-        str,
-    ],
+    time_coord_names: dict[Literal["analysis_time_coordinate", "lead_time_coordinate", "valid_time_coordinate"], str],
 ) -> xr.Dataset:
     """Convert analysis time and lead time coordinates to valid time.
 
@@ -189,9 +183,7 @@ def patch_analysis_lead_to_valid_time(
         "analysis_time_coordinate",
         "lead_time_coordinate",
         "valid_time_coordinate",
-    }, (
-        "time_coord_names must contain exactly keys 'analysis_time_coordinate', 'lead_time_coordinate', and 'valid_time_coordinate'"
-    )
+    }, "time_coord_names must contain exactly keys 'analysis_time_coordinate', 'lead_time_coordinate', and 'valid_time_coordinate'"
 
     analysis_time_coordinate = time_coord_names["analysis_time_coordinate"]
     lead_time_coordinate = time_coord_names["lead_time_coordinate"]
@@ -211,10 +203,7 @@ def patch_analysis_lead_to_valid_time(
 
 
 def patch_rolling_operation(
-    ds: xr.Dataset,
-    vars_operation_config: dict[
-        Literal["dim", "steps", "vars", "operation"], str | int | list[str]
-    ],
+    ds: xr.Dataset, vars_operation_config: dict[Literal["dim", "steps", "vars", "operation"], str | int | list[str]]
 ) -> xr.Dataset:
     """Apply a rolling operation to specified variables in the dataset.
 
@@ -257,9 +246,7 @@ def patch_rolling_operation(
         "steps",
         "vars",
         "operation",
-    }, (
-        "vars_operation_config must contain exactly keys 'dim', 'steps', 'vars', and 'operation'"
-    )
+    }, "vars_operation_config must contain exactly keys 'dim', 'steps', 'vars', and 'operation'"
 
     dim = vars_operation_config["dim"]
     steps = vars_operation_config["steps"]

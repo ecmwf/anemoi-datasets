@@ -8,10 +8,13 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from functools import cache
 
-from anemoi.datasets.create.recipe.dates import BaseDates, StartEndDates, Steps
+from anemoi.datasets.create.recipe.dates import BaseDates
+from anemoi.datasets.create.recipe.dates import StartEndDates
+from anemoi.datasets.create.recipe.dates import Steps
 
 LOG = logging.getLogger(__name__)
 
@@ -30,9 +33,7 @@ class Action(ABC):
         assert path[0] in (
             "input",
             "data_sources",
-        ), (
-            f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
-        )
+        ), f"{self.__class__.__name__}: path must start with 'input' or 'data_sources': {path}"
 
     @abstractmethod
     def __call__(self, context, argument):
@@ -81,6 +82,7 @@ class Concat(Action):
         self.choices = []
 
         for i, item in enumerate(config):
+
             filters = {}
             for key in self.FILTER_KEYS:
                 if key in item:
@@ -92,9 +94,7 @@ class Concat(Action):
                         filters[key] = Steps(**item[key])
 
             if not filters:
-                raise ValueError(
-                    f"Concat entry must have at least one of {self.FILTER_KEYS}."
-                )
+                raise ValueError(f"Concat entry must have at least one of {self.FILTER_KEYS}.")
 
             action_config = {k: v for k, v in item.items() if k not in self.FILTER_KEYS}
             action = action_factory(action_config, *self.path, str(i))
@@ -119,10 +119,7 @@ class Concat(Action):
 
     def dump(self, dumper):
         return dumper.concat(
-            {
-                list(filters.values())[0].dump(dumper): action.dump(dumper)
-                for filters, action in self.choices
-            }
+            {list(filters.values())[0].dump(dumper): action.dump(dumper) for filters, action in self.choices}
         )
 
 
@@ -146,13 +143,9 @@ class Join(Action):
     def __init__(self, config, *path):
         super().__init__(config, *path, "join")
 
-        assert isinstance(config, list), (
-            f"Value of Join Action must be a list, got: {config}"
-        )
+        assert isinstance(config, list), f"Value of Join Action must be a list, got: {config}"
 
-        self.actions = [
-            action_factory(item, *self.path, str(i)) for i, item in enumerate(config)
-        ]
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Join({self.actions})"
@@ -184,13 +177,9 @@ class Pipe(Action):
     """
 
     def __init__(self, config, *path):
-        assert isinstance(config, list), (
-            f"Value of Pipe Action must be a list, got {config}"
-        )
+        assert isinstance(config, list), f"Value of Pipe Action must be a list, got {config}"
         super().__init__(config, *path, "pipe")
-        self.actions = [
-            action_factory(item, *self.path, str(i)) for i, item in enumerate(config)
-        ]
+        self.actions = [action_factory(item, *self.path, str(i)) for i, item in enumerate(config)]
 
     def __repr__(self):
         return f"Pipe({self.actions})"
@@ -220,9 +209,7 @@ class Function(Action):
 
     def __call__(self, context, argument):
 
-        config = context.resolve(
-            self.config
-        )  # Substitute the ${} variables in the config
+        config = context.resolve(self.config)  # Substitute the ${} variables in the config
 
         config["_type"] = self.name  # Find a better way to do this
 
@@ -242,9 +229,7 @@ class DatasetSourceMixin:
     """Mixin class for sources defined in anemoi-datasets"""
 
     def create_object(self, context, config):
-        from anemoi.datasets.create.sources import (
-            create_source as create_datasets_source,
-        )
+        from anemoi.datasets.create.sources import create_source as create_datasets_source
 
         return create_datasets_source(context, config)
 
@@ -311,9 +296,7 @@ class DataSources(Action):
         if isinstance(config, dict):
             self.sources = {k: action_factory(v, *path, k) for k, v in config.items()}
         else:
-            self.sources = {
-                i: action_factory(v, *path, str(i)) for i, v in enumerate(config)
-            }
+            self.sources = {i: action_factory(v, *path, str(i)) for i, v in enumerate(config)}
 
     def dump(self, dumper):
         return dumper.sources({k: v.dump(dumper) for k, v in self.sources.items()})
@@ -356,9 +339,7 @@ def _action_factories():
     from anemoi.transform.filters import filter_registry as transform_filter_registry
     from anemoi.transform.sources import source_registry as transform_source_registry
 
-    from anemoi.datasets.create.sources import (
-        source_registry as dataset_source_registry,
-    )
+    from anemoi.datasets.create.sources import source_registry as dataset_source_registry
 
     # Register sources, local first
     for name in dataset_source_registry.registered:
@@ -394,9 +375,7 @@ def action_factory(data, *path):
         data = data.model_dump()
 
     assert isinstance(data, dict), f"Input data must be a dictionary, got {type(data)}"
-    assert len(data) == 1, (
-        f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"
-    )
+    assert len(data) == 1, f"Input data must contain exactly one key-value pair {data} {'.'.join(x for x in path)}"
 
     key, value = next(iter(data.items()))
     return make(key, value, *path)

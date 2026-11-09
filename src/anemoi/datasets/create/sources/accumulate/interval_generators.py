@@ -13,9 +13,11 @@ import logging
 from abc import abstractmethod
 from collections.abc import Iterable
 
-from anemoi.utils.dates import as_datetime, frequency_to_timedelta
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.intervals import SignedInterval, step_to_timedelta
+from anemoi.datasets.create.intervals import SignedInterval
+from anemoi.datasets.create.intervals import step_to_timedelta
 
 from .covering_intervals import covering_intervals
 
@@ -36,9 +38,7 @@ def build_interval(
         usable_base_time = int(base_time) if base_time is not None else 0
     except ValueError:
         raise ValueError(f"Invalid base_time: {base_time} ({type(base_time)})")
-    base = datetime.datetime(
-        current_time.year, current_time.month, current_time.day, usable_base_time
-    )
+    base = datetime.datetime(current_time.year, current_time.month, current_time.day, usable_base_time)
     start = base + start_step
     end = base + end_step
 
@@ -53,9 +53,7 @@ class IntervalGenerator:
     """
 
     @abstractmethod
-    def covering_intervals(
-        self, start: datetime, end: datetime
-    ) -> Iterable[SignedInterval]:
+    def covering_intervals(self, start: datetime, end: datetime) -> Iterable[SignedInterval]:
         pass
 
     @abstractmethod
@@ -113,9 +111,7 @@ class SearchableIntervalGenerator(IntervalGenerator):
 
         self.patterns: list[Pattern] = patterns
 
-    def covering_intervals(
-        self, start: datetime.datetime, end: datetime.datetime
-    ) -> Iterable[SignedInterval]:
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
         """Perform interval search among candidates with minimal base switches and length.
         Candidates are given by self call
         Return available SignedIntervals covering the period start->end (where start>end is possible)
@@ -136,9 +132,7 @@ class SearchableIntervalGenerator(IntervalGenerator):
                 base_time = p.base_time
                 steps = p.steps
                 for start_step, end_step in steps:
-                    interval = build_interval(
-                        current_time + delta, start_step, end_step, base_time
-                    )
+                    interval = build_interval(current_time + delta, start_step, end_step, base_time)
                     if not p.filter(interval):
                         continue
 
@@ -177,21 +171,13 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
 
         self.config = {split(k): normalise_steps(*v) for k, v in config.items()}
 
-    def covering_intervals(
-        self, start: datetime.datetime, end: datetime.datetime
-    ) -> Iterable[SignedInterval]:
+    def covering_intervals(self, start: datetime.datetime, end: datetime.datetime) -> Iterable[SignedInterval]:
         cycle_length_in_hours = max([k[1] for k in self.config.keys()])
 
-        assert end > start, (
-            "CycleIntervalProvider only supports positive intervals (end must be after start)"
-        )
+        assert end > start, "CycleIntervalProvider only supports positive intervals (end must be after start)"
 
-        i_start = (
-            int((start - self.reference).total_seconds()) // 3600
-        ) % cycle_length_in_hours
-        i_end = (
-            int((end - self.reference).total_seconds()) // 3600
-        ) % cycle_length_in_hours
+        i_start = (int((start - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
+        i_end = (int((end - self.reference).total_seconds()) // 3600) % cycle_length_in_hours
         if i_end == 0:
             i_end = cycle_length_in_hours
 
@@ -204,9 +190,7 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
                 f"CycleIntervalProvider: i_end={i_end} out of range (0, {cycle_length_in_hours}] (end={end})"
             )
         if i_start >= i_end:
-            raise ValueError(
-                f"CycleIntervalProvider: i_start={i_start} >= i_end={i_end} (start={start}, end={end})"
-            )
+            raise ValueError(f"CycleIntervalProvider: i_start={i_start} >= i_end={i_end} (start={start}, end={end})")
 
         if (i_start, i_end) not in self.config:
             raise ValueError(
@@ -221,22 +205,16 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
             base_datetime -= datetime.timedelta(days=1)
 
         if base_datetime.hour != base_time:
-            raise ValueError(
-                f"base_datetime hour {base_datetime.hour} does not match expected base_time {base_time}"
-            )
+            raise ValueError(f"base_datetime hour {base_datetime.hour} does not match expected base_time {base_time}")
         if base_datetime >= end:
-            raise ValueError(
-                f"base_datetime {base_datetime} must be strictly before end {end}"
-            )
+            raise ValueError(f"base_datetime {base_datetime} must be strictly before end {end}")
 
         intervals = []
         for start_step, end_step in steps:
             if start_step < 0:
                 raise ValueError(f"start_step {start_step} must be non-negative")
             if end_step <= start_step:
-                raise ValueError(
-                    f"end_step {end_step} must be greater than start_step {start_step}"
-                )
+                raise ValueError(f"end_step {end_step} must be greater than start_step {start_step}")
             interval = SignedInterval(
                 base=base_datetime,
                 start=base_datetime + datetime.timedelta(hours=start_step),
@@ -244,17 +222,11 @@ class CycleIntervalProvider(SearchableIntervalGenerator):
             )
             intervals.append(interval)
 
-        if not (
-            any(i.start == start for i in intervals)
-            or any((-i).start == start for i in intervals)
-        ):
+        if not (any(i.start == start for i in intervals) or any((-i).start == start for i in intervals)):
             raise ValueError(
                 f"CycleIntervalProvider: no interval starting at {start} (start={start}, end={end}, {cycle_length_in_hours=})"
             )
-        if not (
-            any(i.end == end for i in intervals)
-            or any((-i).end == end for i in intervals)
-        ):
+        if not (any(i.end == end for i in intervals) or any((-i).end == end for i in intervals)):
             raise ValueError(
                 f"CycleIntervalProvider: no interval ending at {end} (start={start}, end={end}, {cycle_length_in_hours=})"
             )
@@ -273,20 +245,13 @@ def normalise_steps(steps_list: str | list[str]) -> list[list[datetime.timedelta
         if isinstance(start_end_step, str):
             assert "-" in start_end_step, start_end_step
             start_end_step = start_end_step.split("-")
-        assert isinstance(start_end_step, (list, tuple)) and len(start_end_step) == 2, (
-            start_end_step
-        )
-        start_step, end_step = (
-            step_to_timedelta(start_end_step[0]),
-            step_to_timedelta(start_end_step[1]),
-        )
+        assert isinstance(start_end_step, (list, tuple)) and len(start_end_step) == 2, start_end_step
+        start_step, end_step = step_to_timedelta(start_end_step[0]), step_to_timedelta(start_end_step[1])
         res.append([start_step, end_step])
     return res
 
 
-def _steps_to(
-    frequency: str | int, last_step: str | int
-) -> Iterable[tuple[datetime.timedelta, datetime.timedelta]]:
+def _steps_to(frequency: str | int, last_step: str | int) -> Iterable[tuple[datetime.timedelta, datetime.timedelta]]:
     """Yield (start, end) offsets from 0 to `last_step` in `frequency` increments.
 
     Bare numbers mean hours, so `frequency=1, last_step=24` is unchanged.
@@ -303,12 +268,7 @@ def _steps_to(
 
 
 class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(
-        self,
-        basetime: str | datetime.datetime,
-        frequency: str | int,
-        last_step: str | int,
-    ):
+    def __init__(self, basetime: str | datetime.datetime, frequency: str | int, last_step: str | int):
         config = []
         for base in basetime:
             for _, end in _steps_to(frequency, last_step):
@@ -317,12 +277,7 @@ class AccumulatedFromStartIntervalGenerator(SearchableIntervalGenerator):
 
 
 class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
-    def __init__(
-        self,
-        basetime: str | datetime.datetime,
-        frequency: str | int,
-        last_step: str | int,
-    ):
+    def __init__(self, basetime: str | datetime.datetime, frequency: str | int, last_step: str | int):
         config = []
         for base in basetime:
             for start, end in _steps_to(frequency, last_step):
@@ -330,9 +285,7 @@ class AccumulatedFromPreviousStepIntervalGenerator(SearchableIntervalGenerator):
         super().__init__(config)
 
 
-def _match_mars_config(
-    _class: str, _stream: str | None = None, _origin: str | None = None
-) -> list | tuple:
+def _match_mars_config(_class: str, _stream: str | None = None, _origin: str | None = None) -> list | tuple:
     """Match MARS configuration (class, stream, origin) to interval generator config.
 
     Parameters
@@ -361,14 +314,8 @@ def _match_mars_config(
     match (_class, _stream, _origin):
         case ("ea", "oper", _):
             return [
-                (
-                    6,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
-                (
-                    18,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
             ]
         case ("ea", "enda", _):
             return [
@@ -377,25 +324,13 @@ def _match_mars_config(
             ]
         case ("e6", "oper", _):
             return [
-                (
-                    6,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
-                (
-                    18,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
             ]
         case ("e6", "enda", _):
             return [
-                (
-                    6,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
-                (
-                    18,
-                    "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18",
-                ),
+                (6, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
+                (18, "0-1/1-2/2-3/3-4/4-5/5-6/6-7/7-8/8-9/9-10/10-11/11-12/12-13/13-14/14-15/15-16/16-17/17-18"),
             ]
         case ("od", "oper", _):
             # https://apps.ecmwf.int/mars-catalogue/?stream=oper&levtype=sfc&time=00%3A00%3A00&expver=1&month=aug&year=2020&date=2020-08-25&type=fc&class=od
@@ -413,21 +348,17 @@ def _match_mars_config(
 
         case ("rr", _, "se-al-ec"):
             # https://apps.ecmwf.int/mars-catalogue/?class=rr&expver=prod&origin=se-al-ec&stream=oper&type=fc&year=2020&month=aug&levtype=sfc
-            return [
-                [0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]
-            ]
+            return [[0, [(0, i) for i in [1, 2, 3, 4, 5, 6, 9, 12, 15, 18, 21, 24, 27, 30]]]]
         case ("rr", _, "fr-ms-ec"):
             # https://apps.ecmwf.int/mars-catalogue/?origin=fr-ms-ec&stream=oper&levtype=sfc&time=06%3A00%3A00&expver=prod&month=aug&year=2020&date=2020-08-31&type=fc&class=rr
             return [[0, [(0, i) for i in range(1, 22, 3)]]]
 
         case ("l5", "oper", _):
             # https://apps.ecmwf.int/mars-catalogue/?class=l5&stream=oper&expver=1&type=fc&year=2020&month=aug&levtype=sfc&date=2020-08-25&time=00:00:00
-            return [[0, [(int(i), int(i) + 1) for i in range(24)]]]
+            return [[0, [(int(i), int(i) + 1) for i in range(0, 24)]]]
 
         case _:
-            raise ValueError(
-                f"Unknown MARS configuration: class={_class}, stream={_stream}, origin={_origin}"
-            )
+            raise ValueError(f"Unknown MARS configuration: class={_class}, stream={_stream}, origin={_origin}")
 
 
 def _interval_generator_factory(
@@ -466,22 +397,14 @@ def _interval_generator_factory(
             return SearchableIntervalGenerator(config)
 
         case "auto":
-            assert None not in (source_name, source), (
-                "Source must be specified when using 'auto' discovery"
-            )
-            assert source_name == "mars", (
-                "Only 'mars' source is currently supported for 'auto' availability discovery"
-            )
+            assert None not in (source_name, source), "Source must be specified when using 'auto' discovery"
+            assert source_name == "mars", "Only 'mars' source is currently supported for 'auto' availability discovery"
 
-            _class, _stream, _origin = (
-                source.get("class", None),
-                source.get("stream", None),
-                source.get("origin", None),
-            )
+            _class, _stream, _origin = source.get("class", None), source.get("stream", None), source.get("origin", None)
 
-            assert _class is not None, (
-                "Availability should be automatically determined from mars source, but the mars source has no 'class'"
-            )
+            assert (
+                _class is not None
+            ), "Availability should be automatically determined from mars source, but the mars source has no 'class'"
 
             if (_stream is None) or (_origin is None):
                 LOG.warning(
@@ -499,19 +422,15 @@ def _interval_generator_factory(
 
             hours = data_accumulation_period.total_seconds() / 3600
             if not (hours.is_integer() and hours > 0):
-                raise ValueError(
-                    "Only accumulation periods multiple of 1 hour are supported for now"
-                )
+                raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
 
-            return [["*", [f"{i}-{i + 1}" for i in range(24)]]]
+            return [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
 
         case _:
             raise ValueError(f"Unknown interval generator config: {config}")
 
 
-def interval_generator_factory(
-    config, source_name: str | None = None, source: dict | None = None
-) -> IntervalGenerator:
+def interval_generator_factory(config, source_name: str | None = None, source: dict | None = None) -> IntervalGenerator:
     while not isinstance(config, IntervalGenerator):
         config = _interval_generator_factory(config, source_name, source)
     return config

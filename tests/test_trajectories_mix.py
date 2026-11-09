@@ -109,9 +109,7 @@ def make_gridded_zarr(
         "maximum": np.max(tendencies, axis=(0, 2, 3)),
         "minimum": np.min(tendencies, axis=(0, 2, 3)),
     }.items():
-        root.create_array(
-            f"statistics_tendencies_{frequency_h}h_{k}", data=v, compressors=None
-        )
+        root.create_array(f"statistics_tendencies_{frequency_h}h_{k}", data=v, compressors=None)
 
     root.attrs["layout"] = "gridded"
     root.attrs["frequency"] = f"{frequency_h}h"
@@ -144,18 +142,14 @@ def _add_statistics(group: zarr.Group, step_frequency_h: int = 6) -> zarr.Group:
         "maximum": np.max(tendencies, axis=axes),
         "minimum": np.min(tendencies, axis=axes),
     }.items():
-        group.create_array(
-            f"statistics_tendencies_{step_frequency_h}h_{k}", data=v, compressors=None
-        )
+        group.create_array(f"statistics_tendencies_{step_frequency_h}h_{k}", data=v, compressors=None)
     return group
 
 
 @pytest.fixture
 def traj():
     # base dates: 2021-01-01 00/06/12/18Z ; steps: 6..30h
-    group = make_trajectories_zarr(
-        n_dates=4, n_steps=5, n_vars=3, n_cells=N_CELLS, analytic=True
-    )
+    group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=N_CELLS, analytic=True)
     return _open(_add_statistics(group), "traj.zarr")
 
 
@@ -242,9 +236,7 @@ def test_statistics_are_joined(traj, gridded):
     """Statistics are concatenated along the variable axis in argument order."""
     ds = open_dataset(traj, gridded)
     for key in ("mean", "stdev", "maximum", "minimum"):
-        expected = np.concatenate(
-            [traj.statistics[key], gridded.statistics[key]], axis=0
-        )
+        expected = np.concatenate([traj.statistics[key], gridded.statistics[key]], axis=0)
         assert np.array_equal(ds.statistics[key], expected)
 
 
@@ -256,12 +248,8 @@ def test_statistics_tendencies_forwarded(traj, gridded):
     tendencies = ds.statistics_tendencies()  # must not raise
     for key in ("mean", "stdev", "maximum", "minimum"):
         # Trajectory part uses the step-frequency delta; gridded part is forwarded verbatim.
-        assert np.array_equal(
-            tendencies[key][:n_traj_vars], traj.statistics_tendencies()[key]
-        )
-        assert np.array_equal(
-            tendencies[key][n_traj_vars:], gridded.statistics_tendencies()[key]
-        )
+        assert np.array_equal(tendencies[key][:n_traj_vars], traj.statistics_tendencies()[key])
+        assert np.array_equal(tendencies[key][n_traj_vars:], gridded.statistics_tendencies()[key])
 
 
 def test_select_after_join(traj, gridded):
@@ -297,9 +285,7 @@ def test_missing_valid_time_raises(traj):
 
 def test_grid_mismatch_raises(traj):
     """A gridded dataset on a different grid is rejected."""
-    other_grid = _open(
-        make_gridded_zarr(n_dates=9, n_vars=2, n_cells=N_CELLS + 1), "other.zarr"
-    )
+    other_grid = _open(make_gridded_zarr(n_dates=9, n_vars=2, n_cells=N_CELLS + 1), "other.zarr")
     with pytest.raises(ValueError):
         open_dataset(traj, other_grid)
 

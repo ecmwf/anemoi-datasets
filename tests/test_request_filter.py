@@ -20,6 +20,7 @@ from anemoi.datasets.create.sources.mars.retrieval import RequestFilter
 
 
 class TestRequestFilterEmpty:
+
     def test_default_is_empty(self) -> None:
         f = RequestFilter()
         assert f.is_empty
@@ -39,6 +40,7 @@ class TestRequestFilterEmpty:
 
 
 class TestRequestFilterWildcard:
+
     def test_wildcard_date_only(self) -> None:
         f, cleaned = RequestFilter.extract({"date": "????-??-01", "param": "2t"})
         assert "date" not in cleaned
@@ -50,9 +52,7 @@ class TestRequestFilterWildcard:
         assert not f.keep("20200102", "0000")
 
     def test_wildcard_date_and_time(self) -> None:
-        f, cleaned = RequestFilter.extract(
-            {"date": "????-??-01", "time": 0, "param": "2t"}
-        )
+        f, cleaned = RequestFilter.extract({"date": "????-??-01", "time": 0, "param": "2t"})
         assert "date" not in cleaned
         assert "time" not in cleaned
         assert cleaned == {"param": "2t"}
@@ -81,6 +81,7 @@ class TestRequestFilterWildcard:
 
 
 class TestLegacyKeysRejected:
+
     def test_user_date_rejected(self) -> None:
         with pytest.raises(ValueError, match="user_date"):
             RequestFilter.extract({"user_date": "??????01"})
@@ -95,6 +96,7 @@ class TestLegacyKeysRejected:
 
 
 class TestRequestFilterImmutable:
+
     def test_extract_does_not_mutate_input(self) -> None:
         request = {"date": "????-??-01", "time": [0], "param": "2t"}
         snapshot = dict(request)

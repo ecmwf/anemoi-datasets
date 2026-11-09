@@ -14,12 +14,10 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 if TYPE_CHECKING:
-    from anemoi.datasets.create.arguments import (
-        ForecastDates,
-        ForecastIntervals,
-        Intervals,
-        ValidDates,
-    )
+    from anemoi.datasets.create.arguments import ForecastDates
+    from anemoi.datasets.create.arguments import ForecastIntervals
+    from anemoi.datasets.create.arguments import Intervals
+    from anemoi.datasets.create.arguments import ValidDates
 
 
 class Source:
@@ -57,12 +55,10 @@ class Source:
         ekd.FieldList
             The output data.
         """
-        from anemoi.datasets.create.arguments import (
-            ForecastDates,
-            ForecastIntervals,
-            Intervals,
-            ValidDates,
-        )
+        from anemoi.datasets.create.arguments import ForecastDates
+        from anemoi.datasets.create.arguments import ForecastIntervals
+        from anemoi.datasets.create.arguments import Intervals
+        from anemoi.datasets.create.arguments import ValidDates
         from anemoi.datasets.dates.groups import GroupOfDates
 
         if isinstance(argument, list):
@@ -81,8 +77,7 @@ class Source:
         if isinstance(argument, ValidDates):
             return self.execute_valid_dates(argument)
         raise TypeError(
-            f"{type(self).__name__}.execute() received unsupported argument type "
-            f"'{type(argument).__name__}'."
+            f"{type(self).__name__}.execute() received unsupported argument type " f"'{type(argument).__name__}'."
         )
 
     def execute_valid_dates(self, argument: "ValidDates") -> ekd.FieldList:
@@ -100,9 +95,7 @@ class Source:
         ekd.FieldList
             The output data.
         """
-        raise NotImplementedError(
-            f"'{type(self).__name__}' does not implement execute_valid_dates."
-        )
+        raise NotImplementedError(f"'{type(self).__name__}' does not implement execute_valid_dates.")
 
     def execute_forecast_dates(self, argument: "ForecastDates") -> ekd.FieldList:
         """Handle forecast (basetime, valid_time) requests — trajectories / step products.
@@ -121,8 +114,7 @@ class Source:
             The output data.
         """
         raise NotImplementedError(
-            f"'{type(self).__name__}' does not support the trajectory layout "
-            f"(received {type(argument).__name__})."
+            f"'{type(self).__name__}' does not support the trajectory layout " f"(received {type(argument).__name__})."
         )
 
     def execute_intervals(self, argument: "Intervals") -> ekd.FieldList:
@@ -143,9 +135,7 @@ class Source:
         """
         return self.execute_valid_dates(argument)
 
-    def execute_forecast_intervals(
-        self, argument: "ForecastIntervals"
-    ) -> ekd.FieldList:
+    def execute_forecast_intervals(self, argument: "ForecastIntervals") -> ekd.FieldList:
         """Handle forecast accumulation requests.
 
         Falls back to ``execute_forecast_dates`` by default. Override explicitly
@@ -203,3 +193,5 @@ class FieldSource(Source):
 
 class ObservationsSource(Source):
     """A source that retrieves observational data."""
+
+    pass

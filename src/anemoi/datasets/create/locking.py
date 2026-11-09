@@ -14,6 +14,7 @@ import rich
 
 
 class Locking:
+
     def __init__(self, path: str):
         self.flock = fasteners.InterProcessLock(path)
         self.tlock = threading.RLock()

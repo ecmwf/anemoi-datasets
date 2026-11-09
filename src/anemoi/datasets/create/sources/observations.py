@@ -20,9 +20,7 @@ def check_dataframe(df):
     if not pd.api.types.is_datetime64_any_dtype(df["times"]):
         raise TypeError("The 'times' column must be of datetime type.")
     if "latitudes" not in df.columns or "longitudes" not in df.columns:
-        raise ValueError(
-            "The DataFrame must contain 'latitudes' and 'longitudes' columns."
-        )
+        raise ValueError("The DataFrame must contain 'latitudes' and 'longitudes' columns.")
 
 
 class ObservationsSource:

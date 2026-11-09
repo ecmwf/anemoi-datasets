@@ -12,10 +12,12 @@ import logging
 from functools import cached_property
 from typing import Any
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.misc import _auto_adjust, _open
+from anemoi.datasets.usage.misc import _auto_adjust
+from anemoi.datasets.usage.misc import _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -24,9 +26,7 @@ LOG = logging.getLogger(__name__)
 class ZipBase(Combined):
     """Base class for handling zipped datasets."""
 
-    def __init__(
-        self, datasets: list[Any], options: Options, check_compatibility: bool = True
-    ) -> None:
+    def __init__(self, datasets: list[Any], options: Options, check_compatibility: bool = True) -> None:
         """Initialize ZipBase with a list of datasets.
 
         Parameters
@@ -121,6 +121,7 @@ class ZipBase(Combined):
         d2 : Dataset
             Second dataset.
         """
+        pass
 
     def check_same_grid(self, d1: Dataset, d2: Dataset) -> None:
         """Check if two datasets have the same grid.
@@ -132,6 +133,7 @@ class ZipBase(Combined):
         d2 : Dataset
             Second dataset.
         """
+        pass
 
     def check_same_variables(self, d1: Dataset, d2: Dataset) -> None:
         """Check if two datasets have the same variables.
@@ -143,6 +145,7 @@ class ZipBase(Combined):
         d2 : Dataset
             Second dataset.
         """
+        pass
 
     @cached_property
     def missing(self) -> set[int]:
@@ -218,9 +221,13 @@ class ZipBase(Combined):
 class Zip(ZipBase):
     """Class for handling zipped datasets."""
 
+    pass
+
 
 class XY(ZipBase):
     """Class for handling XY datasets."""
+
+    pass
 
 
 def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> XY:
@@ -255,9 +262,7 @@ def xy_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) 
 
     check_compatibility = kwargs.pop("check_compatibility", True)
 
-    return XY(datasets, options, check_compatibility=check_compatibility)._subset(
-        **kwargs
-    )
+    return XY(datasets, options, check_compatibility=check_compatibility)._subset(**kwargs)
 
 
 def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Zip:
@@ -286,6 +291,4 @@ def zip_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options)
 
     check_compatibility = kwargs.pop("check_compatibility", True)
 
-    return Zip(datasets, options, check_compatibility=check_compatibility)._subset(
-        **kwargs
-    )
+    return Zip(datasets, options, check_compatibility=check_compatibility)._subset(**kwargs)

@@ -453,8 +453,7 @@ def factorise_requests(
             if (
                 ("date" in cleaned)
                 and ("time" in cleaned)
-                and d.strftime("%Y%m%d%H%M")
-                != (str(cleaned["date"]) + str(cleaned["time"]).zfill(4))
+                and d.strftime("%Y%m%d%H%M") != (str(cleaned["date"]) + str(cleaned["time"]).zfill(4))
             ):
                 continue
             # Pass the *original* request (with filter keys still attached) so

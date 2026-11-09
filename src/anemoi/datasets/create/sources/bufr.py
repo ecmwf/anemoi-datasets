@@ -8,16 +8,22 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from typing import Annotated, Any, Literal
+from typing import Annotated
+from typing import Any
+from typing import Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 
 from anemoi.datasets.create.source import Source
-from anemoi.datasets.create.sources import create_source, source_registry
+from anemoi.datasets.create.sources import create_source
+from anemoi.datasets.create.sources import source_registry
 
 from .bufr_support.bufr_reader import BUFRReader
-from .bufr_support.bufr_to_df import BUFRToDataFrame, bufr_to_dataframe_parallel
+from .bufr_support.bufr_to_df import BUFRToDataFrame
+from .bufr_support.bufr_to_df import bufr_to_dataframe_parallel
 
 LOG = logging.getLogger(__name__)
 
@@ -45,9 +51,7 @@ class BUFRSourceSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    source: dict[Literal["mars"], dict[str, Any]] = Field(
-        ..., min_length=1, max_length=1
-    )
+    source: dict[Literal["mars"], dict[str, Any]] = Field(..., min_length=1, max_length=1)
     extract: BUFRExtractSchema
     num_processes: int = Field(default=1, ge=1)
 
@@ -226,18 +230,12 @@ class BUFRSource(Source):
 
         ekd_ds = self.source.execute(dates)
         if ekd_ds is None:
-            LOG.debug(
-                f"No BUFR data returned for date range {dates.start_range} - {dates.end_range}"
-            )
+            LOG.debug(f"No BUFR data returned for date range {dates.start_range} - {dates.end_range}")
             return empty
 
         bufr_reader = BUFRReader(ekd_ds.path)
-        df = bufr_to_dataframe_parallel(
-            bufr_reader, self.bufr_to_df, self.num_processes
-        )
-        LOG.debug(
-            f"Extracted {len(df)} BUFR rows for date range {dates.start_range} - {dates.end_range}"
-        )
+        df = bufr_to_dataframe_parallel(bufr_reader, self.bufr_to_df, self.num_processes)
+        LOG.debug(f"Extracted {len(df)} BUFR rows for date range {dates.start_range} - {dates.end_range}")
 
         if len(df) == 0:
             return empty

@@ -11,7 +11,8 @@
 import logging
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_metadata, new_fieldlist_from_list
+from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.gridded.result import SimpleGriddedResult
@@ -84,15 +85,10 @@ class SimpleGriddedContext(Context):
         """
         unsupported = set(filters) - {"dates"}
         if unsupported:
-            raise ValueError(
-                f"Gridded layout does not support filtering by {unsupported}. "
-                "Use 'dates' instead."
-            )
+            raise ValueError(f"Gridded layout does not support filtering by {unsupported}. " "Use 'dates' instead.")
 
         filtering_dates = filters["dates"]
-        return GroupOfDates(
-            sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider
-        )
+        return GroupOfDates(sorted(set(group_of_dates) & set(filtering_dates)), group_of_dates.provider)
 
     def origin(self, data: Any, action: Any, action_arguments: Any) -> Any:
         """Update the origin metadata for each field in the data.

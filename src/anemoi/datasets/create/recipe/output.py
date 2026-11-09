@@ -11,26 +11,26 @@ from __future__ import annotations
 
 import logging
 from math import prod
-from typing import Annotated, Any, Literal
+from typing import Annotated
+from typing import Any
+from typing import Literal
+from typing import Union
 
 import numpy as np
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Discriminator,
-    Field,
-    Tag,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Discriminator
+from pydantic import Field
+from pydantic import Tag
+from pydantic import field_validator
+from pydantic import model_validator
 
-from anemoi.datasets.compat import (
-    DEFAULT_FORMAT,
-    blosc_compressor,
-    zarr_format_from_name,
-    zarr_version,
-)
-from anemoi.datasets.compat.codecs import numcodecs_codec, zarr3_codec
+from anemoi.datasets.compat import DEFAULT_FORMAT
+from anemoi.datasets.compat import blosc_compressor
+from anemoi.datasets.compat import zarr_format_from_name
+from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec
+from anemoi.datasets.compat.codecs import zarr3_codec
 
 LOG = logging.getLogger(__name__)
 
@@ -94,9 +94,7 @@ class GriddedOutput(OutputBase):
     default value; any other value raises an error (see
     :meth:`Output._post_init`-style validation in :class:`Recipe`)."""
 
-    chunking: dict[str, int] = Field(
-        default_factory=lambda: {"dates": 1, "ensembles": 1}
-    )
+    chunking: dict[str, int] = Field(default_factory=lambda: {"dates": 1, "ensembles": 1})
     """The chunking configuration for the output."""
 
     default_grid_splits: int = Field(default=4, gt=0)
@@ -143,9 +141,7 @@ class GriddedOutput(OutputBase):
         if self.compressors is None:
             # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5,
             # byte shuffle) and format 3 arrays get zstd without shuffle.
-            return blosc_compressor(
-                cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format
-            )
+            return blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format)
 
         specs = [c.model_dump() for c in self.compressors]
         if zarr_format == 2:
@@ -160,9 +156,7 @@ class GriddedOutput(OutputBase):
         codecs = tuple(zarr3_codec(spec) for spec in specs)
         for spec, codec in zip(specs, codecs):
             if not isinstance(codec, BytesBytesCodec):
-                raise ValueError(
-                    f"Codec {spec['name']!r} in 'output.compressors' is not a bytes-to-bytes codec"
-                )
+                raise ValueError(f"Codec {spec['name']!r} in 'output.compressors' is not a bytes-to-bytes codec")
         return codecs
 
     def _post_init(self, recipe: Any) -> None:
@@ -230,14 +224,10 @@ class GriddedOutput(OutputBase):
             grid_size = len(coords["values"])
             splits = self.default_grid_splits
 
-            chunk_bytes = self._set_grid_chunk_size(
-                chunks, grid_axis, grid_size, splits
-            )
+            chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
             while splits > 1 and chunk_bytes < self.min_chunk_bytes:
                 splits //= 2
-                chunk_bytes = self._set_grid_chunk_size(
-                    chunks, grid_axis, grid_size, splits
-                )
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
 
             while chunk_bytes > self.max_chunk_bytes:
                 if chunks[grid_axis] == 1:
@@ -246,9 +236,7 @@ class GriddedOutput(OutputBase):
                         f"exceeding the {self.max_chunk_bytes:,}-byte codec limit."
                     )
                 splits *= 2
-                chunk_bytes = self._set_grid_chunk_size(
-                    chunks, grid_axis, grid_size, splits
-                )
+                chunk_bytes = self._set_grid_chunk_size(chunks, grid_axis, grid_size, splits)
 
         return tuple(chunks)
 
@@ -289,9 +277,7 @@ class TrajectoriesOutput(OutputBase):
 
     layout: Literal["trajectories"] = "trajectories"
 
-    chunking: dict[str, int] = Field(
-        default_factory=lambda: {"base_dates": 1, "steps": 1, "ensembles": 1}
-    )
+    chunking: dict[str, int] = Field(default_factory=lambda: {"base_dates": 1, "steps": 1, "ensembles": 1})
     """Chunking configuration for the 5-D output array (base_dates, variables, ensembles, steps, cells)."""
 
     def get_chunking(self, coords: dict) -> tuple:
@@ -325,13 +311,15 @@ def _output_discriminator(v: Any) -> str:
     """Discriminator function for Output union type."""
     if isinstance(v, dict):
         return v.get("layout", "gridded")
-    return v.layout
+    return getattr(v, "layout")
 
 
 # if layout is 'gridded', use GriddedOutput, if 'tabular', use TabularOutput
 Output = Annotated[
-    Annotated[GriddedOutput, Tag("gridded")]
-    | Annotated[TabularOutput, Tag("tabular")]
-    | Annotated[TrajectoriesOutput, Tag("trajectories")],
+    Union[
+        Annotated[GriddedOutput, Tag("gridded")],
+        Annotated[TabularOutput, Tag("tabular")],
+        Annotated[TrajectoriesOutput, Tag("trajectories")],
+    ],
     Discriminator(_output_discriminator),
 ]

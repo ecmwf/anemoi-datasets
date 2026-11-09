@@ -20,7 +20,5 @@ copies are inside ``gridded/missing.py`` whose name does not match the
 factory's lowercase symbol convention).
 """
 
-from anemoi.datasets.usage.gridded.missing import (
-    MissingDates,  # noqa: F401
-    SkipMissingDates,  # noqa: F401
-)
+from anemoi.datasets.usage.gridded.missing import MissingDates  # noqa: F401
+from anemoi.datasets.usage.gridded.missing import SkipMissingDates  # noqa: F401

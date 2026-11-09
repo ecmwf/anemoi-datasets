@@ -17,7 +17,9 @@ from earthkit.data import Field
 from earthkit.data.core.fieldlist import math
 from numpy.typing import NDArray
 
-from .coordinates import LevelCoordinate, extract_single_value, is_scalar
+from .coordinates import LevelCoordinate
+from .coordinates import extract_single_value
+from .coordinates import is_scalar
 from .metadata import XArrayMetadata
 
 LOG = logging.getLogger(__name__)
@@ -108,18 +110,14 @@ class XArrayField(Field):
         # By now, the only dimensions should be latitude and longitude
         self._shape = tuple(list(self.selection.shape)[-2:])
         if math.prod(self._shape) != math.prod(self.selection.shape):
-            raise ValueError(
-                f"Invalid shape for selection {self._shape=}, {self.selection.shape=} {self.selection=}"
-            )
+            raise ValueError(f"Invalid shape for selection {self._shape=}, {self.selection.shape=} {self.selection=}")
 
     @property
     def shape(self) -> tuple[int, int]:
         """Return the shape of the field."""
         return self._shape
 
-    def to_numpy(
-        self, flatten: bool = False, dtype: type | None = None, index: int | None = None
-    ) -> NDArray[Any]:
+    def to_numpy(self, flatten: bool = False, dtype: type | None = None, index: int | None = None) -> NDArray[Any]:
         """Convert the selection to a numpy array.
 
         Returns
@@ -201,9 +199,7 @@ class XArrayField(Field):
         assert len(date) == 8, date
         yyyymmdd = int(date)
         time = int(time) // 100
-        return datetime.datetime(
-            yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time
-        )
+        return datetime.datetime(yyyymmdd // 10000, yyyymmdd // 100 % 100, yyyymmdd % 100, time)
 
     def __repr__(self) -> str:
         """Return a string representation of the field."""

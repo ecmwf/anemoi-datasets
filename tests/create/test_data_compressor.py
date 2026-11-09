@@ -15,17 +15,13 @@ import pytest
 import yaml
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.compat import zarr_open, zarr_version
+from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 from anemoi.datasets.create.tasks import run_task
 
 ZARR_FORMATS = [
     2,
-    pytest.param(
-        3,
-        marks=pytest.mark.skipif(
-            zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"
-        ),
-    ),
+    pytest.param(3, marks=pytest.mark.skipif(zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3")),
 ]
 
 NDATES = 4
@@ -35,20 +31,9 @@ VARIABLES = ["a", "b"]
 
 def _write_source(path: str) -> None:
     """Write a tiny anemoi dataset (the source of the recipe below) to ``path``."""
-    dates = np.array(
-        [
-            np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h")
-            for i in range(NDATES)
-        ],
-        "<M8[s]",
-    )
+    dates = np.array([np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h") for i in range(NDATES)], "<M8[s]")
     root = zarr_open(path, "w")
-    root.create_array(
-        "data",
-        data=np.random.default_rng(0).random(
-            (NDATES, len(VARIABLES), 1, NPOINTS), "float32"
-        ),
-    )
+    root.create_array("data", data=np.random.default_rng(0).random((NDATES, len(VARIABLES), 1, NPOINTS), "float32"))
     root.create_array("dates", data=dates)
     root.create_array("latitudes", data=np.linspace(-10, 10, NPOINTS))
     root.create_array("longitudes", data=np.linspace(0, 20, NPOINTS))
@@ -66,11 +51,7 @@ def test_created_data_array_uses_blosc_lz4(tmp_path, zarr_format) -> None:
     _write_source(source)
 
     recipe = {
-        "dates": {
-            "start": "2021-01-01T00:00:00",
-            "end": "2021-01-01T18:00:00",
-            "frequency": "6h",
-        },
+        "dates": {"start": "2021-01-01T00:00:00", "end": "2021-01-01T18:00:00", "frequency": "6h"},
         "input": {"anemoi_dataset": {"dataset": source}},
         "output": {"format": f"zarr{zarr_format}"},
     }
@@ -88,20 +69,12 @@ def test_created_data_array_uses_blosc_lz4(tmp_path, zarr_format) -> None:
         with open(os.path.join(output, "data", ".zarray")) as f:
             compressor = json.load(f)["compressor"]
         assert compressor["id"] == "blosc"
-        assert (compressor["cname"], compressor["clevel"], compressor["shuffle"]) == (
-            "lz4",
-            5,
-            1,
-        )
+        assert (compressor["cname"], compressor["clevel"], compressor["shuffle"]) == ("lz4", 5, 1)
     else:
         with open(os.path.join(output, "data", "zarr.json")) as f:
             codecs = {c["name"]: c["configuration"] for c in json.load(f)["codecs"]}
         assert "zstd" not in codecs
-        assert (
-            codecs["blosc"]["cname"],
-            codecs["blosc"]["clevel"],
-            codecs["blosc"]["shuffle"],
-        ) == (
+        assert (codecs["blosc"]["cname"], codecs["blosc"]["clevel"], codecs["blosc"]["shuffle"]) == (
             "lz4",
             5,
             "shuffle",

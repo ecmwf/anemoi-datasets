@@ -29,15 +29,9 @@ class Validate(Command):
             The command parser.
         """
 
-        command_parser.add_argument(
-            "--callable", metavar="DATASET", default="anemoi.datasets.open_dataset"
-        )
-        command_parser.add_argument(
-            "--costly-checks", action="store_true", help="Run costly checks"
-        )
-        command_parser.add_argument(
-            "--detailed", action="store_true", help="Give detailed report"
-        )
+        command_parser.add_argument("--callable", metavar="DATASET", default="anemoi.datasets.open_dataset")
+        command_parser.add_argument("--costly-checks", action="store_true", help="Run costly checks")
+        command_parser.add_argument("--detailed", action="store_true", help="Give detailed report")
         command_parser.add_argument("path", metavar="DATASET")
 
     def run(self, args: Any) -> None:
@@ -54,9 +48,7 @@ class Validate(Command):
         callable_func = getattr(module, func_name)
 
         dataset = callable_func(args.path)
-        validate_dataset(
-            dataset, costly_checks=args.costly_checks, detailed=args.detailed
-        )
+        validate_dataset(dataset, costly_checks=args.costly_checks, detailed=args.detailed)
 
 
 command = Validate

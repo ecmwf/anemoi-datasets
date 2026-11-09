@@ -14,15 +14,17 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
+from anemoi.datasets.usage.dataset import Dataset
+from anemoi.datasets.usage.dataset import FullIndex
+from anemoi.datasets.usage.dataset import Shape
 from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.forwards import Forwards, GivenAxis
-from anemoi.datasets.usage.gridded.indexing import (
-    apply_index_to_slices_changes,
-    index_to_slices,
-    update_tuple,
-)
-from anemoi.datasets.usage.misc import _auto_adjust, _open
+from anemoi.datasets.usage.forwards import Forwards
+from anemoi.datasets.usage.forwards import GivenAxis
+from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
+from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.misc import _auto_adjust
+from anemoi.datasets.usage.misc import _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -54,13 +56,9 @@ class Number(Forwards):
         self.members = sorted(set(self.members))
         for n in self.members:
             if not (0 <= n < forward.shape[2]):
-                raise ValueError(
-                    f"Member {n} is out of range. `number(s)` is one-based, `member(s)` is zero-based."
-                )
+                raise ValueError(f"Member {n} is out of range. `number(s)` is one-based, `member(s)` is zero-based.")
 
-        self.mask = np.array(
-            [n in self.members for n in range(forward.shape[2])], dtype=bool
-        )
+        self.mask = np.array([n in self.members for n in range(forward.shape[2])], dtype=bool)
         self._shape, _ = update_tuple(forward.shape, 2, len(self.members))
 
     @property
@@ -156,9 +154,7 @@ class Ensemble(GivenAxis):
         return {}
 
 
-def ensemble_factory(
-    args: tuple[Any, ...], kwargs: dict[str, Any], options: Options
-) -> Ensemble:
+def ensemble_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Ensemble:
     """Factory function to create an Ensemble object.
 
     Parameters

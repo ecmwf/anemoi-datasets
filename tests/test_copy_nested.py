@@ -16,7 +16,8 @@ import pytest
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import zarr_open, zarr_version
+from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 
 FORMATS = [2, 3] if zarr_version >= 3 else [2]
 
@@ -28,16 +29,8 @@ METADATA_FILES = {".zarray", ".zattrs", ".zgroup", ".zmetadata", "zarr.json"}
 
 def _write_source(path: str, zarr_format: int) -> np.ndarray:
     """Write a tiny anemoi dataset with one chunk per date, in the given Zarr format, and return its data."""
-    dates = np.array(
-        [
-            np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h")
-            for i in range(NDATES)
-        ],
-        "<M8[s]",
-    )
-    data = np.random.default_rng(0).random(
-        (NDATES, len(VARIABLES), 1, NPOINTS), "float32"
-    )
+    dates = np.array([np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h") for i in range(NDATES)], "<M8[s]")
+    data = np.random.default_rng(0).random((NDATES, len(VARIABLES), 1, NPOINTS), "float32")
     root = zarr_open(path, "w", zarr_format=zarr_format)
     root.create_array("data", data=data, chunks=(1, len(VARIABLES), 1, NPOINTS))
     root.create_array("dates", data=dates)
@@ -73,11 +66,7 @@ def _chunk_files(path: str) -> list[str]:
     root = os.path.join(path, "data")
     found = []
     for dirpath, _dirs, files in os.walk(root):
-        found += [
-            os.path.relpath(os.path.join(dirpath, f), root)
-            for f in files
-            if f not in METADATA_FILES
-        ]
+        found += [os.path.relpath(os.path.join(dirpath, f), root) for f in files if f not in METADATA_FILES]
     return sorted(found)
 
 

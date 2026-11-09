@@ -11,21 +11,23 @@
 import datetime
 import itertools
 import logging
-from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from abc import ABC
+from abc import abstractmethod
+from collections.abc import Callable
+from collections.abc import Iterator
 from functools import cached_property
 from typing import Any
 
-from anemoi.utils.dates import as_datetime, frequency_to_timedelta
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 
-from anemoi.datasets.create.recipe.dates import DatesProvider, TrajectoryDates
+from anemoi.datasets.create.recipe.dates import DatesProvider
+from anemoi.datasets.create.recipe.dates import TrajectoryDates
 
 LOG = logging.getLogger(__name__)
 
 
-def _shorten(
-    dates: list[datetime.datetime] | tuple[datetime.datetime, ...],
-) -> str | list[str]:
+def _shorten(dates: list[datetime.datetime] | tuple[datetime.datetime, ...]) -> str | list[str]:
     """Shorten the list of dates for display.
 
     Args:
@@ -44,12 +46,7 @@ def _shorten(
 class GroupOfDates:
     """A class to represent a group of dates."""
 
-    def __init__(
-        self,
-        dates: list[datetime.datetime],
-        provider: DatesProvider,
-        partial_ok: bool = False,
-    ) -> None:
+    def __init__(self, dates: list[datetime.datetime], provider: DatesProvider, partial_ok: bool = False) -> None:
         assert isinstance(provider, DatesProvider), type(provider)
         assert isinstance(dates, list)
 
@@ -102,9 +99,7 @@ class GroupOfDates:
     def end_range(self) -> datetime.datetime:
         import numpy as np
 
-        return np.datetime64(
-            self.provider.end_range(self.dates), "ns"
-        ) - np.timedelta64(1, "ns")
+        return np.datetime64(self.provider.end_range(self.dates), "ns") - np.timedelta64(1, "ns")
 
 
 class Groups:
@@ -286,6 +281,7 @@ class Grouper(ABC):
         Returns:
             Iterator[GroupOfDates]: The iterator over the groups of dates.
         """
+        pass
 
 
 class ReferenceDateGroup(Grouper):
@@ -307,9 +303,7 @@ class ReferenceDateGroup(Grouper):
         def same_refdate(dt):
             return mapping[dt].refdate
 
-        for _, g in itertools.groupby(
-            sorted(dates, key=same_refdate), key=same_refdate
-        ):
+        for _, g in itertools.groupby(sorted(dates, key=same_refdate), key=same_refdate):
             yield GroupOfDates(list(g), dates)
 
 
@@ -348,6 +342,7 @@ class GrouperByTimedelta(Grouper):
         batch = []
 
         for d in dates:
+
             if len(batch) > 0 and (d - batch[0]) >= self.delta:
                 yield GroupOfDates(batch, dates)
                 batch = []

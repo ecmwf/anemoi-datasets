@@ -13,7 +13,8 @@ from typing import Any
 
 import numpy as np
 import pytest
-from anemoi.utils.testing import skip_if_offline, skip_missing_packages
+from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import skip_missing_packages
 
 from anemoi.datasets import open_dataset
 
@@ -168,9 +169,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
                         "availability": "1h",  # available data is accumulated every 1 hour
                         "source": {
                             "grib-index": {
-                                "indexdb": os.path.join(
-                                    path_db, "grib-index-accumulate-tp.db"
-                                ),
+                                "indexdb": os.path.join(path_db, "grib-index-accumulate-tp.db"),
                                 "levtype": "sfc",
                                 "param": ["tp"],
                             },
@@ -194,9 +193,7 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
     )
 
     # this construction should fail because dates are missing
-    config_grib_index["input"]["pipe"][0]["accumulate"]["source"][
-        "accumulation_period"
-    ] = 24
+    config_grib_index["input"]["pipe"][0]["accumulate"]["source"]["accumulation_period"] = 24
 
     with pytest.raises(Exception):
         created = create_dataset(recipe=config_grib_index, output=None)
@@ -323,15 +320,9 @@ def test_grib_gridfile_with_refinement_level(
     created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
     assert ds.shape == shape
-    assert np.all(
-        ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0
-    ), "cos(julian_day = 0) == 1"
-    assert np.all(ds.data[ds.to_index(date=0, variable="u_101", member=0)] == 42.0), (
-        "artificially constant data day 0"
-    )
-    assert np.all(ds.data[ds.to_index(date=1, variable="v_119", member=0)] == 21.0), (
-        "artificially constant data day 1"
-    )
+    assert np.all(ds.data[ds.to_index(date=0, variable="cos_julian_day", member=0)] == 1.0), "cos(julian_day = 0) == 1"
+    assert np.all(ds.data[ds.to_index(date=0, variable="u_101", member=0)] == 42.0), "artificially constant data day 0"
+    assert np.all(ds.data[ds.to_index(date=1, variable="v_119", member=0)] == 21.0), "artificially constant data day 1"
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].max() > 0.9
     assert ds.data[ds.to_index(date=0, variable="cos_latitude", member=0)].min() >= 0
     assert ds.data[ds.to_index(date=0, variable="sin_latitude", member=0)].max() > 0.9
@@ -376,9 +367,7 @@ def test_grib_gridfile_with_key_types(get_test_data: callable) -> None:
 
     created = create_dataset(recipe=recipe, output=None)
     ds = open_dataset(created)
-    assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(
-        date=0, variable="u_119.0", member=0
-    )
+    assert ds.to_index(date=0, variable="u_101.0", member=0) != ds.to_index(date=0, variable="u_119.0", member=0)
 
     with pytest.raises(ValueError):
         ds.to_index(date=0, variable="u_101", member=0)  # param does not exist
@@ -619,15 +608,9 @@ def test_csv(get_test_data: callable) -> None:
     assert "longitude" in frame.columns, frame.columns
     assert "date" in frame.columns, frame.columns
 
-    assert frame["latitude"].dtype == float or np.issubdtype(
-        frame["latitude"].dtype, np.floating
-    )
-    assert frame["longitude"].dtype == float or np.issubdtype(
-        frame["longitude"].dtype, np.floating
-    )
-    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(
-        frame["date"].dtype, np.datetime64
-    )
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
 # @pytest.mark.skip(reason="ODB source currently not functional")
@@ -651,15 +634,9 @@ def test_odb(get_test_data: callable) -> None:
     assert "longitude" in frame.columns, frame.columns
     assert "date" in frame.columns, frame.columns
 
-    assert frame["latitude"].dtype == float or np.issubdtype(
-        frame["latitude"].dtype, np.floating
-    )
-    assert frame["longitude"].dtype == float or np.issubdtype(
-        frame["longitude"].dtype, np.floating
-    )
-    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(
-        frame["date"].dtype, np.datetime64
-    )
+    assert frame["latitude"].dtype == float or np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert frame["longitude"].dtype == float or np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
 @pytest.mark.skip(reason="BUFR source currently not functional")

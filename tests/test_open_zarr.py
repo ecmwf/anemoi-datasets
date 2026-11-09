@@ -16,13 +16,16 @@ import threading
 import zipfile
 from collections.abc import Iterator
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from anemoi.datasets.compat import DebugStore, ZarrFileNotFoundError, zarr_open
+from anemoi.datasets.compat import DebugStore
+from anemoi.datasets.compat import ZarrFileNotFoundError
+from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.usage import store as store_module
 from anemoi.datasets.usage.store import open_zarr
 
@@ -50,9 +53,7 @@ def http_server(tmp_path: Path) -> Iterator[tuple[str, list[str]]]:
         def log_message(self, format: str, *args) -> None:
             pass
 
-    server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(Handler, directory=str(tmp_path))
-    )
+    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(tmp_path)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{server.server_port}", requested
     server.shutdown()

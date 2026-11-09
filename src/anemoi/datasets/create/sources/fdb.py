@@ -7,15 +7,18 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid, new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_grid
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
-from anemoi.datasets.create.arguments import Intervals, ValidDates
+from anemoi.datasets.create.arguments import Intervals
+from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.intervals import timedelta_to_step
 
 from ..source import Source
@@ -72,24 +75,18 @@ class FdbSource(Source):
         if "step" not in self.request:
             self.request["step"] = 0
 
-        self.request["param"] = _shortname_to_paramid(
-            fdb_request["param"], kwargs.pop("param_id_map", None)
-        )
+        self.request["param"] = _shortname_to_paramid(fdb_request["param"], kwargs.pop("param_id_map", None))
 
         # temporary workarounds for FDB use at MeteoSwiss (adoption is ongoing)
         # thus not documented
         self.offset_from_date = kwargs.pop("offset_from_date", None)
-        self.step_zero_from_previous_date = kwargs.pop(
-            "step_zero_from_previous_date", False
-        )
+        self.step_zero_from_previous_date = kwargs.pop("step_zero_from_previous_date", False)
 
     def execute_valid_dates(self, dates: ValidDates) -> ekd.FieldList:
         """Handle instant requests."""
         requests = []
         for date in dates:
-            time_request = _time_request_keys(
-                date, self.offset_from_date, self.step_zero_from_previous_date
-            )
+            time_request = _time_request_keys(date, self.offset_from_date, self.step_zero_from_previous_date)
             requests.append(self.request | time_request)
         return self._execute_requests(requests)
 
@@ -130,9 +127,7 @@ class FdbSource(Source):
             fl += ekd.from_source("fdb", request, **self.configs, read_all=True)
 
         if self.grid is not None:
-            fl = new_fieldlist_from_list(
-                [new_field_from_grid(f, self.grid) for f in fl]
-            )
+            fl = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in fl])
 
         if self.flavour:
             fl = self.flavour.map(fl)
@@ -141,9 +136,7 @@ class FdbSource(Source):
 
 
 def _time_request_keys(
-    dt: datetime,
-    offset_from_date: bool | None = None,
-    step_zero_from_previous_date: bool = False,
+    dt: datetime, offset_from_date: bool | None = None, step_zero_from_previous_date: bool = False
 ) -> dict[str, int | str]:
     """Defines the time-related keys for the FDB request."""
     out = {}
@@ -160,9 +153,7 @@ def _time_request_keys(
     return out
 
 
-def _shortname_to_paramid(
-    shortname: list[str], param_id_map: dict[str, int] | None = None
-) -> list[int]:
+def _shortname_to_paramid(shortname: list[str], param_id_map: dict[str, int] | None = None) -> list[int]:
     from anemoi.datasets.create.sources.mars import use_grib_paramid
 
     """Convert a shortname to a parameter ID."""

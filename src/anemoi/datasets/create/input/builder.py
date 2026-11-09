@@ -11,18 +11,18 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+from typing import Any
 
 if TYPE_CHECKING:
-    from anemoi.datasets.create.input.action import Action, Recipe
+    from anemoi.datasets.create.input.action import Action
+    from anemoi.datasets.create.input.action import Recipe
 
 
 class InputBuilder:
     """Builder class for creating input data from configuration and data sources."""
 
-    def __init__(
-        self, config: Action | None, data_sources: Action | None, **kwargs: Any
-    ) -> None:
+    def __init__(self, config: "Action" | None, data_sources: "Action" | None, **kwargs: Any) -> None:
         """Initialize the InputBuilder.
 
         Parameters
@@ -40,9 +40,10 @@ class InputBuilder:
         self.data_sources = deepcopy(dict(data_sources=data_sources or {}))
 
     @cached_property
-    def action(self) -> Recipe:
+    def action(self) -> "Recipe":
         """Returns the action object based on the configuration."""
-        from .action import Recipe, action_factory
+        from .action import Recipe
+        from .action import action_factory
 
         sources = action_factory(self.data_sources, "data_sources")
         input = action_factory(self.config, "input")

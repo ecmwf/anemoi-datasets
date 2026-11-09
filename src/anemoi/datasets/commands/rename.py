@@ -36,17 +36,9 @@ class Rename(Command):
         parser : Any
             The command parser to which arguments are added.
         """
-        parser.add_argument(
-            "source", help="Path of the dataset to rename (must end in .zarr)."
-        )
-        parser.add_argument(
-            "target", help="New path for the dataset (must end in .zarr)."
-        )
-        parser.add_argument(
-            "--overwrite",
-            action="store_true",
-            help="Overwrite the target if it already exists.",
-        )
+        parser.add_argument("source", help="Path of the dataset to rename (must end in .zarr).")
+        parser.add_argument("target", help="New path for the dataset (must end in .zarr).")
+        parser.add_argument("--overwrite", action="store_true", help="Overwrite the target if it already exists.")
 
     def run(self, args: Any) -> None:
         """Execute the rename command.
@@ -66,9 +58,7 @@ class Rename(Command):
             raise FileNotFoundError(f"Source dataset '{source}' does not exist.")
         if os.path.exists(target):
             if not args.overwrite:
-                raise FileExistsError(
-                    f"Target '{target}' already exists. Use --overwrite."
-                )
+                raise FileExistsError(f"Target '{target}' already exists. Use --overwrite.")
             LOG.warning(f"Overwriting existing dataset at '{target}'.")
             shutil.rmtree(target)
 
@@ -95,9 +85,7 @@ class Rename(Command):
 
         dataset.update_metadata(uuid=new_uuid, previous_uuids=previous_uuids)
 
-        LOG.info(
-            f"Renamed '{source}' -> '{target}': uuid {old_uuid} -> {new_uuid}, recipe name -> '{new_name}'"
-        )
+        LOG.info(f"Renamed '{source}' -> '{target}': uuid {old_uuid} -> {new_uuid}, recipe name -> '{new_name}'")
 
         # --- move the store ---
         # Drop the Dataset reference so no file handles/locks are held during the move.

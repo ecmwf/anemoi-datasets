@@ -9,10 +9,12 @@
 
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_metadata, new_fieldlist_from_list
+from anemoi.transform.fields import new_field_with_metadata
+from anemoi.transform.fields import new_fieldlist_from_list
 from earthkit.data import from_source
 
-from anemoi.datasets.create.arguments import ForecastDates, ValidDates
+from anemoi.datasets.create.arguments import ForecastDates
+from anemoi.datasets.create.arguments import ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
@@ -43,36 +45,23 @@ def _units_for(field: Any) -> str:
 
 @source_registry.register("forcings")
 class ForcingsSource(Source):
+
     def __init__(self, context: Any, template: Any, param: list[str]) -> None:
         super().__init__(context)
         self.template = template
         self.param = param
 
     def execute_valid_dates(self, dates: ValidDates) -> Any:
-        self.context.trace(
-            "\u2705", f"from_source(forcings, {self.template}, {self.param}"
-        )
-        fields = from_source(
-            "forcings",
-            source_or_dataset=self.template,
-            date=list(dates),
-            param=self.param,
-        )
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
+        fields = from_source("forcings", source_or_dataset=self.template, date=list(dates), param=self.param)
         result = [new_field_with_metadata(f, units=_units_for(f)) for f in fields]
         return new_fieldlist_from_list(result)
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
-        self.context.trace(
-            "\u2705", f"from_source(forcings, {self.template}, {self.param}"
-        )
+        self.context.trace("\u2705", f"from_source(forcings, {self.template}, {self.param}")
 
         valid_times = [vt for vt, _bt in dates]
-        fields = from_source(
-            "forcings",
-            source_or_dataset=self.template,
-            date=valid_times,
-            param=self.param,
-        )
+        fields = from_source("forcings", source_or_dataset=self.template, date=valid_times, param=self.param)
 
         # Index forcing fields by valid_datetime for quick lookup
         fields_by_vdt = {}

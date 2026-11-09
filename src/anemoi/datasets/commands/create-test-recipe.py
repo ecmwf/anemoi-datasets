@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import argparse
 import re
-from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
+from typing import Iterable
 
 import ruamel.yaml
-from anemoi.utils.dates import as_datetime, frequency_to_timedelta
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_timedelta
 from ruamel.yaml.constructor import RoundTripConstructor
 
 from . import Command
@@ -107,15 +109,7 @@ def update_description(data: dict, options: str) -> None:
         data["description"] = prefix
 
 
-def format_options(
-    *,
-    dates: bool,
-    last_dates: bool,
-    grid: bool,
-    level: bool,
-    n_dates: int,
-    n_levels: int,
-) -> str:
+def format_options(*, dates: bool, last_dates: bool, grid: bool, level: bool, n_dates: int, n_levels: int) -> str:
     parts = [
         "--dates" if dates else "--no-dates",
         "--last-dates" if last_dates else "--no-last-dates",
@@ -136,9 +130,7 @@ def _iter_dates(start: datetime, end: datetime, frequency: timedelta) -> list[da
     return dates
 
 
-def _iter_missing_entries(
-    entries: Any, default_frequency: timedelta
-) -> Iterable[datetime]:
+def _iter_missing_entries(entries: Any, default_frequency: timedelta) -> Iterable[datetime]:
     if isinstance(entries, (list, tuple)):
         for entry in entries:
             yield from _iter_missing_entries(entry, default_frequency)
@@ -155,9 +147,7 @@ def _iter_missing_entries(
 
     if isinstance(entries, str) and "/" in entries:
         start, end, step = entries.split("/")
-        yield from _iter_dates(
-            parse_date(start), parse_date(end), parse_frequency(step)
-        )
+        yield from _iter_dates(parse_date(start), parse_date(end), parse_frequency(step))
         return
 
     yield parse_date(entries)
@@ -170,9 +160,7 @@ def _existing_missing(node: dict, frequency: timedelta) -> set[datetime]:
     return missing
 
 
-def _compress_missing_ranges(
-    dates: set[datetime], frequency: timedelta
-) -> list[tuple[datetime, datetime]]:
+def _compress_missing_ranges(dates: set[datetime], frequency: timedelta) -> list[tuple[datetime, datetime]]:
     if not dates:
         return []
 
@@ -193,9 +181,7 @@ def _compress_missing_ranges(
     return ranges
 
 
-def _updated_missing_ranges(
-    node: dict, *, n_dates: int, include_last_dates: bool
-) -> list[dict[str, str]]:
+def _updated_missing_ranges(node: dict, *, n_dates: int, include_last_dates: bool) -> list[dict[str, str]]:
     start = parse_date(node["start"])
     end = parse_date(node["end"])
     frequency = parse_frequency(node["frequency"])
@@ -235,9 +221,7 @@ def walk(
         # Keep start/end/frequency unchanged and reduce dates via missing ranges.
         if reduce_dates and {"start", "end", "frequency"} <= node.keys():
             try:
-                missing_ranges = _updated_missing_ranges(
-                    node, n_dates=n_dates, include_last_dates=include_last_dates
-                )
+                missing_ranges = _updated_missing_ranges(node, n_dates=n_dates, include_last_dates=include_last_dates)
                 if missing_ranges:
                     node["missing"] = missing_ranges
                 elif "missing" in node:
@@ -368,24 +352,14 @@ class CreateTestRecipe(Command):
         )
 
         command_parser.add_argument(
-            "--n-dates",
-            type=int,
-            default=4,
-            metavar="N",
-            help="Number of dates to keep (default: 4)",
+            "--n-dates", type=int, default=4, metavar="N", help="Number of dates to keep (default: 4)"
         )
         command_parser.add_argument(
-            "--n-levels",
-            type=int,
-            default=2,
-            metavar="N",
-            help="Number of levels to keep (default: 2)",
+            "--n-levels", type=int, default=2, metavar="N", help="Number of levels to keep (default: 2)"
         )
 
         command_parser.add_argument("input", help="Input recipe YAML file")
-        command_parser.add_argument(
-            "output", nargs="?", help="Output file (default: <input-stem>-test.yaml)"
-        )
+        command_parser.add_argument("output", nargs="?", help="Output file (default: <input-stem>-test.yaml)")
 
     def check(self, parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
         if not args.dates and args.last_dates:

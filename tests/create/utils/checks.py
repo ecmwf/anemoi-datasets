@@ -12,13 +12,14 @@ from typing import Any
 
 import numpy as np
 import yaml
-from anemoi.datasets.usage.stores import open_zarr
 from anemoi.utils.dates import frequency_to_timedelta
 
 from anemoi.datasets import open_dataset
+from anemoi.datasets.usage.stores import open_zarr
 
 
 class _Check:
+
     def __init__(
         self,
         name: str,
@@ -58,9 +59,7 @@ class CompareToReferenceCheck(_Check):
 
         super().__init__(name, config_path, dataset_path, get_test_archive, **kwargs)
 
-        directory = get_test_archive(
-            f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz"
-        )
+        directory = get_test_archive(f"anemoi-datasets/create/mock-mars/{name}.zarr.tgz")
         reference = os.path.join(directory, name + ".zarr")
 
         self.reference_path = reference
@@ -112,6 +111,7 @@ class CompareToReferenceCheck(_Check):
         assert a.missing == b.missing, "Missing are different"
 
         for i_date, date in zip(range(a.shape[0]), a.dates):
+
             if i_date in a.missing:
                 continue
 
@@ -137,19 +137,8 @@ class CompareToReferenceCheck(_Check):
                 delta = a_ - b_
                 max_delta = np.max(np.abs(delta))
                 abs_error = np.abs(a_ - b_)
-                rel_error = np.abs(a_ - b_) / (
-                    np.abs(b_) + 1e-10
-                )  # Avoid division by zero
-                assert max_delta == 0.0, (
-                    date,
-                    param,
-                    a_,
-                    b_,
-                    a_ - b_,
-                    max_delta,
-                    np.max(abs_error),
-                    np.max(rel_error),
-                )
+                rel_error = np.abs(a_ - b_) / (np.abs(b_) + 1e-10)  # Avoid division by zero
+                assert max_delta == 0.0, (date, param, a_, b_, a_ - b_, max_delta, np.max(abs_error), np.max(rel_error))
 
     def compare_statistics(self, ds1: object, ds2: object) -> None:
         """Compare the statistics of two datasets.
@@ -173,15 +162,9 @@ class CompareToReferenceCheck(_Check):
             idx1 = ds1.name_to_index[v1]
             idx2 = ds2.name_to_index[v2]
             assert (ds1.statistics["mean"][idx1] == ds2.statistics["mean"][idx2]).all()
-            assert (
-                ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]
-            ).all()
-            assert (
-                ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]
-            ).all()
-            assert (
-                ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]
-            ).all()
+            assert (ds1.statistics["stdev"][idx1] == ds2.statistics["stdev"][idx2]).all()
+            assert (ds1.statistics["maximum"][idx1] == ds2.statistics["maximum"][idx2]).all()
+            assert (ds1.statistics["minimum"][idx1] == ds2.statistics["minimum"][idx2]).all()
 
     def compare_dot_zattrs(self, a: dict, b: dict, errors: list, *path) -> None:
         """Compare the attributes of two Zarr datasets."""
@@ -199,6 +182,7 @@ class CompareToReferenceCheck(_Check):
             a_keys = list(a.keys())
             b_keys = list(b.keys())
             for k in set(a_keys) | set(b_keys):
+
                 name = ".".join(path + (k,))
 
                 if name in self.ignore_keys:
@@ -244,9 +228,7 @@ class CompareToReferenceCheck(_Check):
             If the datasets or their metadata do not match.
         """
         errors = []
-        self.compare_dot_zattrs(
-            dict(self.z_output.attrs), dict(self.z_reference.attrs), errors, "metadata"
-        )
+        self.compare_dot_zattrs(dict(self.z_output.attrs), dict(self.z_reference.attrs), errors, "metadata")
 
         if errors:
             print()
@@ -258,9 +240,7 @@ class CompareToReferenceCheck(_Check):
             print("cd " + os.path.dirname(self.dataset_path))
             base = os.path.basename(self.dataset_path)
             print(f"tar zcf {base}.tgz {base}")
-            print(
-                f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/"
-            )
+            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars/")
             print()
             raise AssertionError("\n".join(errors))
 
@@ -270,11 +250,13 @@ class CompareToReferenceCheck(_Check):
 
 
 class NoneCheck(_Check):
+
     def run(self) -> None:
         pass
 
 
 class _ItemCheck(_Check):
+
     def normalise(self, item: Any) -> Any:
         """Normalize the item for comparison."""
         return item
@@ -332,9 +314,7 @@ class ValuesCheck(_Check):
         assert actual_min == self.minimum, (self.variable, actual_min, self.minimum)
 
 
-def check_dataset(
-    name: str, config_path: str, dataset_path: str, get_test_archive: callable
-) -> None:
+def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archive: callable) -> None:
     """Check the created dataset against a set of checks."""
 
     config = yaml.safe_load(open(config_path))
@@ -344,6 +324,7 @@ def check_dataset(
         raise ValueError(f"No checks defined in {config_path}")
 
     for c in checks:
+
         if isinstance(c, str):
             check = c
             kwargs = {}
@@ -358,7 +339,5 @@ def check_dataset(
             raise ValueError(f"Check {check} not implemented")
 
         print(f"Running check: {check} with args: {kwargs}")
-        check = globals()[check](
-            name, config_path, dataset_path, get_test_archive, **kwargs
-        )
+        check = globals()[check](name, config_path, dataset_path, get_test_archive, **kwargs)
         check.run()

@@ -25,29 +25,25 @@ def validate_date_ranges(data_array, dates_ranges):
         # Check that the number of ranges found matches the count we got during building
         offset = 0
         previous_date = None
-        for i, (date, start, length) in enumerate(
-            tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")
-        ):
-            assert length > 0, (
-                f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
-            )
-            assert start == offset, (
-                f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
-            )
-            assert previous_date is None or date > previous_date, (
-                f"Found non-increasing date {date} after {previous_date} [{i=}]"
-            )
+        for i, (date, start, length) in enumerate(tqdm.tqdm(dates_ranges, desc="Validating date ranges", unit="row")):
+            assert (
+                length > 0
+            ), f"Found non-positive range for date {date} starting at index {start} ({(date, start, length)}) [{i=}]"
+            assert start == offset, f"Found non-contiguous range starting at {start}, expected {offset} [{i=}]"
+            assert (
+                previous_date is None or date > previous_date
+            ), f"Found non-increasing date {date} after {previous_date} [{i=}]"
 
             chunk = data[start : start + length, :]
             date_column = array_to_epoch(chunk)
             # Check that column 0 (days since epoch) of data matches the current date
-            assert np.all(date_column == date), (
-                f"Mismatch between date range {date} and data column 0 at rows {start}:{start + length} ({date_column=}) [{i=}]"
-            )
+            assert np.all(
+                date_column == date
+            ), f"Mismatch between date range {date} and data column 0 at rows {start}:{start+length} ({date_column=}) [{i=}]"
 
             offset += length
             previous_date = date
 
-        assert offset == data_array.shape[0], (
-            f"Total length of ranges {offset} does not match total number of rows {np.shape[0]}"
-        )
+        assert (
+            offset == data_array.shape[0]
+        ), f"Total length of ranges {offset} does not match total number of rows {np.shape[0]}"

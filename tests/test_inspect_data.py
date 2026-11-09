@@ -12,16 +12,12 @@ import pytest
 import semantic_version
 
 from anemoi.datasets.commands.inspect import Version
-from anemoi.datasets.compat import zarr_open, zarr_version
+from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import zarr_version
 
 ZARR_FORMATS = [
     2,
-    pytest.param(
-        3,
-        marks=pytest.mark.skipif(
-            zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"
-        ),
-    ),
+    pytest.param(3, marks=pytest.mark.skipif(zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3")),
 ]
 
 
@@ -35,9 +31,7 @@ def _version(zarr_node) -> Version:
 
 def _group_with_data(path, zarr_format):
     data = np.zeros((4, 2, 1, 8), dtype="float32")
-    zarr_open(str(path), "w", zarr_format=zarr_format).create_array(
-        "data", data=data, chunks=(1, 2, 1, 8)
-    )
+    zarr_open(str(path), "w", zarr_format=zarr_format).create_array("data", data=data, chunks=(1, 2, 1, 8))
     return zarr_open(str(path), "r")
 
 

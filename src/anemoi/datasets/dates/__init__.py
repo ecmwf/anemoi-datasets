@@ -16,24 +16,14 @@ from math import gcd
 from typing import Any
 
 # from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import (
-    DateTimes,
-    as_datetime,
-    frequency_to_string,
-    frequency_to_timedelta,
-)
+from anemoi.utils.dates import DateTimes
+from anemoi.utils.dates import as_datetime
+from anemoi.utils.dates import frequency_to_string
+from anemoi.utils.dates import frequency_to_timedelta
 from anemoi.utils.hindcasts import HindcastDatesTimes
 from anemoi.utils.humanize import print_dates
 
-_WEEKDAYS = {
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-}
+_WEEKDAYS = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
 
 
 def _parse_date_wildcard(pattern: str) -> dict[str, int]:
@@ -45,9 +35,7 @@ def _parse_date_wildcard(pattern: str) -> dict[str, int]:
     """
     parts = pattern.split("-")
     if [len(p) for p in parts] != [4, 2, 2]:
-        raise ValueError(
-            f"Date pattern must look like 'YYYY-MM-DD' with optional '?' wildcards, got {pattern!r}"
-        )
+        raise ValueError(f"Date pattern must look like 'YYYY-MM-DD' with optional '?' wildcards, got {pattern!r}")
     year, month, day = parts
     if year != "????":
         raise ValueError(f"Date pattern must use '????' for the year, got {pattern!r}")
@@ -107,9 +95,7 @@ def _normalise_dates_aliases(options: dict[str, Any]) -> None:
             if isinstance(d, str):
                 name = d.lower()
                 if name not in _WEEKDAYS:
-                    raise ValueError(
-                        f"Unknown weekday {d!r}; expected one of {sorted(_WEEKDAYS)}."
-                    )
+                    raise ValueError(f"Unknown weekday {d!r}; expected one of {sorted(_WEEKDAYS)}.")
                 normalised.append(name)
             else:
                 normalised.append(d)
@@ -175,9 +161,7 @@ class DatesProvider:
     3
     """
 
-    def __init__(
-        self, missing: list[str | datetime.datetime] | None = None, window: Any = None
-    ) -> None:
+    def __init__(self, missing: list[str | datetime.datetime] | None = None, window: Any = None) -> None:
         """Initialize the DatesProvider with optional missing dates.
 
         Parameters
@@ -345,9 +329,7 @@ class StartEndDates(DatesProvider):
         start = _(start)
         end = _(end)
 
-        if isinstance(start, datetime.date) and not isinstance(
-            start, datetime.datetime
-        ):
+        if isinstance(start, datetime.date) and not isinstance(start, datetime.datetime):
             start = datetime.datetime(start.year, start.month, start.day)
 
         if isinstance(end, datetime.date) and not isinstance(end, datetime.datetime):
@@ -405,11 +387,7 @@ class Hindcast:
     """
 
     def __init__(
-        self,
-        date: datetime.datetime,
-        refdate: datetime.datetime,
-        hdate: datetime.datetime,
-        step: int,
+        self, date: datetime.datetime, refdate: datetime.datetime, hdate: datetime.datetime, step: int
     ) -> None:
         """Initialize a Hindcast instance.
 
@@ -465,31 +443,18 @@ class HindcastsDates(DatesProvider):
 
         seen = {}
 
-        for hdate, refdate in HindcastDatesTimes(
-            reference_dates=reference_dates, years=years
-        ):
-            assert refdate - hdate >= datetime.timedelta(days=365), (
-                refdate - hdate,
-                refdate,
-                hdate,
-            )
+        for hdate, refdate in HindcastDatesTimes(reference_dates=reference_dates, years=years):
+            assert refdate - hdate >= datetime.timedelta(days=365), (refdate - hdate, refdate, hdate)
             for step in steps:
+
                 date = hdate + datetime.timedelta(hours=step)
 
                 if date in seen:
-                    raise ValueError(
-                        f"Duplicate date {date}={hdate}+{step} for {refdate} and {seen[date]}"
-                    )
+                    raise ValueError(f"Duplicate date {date}={hdate}+{step} for {refdate} and {seen[date]}")
 
                 seen[date] = Hindcast(date, refdate, hdate, step)
 
-                assert refdate - date > datetime.timedelta(days=360), (
-                    refdate - date,
-                    refdate,
-                    date,
-                    hdate,
-                    step,
-                )
+                assert refdate - date > datetime.timedelta(days=360), (refdate - date, refdate, date, hdate, step)
 
                 dates.append(date)
 

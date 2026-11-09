@@ -56,9 +56,7 @@ def yaml_dump(obj, order=None, stream=None, **kwargs):
         def _ordering(k):
             return order.index(k) if k in order else len(order)
 
-        obj = {
-            k: v for k, v in sorted(obj.items(), key=lambda item: _ordering(item[0]))
-        }
+        obj = {k: v for k, v in sorted(obj.items(), key=lambda item: _ordering(item[0]))}
 
     yaml = ruamel.yaml.YAML()
     yaml.width = 120  # wrap long flow sequences
