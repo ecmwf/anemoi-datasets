@@ -16,6 +16,12 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
+def _edition(template) -> int | None:
+    """Return the GRIB edition, also when filters, flavours or grids mask the raw keys."""
+    edition = template.get("metadata.edition", default=None)
+    return edition if edition is not None else (template.get(collections="metadata.ls") or {}).get("edition")
+
+
 def write_accumulated_field_with_valid_time(
     template, values, valid_date: datetime.datetime, period: datetime.timedelta, output
 ) -> Any:
@@ -34,7 +40,7 @@ def write_accumulated_field_with_valid_time(
     if total_minutes % 60:
         # Sub-hourly steps must be counted in minutes: in hour units a 10min
         # accumulation gets a validity time of 01:00. GRIB1 has hours only.
-        if template.metadata("edition") == 1:
+        if _edition(template) == 1:
             raise ValueError(f"GRIB edition 1 cannot encode a sub-hourly accumulation period, got {period}")
         # dataDate/dataTime rather than date/time: earthkit rescales a `time` below 100
         # as hours, turning 00:30 into hour 30. Reference time must be set before the
@@ -55,7 +61,7 @@ def write_accumulated_field_with_valid_time(
 
     hours = total_minutes // 60
 
-    if template.metadata("edition") == 1:
+    if _edition(template) == 1:
         # this is a special case for GRIB edition 1 which only supports integer hours up to 254
         assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
         output.write(
@@ -140,7 +146,7 @@ def write_accumulated_forecast_field(
     # Steps are integer hours here, so the binding limit is endStep <= 255 h
     # (~10.6 days). Fail early with a clear message rather than letting
     # output.write raise an opaque WrongStepError.
-    if template.metadata("edition") == 1 and end_step > 255:
+    if _edition(template) == 1 and end_step > 255:
         raise ValueError(
             f"GRIB1 cannot encode an accumulation endStep of {end_step}h: P1/P2 are "
             "single octets limited to 255 h. We would need to use a GRIB2 template for these lead times."

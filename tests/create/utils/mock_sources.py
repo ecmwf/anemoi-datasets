@@ -122,7 +122,9 @@ class LoadSource:
             )
 
         try:
-            return original_from_source("file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{h}.grib"))
+            return original_from_source(
+                "file", self._get_test_data(f"anemoi-datasets/create/mock-mars/{h}.grib")
+            ).to_fieldlist()
         except RuntimeError:
             raise  # If offline
         except Exception:
@@ -159,4 +161,4 @@ class LoadSource:
         if name == "mars":
             return self.mars(args, kwargs)
 
-        return original_from_source(name, *args, **kwargs)
+        return original_from_source(name, *args, **kwargs).to_fieldlist()
