@@ -65,5 +65,9 @@ ref = "main"
 repo = "ecmwf/anemoi-inference"
 ref = "main"
 
+[[trigger-downstream]]
+repo = "ecmwf/anemoi-registry"
+ref = "main"
+
 [downstream]
 run-default = "all"
