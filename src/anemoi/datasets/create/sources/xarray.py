@@ -14,11 +14,9 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 from ..source import Source
-from .xarray_support import XarrayFieldList
-from .xarray_support import load_many
-from .xarray_support import load_one
+from .xarray_support import XarrayFieldList, load_many, load_one
 
-__all__ = ["load_many", "load_one", "XarrayFieldList"]
+__all__ = ["XarrayFieldList", "load_many", "load_one"]
 
 
 class XarraySourceBase(Source):
@@ -32,7 +30,9 @@ class XarraySourceBase(Source):
 
     path_or_url: str | None = None
 
-    def __init__(self, context: Any, path: str = None, url: str = None, *args: Any, **kwargs: Any):
+    def __init__(
+        self, context: Any, path: str = None, url: str = None, *args: Any, **kwargs: Any
+    ):
         """Initialise the source.
 
         Parameters

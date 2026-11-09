@@ -22,9 +22,15 @@ from .xarray import load_one
 
 @source_registry.register("zenodo")
 class ZenodoSource(LegacySource):
-
     @staticmethod
-    def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(
+        context: Any,
+        dates: Any,
+        record_id: str,
+        file_key: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ekd.FieldList:
         """Executes the download and processing of files from Zenodo.
 
         Parameters
@@ -66,6 +72,8 @@ class ZenodoSource(LegacySource):
                 continue
 
             path = download_and_cache(urls[url])
-            result.append(load_one("?", context, dates, path, options={}, flavour=None, **kwargs))
+            result.append(
+                load_one("?", context, dates, path, options={}, flavour=None, **kwargs)
+            )
 
         return MultiFieldList(result)

@@ -19,9 +19,10 @@ from .xarray import load_many
 
 @source_registry.register("opendap")
 class OpenDAPSource(LegacySource):
-
     @staticmethod
-    def _execute(context: dict[str, Any], dates: list[str], url: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(
+        context: dict[str, Any], dates: list[str], url: str, *args: Any, **kwargs: Any
+    ) -> ekd.FieldList:
         """Execute the data loading process from an OpenDAP source.
 
         Parameters

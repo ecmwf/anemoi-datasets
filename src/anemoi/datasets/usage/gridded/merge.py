@@ -17,18 +17,16 @@ import numpy as np
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
 from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -37,7 +35,12 @@ LOG = logging.getLogger(__name__)
 class Merge(Combined):
     """A class to merge multiple datasets along the dates axis, handling gaps in dates if allowed."""
 
-    def __init__(self, datasets: list[Dataset], options: Options, allow_gaps_in_dates: bool = False) -> None:
+    def __init__(
+        self,
+        datasets: list[Dataset],
+        options: Options,
+        allow_gaps_in_dates: bool = False,
+    ) -> None:
         """Initialize the Merge object.
 
         Parameters
@@ -59,9 +62,8 @@ class Merge(Combined):
             for j, date in enumerate(d.dates):
                 date = date.astype(object)
                 if date in dates:
-
                     d1 = datasets[dates[date][0]]  # Selected
-                    d2 = datasets[i]  # The new one
+                    d2 = d  # The new one
 
                     if j in d2.missing:
                         # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
@@ -70,10 +72,15 @@ class Merge(Combined):
                     k = dates[date][1]
                     if k in d1.missing:
                         # LOG.warning(f"Duplicate date {date} found in datasets {d1} and {d2}, but {date} is missing in {d}, ignoring")
-                        dates[date] = (i, j)  # Replace the missing date with the new one
+                        dates[date] = (
+                            i,
+                            j,
+                        )  # Replace the missing date with the new one
                         continue
 
-                    raise ValueError(f"Duplicate date {date} found in datasets {d1} and {d2}")
+                    raise ValueError(
+                        f"Duplicate date {date} found in datasets {d1} and {d2}"
+                    )
                 else:
                     dates[date] = (i, j)
 
@@ -153,7 +160,6 @@ class Merge(Combined):
             Second dataset.
         """
         # Turned off because we are concatenating along the first axis
-        pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the dates of two datasets are the same. (Disabled for merging).
@@ -166,7 +172,6 @@ class Merge(Combined):
             Second dataset.
         """
         # Turned off because we are concatenating along the dates axis
-        pass
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Check if two datasets are compatible for merging.
@@ -189,7 +194,11 @@ class Merge(Combined):
         Node
             Tree representation of the merged dataset.
         """
-        return Node(self, [d.tree() for d in self.datasets], allow_gaps_in_dates=self.allow_gaps_in_dates)
+        return Node(
+            self,
+            [d.tree() for d in self.datasets],
+            allow_gaps_in_dates=self.allow_gaps_in_dates,
+        )
 
     def metadata_specific(self) -> dict[str, Any]:
         """Get the specific metadata for the merged dataset.
@@ -295,4 +304,6 @@ def merge_factory(args: tuple, kwargs: dict[str, Any], options: Options) -> Data
 
     allow_gaps_in_dates = kwargs.pop("allow_gaps_in_dates", False)
 
-    return Merge(datasets, options, allow_gaps_in_dates=allow_gaps_in_dates)._subset(**kwargs)
+    return Merge(datasets, options, allow_gaps_in_dates=allow_gaps_in_dates)._subset(
+        **kwargs
+    )

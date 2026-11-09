@@ -9,35 +9,24 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Field
-from pydantic import model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .action import Action
 from .build import Build
-from .dates import BaseDates
-from .dates import Dates
-from .dates import Steps
-from .output import GriddedOutput
-from .output import Output
-from .output import TabularOutput
-from .output import TrajectoriesOutput
+from .dates import BaseDates, Dates, Steps
+from .output import GriddedOutput, Output, TabularOutput, TrajectoriesOutput
 from .statistics import Statistics
 
 if TYPE_CHECKING:
-    from anemoi.datasets.dates.groups import Groups
-    from anemoi.datasets.dates.groups import TrajectoryGroups
+    from anemoi.datasets.dates.groups import Groups, TrajectoryGroups
 
 LOG = logging.getLogger(__name__)
 
 
 class Recipe(BaseModel):
-
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     @model_validator(mode="before")
@@ -63,7 +52,8 @@ class Recipe(BaseModel):
             build.setdefault("group_by", group_by)
             data = {**data, "dates": dates, "build": build}
             LOG.warning(
-                "'dates.group_by' is deprecated; use 'build.group_by'. " "Moved group_by=%r to build.group_by.",
+                "'dates.group_by' is deprecated; use 'build.group_by'. "
+                "Moved group_by=%r to build.group_by.",
                 group_by,
             )
         return data
@@ -82,7 +72,11 @@ class Recipe(BaseModel):
         if not isinstance(data, dict):
             return data
         output = data.get("output")
-        if isinstance(output, dict) and output.get("format") in ("gridded", "tabular", "trajectories"):
+        if isinstance(output, dict) and output.get("format") in (
+            "gridded",
+            "tabular",
+            "trajectories",
+        ):
             # Copy rather than mutate the caller's dicts in place.
             output = dict(output)
             layout = output.pop("format")
@@ -92,7 +86,11 @@ class Recipe(BaseModel):
                     " 'output.format' now selects the Zarr format, use only 'output.layout' for the layout."
                 )
             data = {**data, "output": output}
-            LOG.warning("'output.format: %s' is deprecated; use 'output.layout: %s'.", layout, layout)
+            LOG.warning(
+                "'output.format: %s' is deprecated; use 'output.layout: %s'.",
+                layout,
+                layout,
+            )
         return data
 
     @model_validator(mode="after")
@@ -107,10 +105,15 @@ class Recipe(BaseModel):
                     "(use 'base_dates:' instead of 'dates:')"
                 )
             if self.dates is not None:
-                raise ValueError("'dates' is not accepted for the 'trajectories' layout; " "use 'base_dates:' instead")
+                raise ValueError(
+                    "'dates' is not accepted for the 'trajectories' layout; "
+                    "use 'base_dates:' instead"
+                )
         else:
             if self.base_dates is not None:
-                raise ValueError("'base_dates' is only accepted for the 'trajectories' layout")
+                raise ValueError(
+                    "'base_dates' is only accepted for the 'trajectories' layout"
+                )
             if self.dates is None:
                 raise ValueError("'dates' is required")
         return self
@@ -124,7 +127,10 @@ class Recipe(BaseModel):
             if isinstance(member, BaseModel) and hasattr(member, "_post_init"):
                 member._post_init(self)
 
-        if isinstance(self.output, TrajectoriesOutput) and "group_by" not in self.build.model_fields_set:
+        if (
+            isinstance(self.output, TrajectoriesOutput)
+            and "group_by" not in self.build.model_fields_set
+        ):
             self.build.group_by = 1
 
         return self
@@ -217,7 +223,9 @@ class Recipe(BaseModel):
                 # Dates is a discriminated union. If the recipe uses a
                 # different variant than the synthetic default (values), keep
                 # the whole section so variant-specific keys are preserved.
-                if path == ("dates",) and _dates_variant(d) != _dates_variant(default_d):
+                if path == ("dates",) and _dates_variant(d) != _dates_variant(
+                    default_d
+                ):
                     return d
 
                 res = d.copy()

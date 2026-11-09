@@ -86,7 +86,9 @@ OTHER_METHODS = [
 ]
 
 
-METHODS_CATEGORIES = {k: v for k, v in list(globals().items()) if k.endswith("_METHODS")}
+METHODS_CATEGORIES = {
+    k: v for k, v in list(globals().items()) if k.endswith("_METHODS")
+}
 
 
 METHODS = set(sum(METHODS_CATEGORIES.values(), []))
@@ -146,7 +148,6 @@ class Invalid(Error):
 
 
 class Report:
-
     def __init__(self):
         self.report = {}
         self.methods = {}
@@ -206,7 +207,9 @@ class Report:
                     width = 80
                     indent = maxlen + 4
                     doc = "\n".join(["=" * width, "", doc, "=" * width])
-                    indented_doc = "\n".join(" " * indent + line for line in doc.splitlines())
+                    indented_doc = "\n".join(
+                        " " * indent + line for line in doc.splitlines()
+                    )
                     print()
                     print(indented_doc)
                     print()
@@ -216,7 +219,9 @@ class Report:
 
 
 def _no_validate(report, dataset, name, result):
-    report.warning(name, f"Validation for {name} not implemented. Result: {type(result)}")
+    report.warning(
+        name, f"Validation for {name} not implemented. Result: {type(result)}"
+    )
 
 
 def validate_variables(report, dataset, name, result):
@@ -226,7 +231,9 @@ def validate_variables(report, dataset, name, result):
         raise ValueError(f"Result is not a list or tuple {type(result)}")
 
     if len(result) != dataset.shape[1]:
-        raise ValueError(f"Result has wrong length: {len(result)} != {dataset.shape[1]}")
+        raise ValueError(
+            f"Result has wrong length: {len(result)} != {dataset.shape[1]}"
+        )
 
     for value in result:
         if not isinstance(value, str):
@@ -240,7 +247,9 @@ def validate_latitudes(report, dataset, name, result):
         raise ValueError(f"Result is not a np.ndarray {type(result)}")
 
     if len(result) != dataset.shape[3]:
-        raise ValueError(f"Result has wrong length: {len(result)} != {dataset.shape[3]}")
+        raise ValueError(
+            f"Result has wrong length: {len(result)} != {dataset.shape[3]}"
+        )
 
     if not np.all(np.isfinite(result)):
         raise ValueError("Result contains non-finite values")
@@ -253,7 +262,9 @@ def validate_latitudes(report, dataset, name, result):
         raise ValueError("Result contains values outside the range [-90, 90]")
 
     if np.all((result >= -np.pi) & (result <= np.pi)):
-        report.warning(name, "All latitudes are in the range [-π, π]. Are they in radians?")
+        report.warning(
+            name, "All latitudes are in the range [-π, π]. Are they in radians?"
+        )
 
 
 def validate_longitudes(report, dataset, name, result):
@@ -263,7 +274,9 @@ def validate_longitudes(report, dataset, name, result):
         raise ValueError(f"Result is not a np.ndarray {type(result)}")
 
     if len(result) != dataset.shape[3]:
-        raise ValueError(f"Result has wrong length: {len(result)} != {dataset.shape[2]}")
+        raise ValueError(
+            f"Result has wrong length: {len(result)} != {dataset.shape[2]}"
+        )
 
     if not np.all(np.isfinite(result)):
         raise ValueError("Result contains non-finite values")
@@ -276,7 +289,9 @@ def validate_longitudes(report, dataset, name, result):
         raise ValueError("Result contains values outside the range [-180, 360]")
 
     if np.all((result >= -np.pi) & (result <= 2 * np.pi)):
-        report.warning(name, "All longitudes are in the range [-π, 2π]. Are they in radians?")
+        report.warning(
+            name, "All longitudes are in the range [-π, 2π]. Are they in radians?"
+        )
 
 
 def validate_statistics(report, dataset, name, result):
@@ -286,7 +301,6 @@ def validate_statistics(report, dataset, name, result):
         raise ValueError(f"Result is not a dict {type(result)}")
 
     for key in ["mean", "stdev", "minimum", "maximum"]:
-
         if key not in result:
             raise ValueError(f"Result does not contain `{key}`")
 
@@ -294,10 +308,14 @@ def validate_statistics(report, dataset, name, result):
             raise ValueError(f"Result[{key}] is not a np.ndarray {type(result[key])}")
 
         if len(result[key].shape) != 1:
-            raise ValueError(f"Result[{key}] has wrong shape: {len(result[key].shape)} != 1")
+            raise ValueError(
+                f"Result[{key}] has wrong shape: {len(result[key].shape)} != 1"
+            )
 
         if result[key].shape[0] != len(dataset.variables):
-            raise ValueError(f"Result[{key}] has wrong length: {result[key].shape[0]} != {len(dataset.variables)}")
+            raise ValueError(
+                f"Result[{key}] has wrong length: {result[key].shape[0]} != {len(dataset.variables)}"
+            )
 
         if not np.all(np.isfinite(result[key])):
             raise ValueError(f"Result[{key}] contains non-finite values")
@@ -313,19 +331,25 @@ def validate_shape(report, dataset, name, result):
         raise ValueError(f"Result is not a tuple {type(result)}")
 
     if len(result) != 4:
-        raise ValueError(f"Result has wrong length: {len(result)} != {len(dataset.shape)}")
+        raise ValueError(
+            f"Result has wrong length: {len(result)} != {len(dataset.shape)}"
+        )
 
     if result[0] != len(dataset):
         raise ValueError(f"Result[0] has wrong length: {result[0]} != {len(dataset)}")
 
     if result[1] != len(dataset.variables):
-        raise ValueError(f"Result[1] has wrong length: {result[1]} != {len(dataset.variables)}")
+        raise ValueError(
+            f"Result[1] has wrong length: {result[1]} != {len(dataset.variables)}"
+        )
 
     if result[2] != 1:  # We ignore ensemble dimension for now
         pass
 
     if result[3] != len(dataset.latitudes):
-        raise ValueError(f"Result[3] has wrong length: {result[3]} != {len(dataset.latitudes)}")
+        raise ValueError(
+            f"Result[3] has wrong length: {result[3]} != {len(dataset.latitudes)}"
+        )
 
 
 def validate_supporting_arrays(report, dataset, name, result):
@@ -341,10 +365,14 @@ def validate_supporting_arrays(report, dataset, name, result):
         raise ValueError("Result does not contain `longitudes`")
 
     if not isinstance(result["latitudes"], np.ndarray):
-        raise ValueError(f"Result[latitudes] is not a np.ndarray {type(result['latitudes'])}")
+        raise ValueError(
+            f"Result[latitudes] is not a np.ndarray {type(result['latitudes'])}"
+        )
 
     if not isinstance(result["longitudes"], np.ndarray):
-        raise ValueError(f"Result[longitudes] is not a np.ndarray {type(result['longitudes'])}")
+        raise ValueError(
+            f"Result[longitudes] is not a np.ndarray {type(result['longitudes'])}"
+        )
 
     if np.any(result["latitudes"] != dataset.latitudes):
         raise ValueError("Result[latitudes] does not match dataset.latitudes")
@@ -363,13 +391,17 @@ def validate_dates(report, dataset, name, result):
         raise ValueError(f"Result has wrong shape: {len(result.shape)} != 1")
 
     if result.shape[0] != len(dataset.dates):
-        raise ValueError(f"Result has wrong length: {result.shape[0]} != {len(dataset.dates)}")
+        raise ValueError(
+            f"Result has wrong length: {result.shape[0]} != {len(dataset.dates)}"
+        )
 
     if not np.issubdtype(result.dtype, np.datetime64):
         raise ValueError(f"Result is not a datetime64 array {result.dtype}")
 
     if len(result) != len(dataset.dates):
-        raise ValueError(f"Result has wrong length: {len(result)} != {len(dataset.dates)}")
+        raise ValueError(
+            f"Result has wrong length: {len(result)} != {len(dataset.dates)}"
+        )
 
     if not np.all(np.isfinite(result)):
         raise ValueError("Result contains non-finite values")
@@ -448,7 +480,9 @@ def validate___getitem__(report, dataset, name, result):
         raise ValueError(f"Result is not a np.ndarray {type(result)}")
 
     if result.shape != dataset.shape[1:]:
-        raise ValueError(f"Result has wrong shape: {result.shape} != {dataset.shape[1:]}")
+        raise ValueError(
+            f"Result has wrong shape: {result.shape} != {dataset.shape[1:]}"
+        )
 
 
 def validate___len__(report, dataset, name, result):
@@ -497,14 +531,16 @@ def validate_field_shape(report, dataset, name, result):
 def validate(report, dataset, name, kwargs=None):
 
     try:
-
         validate_fn = globals().get(f"validate_{name}", _no_validate)
 
         # Check if the method is still in the Dataset class
         try:
             report.method(name, getattr(Dataset, name))
         except AttributeError:
-            report.internal(name, "Attribute not found in Dataset class. Please update the list of methods.")
+            report.internal(
+                name,
+                "Attribute not found in Dataset class. Please update the list of methods.",
+            )
             return
 
         # Check if the method is supported by the dataset instance
@@ -518,12 +554,15 @@ def validate(report, dataset, name, kwargs=None):
         if callable(result):
             if kwargs is None:
                 report.internal(
-                    name, f"`{name}` is a callable method, not an attribute. Please update KWARGS accordingly."
+                    name,
+                    f"`{name}` is a callable method, not an attribute. Please update KWARGS accordingly.",
                 )
                 return
         else:
             if kwargs is not None:
-                report.internal(name, f"`{name}` is not callable. Please remove entry from KWARGS.")
+                report.internal(
+                    name, f"`{name}` is not callable. Please remove entry from KWARGS."
+                )
                 return
 
         if kwargs is not None:
@@ -563,7 +602,7 @@ def validate_dataset(dataset, costly_checks=False, detailed=False):
         default_test_indexing(dataset)
 
         for i, x in enumerate(dataset):
-            y = dataset[i]
+            y = x
             assert (x == y).all(), f"Dataset indexing failed at index {i}: {x} != {y}"
 
     for name in METHODS:

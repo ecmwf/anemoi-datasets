@@ -13,25 +13,22 @@ import datetime
 import logging
 from collections.abc import Sequence
 from functools import cached_property
-from typing import Any
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
+from anemoi.datasets.usage.debug import Node, Source, debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import make_slice_or_index_from_list_or_tuple
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    make_slice_or_index_from_list_or_tuple,
+    update_tuple,
+)
 from anemoi.datasets.usage.trajectories.metadata import trajectory_metadata
 
 LOG = logging.getLogger(__name__)
@@ -117,7 +114,9 @@ class StepSubset(Forwards):
             return result[(slice(None),) + rest]
         return self.forward[n][..., self.step_indices, :]
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Delegate to the underlying dataset, which resolves a default delta
         from the step frequency for trajectories.
         """
@@ -210,7 +209,9 @@ class SingleStepView(Forwards):
             return result[(slice(None),) + rest]
         return self.forward[n][..., self.step_index, :]
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Delegate to the underlying dataset, which resolves a default delta
         from the step frequency for trajectories.
         """
@@ -240,7 +241,12 @@ class Subset(Forwards):
         Provenance metadata for the subsetting operation.
     """
 
-    def __init__(self, dataset: Union[Dataset, "Subset"], indices: Sequence[int], reason: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        dataset: Union[Dataset, "Subset"],
+        indices: Sequence[int],
+        reason: dict[str, Any],
+    ) -> None:
         while isinstance(dataset, Subset):
             indices = [dataset.indices[i] for i in indices]
             dataset = dataset.dataset
@@ -310,7 +316,9 @@ class Subset(Forwards):
     def base_frequency(self) -> datetime.timedelta:
         dates = self.base_dates
         if len(dates) < 2:
-            raise ValueError(f"Cannot determine base_frequency with fewer than two base dates ({dates}).")
+            raise ValueError(
+                f"Cannot determine base_frequency with fewer than two base dates ({dates})."
+            )
         return frequency_to_timedelta(dates[1].astype(object) - dates[0].astype(object))
 
     # -- Envelope --
@@ -345,8 +353,7 @@ class Subset(Forwards):
 
     def _dates_to_indices(self, start, end) -> list[int]:
         """Strict envelope filtering on the subsetted base dates."""
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         base_dates = self.base_dates
         step_start = self.dataset.steps[0]
@@ -370,7 +377,9 @@ class Subset(Forwards):
 
         return [i for i, d in enumerate(base_dates) if base_min <= d <= base_max]
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Delegate to the underlying dataset, which resolves a default delta
         from the step frequency for trajectories.
         """

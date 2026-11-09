@@ -81,10 +81,26 @@ class HTML_Writer:
     ):
 
         # Determine inline style for HTML
-        mean_bg_color = "background-color: #d4edda;" if abs(mean_diff) < 20 else "background-color: #f8d7da;"
-        std_bg_color = "background-color: #d4edda;" if abs(std_diff) < 20 else "background-color: #f8d7da;"
-        max_bg_color = "background-color: #d4edda;" if abs(max_diff) < 20 else "background-color: #f8d7da;"
-        min_bg_color = "background-color: #d4edda;" if abs(min_diff) < 20 else "background-color: #f8d7da;"
+        mean_bg_color = (
+            "background-color: #d4edda;"
+            if abs(mean_diff) < 20
+            else "background-color: #f8d7da;"
+        )
+        std_bg_color = (
+            "background-color: #d4edda;"
+            if abs(std_diff) < 20
+            else "background-color: #f8d7da;"
+        )
+        max_bg_color = (
+            "background-color: #d4edda;"
+            if abs(max_diff) < 20
+            else "background-color: #f8d7da;"
+        )
+        min_bg_color = (
+            "background-color: #d4edda;"
+            if abs(min_diff) < 20
+            else "background-color: #f8d7da;"
+        )
 
         # Add a row to the HTML table with inline styles
         self.html_content += f"""
@@ -140,7 +156,9 @@ def plot_coordinates_on_map(lats, lons):
     # Create a figure and axis using the PlateCarree projection
 
     # Define source (PlateCarree) and target (LambertConformal) projections
-    target_proj = ccrs.LambertConformal(central_latitude=0, central_longitude=10, standard_parallels=[63.3, 63.3])
+    target_proj = ccrs.LambertConformal(
+        central_latitude=0, central_longitude=10, standard_parallels=[63.3, 63.3]
+    )
 
     # Create a figure and axis
     fig, ax = plt.subplots(figsize=(14, 12), subplot_kw={"projection": target_proj})
@@ -148,7 +166,13 @@ def plot_coordinates_on_map(lats, lons):
     # Set the extent of the map based on the transformed coordinates
     margin = 10
     ax.set_extent(
-        [min(lons) - margin, max(lons) + margin, min(lats) - margin, max(lats) + margin], crs=ccrs.PlateCarree()
+        [
+            min(lons) - margin,
+            max(lons) + margin,
+            min(lats) - margin,
+            max(lats) + margin,
+        ],
+        crs=ccrs.PlateCarree(),
     )
     # ax.set_extent([-25, 45, 30, 75], crs=ccrs.PlateCarree())
 
@@ -159,7 +183,15 @@ def plot_coordinates_on_map(lats, lons):
     ax.add_feature(cfeature.BORDERS.with_scale("50m"), linestyle=":", zorder=1)
 
     # Plot transformed coordinates
-    ax.scatter(lons, lats, color="blue", s=1, edgecolor="b", transform=ccrs.PlateCarree(), alpha=0.3)
+    ax.scatter(
+        lons,
+        lats,
+        color="blue",
+        s=1,
+        edgecolor="b",
+        transform=ccrs.PlateCarree(),
+        alpha=0.3,
+    )
     ax.set_title("Latitude and Longitude")
     ax.title.set_size(20)
 
@@ -171,7 +203,12 @@ def haversine(lat1, lon1, lat2, lon2):
     """Calculate the great-circle distance between two points on the Earth's surface using the Haversine formula."""
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return RADIUS_EARTH_KM * c
 
@@ -216,13 +253,29 @@ class CompareLAM(Command):
     """
 
     def add_arguments(self, command_parser):
-        command_parser.add_argument("dataset1", help="Path of the global dataset or the largest dataset.")
-        command_parser.add_argument("dataset2", help="Path of the LAM dataset or the smallest dataset.")
         command_parser.add_argument(
-            "-D", "--number-of-dates", type=int, default=10, help="Number of datapoints (in time) to compare over."
+            "dataset1", help="Path of the global dataset or the largest dataset."
         )
-        command_parser.add_argument("-O", "--outpath", default="./", help="Path to output folder.")
-        command_parser.add_argument("-R", "--number-of-digits", type=int, default=4, help="Number of digits to keep.")
+        command_parser.add_argument(
+            "dataset2", help="Path of the LAM dataset or the smallest dataset."
+        )
+        command_parser.add_argument(
+            "-D",
+            "--number-of-dates",
+            type=int,
+            default=10,
+            help="Number of datapoints (in time) to compare over.",
+        )
+        command_parser.add_argument(
+            "-O", "--outpath", default="./", help="Path to output folder."
+        )
+        command_parser.add_argument(
+            "-R",
+            "--number-of-digits",
+            type=int,
+            default=4,
+            help="Number of digits to keep.",
+        )
         command_parser.add_argument(
             "--selected-vars",
             nargs="+",
@@ -230,7 +283,9 @@ class CompareLAM(Command):
             help="List of selected variables to use in the script.",
         )
         command_parser.add_argument(
-            "--save-plots", action="store_true", help="Toggle to save a picture of the data grid."
+            "--save-plots",
+            action="store_true",
+            help="Toggle to save a picture of the data grid.",
         )
 
     def run(self, args):
@@ -277,7 +332,13 @@ class CompareLAM(Command):
         # Open global dataset and cut it
         lam_start = lam_dataset.dates[0]
         lam_end = lam_dataset.dates[-1]
-        global_dataset = open_dataset(global_name, start=lam_start, end=lam_end, area=l_coords, select=selected_vars)
+        global_dataset = open_dataset(
+            global_name,
+            start=lam_start,
+            end=lam_end,
+            area=l_coords,
+            select=selected_vars,
+        )
         global_vars = list(global_dataset.variables)
         global_num_grid_points = global_dataset[0, 0].shape[1]
         global_area = rectangle_area_km2(
@@ -294,7 +355,9 @@ class CompareLAM(Command):
         )
 
         if args.save_plots:
-            _ = plot_coordinates_on_map(global_dataset.latitudes, global_dataset.longitudes)
+            _ = plot_coordinates_on_map(
+                global_dataset.latitudes, global_dataset.longitudes
+            )
             plt.savefig(os.path.join(args.outpath, "global_dataset.png"))
 
         LOG.info(f"Dataset {global_name}, has {global_num_grid_points} grid points. \n")
@@ -303,7 +366,9 @@ class CompareLAM(Command):
 
         # Check variable ordering
         same_order = check_order(global_vars, lam_vars)
-        LOG.info(f"Lam dataset has the same order of variables as the global dataset: {same_order}")
+        LOG.info(
+            f"Lam dataset has the same order of variables as the global dataset: {same_order}"
+        )
 
         LOG.info("\nComparing statistics..")
         table = PrettyTable()

@@ -15,11 +15,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from anemoi.datasets.create.sources.bufr_support.bufr_reader import BUFRMessage
-from anemoi.datasets.create.sources.bufr_support.bufr_reader import BUFRReader
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import BUFRMessageSelector
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import BUFRToDataFrame
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import parse_slice
+from anemoi.datasets.create.sources.bufr_support.bufr_reader import (
+    BUFRMessage,
+    BUFRReader,
+)
+from anemoi.datasets.create.sources.bufr_support.bufr_to_df import (
+    BUFRMessageSelector,
+    BUFRToDataFrame,
+    parse_slice,
+)
 
 
 def create_bufr_message(
@@ -75,7 +79,10 @@ def create_bufr_message(
     nreports = len(arrays["lat"])
 
     # build datetimes
-    datetime_arrays = {f"{datetime_prefix}{k}": np.full(nreports, v, dtype=int) for k, v in datetime_spec.items()}
+    datetime_arrays = {
+        f"{datetime_prefix}{k}": np.full(nreports, v, dtype=int)
+        for k, v in datetime_spec.items()
+    }
     arrays.update(datetime_arrays)
     arrays.update(per_datum_arrays or {})
 
@@ -93,7 +100,9 @@ def create_bufr_message(
 
     per_datum_keys = set(per_datum_arrays or {})
 
-    def _get_array(element: str, typ: type, nsubsets: int, missing_val=np.nan) -> np.ndarray:
+    def _get_array(
+        element: str, typ: type, nsubsets: int, missing_val=np.nan
+    ) -> np.ndarray:
         if element in arrays:
             arr = np.asarray(arrays[element], dtype=typ)
             if len(arr) == 1:
@@ -147,7 +156,14 @@ def test_select_comparison_operators(op, msg_value, select_value, should_match):
     default_config = {
         "lat": [0.0],
         "lon": [0.0],
-        "datetime_spec": {"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        "datetime_spec": {
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
     }
     msg = create_bufr_message(**default_config, extra_values={"key": msg_value})
     selector = BUFRMessageSelector("key", [op, select_value])
@@ -158,7 +174,14 @@ def test_select_in_operator():
     default_config = {
         "lat": [0.0],
         "lon": [0.0],
-        "datetime_spec": {"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        "datetime_spec": {
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
     }
     good_msg = create_bufr_message(**default_config, extra_values={"dataCategory": 2})
     bad_msg = create_bufr_message(**default_config, extra_values={"dataCategory": 5})
@@ -171,7 +194,14 @@ def test_select_not_in_operator():
     default_config = {
         "lat": [0.0],
         "lon": [0.0],
-        "datetime_spec": {"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        "datetime_spec": {
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
     }
     good_msg = create_bufr_message(**default_config, extra_values={"dataCategory": 5})
     bad_msg = create_bufr_message(**default_config, extra_values={"dataCategory": 2})
@@ -231,7 +261,14 @@ def test_per_report_basic():
     msg = create_bufr_message(
         lat=[10.0, 20.0, 30.0],
         lon=[100.0, 110.0, 120.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         per_report_arrays={"#1#brightnessTemperature": np.array([250.0, 260.0, 270.0])},
     )
 
@@ -285,7 +322,14 @@ def test_header_preselect_removes_non_matching():
     msg = create_bufr_message(
         lat=[0.0],
         lon=[0.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         extra_values={"dataCategory": 5},
     )
 
@@ -303,7 +347,14 @@ def test_header_preselect_keeps_matching():
     msg = create_bufr_message(
         lat=[5.0],
         lon=[50.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         extra_values={"dataCategory": 2},
         per_report_arrays={"#1#brightnessTemperature": np.array([280.0])},
     )
@@ -331,7 +382,14 @@ def test_data_preselect_removes_non_matching():
     msg = create_bufr_message(
         lat=[0.0],
         lon=[0.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         extra_values={"someFlag": 99},
     )
 
@@ -385,7 +443,14 @@ def test_wide_format():
     msg = create_bufr_message(
         lat=[10.0, 20.0],
         lon=[100.0, 110.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         per_report_arrays={"#1#brightnessTemperature": np.array([300.0, 310.0])},
         per_datum_arrays={"airTemperature": temp_values},
     )
@@ -416,7 +481,14 @@ def test_wide_reshape_error_returns_empty():
     msg = create_bufr_message(
         lat=[0.0, 0.0],
         lon=[0.0, 0.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         per_datum_arrays={"airTemperature": np.arange(5, dtype=float)},
     )
     msg.get_size.side_effect = lambda k: 6  # reported size != actual data length
@@ -441,7 +513,14 @@ def test_long_format():
     msg = create_bufr_message(
         lat=[10.0, 20.0],
         lon=[100.0, 110.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         per_report_arrays={"#1#brightnessTemperature": np.array([290.0, 295.0])},
         per_datum_arrays={"pressure": pressure_values},
     )
@@ -457,10 +536,18 @@ def test_long_format():
     df = converter.read_msg_to_df(msg)
     expected = pd.DataFrame(
         {
-            "latitude": np.array([10.0, 10.0, 10.0, 20.0, 20.0, 20.0], dtype=np.float32),
-            "longitude": np.array([100.0, 100.0, 100.0, 110.0, 110.0, 110.0], dtype=np.float32),
-            "obsvalue_rawbt_1": np.array([290.0, 290.0, 290.0, 295.0, 295.0, 295.0], dtype=np.float32),
-            "date": pd.array([pd.Timestamp("2023-06-15T12:00:00")] * (nreports * ndatum)),
+            "latitude": np.array(
+                [10.0, 10.0, 10.0, 20.0, 20.0, 20.0], dtype=np.float32
+            ),
+            "longitude": np.array(
+                [100.0, 100.0, 100.0, 110.0, 110.0, 110.0], dtype=np.float32
+            ),
+            "obsvalue_rawbt_1": np.array(
+                [290.0, 290.0, 290.0, 295.0, 295.0, 295.0], dtype=np.float32
+            ),
+            "date": pd.array(
+                [pd.Timestamp("2023-06-15T12:00:00")] * (nreports * ndatum)
+            ),
             "pressure": np.array(pressure_values, dtype=np.float32),
         }
     )
@@ -474,7 +561,14 @@ def test_long_format_start_index():
     msg = create_bufr_message(
         lat=[0.0],
         lon=[0.0],
-        datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+        datetime_spec={
+            "year": 2023,
+            "month": 6,
+            "day": 15,
+            "hour": 12,
+            "minute": 0,
+            "second": 0,
+        },
         per_report_arrays={"#1#brightnessTemperature": np.array([275.0])},
         per_datum_arrays={"pressure": pressure_values},
     )
@@ -490,7 +584,13 @@ def test_long_format_start_index():
     df = converter.read_msg_to_df(msg)
     expected_ndatum = ndatum - 1  # first level skipped
     assert len(df) == nreports * expected_ndatum
-    assert list(df.columns) == ["latitude", "longitude", "obsvalue_rawbt_1", "date", "pressure"]
+    assert list(df.columns) == [
+        "latitude",
+        "longitude",
+        "obsvalue_rawbt_1",
+        "date",
+        "pressure",
+    ]
 
 
 def test_multiple_messages_combined_and_sorted():
@@ -498,13 +598,27 @@ def test_multiple_messages_combined_and_sorted():
         create_bufr_message(
             lat=[30.0, 40.0],
             lon=[120.0, 130.0],
-            datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 13, "minute": 0, "second": 0},
+            datetime_spec={
+                "year": 2023,
+                "month": 6,
+                "day": 15,
+                "hour": 13,
+                "minute": 0,
+                "second": 0,
+            },
             per_report_arrays={"#1#brightnessTemperature": np.array([250.0, 255.0])},
         ),
         create_bufr_message(
             lat=[10.0, 20.0],
             lon=[100.0, 110.0],
-            datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+            datetime_spec={
+                "year": 2023,
+                "month": 6,
+                "day": 15,
+                "hour": 12,
+                "minute": 0,
+                "second": 0,
+            },
             per_report_arrays={"#1#brightnessTemperature": np.array([240.0, 245.0])},
         ),
     ]
@@ -521,7 +635,9 @@ def test_multiple_messages_combined_and_sorted():
         {
             "latitude": np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float32),
             "longitude": np.array([100.0, 110.0, 120.0, 130.0], dtype=np.float32),
-            "obsvalue_rawbt_1": np.array([240.0, 245.0, 250.0, 255.0], dtype=np.float32),
+            "obsvalue_rawbt_1": np.array(
+                [240.0, 245.0, 250.0, 255.0], dtype=np.float32
+            ),
             "date": pd.array(
                 [
                     pd.Timestamp("2023-06-15T12:00:00"),
@@ -541,7 +657,14 @@ def test_subset_of_messages():
         create_bufr_message(
             lat=[float(i)],
             lon=[float(i)],
-            datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": i, "minute": 0, "second": 0},
+            datetime_spec={
+                "year": 2023,
+                "month": 6,
+                "day": 15,
+                "hour": i,
+                "minute": 0,
+                "second": 0,
+            },
             per_report_arrays={"#1#brightnessTemperature": np.array([200.0 + i])},
         )
         for i in range(5)
@@ -571,7 +694,14 @@ def test_all_messages_filtered_returns_empty():
         create_bufr_message(
             lat=[0.0],
             lon=[0.0],
-            datetime_spec={"year": 2023, "month": 6, "day": 15, "hour": 12, "minute": 0, "second": 0},
+            datetime_spec={
+                "year": 2023,
+                "month": 6,
+                "day": 15,
+                "hour": 12,
+                "minute": 0,
+                "second": 0,
+            },
             extra_values={"dataCategory": 99},
         ),
     ]

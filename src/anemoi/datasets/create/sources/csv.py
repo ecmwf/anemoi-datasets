@@ -77,9 +77,13 @@ class CSVSource(Source):
             case 1:
                 self.make_date_column_1(frame, self.flavour["date"][0], to_drop)
             case 2:
-                self.make_date_column_2(frame, self.flavour["date"][0], self.flavour["date"][1], to_drop)
+                self.make_date_column_2(
+                    frame, self.flavour["date"][0], self.flavour["date"][1], to_drop
+                )
             case _:
-                raise ValueError(f"Invalid number of date columns specified in flavour. ({len(self.flavour['date'])=})")
+                raise ValueError(
+                    f"Invalid number of date columns specified in flavour. ({len(self.flavour['date'])=})"
+                )
 
         self.make_lat_lon_columns(frame, "latitude", to_drop)
         self.make_lat_lon_columns(frame, "longitude", to_drop)
@@ -102,7 +106,9 @@ class CSVSource(Source):
         import pandas as pd
 
         if "date" in frame.columns and date_col != "date":
-            LOG.warning(f"Column 'date' already exists in data frame. Overwriting with '{date_col}'.")
+            LOG.warning(
+                f"Column 'date' already exists in data frame. Overwriting with '{date_col}'."
+            )
             to_drop.append(date_col)
 
         frame["date"] = pd.to_datetime(frame[date_col])
@@ -111,12 +117,16 @@ class CSVSource(Source):
         import pandas as pd
 
         if "date" in frame.columns:
-            LOG.warning(f"Column 'date' already exists in data frame. Overwriting with '{date_col}' and '{time_col}'.")
+            LOG.warning(
+                f"Column 'date' already exists in data frame. Overwriting with '{date_col}' and '{time_col}'."
+            )
 
         # TODO: Read from format from flavour
         frame[time_col] = frame[time_col].astype(str).str.zfill(6)
 
-        frame["date"] = pd.to_datetime(frame[date_col].astype(str) + " " + frame[time_col].astype(str))
+        frame["date"] = pd.to_datetime(
+            frame[date_col].astype(str) + " " + frame[time_col].astype(str)
+        )
 
         to_drop.append(date_col)
         to_drop.append(time_col)

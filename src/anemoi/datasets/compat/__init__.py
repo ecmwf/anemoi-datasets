@@ -43,34 +43,40 @@ def zarr_format_from_name(name: str) -> int:
     try:
         return _FORMATS[name]
     except KeyError:
-        raise ValueError(f"Invalid format {name!r}, expected one of {', '.join(map(repr, _FORMATS))}") from None
+        raise ValueError(
+            f"Invalid format {name!r}, expected one of {', '.join(map(repr, _FORMATS))}"
+        ) from None
 
 
 if zarr_version < 3:
-    from .zarr2 import DebugStore
-    from .zarr2 import DirectoryStore
-    from .zarr2 import HTTPStore
-    from .zarr2 import LRUStoreCache
-    from .zarr2 import S3Store
-    from .zarr2 import ZarrFileNotFoundError
-    from .zarr2 import ZipStore
-    from .zarr2 import blosc_compressor
-    from .zarr2 import get_zarr_format
-    from .zarr2 import zarr_format_kwargs
+    from .zarr2 import (
+        DebugStore,
+        DirectoryStore,
+        HTTPStore,
+        LRUStoreCache,
+        S3Store,
+        ZarrFileNotFoundError,
+        ZipStore,
+        blosc_compressor,
+        get_zarr_format,
+        zarr_format_kwargs,
+    )
 
     MemoryStore = zarr.storage.MemoryStore
     NestedDirectoryStore = zarr.storage.NestedDirectoryStore
 else:
-    from .zarr3 import DebugStore
-    from .zarr3 import DirectoryStore
-    from .zarr3 import HTTPStore
-    from .zarr3 import LRUStoreCache
-    from .zarr3 import S3Store
-    from .zarr3 import ZarrFileNotFoundError
-    from .zarr3 import ZipStore
-    from .zarr3 import blosc_compressor
-    from .zarr3 import get_zarr_format
-    from .zarr3 import zarr_format_kwargs
+    from .zarr3 import (
+        DebugStore,
+        DirectoryStore,
+        HTTPStore,
+        LRUStoreCache,
+        S3Store,
+        ZarrFileNotFoundError,
+        ZipStore,
+        blosc_compressor,
+        get_zarr_format,
+        zarr_format_kwargs,
+    )
 
     MemoryStore = zarr.storage.MemoryStore
     # zarr 3 has no NestedDirectoryStore: format 3 arrays are always nested,
@@ -117,28 +123,32 @@ def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
     if mode in ("r", "r+"):
         node = zarr.open(store, mode=mode)
         if zarr_format is not None and get_zarr_format(node) != zarr_format:
-            raise ValueError(f"{store} is in Zarr format {get_zarr_format(node)}, expected format {zarr_format}")
+            raise ValueError(
+                f"{store} is in Zarr format {get_zarr_format(node)}, expected format {zarr_format}"
+            )
         return node
 
-    raise ValueError(f"Unsupported mode {mode!r}, expected one of 'r', 'r+', 'w', 'w-' or 'a'")
+    raise ValueError(
+        f"Unsupported mode {mode!r}, expected one of 'r', 'r+', 'w', 'w-' or 'a'"
+    )
 
 
 __all__ = [
     "DEFAULT_FORMAT",
     "DEFAULT_ZARR_FORMAT",
-    "ZarrFileNotFoundError",
-    "ZipStore",
-    "HTTPStore",
-    "S3Store",
     "DebugStore",
     "DirectoryStore",
+    "HTTPStore",
     "LRUStoreCache",
     "MemoryStore",
+    "NestedDirectoryStore",
+    "S3Store",
+    "ZarrFileNotFoundError",
+    "ZipStore",
     "blosc_compressor",
     "get_zarr_format",
     "zarr_format_from_name",
     "zarr_open",
-    "NestedDirectoryStore",
-    "zarr_version",
     "zarr_private_files",
+    "zarr_version",
 ]

@@ -12,8 +12,7 @@ import itertools
 import logging
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
@@ -39,7 +38,6 @@ class _Error:
 
 
 class Added(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -47,7 +45,6 @@ class Added(_Error):
 
 
 class MissingOK(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -55,19 +52,16 @@ class MissingOK(_Error):
 
 
 class Missing(_Error):
-
     def __repr__(self):
         return f"❌ {self.message}"
 
 
 class Error(_Error):
-
     def __repr__(self):
         return f"❗ {self.message}"
 
 
 class Warning(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -109,7 +103,13 @@ class ErrorCollector:
 
 
 def _compare_arrays_partial(
-    errors, a: zarr.Array, b: zarr.Array, slice_obj: tuple, path: str, tolerance=1e-6, close_ok=False
+    errors,
+    a: zarr.Array,
+    b: zarr.Array,
+    slice_obj: tuple,
+    path: str,
+    tolerance=1e-6,
+    close_ok=False,
 ) -> None:
     """Compare two arrays."""
     a = a[slice_obj]
@@ -122,16 +122,17 @@ def _compare_arrays_partial(
         rtol = tolerance
         atol = tolerance * max(np.nanmax(np.abs(a)), np.nanmax(np.abs(b)))
         if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
-
             return True
 
     close = "close" if np.allclose(a, b, equal_nan=True) else "different"
 
-    errors.error(f"🧮 {path}: arrays are {close} {a[:]}, {b[:]} {a[:]-b[:]}")
+    errors.error(f"🧮 {path}: arrays are {close} {a[:]}, {b[:]} {a[:] - b[:]}")
     return False
 
 
-def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6, close_ok=False) -> None:
+def _compare_arrays(
+    errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1e-6, close_ok=False
+) -> None:
     if a.shape != b.shape:
         errors.error(f"🧮 {path}: shapes are different {a.shape} != {b.shape}")
         return
@@ -146,8 +147,10 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
     # Divide by two because both arrays need to be in memory
     half_memory = max_memory // 2
     itemsize = a.dtype.itemsize
-    chunk_size = math.prod(a.chunks) * itemsize  # Preferred buffer size if fits in memory
-    buffer_size = chunk_size if chunk_size < half_memory else half_memory
+    chunk_size = (
+        math.prod(a.chunks) * itemsize
+    )  # Preferred buffer size if fits in memory
+    buffer_size = min(half_memory, chunk_size)
 
     # The first (chunk) axis is often 1, so subdivide also other dimensions as needed
     # to bring the buffer shape down to buffer_size.
@@ -164,18 +167,33 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
 
     size = itemsize * a.size
     if size <= buffer_size:
-        return _compare_arrays_partial(errors, a, b, (slice(None),), path, tolerance, close_ok=close_ok)
+        return _compare_arrays_partial(
+            errors, a, b, (slice(None),), path, tolerance, close_ok=close_ok
+        )
 
     LOG.info(f"Comparing large arrays {path} using {max_workers} workers")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-
         tasks = []
-        starts = itertools.product(*(range(0, s, step) for s, step in zip(a.shape, buffer_shape)))
+        starts = itertools.product(
+            *(range(0, s, step) for s, step in zip(a.shape, buffer_shape))
+        )
         for start in tqdm.tqdm(list(starts), desc=f"Comparing {path}"):
-            slice_obj = tuple(slice(i, min(i + step, s)) for i, step, s in zip(start, buffer_shape, a.shape))
+            slice_obj = tuple(
+                slice(i, min(i + step, s))
+                for i, step, s in zip(start, buffer_shape, a.shape)
+            )
             tasks.append(
-                executor.submit(_compare_arrays_partial, errors, a, b, slice_obj, path, tolerance, close_ok=close_ok)
+                executor.submit(
+                    _compare_arrays_partial,
+                    errors,
+                    a,
+                    b,
+                    slice_obj,
+                    path,
+                    tolerance,
+                    close_ok=close_ok,
+                )
             )
 
         with tqdm.tqdm(total=len(tasks), desc=f"Comparing {path}", unit="part") as pbar:
@@ -221,7 +239,6 @@ def _compare_zarrs(errors, reference, actual, data, *path) -> None:
     actual_arrays = list(actual.keys())
 
     for key in sorted(set(reference_arrays) | set(actual_arrays)):
-
         if key not in actual_arrays:
             if ".".join(path + (key,)) in IGNORE_MISSINGS:
                 errors.missing_ok(f"🧮 {'.'.join(path)}.{key}")
@@ -245,24 +262,39 @@ def _compare_zarrs(errors, reference, actual, data, *path) -> None:
             continue
 
         if not isinstance(a, zarr.Array) or not isinstance(b, zarr.Array):
-            errors.error(f"🧮 {'.'.join(path)}.{key}: types are different {type(a)} != {type(b)}")
+            errors.error(
+                f"🧮 {'.'.join(path)}.{key}: types are different {type(a)} != {type(b)}"
+            )
             continue
 
         if a.shape != b.shape:
-            errors.error(f"🧮 {'.'.join(path)}.{key}: shapes are different {a.shape} != {b.shape}")
+            errors.error(
+                f"🧮 {'.'.join(path)}.{key}: shapes are different {a.shape} != {b.shape}"
+            )
             continue
 
         if a.dtype != b.dtype:
-            errors.error(f"🧮 {'.'.join(path)}.{key}: dtypes are different {a.dtype} != {b.dtype}")
+            errors.error(
+                f"🧮 {'.'.join(path)}.{key}: dtypes are different {a.dtype} != {b.dtype}"
+            )
             continue
 
         is_statistic = key.startswith("statistics_") or key in STATISTICS
 
         if "stdev" in key:
             # extend tolerance for standard deviation comparisons
-            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", tolerance=1e-5, close_ok=is_statistic)
+            _compare_arrays(
+                errors,
+                a,
+                b,
+                f"{'.'.join(path)}.{key}",
+                tolerance=1e-5,
+                close_ok=is_statistic,
+            )
         else:
-            _compare_arrays(errors, a, b, f"{'.'.join(path)}.{key}", close_ok=is_statistic)
+            _compare_arrays(
+                errors, a, b, f"{'.'.join(path)}.{key}", close_ok=is_statistic
+            )
 
 
 def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
@@ -299,7 +331,6 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         reference_keys = set(reference.keys())
         actual_keys = set(actual.keys())
         for k in sorted(reference_keys | actual_keys):
-
             if k not in reference_keys:
                 errors.added(f"🏷️ {'.'.join(path)}.{k}")
                 continue
@@ -320,7 +351,9 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
 
     if isinstance(reference, list):
         if len(reference) != len(actual):
-            errors.error(f"{'.'.join(path)} lengths are different reference={len(reference)} != actual={len(actual)}")
+            errors.error(
+                f"{'.'.join(path)} lengths are different reference={len(reference)} != actual={len(actual)}"
+            )
             return
 
         for i, (v, w) in enumerate(zip(reference, actual)):

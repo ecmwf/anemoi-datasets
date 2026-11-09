@@ -17,19 +17,17 @@ import numpy as np
 from anemoi.transform.spatial import nearest_grid_points
 from numpy.typing import NDArray
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..dataset import Shape
-from ..dataset import TupleIndex
+from ..dataset import Dataset, FullIndex, Shape, TupleIndex
 from ..debug import Node
 from ..forwards import Combined
-from ..misc import _auto_adjust
-from ..misc import _open_dataset
+from ..misc import _auto_adjust, _open_dataset
 from ..options import Options
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from .indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -100,16 +98,25 @@ class Complement(Combined):
         datasets = [self._source, self._target]
         return {
             k: np.array(
-                [d.statistics[k][d.name_to_index[i]] for d in datasets for i in d.variables if i in self.variables]
+                [
+                    d.statistics[k][d.name_to_index[i]]
+                    for d in datasets
+                    for i in d.variables
+                    if i in self.variables
+                ]
             )
             for k in datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         index = [self._source.name_to_index[v] for v in self._variables]
         if delta is None:
             delta = self.frequency
-        return {k: v[index] for k, v in self._source.statistics_tendencies(delta).items()}
+        return {
+            k: v[index] for k, v in self._source.statistics_tendencies(delta).items()
+        }
 
     @property
     def name_to_index(self) -> dict[str, int]:
@@ -126,7 +133,10 @@ class Complement(Combined):
     def variables_metadata(self) -> dict[str, Any]:
         """Returns the metadata of the variables to be added to the target dataset."""
         # Merge the two dicts first
-        all_meta = {**self._source.variables_metadata, **self._target.variables_metadata}
+        all_meta = {
+            **self._source.variables_metadata,
+            **self._target.variables_metadata,
+        }
 
         # Filter to keep only desired variables
         return {k: v for k, v in all_meta.items() if k in self._variables}
@@ -141,7 +151,6 @@ class Complement(Combined):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the units in two datasets are the same.
@@ -153,7 +162,6 @@ class Complement(Combined):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     @cached_property
     def missing(self) -> set[int]:
@@ -203,7 +211,6 @@ class Complement(Combined):
         NDArray[Any]
             The data at the specified tuple index.
         """
-        pass
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the forwards subclass.
@@ -255,7 +262,14 @@ class ComplementNone(Complement):
 class ComplementNearest(Complement):
     """A class to complement a target dataset with variables from a source dataset using nearest neighbor interpolation."""
 
-    def __init__(self, target: Any, source: Any, options: Options, max_distance: float = None, k: int = 1) -> None:
+    def __init__(
+        self,
+        target: Any,
+        source: Any,
+        options: Options,
+        max_distance: float = None,
+        k: int = 1,
+    ) -> None:
         """Initializes the ComplementNearest class.
 
         Parameters
@@ -286,7 +300,9 @@ class ComplementNearest(Complement):
 
         if k == 1:
             self._distances = np.expand_dims(self._distances, axis=1)
-            self._nearest_grid_points = np.expand_dims(self._nearest_grid_points, axis=1)
+            self._nearest_grid_points = np.expand_dims(
+                self._nearest_grid_points, axis=1
+            )
 
     def check_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Checks the compatibility of two datasets for nearest neighbor interpolation.
@@ -298,7 +314,6 @@ class ComplementNearest(Complement):
         d2 : Dataset
             The second dataset.
         """
-        pass
 
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
@@ -380,7 +395,9 @@ def complement_factory(args: tuple, kwargs: dict, options: Options) -> Dataset:
     source = _open_dataset(source, options=options)
     target = _open_dataset(target, options=options)
     # `select` is the same as `variables`
-    (source, target), kwargs = _auto_adjust([source, target], kwargs, exclude=["select"])
+    (source, target), kwargs = _auto_adjust(
+        [source, target], kwargs, exclude=["select"]
+    )
 
     Class = {
         None: ComplementNone,
@@ -391,12 +408,18 @@ def complement_factory(args: tuple, kwargs: dict, options: Options) -> Dataset:
     if interpolation == "nearest":
         k = kwargs.pop("k", 1)
         max_distance = kwargs.pop("max_distance", None)
-        complement = Class(target=target, source=source, options=options, k=k, max_distance=max_distance)._subset(
-            **kwargs
-        )
+        complement = Class(
+            target=target,
+            source=source,
+            options=options,
+            k=k,
+            max_distance=max_distance,
+        )._subset(**kwargs)
 
     else:
-        complement = Class(target=target, source=source, options=options)._subset(**kwargs)
+        complement = Class(target=target, source=source, options=options)._subset(
+            **kwargs
+        )
 
     joined = _open_dataset([target, complement], options=options)
 

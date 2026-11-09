@@ -16,20 +16,16 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.debug import Node, Source, debug_indexing
 from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -62,7 +58,6 @@ class Join(Combined):
             The second dataset.
         """
         # Turned off because we are joining along the variables axis
-        pass
 
     def check_variables_compatibility(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the datasets have the same units.
@@ -75,7 +70,6 @@ class Join(Combined):
             The second dataset.
         """
         # Turned off because we are joining along the variables axis
-        pass
 
     def __len__(self) -> int:
         """Get the length of the joined dataset.
@@ -209,7 +203,9 @@ class Join(Combined):
     def variables_metadata(self) -> dict[str, Any]:
         """Get the metadata of the variables."""
         result = {}
-        variables = [v for v in self.variables if not (v.startswith("(") and v.endswith(")"))]
+        variables = [
+            v for v in self.variables if not (v.startswith("(") and v.endswith(")"))
+        ]
 
         for d in self.datasets:
             md = d.variables_metadata
@@ -234,10 +230,13 @@ class Join(Combined):
     def statistics(self) -> dict[str, NDArray[Any]]:
         """Get the statistics of the joined dataset."""
         return {
-            k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0) for k in self.datasets[0].statistics
+            k: np.concatenate([d.statistics[k] for d in self.datasets], axis=0)
+            for k in self.datasets[0].statistics
         }
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies of the joined dataset.
 
         Parameters
@@ -253,7 +252,9 @@ class Join(Combined):
         if delta is None:
             delta = self.frequency
         return {
-            k: np.concatenate([d.statistics_tendencies(delta)[k] for d in self.datasets], axis=0)
+            k: np.concatenate(
+                [d.statistics_tendencies(delta)[k] for d in self.datasets], axis=0
+            )
             for k in self.datasets[0].statistics_tendencies(delta)
         }
 
@@ -307,7 +308,9 @@ class Join(Combined):
 
     def origin(self, index):
         assert (
-            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
+            isinstance(index, tuple)
+            and len(index) == 4
+            and all(a > b >= 0 for a, b in zip(self.shape, index))
         ), tuple
 
         i = index[1]

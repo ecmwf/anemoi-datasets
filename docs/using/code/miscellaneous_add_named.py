@@ -1,5 +1,4 @@
-from anemoi.datasets import add_named_dataset
-from anemoi.datasets import open_dataset
+from anemoi.datasets import add_named_dataset, open_dataset
 
 add_named_dataset(
     "example-dataset",

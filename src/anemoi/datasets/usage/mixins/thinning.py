@@ -8,8 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -21,7 +20,6 @@ LOG = logging.getLogger(__name__)
 
 
 class _Thinner(ABC):
-
     @abstractmethod
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray: ...
 
@@ -34,10 +32,12 @@ class _Thinner(ABC):
 
 
 class _EveryNth(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None):
 
         if field_shape is None:
-            raise ValueError("Field shape must be provided for every-nth thinning method")
+            raise ValueError(
+                "Field shape must be provided for every-nth thinning method"
+            )
 
         if len(field_shape) != 2:
             raise ValueError("Thinning only works latitude/longitude fields")
@@ -55,13 +55,16 @@ class _EveryNth(_Thinner):
 
         # TODO: This is not very efficient
 
-        mask = [lat in latitudes and lon in longitudes for lat, lon in zip(latitudes, longitudes)]
+        mask = [
+            lat in latitudes and lon in longitudes
+            for lat, lon in zip(latitudes, longitudes)
+        ]
         mask = np.array(mask, dtype=bool)
         return mask
 
 
 class _DistanceBased(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.min_distance = thinning / 6371.0  # Convert from km
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
@@ -84,7 +87,7 @@ class _DistanceBased(_Thinner):
 
 
 class _GridThinning(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.grid_size = thinning / 6371.0  # Convert km
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
@@ -100,7 +103,7 @@ class _GridThinning(_Thinner):
 
 
 class _RandomThinning(_Thinner):
-    def __init__(self, thinning: float | int, field_shape: tuple[int, ...] | None = None):
+    def __init__(self, thinning: float, field_shape: tuple[int, ...] | None = None):
         self.fraction = thinning
 
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray:
@@ -114,7 +117,6 @@ class _RandomThinning(_Thinner):
 
 
 class ThinningMixin:
-
     @cached_property
     def thinner(self) -> _Thinner:
         THINNERS = {
@@ -125,7 +127,9 @@ class ThinningMixin:
         }
 
         if self.method not in THINNERS:
-            raise ValueError(f"Unknown thinning method: {self.method}. Supported methods are: {list(THINNERS.keys())}")
+            raise ValueError(
+                f"Unknown thinning method: {self.method}. Supported methods are: {list(THINNERS.keys())}"
+            )
 
         return THINNERS[self.method](self.thinning, self.grid_shape)
 
@@ -139,7 +143,9 @@ class ThinningMixin:
         Node
             The tree representation of the dataset.
         """
-        return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
+        return Node(
+            self, [self.forward.tree()], thinning=self.thinning, method=self.method
+        )
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the Thinning subclass.

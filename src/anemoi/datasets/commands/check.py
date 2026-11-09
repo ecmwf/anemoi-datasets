@@ -97,7 +97,9 @@ class Check(Command):
         data = yaml.safe_load(open(recipe, encoding="utf-8"))
         in_recipe_name = data["name"]
         if recipe_name != in_recipe_name:
-            print(f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}")
+            print(
+                f"Recipe name {recipe_name} does not match the name in the recipe file {in_recipe_name}"
+            )
 
         # Layout is authoritative — read it from the recipe rather than guessing
         # it from the name.  ``None`` falls back to the try-all behaviour.

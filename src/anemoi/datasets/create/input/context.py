@@ -8,8 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any
 
 LOG = logging.getLogger(__name__)
@@ -43,7 +42,11 @@ class Context(ABC):
         config = config.copy()
 
         for key, value in list(config.items()):
-            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+            if (
+                isinstance(value, str)
+                and value.startswith("${")
+                and value.endswith("}")
+            ):
                 path = tuple(value[2:-1].split("."))
                 if path in self.results:
                     config[key] = self.results[path]
@@ -51,7 +54,9 @@ class Context(ABC):
                     LOG.warning(f"Path not found {path}")
                     for p in sorted(self.results):
                         LOG.info(f"   Available paths: {p}")
-                    raise KeyError(f"Path {path} not found in results: {self.results.keys()}")
+                    raise KeyError(
+                        f"Path {path} not found in results: {self.results.keys()}"
+                    )
 
         return config
 

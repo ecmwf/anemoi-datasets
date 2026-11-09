@@ -15,12 +15,10 @@ from typing import Any
 import numpy as np
 import tqdm
 from anemoi.transform.variables import Variable
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
 from anemoi.datasets.buffering import ReadAheadBuffer
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import blosc_compressor, get_zarr_format
 from anemoi.datasets.create.recipe.dates import TrajectoryDates
 from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -33,7 +31,6 @@ LOG = logging.getLogger(__name__)
 
 
 class TrajectoryGriddedCreator(GriddedCreator):
-
     @cached_property
     def groups(self) -> TrajectoryGroups:
         """Return the date groups for the trajectories dataset.
@@ -90,7 +87,13 @@ class TrajectoryGriddedCreator(GriddedCreator):
         metadata["layout"] = "trajectories"
         metadata["steps"] = self.recipe.steps.model_dump(mode="json")
 
-        metadata["dimensions"] = ["base_dates", "variables", "ensembles", "steps", "values"]
+        metadata["dimensions"] = [
+            "base_dates",
+            "variables",
+            "ensembles",
+            "steps",
+            "values",
+        ]
 
         # Base dates are trajectory-specific metadata.
         base_dates = self._metadata_dates()
@@ -159,11 +162,16 @@ class TrajectoryGriddedCreator(GriddedCreator):
             dimensions=("time", "variable", "ensemble", "step", "cell"),
             fill_value=np.nan,
             compressors=blosc_compressor(
-                cname="lz4", clevel=5, shuffle=1, zarr_format=get_zarr_format(dataset.store)
+                cname="lz4",
+                clevel=5,
+                shuffle=1,
+                zarr_format=get_zarr_format(dataset.store),
             ),  # explicit: see SimpleGriddedCreator
         )
 
-        dataset.add_array(name="base_dates", data=np.array(base_dates, "<M8[s]"), dimensions=("time",))
+        dataset.add_array(
+            name="base_dates", data=np.array(base_dates, "<M8[s]"), dimensions=("time",)
+        )
         dataset.add_array(name="steps", data=np.array(steps), dimensions=("step",))
         dataset.add_array(name="latitudes", data=grid_points[0], dimensions=("cell",))
         dataset.add_array(name="longitudes", data=grid_points[1], dimensions=("cell",))
@@ -231,7 +239,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         assert np.array_equal(
             np.array(base_dates_from_provider, dtype="datetime64[s]"), all_basetimes
         ), "provider.factorise() base_dates do not match dataset.base_dates"
-        assert np.array_equal(steps_from_provider, all_steps), "provider.factorise() steps do not match dataset.steps"
+        assert np.array_equal(steps_from_provider, all_steps), (
+            "provider.factorise() steps do not match dataset.steps"
+        )
 
         # Coverage guard (mirrors the gridded creator's ``check_shape``): the
         # cube's leading axis is ``traj_point`` -- one entry per unique
@@ -260,7 +270,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # numbering schemes vary (0-based with control, 1-based perturbed
         # members, ...), so the number cannot be used as an index directly.
         numbers = cube.user_coords.get("number")
-        number_to_index = None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
+        number_to_index = (
+            None if numbers is None else {int(n): i for i, n in enumerate(numbers)}
+        )
 
         LOG.info(
             "Loading trajectory cube: cube shape=%s, variables=%d, steps=%d",
@@ -272,7 +284,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         def basetime_index_of(basetime: datetime.datetime) -> int:
             indices = np.where(all_basetimes == np.datetime64(basetime, "s"))[0]
             if len(indices) == 0:
-                raise ValueError(f"Trajectories: basetime {basetime} not in dataset.base_dates")
+                raise ValueError(
+                    f"Trajectories: basetime {basetime} not in dataset.base_dates"
+                )
             return int(indices[0])
 
         def step_index_of(step_td: datetime.timedelta) -> int:
@@ -287,9 +301,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # cube axis guarantees each region is visited exactly once and
         # contiguously.
         data_array = dataset.data
-        assert (
-            data_array.chunks[0] == 1 and data_array.chunks[3] == 1
-        ), f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
+        assert data_array.chunks[0] == 1 and data_array.chunks[3] == 1, (
+            f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
+        )
         n_variables = len(variables)
         n_ensembles = data_array.shape[2]
         n_cells = data_array.shape[4]
@@ -341,7 +355,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
             var_idx = var_to_idx.get(var_name)
             if var_idx is None:
-                raise ValueError(f"Trajectories: field variable {var_name!r} not in dataset variables")
+                raise ValueError(
+                    f"Trajectories: field variable {var_name!r} not in dataset variables"
+                )
 
             key = (date_idx, step_idx)
             if key != current_key:
@@ -355,7 +371,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
                     "overwrite an already-flushed region."
                 )
                 current_key = key
-                step_block = np.full((n_variables, n_ensembles, n_cells), np.nan, dtype=data_array.dtype)
+                step_block = np.full(
+                    (n_variables, n_ensembles, n_cells), np.nan, dtype=data_array.dtype
+                )
 
             step_block[var_idx, ens_idx, :] = data
 
@@ -402,10 +420,14 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
         step_diffs = np.diff(steps)
         if not np.all(step_diffs == step_diffs[0]):
-            LOG.warning("Trajectory steps are not uniformly spaced; skipping tendency statistics.")
+            LOG.warning(
+                "Trajectory steps are not uniformly spaced; skipping tendency statistics."
+            )
             return {}
 
-        step_spacing_seconds = int(step_diffs[0].astype("timedelta64[s]").astype("int64"))
+        step_spacing_seconds = int(
+            step_diffs[0].astype("timedelta64[s]").astype("int64")
+        )
         step_spacing_td = datetime.timedelta(seconds=step_spacing_seconds)
 
         tendencies: dict[str, int] = {}
@@ -422,13 +444,17 @@ class TrajectoryGriddedCreator(GriddedCreator):
 
         return tendencies
 
-    def _compute_partial_statistics(self, dataset: Dataset, start, end) -> TrajectoryStatisticsCollector:
+    def _compute_partial_statistics(
+        self, dataset: Dataset, start, end
+    ) -> TrajectoryStatisticsCollector:
         base_dates = dataset.base_dates
         steps = dataset.steps
 
         collector = TrajectoryStatisticsCollector(
             variables_names=self.variables_names,
-            filter=self.recipe.statistics.trajectory_statistics_filter(base_dates, steps),
+            filter=self.recipe.statistics.trajectory_statistics_filter(
+                base_dates, steps
+            ),
             tendencies=self._tendencies_to_compute(dataset),
         )
 

@@ -16,21 +16,22 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
 
 LOG = logging.getLogger(__name__)
 
 
-def make_rescale(variable: str, rescale: tuple[float, float] | list[str] | dict[str, float]) -> tuple[float, float]:
+def make_rescale(
+    variable: str, rescale: tuple[float, float] | list[str] | dict[str, float]
+) -> tuple[float, float]:
     """Create rescale parameters (scale and offset) based on the input rescale specification.
 
     Parameters
@@ -46,7 +47,6 @@ def make_rescale(variable: str, rescale: tuple[float, float] | list[str] | dict[
         The scale and offset values.
     """
     if isinstance(rescale, (tuple, list)):
-
         assert len(rescale) == 2, rescale
 
         if isinstance(rescale[0], (int, float)):
@@ -79,7 +79,9 @@ class Rescale(Forwards):
     """A class to apply rescaling to dataset variables."""
 
     def __init__(
-        self, dataset: Dataset, rescale: dict[str, tuple[float, float] | list[str] | dict[str, float]]
+        self,
+        dataset: Dataset,
+        rescale: dict[str, tuple[float, float] | list[str] | dict[str, float]],
     ) -> None:
         """Initialize the Rescale object.
 
@@ -217,7 +219,9 @@ class Rescale(Forwards):
 
         return result
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Get the tendencies of the statistics of the rescaled data.
 
         Parameters

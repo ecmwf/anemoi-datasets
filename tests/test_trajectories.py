@@ -123,7 +123,6 @@ def open_trajectories_zarr(group: zarr.Group):
 
 
 class TestTrajectoriesOutputChunking:
-
     def _make_output(self, chunking=None):
         from anemoi.datasets.create.recipe.output import TrajectoriesOutput
 
@@ -146,7 +145,9 @@ class TestTrajectoriesOutputChunking:
         assert chunks == (1, 1, 4, 1, 100)
 
     def test_custom_chunking(self):
-        output = self._make_output(chunking={"base_dates": 2, "steps": 3, "ensembles": 1})
+        output = self._make_output(
+            chunking={"base_dates": 2, "steps": 3, "ensembles": 1}
+        )
         coords = {
             "base_dates": list(range(8)),
             "steps": list(range(6)),
@@ -158,8 +159,16 @@ class TestTrajectoriesOutputChunking:
         assert chunks == (2, 3, 4, 1, 50)
 
     def test_unknown_key_raises(self):
-        output = self._make_output(chunking={"base_dates": 1, "bad_key": 1, "ensembles": 1})
-        coords = {"base_dates": [0], "steps": [0], "variables": [0], "ensembles": [0], "cells": [0]}
+        output = self._make_output(
+            chunking={"base_dates": 1, "bad_key": 1, "ensembles": 1}
+        )
+        coords = {
+            "base_dates": [0],
+            "steps": [0],
+            "variables": [0],
+            "ensembles": [0],
+            "cells": [0],
+        }
         with pytest.raises(ValueError, match="bad_key"):
             output.get_chunking(coords)
 
@@ -170,7 +179,6 @@ class TestTrajectoriesOutputChunking:
 
 
 class TestRecipeStepsValidator:
-
     def _gridded_recipe(self):
         return {
             "dates": {"start": "2021-01-01", "end": "2021-01-02", "frequency": "6h"},
@@ -179,7 +187,11 @@ class TestRecipeStepsValidator:
 
     def _trajectories_recipe(self):
         return {
-            "base_dates": {"start": "2021-01-01", "end": "2021-01-02", "frequency": "6h"},
+            "base_dates": {
+                "start": "2021-01-01",
+                "end": "2021-01-02",
+                "frequency": "6h",
+            },
             "input": {"mars": {"param": ["t"]}},
             "output": {"layout": "trajectories"},
             "steps": {"start": "6h", "end": "24h", "frequency": "6h"},
@@ -255,7 +267,6 @@ class TestRecipeStepsValidator:
 
 
 class TestSteps:
-
     def _make_steps(self, start="6h", end="24h", frequency="6h"):
         from anemoi.datasets.create.trajectories.context import Steps
 
@@ -287,7 +298,6 @@ class TestSteps:
 
 
 class TestTrajectoriesZarr:
-
     def setup_method(self):
         self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10)
         self.ds = open_trajectories_zarr(self.group)
@@ -371,7 +381,6 @@ class TestTrajectoriesZarr:
 
 
 class TestStepSubset:
-
     def setup_method(self):
         self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10)
         self.ds = open_trajectories_zarr(self.group)
@@ -441,7 +450,6 @@ class TestStepSubset:
 
 
 class TestSingleStepView:
-
     def setup_method(self):
         self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10)
         self.ds = open_trajectories_zarr(self.group)
@@ -479,7 +487,6 @@ class TestSingleStepView:
 
 
 class TestStepToIndex:
-
     def setup_method(self):
         self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10)
         self.ds = open_trajectories_zarr(self.group)
@@ -509,7 +516,6 @@ class TestStepToIndex:
 
 
 class TestOpenDatasetStepSelection:
-
     def setup_method(self):
         self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10)
 
@@ -518,7 +524,10 @@ class TestOpenDatasetStepSelection:
 
         # Patch zarr.open so open_dataset finds our in-memory group
         with patch("zarr.open", return_value=self.group):
-            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, **kwargs: name):
+            with patch(
+                "anemoi.datasets.usage.store.dataset_lookup",
+                lambda name, **kwargs: name,
+            ):
                 return open_dataset("test", **kwargs)
 
     def test_single_step_view_shape(self):
@@ -542,7 +551,6 @@ class TestOpenDatasetStepSelection:
 
 
 class TestExpandToBy:
-
     def _expand(self, x):
         from anemoi.datasets.create.sources.mars.retrieval import expand_to_by
 
@@ -583,7 +591,9 @@ class TestFromTrajectoriesSource:
         """Return an instance with __init__ bypassed — safe for testing pure helpers."""
         from unittest.mock import MagicMock
 
-        from anemoi.datasets.create.sources.from_trajectories import FromTrajectoriesSource
+        from anemoi.datasets.create.sources.from_trajectories import (
+            FromTrajectoriesSource,
+        )
 
         src = object.__new__(FromTrajectoriesSource)
         src.steps_hours = []
@@ -686,14 +696,19 @@ class TestTrajectoriesSelect:
     def setup_method(self):
         # analytic=True: each value encodes its own position, so a wrong-axis
         # bug shows up as a precise value mismatch, not a chance collision.
-        self.group = make_trajectories_zarr(n_dates=4, n_steps=5, n_vars=3, n_cells=10, analytic=True)
+        self.group = make_trajectories_zarr(
+            n_dates=4, n_steps=5, n_vars=3, n_cells=10, analytic=True
+        )
         self.data = self.group["data"][:]
 
     def _open(self, **kwargs):
         from anemoi.datasets import open_dataset
 
         with patch("zarr.open", return_value=self.group):
-            with patch("anemoi.datasets.usage.store.dataset_lookup", lambda name, **kwargs: name):
+            with patch(
+                "anemoi.datasets.usage.store.dataset_lookup",
+                lambda name, **kwargs: name,
+            ):
                 return open_dataset("test", **kwargs)
 
     # -- metadata ----------------------------------------------------------
@@ -802,7 +817,9 @@ class TestTrajectoriesSelect:
         from anemoi.datasets.misc.testing import default_test_indexing
 
         # default_test_indexing needs len(ds) >= 10 (slice step = len // 10)
-        self.group = make_trajectories_zarr(n_dates=20, n_steps=5, n_vars=3, n_cells=10, analytic=True)
+        self.group = make_trajectories_zarr(
+            n_dates=20, n_steps=5, n_vars=3, n_cells=10, analytic=True
+        )
         default_test_indexing(self._open(select=["a", "c"]))
         default_test_indexing(self._open(drop="b"))
         default_test_indexing(self._open(reorder=["c", "a", "b"]))
@@ -811,7 +828,10 @@ class TestTrajectoriesSelect:
 
     def test_statistics_subset(self):
         rng = np.random.default_rng(1)
-        stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
+        stats = {
+            k: rng.random(3).astype("float32")
+            for k in ("mean", "stdev", "minimum", "maximum")
+        }
         for k, v in stats.items():
             self.group.create_array(k, data=v, compressors=None)
 
@@ -821,9 +841,14 @@ class TestTrajectoriesSelect:
 
     def test_statistics_tendencies_default_delta(self):
         rng = np.random.default_rng(2)
-        stats = {k: rng.random(3).astype("float32") for k in ("mean", "stdev", "minimum", "maximum")}
+        stats = {
+            k: rng.random(3).astype("float32")
+            for k in ("mean", "stdev", "minimum", "maximum")
+        }
         for k, v in stats.items():
-            self.group.create_array(f"statistics_tendencies_6h_{k}", data=v, compressors=None)
+            self.group.create_array(
+                f"statistics_tendencies_6h_{k}", data=v, compressors=None
+            )
 
         # step_frequency is 6h, so delta=None must resolve to 6h, not crash on .frequency
         ds = self._open(select=["a", "c"])

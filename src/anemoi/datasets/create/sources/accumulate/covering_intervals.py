@@ -15,12 +15,9 @@
 import itertools
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
-from heapq import heappop
-from heapq import heappush
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from heapq import heappop, heappush
 
 from anemoi.datasets.create.intervals import SignedInterval
 
@@ -73,7 +70,14 @@ def covering_intervals(
     counter = itertools.count()
     heappush(
         pq,
-        HeapState(total_cost=0.0, covered=0.0, counter=next(counter), current_time=start, current_base=None, path=[]),
+        HeapState(
+            total_cost=0.0,
+            covered=0.0,
+            counter=next(counter),
+            current_time=start,
+            current_base=None,
+            path=[],
+        ),
     )
 
     visited: dict[tuple[datetime, datetime | None, float], float] = {}
@@ -90,7 +94,10 @@ def covering_intervals(
         if state.covered == target_length:
             return state.path
 
-        if (len(visited) > 1000) and (state.current_time > end + max_delta or state.current_time < start - max_delta):
+        if (len(visited) > 1000) and (
+            state.current_time > end + max_delta
+            or state.current_time < start - max_delta
+        ):
             msg = f"Exceeded search limits: visited={len(visited)}, current_time={state.current_time}, target=({start} → {end}), max_delta={max_delta}"
             if error_on_fail:
                 raise ValueError(msg)

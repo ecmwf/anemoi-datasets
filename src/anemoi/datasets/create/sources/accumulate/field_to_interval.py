@@ -11,8 +11,7 @@
 import datetime
 import logging
 
-from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.intervals import step_to_timedelta
+from anemoi.datasets.create.intervals import SignedInterval, step_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
@@ -100,9 +99,18 @@ class FieldToInterval:
             startStep,
             endStep,
         )
-        assert start_step < end_step, ("After patching, startStep must be < endStep", field, startStep, endStep)
+        assert start_step < end_step, (
+            "After patching, startStep must be < endStep",
+            field,
+            startStep,
+            endStep,
+        )
 
-        interval = SignedInterval(start=base_datetime + start_step, end=base_datetime + end_step, base=base_datetime)
+        interval = SignedInterval(
+            start=base_datetime + start_step,
+            end=base_datetime + end_step,
+            base=base_datetime,
+        )
 
         date_str = str(field.metadata("validityDate")).zfill(8)
         time_str = str(field.metadata("validityTime")).zfill(4)

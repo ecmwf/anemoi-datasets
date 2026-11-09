@@ -9,8 +9,7 @@
 
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -39,7 +38,6 @@ class Grid(ABC):
     @abstractmethod
     def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points."""
-        pass
 
 
 class LatLonGrid(Grid):
@@ -99,7 +97,9 @@ class MeshedGrid(LatLonGrid):
             )
 
         else:
-            raise NotImplementedError(f"MeshedGrid.grid_points: unrecognized variable_dims {self.variable_dims}")
+            raise NotImplementedError(
+                f"MeshedGrid.grid_points: unrecognized variable_dims {self.variable_dims}"
+            )
 
         return lat.flatten(), lon.flatten()
 
@@ -124,7 +124,10 @@ class UnstructuredGrid(LatLonGrid):
         self.variable_dims = variable_dims
         self.grid_dims = lat.variable.dims
         assert lon.variable.dims == self.grid_dims, (lon.variable.dims, self.grid_dims)
-        assert set(self.variable_dims) == set(self.grid_dims), (self.variable_dims, self.grid_dims)
+        assert set(self.variable_dims) == set(self.grid_dims), (
+            self.variable_dims,
+            self.grid_dims,
+        )
 
     @cached_property
     def grid_points(self) -> tuple[Any, Any]:
@@ -132,13 +135,21 @@ class UnstructuredGrid(LatLonGrid):
         assert 1 <= len(self.variable_dims) <= 2
 
         if len(self.variable_dims) == 1:
-            return self.lat.variable.values.flatten(), self.lon.variable.values.flatten()
+            return (
+                self.lat.variable.values.flatten(),
+                self.lon.variable.values.flatten(),
+            )
 
         if len(self.variable_dims) == 2 and self.variable_dims == self.grid_dims:
-            return self.lat.variable.values.flatten(), self.lon.variable.values.flatten()
+            return (
+                self.lat.variable.values.flatten(),
+                self.lon.variable.values.flatten(),
+            )
 
         LOG.warning(
-            "UnstructuredGrid: variable indexing %s does not match grid indexing %s", self.variable_dims, self.grid_dims
+            "UnstructuredGrid: variable indexing %s does not match grid indexing %s",
+            self.variable_dims,
+            self.grid_dims,
         )
 
         lat = self.lat.variable.values.transpose().flatten()
@@ -173,8 +184,7 @@ class ProjectionGrid(XYGrid):
         Any
             The transformer.
         """
-        from pyproj import CRS
-        from pyproj import Transformer
+        from pyproj import CRS, Transformer
 
         if isinstance(self.projection, dict):
             data_crs = CRS.from_cf(self.projection)
@@ -193,7 +203,9 @@ class MeshProjectionGrid(ProjectionGrid):
     def grid_points(self) -> tuple[Any, Any]:
         """Get the grid points for the mesh projection grid."""
         transformer = self.transformer()
-        xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
+        xv, yv = np.meshgrid(
+            self.x.variable.values, self.y.variable.values
+        )  # , indexing="ij")
         lon, lat = transformer.transform(xv, yv)
         return lat.flatten(), lon.flatten()
 
@@ -208,7 +220,9 @@ class UnstructuredProjectionGrid(ProjectionGrid):
             # WGS84, no transformation needed
             return self.y.variable.values.flatten(), self.x.variable.values.flatten()
         transformer = self.transformer()
-        xv, yv = np.meshgrid(self.x.variable.values, self.y.variable.values)  # , indexing="ij")
+        xv, yv = np.meshgrid(
+            self.x.variable.values, self.y.variable.values
+        )  # , indexing="ij")
         lon, lat = transformer.transform(xv, yv)
 
         return lat.flatten(), lon.flatten()

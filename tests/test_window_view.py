@@ -17,8 +17,7 @@ import pytest
 import zarr
 
 from anemoi.datasets.date_indexing import create_date_indexing
-from anemoi.datasets.epochs import date_to_epoch
-from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import date_to_epoch, epoch_to_date
 from anemoi.datasets.windows.view import WindowView
 
 VARIABLES = 3
@@ -28,7 +27,9 @@ START_DATE = datetime.datetime(2020, 1, 1)
 # GAP from 2020-06-09 00:00:00 to 2020-06-14 00:00:00
 
 
-def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 165)) -> np.ndarray:
+def _generate_event_data(
+    years=1, base_rate=10, variability=0.5, gap_days=(160, 165)
+) -> np.ndarray:
     """Generates a deterministic time-series array representing events per second.
 
     This function creates a synthetic dataset for regression testing. It uses
@@ -69,7 +70,9 @@ def _generate_event_data(years=1, base_rate=10, variability=0.5, gap_days=(160, 
     # 2. Base Signal with Deterministic Variability
     # Using sin(t) ensures the 'noise' is identical across test runs
     # without needing to manage a random seed.
-    noise = variability * np.sin(t * 2 * np.pi / seconds_in_day / 0.25)  # 4 cycles per day
+    noise = variability * np.sin(
+        t * 2 * np.pi / seconds_in_day / 0.25
+    )  # 4 cycles per day
     events = base_rate * (1 + noise)
 
     # 3. Apply the Data Gap
@@ -154,20 +157,24 @@ def _create_tabular_store(indexing) -> zarr.Group:
 
     store = zarr.storage.MemoryStore()
     root = zarr.group(store=store, overwrite=True)
-    data = root.create_array("data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32)
+    data = root.create_array(
+        "data", shape=(number_of_samples, COLS_WITH_DATE_TIME_LAT_LON), dtype=np.int32
+    )
 
     start_stamp = date_to_epoch(START_DATE)
     if False:
-        data[:, 0] = np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[
-            :number_of_samples
-        ] + date_to_epoch(
-            START_DATE
-        )  # seconds since midnight
+        data[:, 0] = np.repeat(
+            np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1
+        )[:number_of_samples] + date_to_epoch(START_DATE)  # seconds since midnight
         data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
             :number_of_samples
         ]  # time offsets in seconds within the day
-        data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[:number_of_samples]  # latitudes
-        data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[:number_of_samples]  # longitudes
+        data[:, 2] = np.linspace(-90, 90, 1).repeat(number_of_samples)[
+            :number_of_samples
+        ]  # latitudes
+        data[:, 3] = np.linspace(0, 359, 1).repeat(number_of_samples)[
+            :number_of_samples
+        ]  # longitudes
 
     # Fill first variable with dates using numpy for speed
     # For each event count e at index j, fill e rows in column 4 with start_stamp + j
@@ -218,8 +225,9 @@ def _test_window_view(view, expect):
     print("DEBUG len(view)", len(view))
 
     for i, sample in enumerate(view):
-
-        assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
+        assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, (
+            f"Sample {i} has unexpected shape {sample.shape}"
+        )
         assert sample.shape[1] == VARIABLES
 
         # print(f"+++++++++++++ Sample {i}: slice {sample._anemoi_annotation.slice_obj}, shape {sample.shape}")
@@ -246,14 +254,16 @@ def _test_window_view(view, expect):
         offset += sample.shape[0]
         count += sample.shape[0]
 
-    assert (
-        offset == whole_range.stop
-    ), f"Total rows {offset:,} does not match expected {whole_range.stop:,} ({whole_range.stop - offset:,} missing)"
+    assert offset == whole_range.stop, (
+        f"Total rows {offset:,} does not match expected {whole_range.stop:,} ({whole_range.stop - offset:,} missing)"
+    )
 
     with pytest.raises(IndexError):
         view[len(view)]
 
-    assert count == expect, f"Expected {expect:,} total rows, got {count:,} difference of {expect - count:,}"
+    assert count == expect, (
+        f"Expected {expect:,} total rows, got {count:,} difference of {expect - count:,}"
+    )
 
     return view
 
@@ -262,15 +272,19 @@ def _expect(events, start_days, end_days):
     print()
     print(
         f"==> Calculating expected count for {start_days=}, {end_days=}"
-        f" ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events))+ datetime.timedelta(days=end_days)).isoformat()})"
+        f" ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events)) + datetime.timedelta(days=end_days)).isoformat()})"
     )
 
-    start = max(0, start_days * 24 * 60 * 60 - (3 * 60 * 60 - 1))  # account for window exclude_before of 3h
+    start = max(
+        0, start_days * 24 * 60 * 60 - (3 * 60 * 60 - 1)
+    )  # account for window exclude_before of 3h
     end = min(len(events) + end_days * 24 * 60 * 60 + 1, len(events))
 
-    print(f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}")
     print(
-        f"    from {START_DATE + datetime.timedelta(seconds=start)} to {START_DATE + datetime.timedelta(seconds=end-1)}"
+        f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}"
+    )
+    print(
+        f"    from {START_DATE + datetime.timedelta(seconds=start)} to {START_DATE + datetime.timedelta(seconds=end - 1)}"
     )
 
     return np.sum(events[start:end])
@@ -322,7 +336,11 @@ WINDOW_VIEW_TEST_CASES = {
 
 
 @pytest.mark.parametrize("store_and_events", ["bisect", "btree"], indirect=True)
-@pytest.mark.parametrize("start_delta,end_delta", WINDOW_VIEW_TEST_CASES.values(), ids=WINDOW_VIEW_TEST_CASES.keys())
+@pytest.mark.parametrize(
+    "start_delta,end_delta",
+    WINDOW_VIEW_TEST_CASES.values(),
+    ids=WINDOW_VIEW_TEST_CASES.keys(),
+)
 def test_window_view(store_and_events, start_delta, end_delta):
     store, events = store_and_events
     expect = _expect(events, start_delta, end_delta)
@@ -333,7 +351,6 @@ def test_window_view(store_and_events, start_delta, end_delta):
 
 
 if __name__ == "__main__":
-
     test_window_view(_create_tabular_store("btree"), 0, 0)
 
     # _create_tabular_store("bisect")

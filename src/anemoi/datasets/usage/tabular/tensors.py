@@ -28,14 +28,15 @@ def to_torch(data: Any) -> Any:
     from anemoi.datasets.annotated._torch import AnnotatedTorchTensor
     from anemoi.datasets.annotated.metadata import WindowMetaDataBase
 
-    if hasattr(data, "_anemoi_annotation") and isinstance(data._anemoi_annotation, WindowMetaDataBase):
+    if hasattr(data, "_anemoi_annotation") and isinstance(
+        data._anemoi_annotation, WindowMetaDataBase
+    ):
         return AnnotatedTorchTensor(data, data._anemoi_annotation)
 
     return torch.tensor(data)
 
 
 class Tensors(Forwards):
-
     def __init__(self, forward: Dataset, tensors: str = "numpy") -> None:
         super().__init__(forward)
         self.tensors = tensors
@@ -45,7 +46,9 @@ class Tensors(Forwards):
         }
         self.to_tensor = TENSORS.get(tensors)
         if self.to_tensor is None:
-            raise ValueError(f"Unsupported tensor type: {tensors}, supported types are: {list(TENSORS.keys())}")
+            raise ValueError(
+                f"Unsupported tensor type: {tensors}, supported types are: {list(TENSORS.keys())}"
+            )
 
     def __getitem__(self, n):
         return self.to_tensor(super().__getitem__(n))

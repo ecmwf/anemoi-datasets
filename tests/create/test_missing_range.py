@@ -13,8 +13,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 import zarr
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestData, skip_if_offline
 
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
@@ -28,7 +27,9 @@ def load_source(get_test_data: GetTestData) -> LoadSource:
 
 
 @skip_if_offline
-def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSource) -> None:
+def test_missing_range_dates_are_supported(
+    tmp_path: Path, load_source: LoadSource
+) -> None:
     recipe = HERE / "missing-range.yaml"
     output = tmp_path / "missing-range.zarr"
 
@@ -55,7 +56,9 @@ def test_missing_range_dates_are_supported(tmp_path: Path, load_source: LoadSour
 
 
 @skip_if_offline
-def test_missing_mixture_dates_are_supported(tmp_path: Path, load_source: LoadSource) -> None:
+def test_missing_mixture_dates_are_supported(
+    tmp_path: Path, load_source: LoadSource
+) -> None:
     recipe = HERE / "missing-mixture.yaml"
     output = tmp_path / "missing-mixture.zarr"
 

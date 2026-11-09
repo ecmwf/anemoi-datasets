@@ -17,8 +17,10 @@ from numpy.typing import NDArray
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .writers import write_accumulated_field_with_valid_time
-from .writers import write_accumulated_forecast_field
+from .writers import (
+    write_accumulated_field_with_valid_time,
+    write_accumulated_forecast_field,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -73,9 +75,17 @@ class Accumulator:
 
         def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:
             for i in lst:
-                if i.min == interval.min and i.max == interval.max and i.base == interval.base:
+                if (
+                    i.min == interval.min
+                    and i.max == interval.max
+                    and i.base == interval.base
+                ):
                     return i
-                if i.start == interval.start and i.end == interval.end and i.base is None:
+                if (
+                    i.start == interval.start
+                    and i.end == interval.end
+                    and i.base is None
+                ):
                     return i
             return None
 
@@ -162,7 +172,9 @@ class Accumulator:
 
 
 class Logs(list):
-    def __init__(self, *args, accumulators, source, source_object, field_to_interval, **kwargs):
+    def __init__(
+        self, *args, accumulators, source, source_object, field_to_interval, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.accumulators = accumulators
         self.source = source
@@ -187,7 +199,9 @@ class Logs(list):
                 res.append(f"  {a.__repr__(verbose=True)}")
         res.append(f"💬 Received fields ({len(self)}):")
         for log in self:
-            res.append(f"  {KEY_COLOR}{log[0]}{RESET_COLOR} {INTERVAL_COLOR}{log[2]}{RESET_COLOR}")
+            res.append(
+                f"  {KEY_COLOR}{log[0]}{RESET_COLOR} {INTERVAL_COLOR}{log[2]}{RESET_COLOR}"
+            )
             res.append(f"       {KEY_COLOR}{log[1]}{RESET_COLOR}")
             for d, acc_repr in zip(log[3], log[4]):
                 res.append(f"   used for date {d}: {acc_repr}")
@@ -205,7 +219,9 @@ class Logs(list):
         res = ["Even more details below:"]
 
         if "mars" in self.source:
-            res.append("💬 Example of code fetching some available fields and inspect them:")
+            res.append(
+                "💬 Example of code fetching some available fields and inspect them:"
+            )
             res.append("# --------------------------------------------------")
             code = []
             code.append("from earthkit.data import from_source")

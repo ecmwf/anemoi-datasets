@@ -17,12 +17,9 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import DEFAULT_FORMAT, zarr_format_from_name, zarr_open
 
 from .locking import Locking
 
@@ -58,8 +55,7 @@ class Dataset:
         format: str = DEFAULT_FORMAT,
     ) -> None:
 
-        if path.endswith("/"):
-            path = path[:-1]
+        path = path.removesuffix("/")
 
         self.path = path
 
@@ -79,10 +75,14 @@ class Dataset:
                     LOG.warning(f"Overwriting existing dataset at '{path}'.")
                     shutil.rmtree(path)
                 else:
-                    raise FileExistsError(f"Dataset path '{path}' already exists. Use --overwrite to overwrite.")
+                    raise FileExistsError(
+                        f"Dataset path '{path}' already exists. Use --overwrite to overwrite."
+                    )
 
         if create:
-            self.store = zarr_open(self.path, "w", zarr_format=zarr_format_from_name(format))
+            self.store = zarr_open(
+                self.path, "w", zarr_format=zarr_format_from_name(format)
+            )
         elif update:
             self.store = zarr_open(self.path, "r+")
         else:
@@ -115,10 +115,12 @@ class Dataset:
         def _(d):
             if "data" in d:
                 d = d.copy()
-                d["data"] = f'[... {d["data"].shape} {d["data"].dtype} array ...]'
+                d["data"] = f"[... {d['data'].shape} {d['data'].dtype} array ...]"
             return d
 
-        LOG.info(f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})")
+        LOG.info(
+            f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})"
+        )
 
         a = zarr_root.create_array(name, **kwargs)
         a.attrs["_ARRAY_DIMENSIONS"] = dimensions
@@ -239,7 +241,11 @@ class Dataset:
         return frequency_to_timedelta(frequency) if frequency is not None else None
 
     def touch(self) -> None:
-        self.update_metadata(latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(tzinfo=None))
+        self.update_metadata(
+            latest_write_timestamp=datetime.datetime.now(datetime.UTC).replace(
+                tzinfo=None
+            )
+        )
 
     @property
     def variables_metadata(self) -> dict[str, Any]:

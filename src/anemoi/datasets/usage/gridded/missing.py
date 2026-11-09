@@ -18,14 +18,10 @@ from earthkit.data.utils.dates import to_datetime
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import expand_list_indexing, update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -148,7 +144,9 @@ class MissingDates(Forwards):
         n : int
             The index of the missing date.
         """
-        raise MissingDateError(f"Date {self._axis_dates(self.forward)[n]} is missing (index={n})")
+        raise MissingDateError(
+            f"Date {self._axis_dates(self.forward)[n]} is missing (index={n})"
+        )
 
     @property
     def reason(self) -> dict[str, Any]:
@@ -205,7 +203,9 @@ class SkipMissingDates(Forwards):
         if isinstance(expected_access, int):
             expected_access = slice(0, expected_access)
 
-        assert isinstance(expected_access, slice), f"Expected access must be a slice, got {expected_access}"
+        assert isinstance(expected_access, slice), (
+            f"Expected access must be a slice, got {expected_access}"
+        )
 
         expected_access = slice(*expected_access.indices(dataset._len))
         missing = dataset.missing.copy()
@@ -214,7 +214,11 @@ class SkipMissingDates(Forwards):
         indices = []
 
         for i in range(dataset._len):
-            s = slice(expected_access.start + i, expected_access.stop + i, expected_access.step)
+            s = slice(
+                expected_access.start + i,
+                expected_access.stop + i,
+                expected_access.step,
+            )
             p = set(range(*s.indices(dataset._len)))
             if p.intersection(missing):
                 continue
@@ -366,7 +370,9 @@ class MissingDataset(Forwards):
         The end date.
     """
 
-    def __init__(self, dataset: Dataset, start: np.datetime64, end: np.datetime64) -> None:
+    def __init__(
+        self, dataset: Dataset, start: np.datetime64, end: np.datetime64
+    ) -> None:
         """Initializes the MissingDataset class.
 
         Parameters

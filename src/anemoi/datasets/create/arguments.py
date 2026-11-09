@@ -40,8 +40,8 @@ request before passing it to an inner source:
 from __future__ import annotations
 
 import datetime
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
 
 from anemoi.datasets.create.intervals import timedelta_to_step
 
@@ -73,7 +73,7 @@ class ValidDates(Argument):
 
     # -- Conversion helpers --------------------------------------------------
 
-    def as_intervals(self, period: datetime.timedelta) -> "Intervals":
+    def as_intervals(self, period: datetime.timedelta) -> Intervals:
         """Promote to Intervals with a trivial single-interval coverage.
 
         Each date T becomes one SignedInterval covering ``[T − period, T]``.
@@ -93,9 +93,13 @@ class ValidDates(Argument):
         """
         from anemoi.datasets.create.intervals import SignedInterval
 
-        return Intervals(self.dates, [SignedInterval(d - period, d) for d in self.dates])
+        return Intervals(
+            self.dates, [SignedInterval(d - period, d) for d in self.dates]
+        )
 
-    def with_basetime(self, basetime_of: Callable[[datetime.datetime], datetime.datetime]) -> "ForecastDates":
+    def with_basetime(
+        self, basetime_of: Callable[[datetime.datetime], datetime.datetime]
+    ) -> ForecastDates:
         """Attach a model-run time to each instant.
 
         Parameters
@@ -141,7 +145,9 @@ class ForecastDates(Argument):
         model-run time and ``step = valid_time − basetime``.
     """
 
-    def __init__(self, items: list[tuple[datetime.datetime, datetime.datetime]]) -> None:
+    def __init__(
+        self, items: list[tuple[datetime.datetime, datetime.datetime]]
+    ) -> None:
         self.items = list(items)
 
     @property
@@ -149,7 +155,7 @@ class ForecastDates(Argument):
         """The validity times as a ValidDates object."""
         return ValidDates([vd for vd, _ in self.items])
 
-    def as_forecast_intervals(self, period: datetime.timedelta) -> "ForecastIntervals":
+    def as_forecast_intervals(self, period: datetime.timedelta) -> ForecastIntervals:
         """Promote each (valid_time, basetime) to (valid_time, basetime, period).
 
         Parameters
@@ -214,7 +220,9 @@ class Intervals(ValidDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
+    def adjust_request(
+        self, interval: Any, request: dict
+    ) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet
@@ -247,7 +255,9 @@ class Intervals(ValidDates):
         r["step"] = step
         return interval.max, r, step
 
-    def with_basetime(self, basetime_of: Callable[[datetime.datetime], datetime.datetime]) -> "ForecastIntervals":
+    def with_basetime(
+        self, basetime_of: Callable[[datetime.datetime], datetime.datetime]
+    ) -> ForecastIntervals:
         """Attach a model-run time to each window.
 
         Parameters
@@ -321,7 +331,9 @@ class ForecastIntervals(ForecastDates):
         """The flat list of ``SignedInterval`` objects."""
         return self._intervals
 
-    def adjust_request(self, interval: Any, request: dict) -> tuple[Any, dict, int | str]:
+    def adjust_request(
+        self, interval: Any, request: dict
+    ) -> tuple[Any, dict, int | str]:
         """Adjust a request dict to reflect a specific SignedInterval.
 
         Rewrites the request as a full ``date``/``time``/``step`` triplet

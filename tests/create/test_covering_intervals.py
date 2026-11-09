@@ -12,8 +12,12 @@ from datetime import datetime
 import pytest
 
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.accumulate.covering_intervals import covering_intervals
-from anemoi.datasets.create.sources.accumulate.interval_generators import interval_generator_factory
+from anemoi.datasets.create.sources.accumulate.covering_intervals import (
+    covering_intervals,
+)
+from anemoi.datasets.create.sources.accumulate.interval_generators import (
+    interval_generator_factory,
+)
 
 
 def build_signed_interval(x: str) -> SignedInterval:
@@ -123,13 +127,21 @@ ERA_TEST_CASES = [
 ]
 
 ENDA_TEST_CASES = [
-    (_("20240102.0900 -> 20240102.1200"), [_("20240102.0900 -> 20240102.1200, base=20240102.0600")]),
-    (_("20240102.0600 -> 20240102.0900"), [_("20240102.0600 -> 20240102.0900, base=20240102.0600")]),
+    (
+        _("20240102.0900 -> 20240102.1200"),
+        [_("20240102.0900 -> 20240102.1200, base=20240102.0600")],
+    ),
+    (
+        _("20240102.0600 -> 20240102.0900"),
+        [_("20240102.0600 -> 20240102.0900, base=20240102.0600")],
+    ),
     (
         _("20240102.1500 -> 20240102.2100"),
         [
             _("20240102.1500 -> 20240102.1800, base=20240102.0600"),
-            _("20240102.1800 -> 20240102.2100, base=20240102.0600"),  # do not use base=20240102.1800
+            _(
+                "20240102.1800 -> 20240102.2100, base=20240102.0600"
+            ),  # do not use base=20240102.1800
         ],
     ),
     (
@@ -188,7 +200,11 @@ ENDA_TEST_CASES = [
 GRIB_INDEX_TEST_CASE = [
     (
         _("20240102.0900 -> 20240102.1200"),
-        [_("20240102.0900 -> 1000"), _("20240102.1000 -> 1100"), _("20240102.1100 -> 1200")],
+        [
+            _("20240102.0900 -> 1000"),
+            _("20240102.1000 -> 1100"),
+            _("20240102.1100 -> 1200"),
+        ],
     ),
 ]
 
@@ -196,14 +212,23 @@ GRIB_INDEX_TEST_CASE = [
 RR_OPER_TEST_CASE = [
     (
         _("20240102.0900 -> 20240102.1200"),
-        [_("20240102.0900 -> 0000, base=20240102.0000"), _("20240102.0000 -> 1200, base=20240102.0000")],
+        [
+            _("20240102.0900 -> 0000, base=20240102.0000"),
+            _("20240102.0000 -> 1200, base=20240102.0000"),
+        ],
     ),
-    (_("20240102.0000 -> 20240102.1200"), [_("20240102.0000 -> 1200, base=20240102.0000")]),
+    (
+        _("20240102.0000 -> 20240102.1200"),
+        [_("20240102.0000 -> 1200, base=20240102.0000")],
+    ),
     (_("20240102.1900 -> 20240103.0000"), None),
     (_("20240102.0000 -> 20240102.2200"), None),
     (
         _("20240102.0000 -> 20240103.1200"),
-        [_("20240102.0000 -> 20240103.0000, base=20240102.0000"), _("20240103.0000 -> 1200, base=20240103.0000")],
+        [
+            _("20240102.0000 -> 20240103.0000, base=20240102.0000"),
+            _("20240103.0000 -> 1200, base=20240103.0000"),
+        ],
     ),
     (
         _("20240102.0000 -> 20240104.1200"),
@@ -244,7 +269,9 @@ class _Tester:
         print("Total absolute length (seconds):", sum(abs(it.length) for it in actual))
         print(
             "Base switches:",
-            sum(1 for i in range(1, len(actual)) if actual[i].base != actual[i - 1].base),
+            sum(
+                1 for i in range(1, len(actual)) if actual[i].base != actual[i - 1].base
+            ),
         )
 
         if len(expected) != len(actual):
@@ -271,17 +298,31 @@ class _Tester:
                 assert exp_it == act_it, f"Expected {exp_it}, got {act_it}"
 
 
-@pytest.mark.parametrize("test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES])
+@pytest.mark.parametrize(
+    "test", ERA_TEST_CASES, ids=[str(t[0]) for t in ERA_TEST_CASES]
+)
 def test_era(test):
     tester = _Tester(
-        interval_generator_factory({"mars": {"class": "ea", "stream": "oper", "some_additional_key_to_be_ignored": 1}})
+        interval_generator_factory(
+            {
+                "mars": {
+                    "class": "ea",
+                    "stream": "oper",
+                    "some_additional_key_to_be_ignored": 1,
+                }
+            }
+        )
     )
     tester.test(test[0], test[1])
 
 
-@pytest.mark.parametrize("test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES])
+@pytest.mark.parametrize(
+    "test", ENDA_TEST_CASES, ids=[str(t[0]) for t in ENDA_TEST_CASES]
+)
 def test_enda(test):
-    tester = _Tester(interval_generator_factory({"mars": {"class": "ea", "stream": "enda"}}))
+    tester = _Tester(
+        interval_generator_factory({"mars": {"class": "ea", "stream": "enda"}})
+    )
     tester.test(test[0], test[1])
 
 
@@ -294,15 +335,23 @@ grib_index_config: dict[int, str] = [
 ]
 
 
-@pytest.mark.parametrize("test", GRIB_INDEX_TEST_CASE, ids=[str(t[0]) for t in GRIB_INDEX_TEST_CASE])
+@pytest.mark.parametrize(
+    "test", GRIB_INDEX_TEST_CASE, ids=[str(t[0]) for t in GRIB_INDEX_TEST_CASE]
+)
 def test_grib_index_no_basetime(test):
     tester = _Tester(interval_generator_factory(grib_index_config))
     tester.test(test[0], test[1])
 
 
-@pytest.mark.parametrize("test", RR_OPER_TEST_CASE, ids=[str(t[0]) for t in RR_OPER_TEST_CASE])
+@pytest.mark.parametrize(
+    "test", RR_OPER_TEST_CASE, ids=[str(t[0]) for t in RR_OPER_TEST_CASE]
+)
 def test_rr_oper(test):
-    tester = _Tester(interval_generator_factory({"mars": {"class": "rr", "stream": "oper", "origin": "se-al-ec"}}))
+    tester = _Tester(
+        interval_generator_factory(
+            {"mars": {"class": "rr", "stream": "oper", "origin": "se-al-ec"}}
+        )
+    )
     tester.test(test[0], test[1])
 
 

@@ -28,14 +28,18 @@ def write_accumulated_field_with_valid_time(
 
     seconds = endStep.total_seconds()
     if seconds % 60:
-        raise ValueError(f"Accumulation period must be a whole number of minutes, got {period}")
+        raise ValueError(
+            f"Accumulation period must be a whole number of minutes, got {period}"
+        )
 
     total_minutes = int(seconds // 60)
     if total_minutes % 60:
         # Sub-hourly steps must be counted in minutes: in hour units a 10min
         # accumulation gets a validity time of 01:00. GRIB1 has hours only.
         if template.metadata("edition") == 1:
-            raise ValueError(f"GRIB edition 1 cannot encode a sub-hourly accumulation period, got {period}")
+            raise ValueError(
+                f"GRIB edition 1 cannot encode a sub-hourly accumulation period, got {period}"
+            )
         # dataDate/dataTime rather than date/time: earthkit rescales a `time` below 100
         # as hours, turning 00:30 into hour 30. Reference time must be set before the
         # step keys, from which the end of the accumulation interval is derived.
@@ -57,7 +61,9 @@ def write_accumulated_field_with_valid_time(
 
     if template.metadata("edition") == 1:
         # this is a special case for GRIB edition 1 which only supports integer hours up to 254
-        assert hours <= 254, f"edition 1 accumulation period must be <=254 hours, got {hours}"
+        assert hours <= 254, (
+            f"edition 1 accumulation period must be <=254 hours, got {hours}"
+        )
         output.write(
             values,
             template=template,
@@ -119,7 +125,9 @@ def write_accumulated_forecast_field(
     end_step = (valid_date - basetime).total_seconds() / 3600
     start_step = (valid_date - basetime - period).total_seconds() / 3600
     if not (end_step.is_integer() and start_step.is_integer()):
-        raise ValueError(f"Trajectory accumulation requires integer-hour steps; got start={start_step}, end={end_step}")
+        raise ValueError(
+            f"Trajectory accumulation requires integer-hour steps; got start={start_step}, end={end_step}"
+        )
     end_step = int(end_step)
     start_step = int(start_step)
 

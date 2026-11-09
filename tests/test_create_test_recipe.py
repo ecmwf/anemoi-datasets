@@ -33,7 +33,9 @@ def recipe_path() -> Path:
     return HERE / "concat.yaml"
 
 
-def test_create_test_recipe_includes_last_dates(recipe_path: Path, tmp_path: Path) -> None:
+def test_create_test_recipe_includes_last_dates(
+    recipe_path: Path, tmp_path: Path
+) -> None:
     output_path = tmp_path / "concat-test.yaml"
 
     cli_main(
@@ -68,8 +70,14 @@ def test_create_test_recipe_includes_last_dates(recipe_path: Path, tmp_path: Pat
             "end": "2021-01-02 12:00:00",
         }
     ]
-    assert _as_timestamp(data["input"]["concat"][0]["dates"]["start"]) == "2020-12-30 00:00:00"
-    assert _as_timestamp(data["input"]["concat"][0]["dates"]["end"]) == "2021-01-01 12:00:00"
+    assert (
+        _as_timestamp(data["input"]["concat"][0]["dates"]["start"])
+        == "2020-12-30 00:00:00"
+    )
+    assert (
+        _as_timestamp(data["input"]["concat"][0]["dates"]["end"])
+        == "2021-01-01 12:00:00"
+    )
     assert data["input"]["concat"][0]["dates"]["frequency"] == "12h"
     assert data["input"]["concat"][0]["dates"]["missing"] == [
         {
@@ -101,18 +109,24 @@ def test_recipe_supports_missing_ranges() -> None:
     ]
 
 
-def test_create_test_recipe_rejects_last_dates_with_no_dates(recipe_path: Path, tmp_path: Path) -> None:
+def test_create_test_recipe_rejects_last_dates_with_no_dates(
+    recipe_path: Path, tmp_path: Path
+) -> None:
     parser = ArgumentParser(prog="anemoi-datasets create-test-recipe")
     command = COMMANDS["create-test-recipe"]
     command.add_arguments(parser)
 
-    args = parser.parse_args([str(recipe_path), str(tmp_path / "out.yaml"), "--no-dates", "--last-dates"])
+    args = parser.parse_args(
+        [str(recipe_path), str(tmp_path / "out.yaml"), "--no-dates", "--last-dates"]
+    )
 
     with pytest.raises(SystemExit):
         command.check(parser, args)
 
 
-def test_create_test_recipe_cli_rejects_last_dates_with_no_dates(recipe_path: Path, tmp_path: Path) -> None:
+def test_create_test_recipe_cli_rejects_last_dates_with_no_dates(
+    recipe_path: Path, tmp_path: Path
+) -> None:
     output_path = tmp_path / "out.yaml"
 
     with pytest.raises(SystemExit):

@@ -45,7 +45,9 @@ class Publish(Command):
         try:
             from anemoi.registry import publish_dataset
         except ImportError:
-            LOG.error("anemoi-registry is not installed. Please install it to use this command.")
+            LOG.error(
+                "anemoi-registry is not installed. Please install it to use this command."
+            )
             return
 
         publish_dataset(args.path)

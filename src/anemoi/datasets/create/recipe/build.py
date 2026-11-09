@@ -10,14 +10,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
-from typing import Annotated
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
-from pydantic import BaseModel
-from pydantic import BeforeValidator
-from pydantic import ConfigDict
-from pydantic import Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from pydantic_core import PydanticCustomError
 
 if TYPE_CHECKING:
@@ -63,13 +58,14 @@ def validate_mapping(value):
 
 
 class Build(BaseModel):
-
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     use_grib_paramid: bool = False
     allow_nans: bool | list[str] = False
     """Allow NaN values in the dataset. Can be True, False, or a list of variable names."""
-    variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = validate_variable_naming("default")
+    variable_naming: Annotated[str, BeforeValidator(validate_variable_naming)] = (
+        validate_variable_naming("default")
+    )
     group_by: str | int = "monthly"
     additions: bool | None = None
     env: dict[str, str] = {}
@@ -83,7 +79,9 @@ class Build(BaseModel):
 
     # Parameters for the `finalise --rows-per-chunk` stage, which reports the chunk size (in rows)
     # that minimises read time when iterating a tabular dataset with a fixed time window.
-    chunk_windows: list[str] = Field(default_factory=lambda: ["1h", "3h", "6h", "12h", "24h"])
+    chunk_windows: list[str] = Field(
+        default_factory=lambda: ["1h", "3h", "6h", "12h", "24h"]
+    )
     """Iteration window sizes to evaluate the optimal rows-per-chunk for, each treated independently."""
     chunk_alignment_offset: str | None = None
     """Offset of the window boundaries from the whole UTC hour (e.g. '30min', '3h'). None means windows end on a whole UTC hour."""
@@ -99,7 +97,9 @@ class Build(BaseModel):
     """Peak streaming bandwidth in bytes/second, achieved for reads inside the sweet spot."""
 
     """Environment variables to set when creating the dataset."""
-    remapping: dict[str, Any] = Field(default_factory=lambda: {"param_level": "{param}_{levelist}"})
+    remapping: dict[str, Any] = Field(
+        default_factory=lambda: {"param_level": "{param}_{levelist}"}
+    )
     """Remapping configuration for the dataset."""
 
     def _post_init(self, recipe: Recipe) -> None:
@@ -192,5 +192,7 @@ class Build(BaseModel):
             return
 
         # Only the deprecated 'build.additions' was provided.
-        LOG.warning("'build.additions' is deprecated; please use 'statistics.tendencies' instead.")
+        LOG.warning(
+            "'build.additions' is deprecated; please use 'statistics.tendencies' instead."
+        )
         statistics.tendencies = self.additions

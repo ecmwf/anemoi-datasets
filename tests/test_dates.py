@@ -108,30 +108,60 @@ def test_default_statistics_dates(y: int, as_numpy: bool) -> None:
     as_numpy : bool
         Whether to use numpy.datetime64.
     """
-    assert default_start((y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y, 1, 1, 0)
+    assert default_start(
+        (y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y, 1, 1, 0)
 
     # >= 20 years
-    assert default_end((y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 16, 12, 31, 23)
-    assert default_end((y, 1, 1), (y + 20, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 17, 12, 31, 23)
-    assert default_end((y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 16, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 16, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 20, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 17, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 19, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 16, 12, 31, 23)
 
     # 19.51 years
-    assert default_end((y, 1, 1), (y + 19, 7, 4), 1, as_numpy=as_numpy) == datetime.datetime(y + 16, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 19, 7, 4), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 16, 12, 31, 23)
     # 19.49 years
-    assert default_end((y, 1, 1), (y + 19, 7, 2), 1, as_numpy=as_numpy) == datetime.datetime(y + 18, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 19, 7, 2), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 18, 12, 31, 23)
 
     # >= 10 years and < 20 years
-    assert default_end((y, 1, 1), (y + 9, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 8, 12, 31, 23)
-    assert default_end((y, 1, 1), (y + 10, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 9, 12, 31, 23)
-    assert default_end((y, 1, 1), (y + 11, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(y + 10, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 9, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 8, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 10, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 9, 12, 31, 23)
+    assert default_end(
+        (y, 1, 1), (y + 11, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(y + 10, 12, 31, 23)
 
-    assert default_end((y, 1, 1), (y + 9, 12, 23), 6, as_numpy=as_numpy) == datetime.datetime(y + 8, 12, 31, 18)
-    assert default_end((y, 1, 1), (y + 10, 12, 23), 6, as_numpy=as_numpy) == datetime.datetime(y + 9, 12, 31, 18)
-    assert default_end((y, 1, 1), (y + 11, 12, 23), 6, as_numpy=as_numpy) == datetime.datetime(y + 10, 12, 31, 18)
+    assert default_end(
+        (y, 1, 1), (y + 9, 12, 23), 6, as_numpy=as_numpy
+    ) == datetime.datetime(y + 8, 12, 31, 18)
+    assert default_end(
+        (y, 1, 1), (y + 10, 12, 23), 6, as_numpy=as_numpy
+    ) == datetime.datetime(y + 9, 12, 31, 18)
+    assert default_end(
+        (y, 1, 1), (y + 11, 12, 23), 6, as_numpy=as_numpy
+    ) == datetime.datetime(y + 10, 12, 31, 18)
 
-    assert default_end((y, 1, 1), (y + 9, 12, 23), 12, as_numpy=as_numpy) == datetime.datetime(y + 8, 12, 31, 12)
-    assert default_end((y, 1, 1), (y + 10, 12, 23), 12, as_numpy=as_numpy) == datetime.datetime(y + 9, 12, 31, 12)
-    assert default_end((y, 1, 1), (y + 11, 12, 23), 12, as_numpy=as_numpy) == datetime.datetime(y + 10, 12, 31, 12)
+    assert default_end(
+        (y, 1, 1), (y + 9, 12, 23), 12, as_numpy=as_numpy
+    ) == datetime.datetime(y + 8, 12, 31, 12)
+    assert default_end(
+        (y, 1, 1), (y + 10, 12, 23), 12, as_numpy=as_numpy
+    ) == datetime.datetime(y + 9, 12, 31, 12)
+    assert default_end(
+        (y, 1, 1), (y + 11, 12, 23), 12, as_numpy=as_numpy
+    ) == datetime.datetime(y + 10, 12, 31, 12)
 
 
 @pytest.mark.parametrize("as_numpy", [True, False])
@@ -144,14 +174,21 @@ def test_default_statistics_dates_80_percent(as_numpy: bool) -> None:
         Whether to use numpy.datetime64.
     """
     # < 10 years, keep 80% of the data
-    assert default_end((2000, 1, 1), (2001, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(2001, 7, 31, 14)
-    assert default_end((2000, 1, 1), (2002, 12, 23), 1, as_numpy=as_numpy) == datetime.datetime(2002, 5, 19, 14)
+    assert default_end(
+        (2000, 1, 1), (2001, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(2001, 7, 31, 14)
+    assert default_end(
+        (2000, 1, 1), (2002, 12, 23), 1, as_numpy=as_numpy
+    ) == datetime.datetime(2002, 5, 19, 14)
 
 
 @pytest.mark.parametrize("as_numpy", [True, False])
 def test_default_statistics_dates_test_dataset(as_numpy: bool) -> None:
     """Test default_statistics_dates for very small test datasets."""
-    dates = [datetime.datetime(y, 1, 1, 0) for y in [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014]]
+    dates = [
+        datetime.datetime(y, 1, 1, 0)
+        for y in [2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014]
+    ]
     if as_numpy:
         dates = [np.datetime64(d) for d in dates]
 

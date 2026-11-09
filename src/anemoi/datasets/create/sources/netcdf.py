@@ -19,9 +19,10 @@ from .xarray import load_many
 
 @source_registry.register("netcdf")
 class NetCDFSource(LegacySource):
-
     @staticmethod
-    def _execute(context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
+    def _execute(
+        context: Any, dates: list[str], path: str, *args: Any, **kwargs: Any
+    ) -> ekd.FieldList:
         """Execute the loading of multiple NetCDF files.
 
         Parameters

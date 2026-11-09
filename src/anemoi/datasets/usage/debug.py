@@ -13,8 +13,7 @@ import os
 import textwrap
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemoi.utils.text import Tree
 from numpy.typing import NDArray
@@ -90,7 +89,7 @@ class Node:
             if isinstance(v, (list, tuple)):
                 v = ", ".join(str(i) for i in v)
                 v = textwrap.shorten(v, width=40, placeholder="...")
-            result.append(f"{_spaces(indent+2)}{k}: {v}")
+            result.append(f"{_spaces(indent + 2)}{k}: {v}")
         for kid in self.kids:
             kid._put(indent + 2, result)
 
@@ -131,7 +130,7 @@ class Node:
                 #     param.append(v)
                 # else:
                 param.append(f"{k}={v}")
-            label = f'{label}({",".join(param)})'
+            label = f"{label}({','.join(param)})"
 
         label += "\n" + "\n".join(
             textwrap.shorten(str(v), width=40, placeholder="...")
@@ -201,7 +200,13 @@ class Node:
             rows.append([indent] + [label])
 
             for k, v in kwargs.items():
-                rows.append([indent] + [f"<span class='param'>{k}</span>", f"<span class='param'>{v}</span>"])
+                rows.append(
+                    [indent]
+                    + [
+                        f"<span class='param'>{k}</span>",
+                        f"<span class='param'>{v}</span>",
+                    ]
+                )
 
         for kid in self.kids:
             kid._html(indent + "&nbsp;&nbsp;&nbsp;", rows)
@@ -272,7 +277,13 @@ class Node:
 class Source:
     """A class used to follow the provenance of a data point."""
 
-    def __init__(self, dataset: Any, index: int, source: Any | None = None, info: Any | None = None) -> None:
+    def __init__(
+        self,
+        dataset: Any,
+        index: int,
+        source: Any | None = None,
+        info: Any | None = None,
+    ) -> None:
         """Initializes a Source object.
 
         Parameters
@@ -305,7 +316,9 @@ class Source:
             p = s
             s = s.source
 
-        return f"{self.dataset}[{self.index}, {self.dataset.variables[self.index]}] ({p})"
+        return (
+            f"{self.dataset}[{self.index}, {self.dataset.variables[self.index]}] ({p})"
+        )
 
     def target(self) -> Any:
         """Returns the target source.

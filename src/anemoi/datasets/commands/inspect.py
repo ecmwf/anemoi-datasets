@@ -19,12 +19,8 @@ import numpy as np
 import semantic_version
 import tqdm
 import zarr
-from anemoi.utils.humanize import bytes
-from anemoi.utils.humanize import bytes_to_human
-from anemoi.utils.humanize import when
-from anemoi.utils.text import dotted_line
-from anemoi.utils.text import progress
-from anemoi.utils.text import table
+from anemoi.utils.humanize import bytes, bytes_to_human, when
+from anemoi.utils.text import dotted_line, progress, table
 from numpy.typing import NDArray
 
 from anemoi.datasets import open_dataset
@@ -53,7 +49,9 @@ def compute_directory_size(path: str) -> tuple[int, int] | tuple[None, None]:
         return None, None
     size = 0
     n = 0
-    for dirpath, _, filenames in tqdm.tqdm(os.walk(path), desc="Computing size", leave=False):
+    for dirpath, _, filenames in tqdm.tqdm(
+        os.walk(path), desc="Computing size", leave=False
+    ):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
             size += os.path.getsize(file_path)
@@ -136,7 +134,9 @@ def find(config: dict | list, name: str) -> Any:
 class Version:
     """Represents a version of a dataset."""
 
-    def __init__(self, path: str, zarr: Any, metadata: dict, version: semantic_version.Version) -> None:
+    def __init__(
+        self, path: str, zarr: Any, metadata: dict, version: semantic_version.Version
+    ) -> None:
         """Initialize the Version object.
 
         Parameters
@@ -270,13 +270,17 @@ class Version:
             from anemoi.utils.dates import frequency_to_string
 
             def _fmt(dt64: np.datetime64) -> str:
-                return dt64.astype("datetime64[s]").astype(datetime.datetime).strftime("%Y-%m-%d %H:%M")
+                return (
+                    dt64.astype("datetime64[s]")
+                    .astype(datetime.datetime)
+                    .strftime("%Y-%m-%d %H:%M")
+                )
 
             print(f"📅 Date start : {_fmt(self.dataset.start_date)}")
             print(f"📅 Date end   : {_fmt(self.dataset.end_date)}")
         else:
-            print(f'📅 Date      start: {self.first_date.strftime("%Y-%m-%d %H:%M")}')
-            print(f'📅 Date      end  : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f"📅 Date      start: {self.first_date.strftime('%Y-%m-%d %H:%M')}")
+            print(f"📅 Date      end  : {self.last_date.strftime('%Y-%m-%d %H:%M')}")
             print(f"⏰ Frequency  : {self.frequency}")
         if self.n_missing_dates is not None:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")
@@ -290,16 +294,22 @@ class Version:
                 base_end = _fmt(self.dataset.base_end_date)
                 base_freq = frequency_to_string(self.dataset.base_frequency)
                 n_bases = len(self.dataset.base_dates)
-                print(f"⏱️  Base dates : {base_start} → {base_end} every {base_freq} ({n_bases})")
+                print(
+                    f"⏱️  Base dates : {base_start} → {base_end} every {base_freq} ({n_bases})"
+                )
 
                 start_step = self.dataset.step_start
                 end_step = self.dataset.step_end
                 freq = self.dataset.step_frequency
-                freq_str = frequency_to_string(freq) if freq is not None else "irregular"
+                freq_str = (
+                    frequency_to_string(freq) if freq is not None else "irregular"
+                )
                 start_str = frequency_to_string(start_step)
                 end_str = frequency_to_string(end_step)
                 n_steps = len(self.dataset.steps)
-                print(f"⏱️  Steps      : {start_str} → {end_str}, every {freq_str} ({n_steps})")
+                print(
+                    f"⏱️  Steps      : {start_str} → {end_str}, every {freq_str} ({n_steps})"
+                )
             except AttributeError:
                 pass
 
@@ -340,7 +350,11 @@ class Version:
             return str(x)
 
         for i, v in enumerate(self.variables):
-            row = [i, v] + [x[i] for x in stats] + [self.variables_metadata.get(v, {}).get("units", "-")]
+            row = (
+                [i, v]
+                + [x[i] for x in stats]
+                + [self.variables_metadata.get(v, {}).get("units", "-")]
+            )
             table.add_row(*map(_, row))
 
         console.print()
@@ -466,14 +480,24 @@ class Version:
             )
             return
 
-        build_flags = np.array([], dtype=bool) if self.build_flags is None else self.build_flags
+        build_flags = (
+            np.array([], dtype=bool) if self.build_flags is None else self.build_flags
+        )
 
         # Datasets without per-group lengths: each group counts as one unit of progress.
-        build_lengths = np.ones(build_flags.size, dtype=int) if self.build_lengths is None else self.build_lengths
+        build_lengths = (
+            np.ones(build_flags.size, dtype=int)
+            if self.build_lengths is None
+            else self.build_lengths
+        )
         assert build_flags.size == build_lengths.size
 
         latest_write_timestamp = self.zarr.attrs.get("latest_write_timestamp")
-        latest = datetime.datetime.fromisoformat(latest_write_timestamp) if latest_write_timestamp else None
+        latest = (
+            datetime.datetime.fromisoformat(latest_write_timestamp)
+            if latest_write_timestamp
+            else None
+        )
 
         if not all(build_flags):
             if latest:
@@ -481,7 +505,9 @@ class Version:
             else:
                 print("🪫  Dataset not ready.")
             total = sum(build_lengths)
-            built = sum(ln if flag else 0 for ln, flag in zip(build_lengths, build_flags))
+            built = sum(
+                ln if flag else 0 for ln, flag in zip(build_lengths, build_flags)
+            )
             print(
                 "📈 Progress:",
                 progress(built, total, width=50),
@@ -492,7 +518,9 @@ class Version:
                 print(f"🕰️  Dataset initialised {when(start)}.")
                 if built and latest:
                     speed = (latest - start) / built
-                    eta = datetime.datetime.now(datetime.UTC).replace(tzinfo=None) + speed * (total - built)
+                    eta = datetime.datetime.now(datetime.UTC).replace(
+                        tzinfo=None
+                    ) + speed * (total - built)
                     print(f"🏁 ETA {when(eta)}.")
         else:
             if latest:
@@ -583,7 +611,9 @@ class NoVersion(Version):
         assert isinstance(time, int), (time, type(time))
         if time > 100:
             time = time // 100
-        return datetime.datetime.fromisoformat(monthly["stop"]) + datetime.timedelta(hours=time)
+        return datetime.datetime.fromisoformat(monthly["stop"]) + datetime.timedelta(
+            hours=time
+        )
 
     @property
     def frequency(self) -> int:
@@ -609,11 +639,9 @@ class NoVersion(Version):
 
     def details(self) -> None:
         """Print details of the dataset."""
-        pass
 
     def progress(self) -> None:
         """Print the progress of dataset initialization or copying."""
-        pass
 
     def ready(self) -> bool:
         """Check if the dataset is ready.
@@ -631,7 +659,6 @@ class Version0_4(Version):
 
     def details(self) -> None:
         """Print details of the dataset."""
-        pass
 
     @property
     def initialised(self) -> datetime.datetime:
@@ -657,7 +684,9 @@ class Version0_4(Version):
 
         return all(build_flags)
 
-    def _info(self, verbose: bool, history: bool, statistics: bool, **kwargs: Any) -> None:
+    def _info(
+        self, verbose: bool, history: bool, statistics: bool, **kwargs: Any
+    ) -> None:
         """Print information about the dataset.
 
         Parameters
@@ -675,8 +704,14 @@ class Version0_4(Version):
 
         # for backward compatibility
         if "earthkit-data" in z.attrs:
-            ekd_version = z.attrs["earthkit-data"].get("versions", {}).get("earthkit-data", "unkwown")
-            print(f"earthkit-data version used to create this zarr: {ekd_version}. Not supported.")
+            ekd_version = (
+                z.attrs["earthkit-data"]
+                .get("versions", {})
+                .get("earthkit-data", "unkwown")
+            )
+            print(
+                f"earthkit-data version used to create this zarr: {ekd_version}. Not supported."
+            )
             return
 
         version = z.attrs.get("version")
@@ -705,7 +740,12 @@ class Version0_6(Version):
                 return datetime.datetime.fromisoformat(record["timestamp"])
 
         # Sometimes the first record is missing
-        timestamps = sorted([datetime.datetime.fromisoformat(d["timestamp"]) for d in self.metadata.get("history", [])])
+        timestamps = sorted(
+            [
+                datetime.datetime.fromisoformat(d["timestamp"])
+                for d in self.metadata.get("history", [])
+            ]
+        )
         if timestamps:
             return timestamps[0]
 
@@ -769,12 +809,16 @@ class Version0_12(Version0_6):
     @property
     def first_date(self) -> datetime.datetime:
         """Get the first date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata.get("start_date", self.metadata.get("first_date")))
+        return datetime.datetime.fromisoformat(
+            self.metadata.get("start_date", self.metadata.get("first_date"))
+        )
 
     @property
     def last_date(self) -> datetime.datetime:
         """Get the last date of the dataset."""
-        return datetime.datetime.fromisoformat(self.metadata.get("end_date", self.metadata.get("last_date")))
+        return datetime.datetime.fromisoformat(
+            self.metadata.get("end_date", self.metadata.get("last_date"))
+        )
 
 
 class Version0_13(Version0_12):
@@ -844,7 +888,9 @@ class InspectZarr(Command):
         command_parser.add_argument("--progress", action="store_true")
         command_parser.add_argument("--statistics", action="store_true")
         command_parser.add_argument("--size", action="store_true", help="Print size")
-        command_parser.add_argument("--recipe", action="store_true", help="Print recipe")
+        command_parser.add_argument(
+            "--recipe", action="store_true", help="Print recipe"
+        )
 
     def run(self, args: Any) -> None:
         """Run the command.

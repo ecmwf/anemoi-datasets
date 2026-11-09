@@ -17,9 +17,7 @@ import pytest
 import yaml
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
-from anemoi.utils.testing import GetTestArchive
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestArchive, GetTestData, skip_if_offline
 
 from .utils.create import create_dataset
 from .utils.mock_sources import LoadSource
@@ -52,7 +50,6 @@ for path in glob.glob(os.path.join(HERE, "*.yaml")):
 # Used by pipe.yaml
 @filter_registry.register("filter")
 class FilterForTesting(Filter):
-
     def __init__(self, **kwargs):
 
         self.kwargs = kwargs
@@ -89,7 +86,10 @@ def _load_baseline(name: str | None) -> dict | None:
     if not os.path.exists(path):
         return None
     with open(path) as f:
-        return {e["md5"]: {"count": e["count"], "request": e["request"]} for e in json.load(f)}
+        return {
+            e["md5"]: {"count": e["count"], "request": e["request"]}
+            for e in json.load(f)
+        }
 
 
 def _mock_sources(name: str, get_test_data: GetTestData) -> LoadSource:
@@ -112,7 +112,9 @@ def _mock_sources(name: str, get_test_data: GetTestData) -> LoadSource:
     """
     baseline = None if UPDATE_MARS_REQUESTS else _load_baseline(name)
     expected = None if baseline is None else set(baseline)
-    return LoadSource(get_test_data, expected=expected, fetch_missing=UPDATE_MARS_REQUESTS)
+    return LoadSource(
+        get_test_data, expected=expected, fetch_missing=UPDATE_MARS_REQUESTS
+    )
 
 
 def _tally(requests: list) -> dict:
@@ -154,7 +156,9 @@ def _check_mars_requests(name: str, requests: list) -> None:
         if tally:
             os.makedirs(MARS_REQUESTS, exist_ok=True)
             with open(path, "w") as f:
-                json.dump([dict(md5=k, **v) for k, v in sorted(tally.items())], f, indent=2)
+                json.dump(
+                    [dict(md5=k, **v) for k, v in sorted(tally.items())], f, indent=2
+                )
                 f.write("\n")
         elif os.path.exists(path):
             os.remove(path)
@@ -171,7 +175,9 @@ def _check_mars_requests(name: str, requests: list) -> None:
     # Only the baselined md5s are worth walking: ``LoadSource`` was handed this same
     # set and refuses anything outside it, so the build cannot have reached here
     # having asked for something new.
-    assert not set(tally) - set(expected), "LoadSource.mars should have rejected an unbaselined request"
+    assert not set(tally) - set(expected), (
+        "LoadSource.mars should have rejected an unbaselined request"
+    )
 
     errors = []
     for md5 in sorted(expected):
@@ -179,7 +185,9 @@ def _check_mars_requests(name: str, requests: list) -> None:
         if now is None:
             errors.append(f"  - no longer asked for:  {json.dumps(was['request'])}")
         elif was["count"] != now["count"]:
-            errors.append(f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}")
+            errors.append(
+                f"  ~ retrieved {was['count']}x -> {now['count']}x: {json.dumps(now['request'])}"
+            )
 
     assert not errors, (
         f"{name} no longer asks MARS for the same fields:\n"
@@ -193,7 +201,9 @@ SKIPPED_TESTS = ["recentre"]
 
 @skip_if_offline
 @pytest.mark.parametrize("name", NAMES)
-def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData) -> None:
+def test_run(
+    name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData
+) -> None:
     """Run the test for the specified dataset.
 
     Parameters
@@ -212,7 +222,10 @@ def test_run(name: str, get_test_archive: GetTestArchive, get_test_data: GetTest
 @pytest.mark.parametrize("name", TENDENCY_NAMES)
 @pytest.mark.parametrize("finalise_parts", [2, 3, 5])
 def test_run_with_parallel_load_and_finalise(
-    name: str, finalise_parts: int, get_test_archive: GetTestArchive, get_test_data: GetTestData
+    name: str,
+    finalise_parts: int,
+    get_test_archive: GetTestArchive,
+    get_test_data: GetTestData,
 ) -> None:
     """Build the dataset with one loader per group and the finalise split into ``finalise_parts`` parts.
 
@@ -233,7 +246,10 @@ def test_run_with_parallel_load_and_finalise(
 
 
 def _run(
-    name: str, get_test_archive: GetTestArchive, get_test_data: GetTestData, finalise_parts: int | None = None
+    name: str,
+    get_test_archive: GetTestArchive,
+    get_test_data: GetTestData,
+    finalise_parts: int | None = None,
 ) -> None:
     """Build the dataset and compare it to the reference.
 
@@ -268,16 +284,24 @@ def _run(
         from anemoi.datasets.create.creator import VERSION
 
         recipe = os.path.join(HERE, name + ".yaml")
-        suffix = "" if finalise_parts is None else f"-load-per-group-finalise-in-{finalise_parts}-parts"
+        suffix = (
+            ""
+            if finalise_parts is None
+            else f"-load-per-group-finalise-in-{finalise_parts}-parts"
+        )
         output = os.path.join(HERE, name + suffix + ".zarr")
 
-        create_dataset(recipe=recipe, output=output, delta=["12h"], finalise_parts=finalise_parts)
+        create_dataset(
+            recipe=recipe, output=output, delta=["12h"], finalise_parts=finalise_parts
+        )
 
         _check_mars_requests(name, load_source.requests)
 
         missing_reference = False
         try:
-            directory = get_test_archive(f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz")
+            directory = get_test_archive(
+                f"anemoi-datasets/create/mock-mars-{VERSION}/{name}.zarr.tgz"
+            )
         except requests.exceptions.HTTPError:
             missing_reference = True
             errors = [f"Reference data for {name} is missing, cannot compare."]
@@ -286,7 +310,9 @@ def _run(
             from anemoi.datasets.commands.compare import compare_anemoi_datasets
 
             reference = os.path.join(directory, name + ".zarr")
-            errors = compare_anemoi_datasets(reference=reference, actual=output, data=True)
+            errors = compare_anemoi_datasets(
+                reference=reference, actual=output, data=True
+            )
 
         if errors or missing_reference:
             actual_path = os.path.realpath(output)
@@ -296,7 +322,9 @@ def _run(
             print("cd " + os.path.dirname(actual_path))
             base = os.path.basename(actual_path)
             print(f"tar zcf {base}.tgz {base}")
-            print(f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars-{VERSION}/")
+            print(
+                f"scp {base}.tgz data@anemoi.ecmwf.int:public/anemoi-datasets/create/mock-mars-{VERSION}/"
+            )
             print()
             raise AssertionError(f"Comparison failed {errors}")
 

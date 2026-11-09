@@ -11,8 +11,7 @@
 import logging
 import math
 from functools import cached_property
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import xarray as xr
@@ -85,10 +84,14 @@ class Variable:
         self.time = time
 
         self.shape = tuple(
-            len(c.variable) for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
+            len(c.variable)
+            for c in coordinates
+            if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
         )
         self.names = {
-            c.variable.name: c for c in coordinates if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
+            c.variable.name: c
+            for c in coordinates
+            if c.is_dim and not c.scalar and not c.is_grid and not c.is_point
         }
         self.by_name = {c.variable.name: c for c in coordinates}
 
@@ -148,11 +151,7 @@ class Variable:
         str
             A string representation of the variable.
         """
-        return "Variable[name={},coordinates={},metadata={}]".format(
-            self.variable.name,
-            self.coordinates,
-            self._metadata,
-        )
+        return f"Variable[name={self.variable.name},coordinates={self.coordinates},metadata={self._metadata}]"
 
     def __getitem__(self, i: int) -> "XArrayField":
         """Get a 2D field from the variable.
@@ -218,7 +217,9 @@ class Variable:
         i = c.index(v)
         if i is None:
             if k != user_provided_k:
-                LOG.warning(f"Could not find {user_provided_k}={v} in {c} (alias of {k})")
+                LOG.warning(
+                    f"Could not find {user_provided_k}={v} in {c} (alias of {k})"
+                )
             else:
                 LOG.warning(f"Could not find {k}={v} in {c}")
             return None

@@ -18,10 +18,8 @@ from numpy.typing import NDArray
 from anemoi.datasets import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..debug import Node
-from ..debug import debug_indexing
+from ..dataset import Dataset, FullIndex
+from ..debug import Node, debug_indexing
 from ..forwards import Forwards
 
 LOG = logging.getLogger(__name__)
@@ -47,10 +45,16 @@ class RollingAverage(Forwards):
         super().__init__(dataset)
         if not (isinstance(window, (list, tuple)) and len(window) == 3):
             raise ValueError(f"Window must be (int, int, str), got {window}")
-        if not isinstance(window[0], int) or not isinstance(window[1], int) or not isinstance(window[2], str):
+        if (
+            not isinstance(window[0], int)
+            or not isinstance(window[1], int)
+            or not isinstance(window[2], str)
+        ):
             raise ValueError(f"Window must be (int, int, str), got {window}")
         if window[2] not in ["freq", "frequency"]:
-            raise NotImplementedError(f"Window must be (int, int, 'freq'), got {window}")
+            raise NotImplementedError(
+                f"Window must be (int, int, 'freq'), got {window}"
+            )
 
         # window = (0, 0, 'freq') means no change
         self.i_start = -window[0]
@@ -102,7 +106,9 @@ class RollingAverage(Forwards):
                 return f(data)
 
             if isinstance(first, slice):
-                first = list(range(first.start or 0, first.stop or len(self), first.step or 1))
+                first = list(
+                    range(first.start or 0, first.stop or len(self), first.step or 1)
+                )
 
             if isinstance(first, (list, tuple)):
                 first = [i if i >= 0 else len(self) + i for i in first]
@@ -117,7 +123,9 @@ class RollingAverage(Forwards):
                 res = [f(d) for d in data]
                 return np.array(res)
 
-            assert False, f"Expected int, slice, list or tuple as first element of tuple, got {type(first)}"
+            assert False, (
+                f"Expected int, slice, list or tuple as first element of tuple, got {type(first)}"
+            )
 
         assert isinstance(n, int), f"Expected int, slice, tuple, got {type(n)}"
 
@@ -151,7 +159,7 @@ class RollingAverage(Forwards):
         result = []
 
         for i in self.forward.missing:
-            for j in range(0, self.i_end + self.i_start):
+            for j in range(self.i_end + self.i_start):
                 result.append(i + j)
 
         result = {x for x in result if x < self._len}

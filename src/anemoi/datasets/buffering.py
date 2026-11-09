@@ -49,7 +49,9 @@ class _Buffer:
         self.chunk_size = array.chunks[0]
         self.offset = chunk_index * self.chunk_size
         # use min to avoid indexing out of bounds of array
-        self.cache = array[self.offset : min(self.offset + self.chunk_size, array.shape[0])]
+        self.cache = array[
+            self.offset : min(self.offset + self.chunk_size, array.shape[0])
+        ]
         self.dirty = False
         self.lock = threading.RLock()
 
@@ -66,7 +68,9 @@ class _Buffer:
 
     def __repr__(self) -> str:
         """Return a string representation of the chunk."""
-        return f"<Chunk[offset={self.offset} shape={self.cache.shape} dirty={self.dirty}]>"
+        return (
+            f"<Chunk[offset={self.offset} shape={self.cache.shape} dirty={self.dirty}]>"
+        )
 
     def __setitem__(self, key: Any, value: Any) -> None:
         """Set a value in the chunk cache and mark as dirty.
@@ -130,12 +134,18 @@ class _Buffer:
 
             case slice():
                 assert key.step >= 1, "Negative or zero step slices are not supported"
-                assert key.start is not None and key.stop is not None, "Slice start and stop cannot be None"
+                assert key.start is not None and key.stop is not None, (
+                    "Slice start and stop cannot be None"
+                )
 
                 # Assumes that the slice is normalised
-                local_index = slice(key.start - self.offset, key.stop - self.offset, key.step)
+                local_index = slice(
+                    key.start - self.offset, key.stop - self.offset, key.step
+                )
                 if local_index.start != local_index.stop:  # only check non-empty slices
-                    if not (0 <= local_index.start < len(self.cache)) or not (0 <= local_index.stop <= len(self.cache)):
+                    if not (0 <= local_index.start < len(self.cache)) or not (
+                        0 <= local_index.stop <= len(self.cache)
+                    ):
                         raise IndexError("Slice out of chunk bounds")
                 return local_index
 
@@ -145,7 +155,9 @@ class _Buffer:
             case np.ndarray():
                 local_index = key - self.offset
                 if any(not (0 <= li < len(self.cache)) for li in local_index):
-                    raise IndexError(f"Array indices out of chunk bounds {key} => {local_index} ({self})")
+                    raise IndexError(
+                        f"Array indices out of chunk bounds {key} => {local_index} ({self})"
+                    )
                 return local_index
 
             case list():
@@ -204,10 +216,15 @@ class _Buffer:
             last_idx = self.offset + self.cache.shape[0]
 
             if not (last_idx <= new_array_shape[0]):
-                return self._remove(lru, f"Chunk exceeds new array size {new_array_shape}")
+                return self._remove(
+                    lru, f"Chunk exceeds new array size {new_array_shape}"
+                )
 
             if last_idx != min(self.offset + self.chunk_size, new_array_shape[0]):
-                return self._remove(lru, f"Chunk size mismatch after resizing array to {new_array_shape}")
+                return self._remove(
+                    lru,
+                    f"Chunk size mismatch after resizing array to {new_array_shape}",
+                )
 
 
 class ReadAheadWriteBehindBuffer:
@@ -333,7 +350,9 @@ class ReadAheadWriteBehindBuffer:
         _Buffer
             The cached chunk.
         """
-        chunk_index = int(chunk_index)  # Ensure chunk_index is an int, in case it was passed as a numpy integer
+        chunk_index = int(
+            chunk_index
+        )  # Ensure chunk_index is an int, in case it was passed as a numpy integer
         with self._lock:
             if chunk_index in self._lru_chunks_cache:
                 return self._lru_chunks_cache[chunk_index]
@@ -344,11 +363,12 @@ class ReadAheadWriteBehindBuffer:
         chunk = _Buffer(self._arr, chunk_index)
 
         with self._lock:
-
             # For debugging purposes, check again if the chunk was loaded while we were outside the lock
             if self._no_reload:
                 if chunk_index in self._was_loaded:
-                    raise RuntimeError(f"Chunk {chunk_index} has already been loaded once, re-loading is disabled")
+                    raise RuntimeError(
+                        f"Chunk {chunk_index} has already been loaded once, re-loading is disabled"
+                    )
                 self._was_loaded.add(chunk_index)
 
             self._lru_chunks_cache[chunk_index] = chunk
@@ -383,8 +403,12 @@ class ReadAheadWriteBehindBuffer:
 
             case slice():
                 result = slice(*key.indices(self._arr.shape[0]))
-                assert result.step >= 1, "Negative or zero step slices are not supported"
-                assert result.start <= result.stop, "Slice start must be less than or equal to stop"
+                assert result.step >= 1, (
+                    "Negative or zero step slices are not supported"
+                )
+                assert result.start <= result.stop, (
+                    "Slice start must be less than or equal to stop"
+                )
                 assert 0 <= result.start, "Slice start negative after normalisation"
                 return result
 
@@ -416,7 +440,6 @@ class ReadAheadWriteBehindBuffer:
     def _get_key_chunk(self, key: Any) -> _Buffer:
 
         match key:
-
             case int():
                 chunk_index = key // self._nrows_in_chunks
                 return self._ensure_chunk_in_cache(chunk_index)
@@ -425,7 +448,6 @@ class ReadAheadWriteBehindBuffer:
                 return self._get_key_chunk(key[0])
 
             case slice():
-
                 start, stop, step = key.start, key.stop, key.step
 
                 if start == stop:
@@ -446,7 +468,6 @@ class ReadAheadWriteBehindBuffer:
                 return _MultiBufferSpan(self, self._arr.shape[0])
 
             case np.ndarray():
-
                 if np.any(key < 0):
                     key = np.where(key < 0, key + self._arr.shape[0], key)
                 unique_chunks = np.unique(key // self._nrows_in_chunks)
@@ -496,14 +517,15 @@ class ReadAheadWriteBehindBuffer:
             new_shape = tuple(new_shape[0])
 
         with self._lock:
-
             self._arr.resize(new_shape)
 
             for chunk in list(self._lru_chunks_cache.values()):
                 chunk.resize(self._lru_chunks_cache, new_shape)
 
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.debug(f"Resized underlying array from {self._arr.shape} to {new_shape}")
+                LOG.debug(
+                    f"Resized underlying array from {self._arr.shape} to {new_shape}"
+                )
 
             self._nrows_in_chunks = self._arr.chunks[0]
 
@@ -580,7 +602,9 @@ class _MultiBufferSpan:
 
         raise TypeError(f"Unsupported key type for multi-chunk slicing: {type(key)}")
 
-    def _split_slice_chunks(self, key: slice, remaining_key: tuple[Any, ...]) -> Iterator[tuple[Any, list[int], slice]]:
+    def _split_slice_chunks(
+        self, key: slice, remaining_key: tuple[Any, ...]
+    ) -> Iterator[tuple[Any, list[int], slice]]:
         """Faster version of _split_array_chunks for slice keys."""
 
         start, stop, step = key.indices(self._array_size)

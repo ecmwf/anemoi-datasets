@@ -45,7 +45,9 @@ def _payload(event: str, **kwargs: Any) -> dict:
         specific=kwargs,
         user=os.getlogin(),
         host=os.uname().nodename,
-        anemoi_user=os.environ.get("ANEMOI_USER", options.get("anemoi_user", "unknown")),
+        anemoi_user=os.environ.get(
+            "ANEMOI_USER", options.get("anemoi_user", "unknown")
+        ),
         anemoi_datasets_version=__version__,
         time=datetime.datetime.utcnow().isoformat(),
     )
@@ -75,7 +77,6 @@ def _collect_analytics_worker(event: str, **kwargs: Any) -> None:
     global COLLECT_ANALYTICS
 
     try:
-
         if not _do_collect_event(event, **kwargs):
             return
 
@@ -85,7 +86,9 @@ def _collect_analytics_worker(event: str, **kwargs: Any) -> None:
         response.raise_for_status()
         if event not in QUIET:
             LOG.info(f"Analytics collected successfully for event: {event}")
-            LOG.info("Use `anemoi-datasets analytics --disable` to stop collecting analytics.")
+            LOG.info(
+                "Use `anemoi-datasets analytics --disable` to stop collecting analytics."
+            )
             QUIET.add(event)
 
     except Exception:

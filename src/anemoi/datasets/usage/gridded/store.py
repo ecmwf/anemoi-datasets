@@ -20,13 +20,8 @@ from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
-from anemoi.datasets.usage.debug import debug_indexing
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.debug import Node, Source, debug_indexing
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.options import Options
 
@@ -38,7 +33,9 @@ LOG = logging.getLogger(__name__)
 class GriddedZarr(ZarrStore):
     """A zarr dataset."""
 
-    def __init__(self, group: zarr.Group, path: str = None, options: Options = None) -> None:
+    def __init__(
+        self, group: zarr.Group, path: str = None, options: Options = None
+    ) -> None:
         super().__init__(group, path=path, options=options)
         self._missing = set()
 
@@ -57,7 +54,14 @@ class GriddedZarr(ZarrStore):
         """Retrieve an item from the dataset."""
         return self.data[n]
 
-    def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
+    def _unwind(
+        self,
+        index: int | slice | list | tuple,
+        rest: list,
+        shape: tuple,
+        axis: int,
+        axes: list,
+    ) -> iter:
         """Unwind the index for multi-dimensional indexing."""
         if not isinstance(index, (int, slice, list, tuple)):
             try:
@@ -128,14 +132,15 @@ class GriddedZarr(ZarrStore):
             minimum=self.store["minimum"][:],
         )
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Return the statistical tendencies of the dataset."""
         if delta is None:
             delta = self.frequency
         if isinstance(delta, int):
             delta = f"{delta}h"
-        from anemoi.utils.dates import frequency_to_string
-        from anemoi.utils.dates import frequency_to_timedelta
+        from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
         delta = frequency_to_timedelta(delta)
         delta = frequency_to_string(delta)
@@ -237,11 +242,9 @@ class GriddedZarr(ZarrStore):
 
     def collect_supporting_arrays(self, collected: set, *path: str) -> None:
         """Collect supporting arrays."""
-        pass
 
     def collect_input_sources(self, collected: set) -> None:
         """Collect input sources."""
-        pass
 
     @cached_property
     def origins(self):
@@ -287,7 +290,9 @@ class ZarrWithMissingDates(GriddedZarr):
 
         missing_dates = self.store.attrs.get("missing_dates", [])
         missing_dates = {np.datetime64(x, "s") for x in missing_dates}
-        self.missing_to_dates = {i: d for i, d in enumerate(self.dates) if d in missing_dates}
+        self.missing_to_dates = {
+            i: d for i, d in enumerate(self.dates) if d in missing_dates
+        }
         self._missing = set(self.missing_to_dates)
 
     def mutate(self) -> "ZarrWithMissingDates":
@@ -310,7 +315,9 @@ class ZarrWithMissingDates(GriddedZarr):
         LOG.warning("=" * 80)
         LOG.warning("Applying in memory fix...")
         LOG.warning("=" * 80)
-        use_fix = int(os.environ.get("ANEMOI_DATASETS_MISSING_DATES_FIX_EXPERIMENTAL", 0))
+        use_fix = int(
+            os.environ.get("ANEMOI_DATASETS_MISSING_DATES_FIX_EXPERIMENTAL", 0)
+        )
         if use_fix:
             return ZarrWithMissingDatesFix(self.store, self.path)
         raise ValueError(
@@ -362,7 +369,9 @@ class ZarrWithMissingDates(GriddedZarr):
 
     def _report_missing(self, n: int) -> None:
         """Report a missing date."""
-        raise MissingDateError(f"Date {self.missing_to_dates[n]} is missing (index={n})")
+        raise MissingDateError(
+            f"Date {self.missing_to_dates[n]} is missing (index={n})"
+        )
 
     def tree(self) -> Node:
         """Return the tree representation of the dataset."""
@@ -402,10 +411,14 @@ class ReIndex:
 
                     case slice():
                         indices = list(range(*first.indices(self._len)))
-                        return np.stack([self.data[self.index_mapping[i], *rest] for i in indices])
+                        return np.stack(
+                            [self.data[self.index_mapping[i], *rest] for i in indices]
+                        )
 
                     case list():
-                        return np.stack([self.data[self.index_mapping[i], *rest] for i in first])
+                        return np.stack(
+                            [self.data[self.index_mapping[i], *rest] for i in first]
+                        )
 
             case _:
                 raise TypeError(f"Unsupported index type: {type(idx)}")

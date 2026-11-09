@@ -14,8 +14,7 @@ from functools import wraps
 from unittest.mock import patch
 
 import pytest
-from anemoi.utils.testing import TEST_DATA_URL
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import TEST_DATA_URL, skip_if_offline
 
 from anemoi.datasets import open_dataset
 
@@ -90,7 +89,9 @@ COMPLEMENT_TEST_CASES = [
 
 @skip_if_offline
 @zarr_tests
-@pytest.mark.parametrize("source,complement,interpolation,variables", COMPLEMENT_TEST_CASES)
+@pytest.mark.parametrize(
+    "source,complement,interpolation,variables", COMPLEMENT_TEST_CASES
+)
 def test_class_gridded_complement(source, complement, interpolation, variables):
     ds = open_dataset(source=source, complement=complement, interpolation=interpolation)
     _test_dataset(ds, variables=variables)

@@ -11,19 +11,16 @@ import logging
 import operator
 import os
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from multiprocessing import Pool
-from typing import Any
-from typing import Iterator
-from typing import Literal
+from typing import Any, Literal
 
 import eccodes
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from .bufr_reader import BUFRMessage
-from .bufr_reader import BUFRReader
+from .bufr_reader import BUFRMessage, BUFRReader
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -109,7 +106,9 @@ class BUFRMessageSelector:
 
         op, expected = condition
         if not isinstance(op, str):
-            raise ValueError(f"Invalid selection for '{key}': operator must be a string, got {type(op)}.")
+            raise ValueError(
+                f"Invalid selection for '{key}': operator must be a string, got {type(op)}."
+            )
 
         op = cls._normalise_operator(op)
         if op in {"in", "not in"} and not isinstance(expected, list):
@@ -233,7 +232,9 @@ class BUFRToDataFrame:
         self.per_datum = per_datum or {}
 
         if per_datum_format not in ("long", "wide"):
-            raise ValueError(f"Invalid per_datum_format: '{per_datum_format}'. Must be 'wide' or 'long'.")
+            raise ValueError(
+                f"Invalid per_datum_format: '{per_datum_format}'. Must be 'wide' or 'long'."
+            )
 
         if self.per_datum:
             if per_datum_format == "long":
@@ -257,22 +258,30 @@ class BUFRToDataFrame:
         if self.per_datum and self.per_datum_processing == self._get_msg_long_df:
             for item_config in self.per_datum.values():
                 columns[item_config["name"]] = np.float32
-        frame = pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in columns.items()})
+        frame = pd.DataFrame(
+            {col: pd.Series(dtype=dtype) for col, dtype in columns.items()}
+        )
         frame["date"] = pd.Series(dtype="datetime64[ns]")
         return frame
 
     @staticmethod
-    def _build_selectors(conditions: dict[str, Any] | None) -> list[BUFRMessageSelector]:
+    def _build_selectors(
+        conditions: dict[str, Any] | None,
+    ) -> list[BUFRMessageSelector]:
         if conditions is None:
             return []
         if not isinstance(conditions, dict):
             raise ValueError(
                 "Invalid BUFR preselect config: expected a dictionary of key: [operator, value] conditions."
             )
-        return [BUFRMessageSelector(key, condition) for key, condition in conditions.items()]
+        return [
+            BUFRMessageSelector(key, condition) for key, condition in conditions.items()
+        ]
 
     @staticmethod
-    def filter_bufr_message(message: BUFRMessage, selectors: list[BUFRMessageSelector]) -> bool:
+    def filter_bufr_message(
+        message: BUFRMessage, selectors: list[BUFRMessageSelector]
+    ) -> bool:
         """Check if the BUFR message meets selection conditions specified in config
         Returns False if the message should be kept, True if it should be filtered (discarded).
         """
@@ -287,7 +296,9 @@ class BUFRToDataFrame:
                 logging.warning(f"Key {message_selector.key} not found in BUFR message")
                 return True
             except Exception as e:
-                logging.error(f"Error evaluating condition for {message_selector.key}: {e}")
+                logging.error(
+                    f"Error evaluating condition for {message_selector.key}: {e}"
+                )
                 return True
         return False
 
@@ -297,12 +308,27 @@ class BUFRToDataFrame:
         """
         df = pd.DataFrame(
             dict(
-                years=message.get_array(self.datetime_position_prefix + "year", int, nreports),
-                months=message.get_array(self.datetime_position_prefix + "month", int, nreports),
-                days=message.get_array(self.datetime_position_prefix + "day", int, nreports),
-                hours=message.get_array(self.datetime_position_prefix + "hour", int, nreports),
-                minutes=message.get_array(self.datetime_position_prefix + "minute", int, nreports),
-                seconds=message.get_array(self.datetime_position_prefix + "second", int, nreports, missing_val=0),
+                years=message.get_array(
+                    self.datetime_position_prefix + "year", int, nreports
+                ),
+                months=message.get_array(
+                    self.datetime_position_prefix + "month", int, nreports
+                ),
+                days=message.get_array(
+                    self.datetime_position_prefix + "day", int, nreports
+                ),
+                hours=message.get_array(
+                    self.datetime_position_prefix + "hour", int, nreports
+                ),
+                minutes=message.get_array(
+                    self.datetime_position_prefix + "minute", int, nreports
+                ),
+                seconds=message.get_array(
+                    self.datetime_position_prefix + "second",
+                    int,
+                    nreports,
+                    missing_val=0,
+                ),
             )
         )
         # Create the datetime series using pandas
@@ -331,12 +357,14 @@ class BUFRToDataFrame:
             return df
         except Exception as e:
             warnings.warn(
-                f"Unexpected error in message: {str(e)}. Skipping this message.",
+                f"Unexpected error in message: {e!s}. Skipping this message.",
                 RuntimeWarning,
             )
             return pd.DataFrame()
 
-    def extract_per_report_df(self, message: BUFRMessage, nreports: str | None | Any) -> DataFrame:
+    def extract_per_report_df(
+        self, message: BUFRMessage, nreports: str | None | Any
+    ) -> DataFrame:
         per_report_data = {
             out_col: message.get_array(bufr_key, float, nreports).astype(np.float32)
             for out_col, bufr_key in self.per_report.items()
@@ -346,7 +374,9 @@ class BUFRToDataFrame:
         df = pd.DataFrame(per_report_data)
         return df
 
-    def _get_msg_long_df(self, message: BUFRMessage, df_report: DataFrame, nreports: int) -> DataFrame:
+    def _get_msg_long_df(
+        self, message: BUFRMessage, df_report: DataFrame, nreports: int
+    ) -> DataFrame:
         # Extract the per-datum arrays (now just 1D arrays)
         df_datum = pd.DataFrame()
 
@@ -364,12 +394,16 @@ class BUFRToDataFrame:
             df_datum[new_name] = vals
 
         # repeat per-report data for each datum
-        df_expanded_reports = df_report.loc[df_report.index.repeat(ndatum)].reset_index(drop=True)
+        df_expanded_reports = df_report.loc[df_report.index.repeat(ndatum)].reset_index(
+            drop=True
+        )
 
         # Combine the expanded report data and the datum data
         return pd.concat([df_expanded_reports, df_datum], axis=1)
 
-    def _get_msg_wide_df(self, message: BUFRMessage, df_report: DataFrame, nreports: int) -> DataFrame:
+    def _get_msg_wide_df(
+        self, message: BUFRMessage, df_report: DataFrame, nreports: int
+    ) -> DataFrame:
         # Logic for 'wide' format (column-wise) ---
         data_dict = df_report.to_dict("list")  # Start with the per-report data
 
@@ -402,7 +436,10 @@ class BUFRToDataFrame:
         return pd.DataFrame(data_dict)
 
     def read_bufr_to_df(
-        self, bufr_reader: "BUFRReader", msg_idxs: Sequence[int] | None = None, sort=True
+        self,
+        bufr_reader: "BUFRReader",
+        msg_idxs: Sequence[int] | None = None,
+        sort=True,
     ) -> pd.DataFrame:
         if msg_idxs is None:
             msg_idxs = range(len(bufr_reader))
@@ -415,7 +452,7 @@ class BUFRToDataFrame:
                     df_lst.append(self.read_msg_to_df(message))
             df = pd.concat(df_lst)
         except Exception as e:
-            log.error(f"Error in read_bufr_to_df: {str(e)}")
+            log.error(f"Error in read_bufr_to_df: {e!s}")
             raise
 
         if len(df) > 0 and sort:
@@ -423,7 +460,9 @@ class BUFRToDataFrame:
         return df
 
 
-def bufr_to_dataframe_parallel(bufr_reader: BUFRReader, bufr_to_df: BUFRToDataFrame, nproc: int = 1) -> pd.DataFrame:
+def bufr_to_dataframe_parallel(
+    bufr_reader: BUFRReader, bufr_to_df: BUFRToDataFrame, nproc: int = 1
+) -> pd.DataFrame:
     def split_list(alist, nparts):
         chunk_size = max(1, len(alist) // nparts)
         return [list(chunk) for chunk in batched(alist, chunk_size)]
@@ -452,7 +491,7 @@ def bufr_to_dataframe_parallel(bufr_reader: BUFRReader, bufr_to_df: BUFRToDataFr
                 df = r.get()
                 all_lst.append(df)
             except Exception as e:
-                log.error(f"Error getting result from worker process: {str(e)}")
+                log.error(f"Error getting result from worker process: {e!s}")
                 continue
         if not all_lst:
             raise ValueError("No valid results were returned from any worker process")

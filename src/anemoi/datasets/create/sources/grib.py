@@ -13,8 +13,7 @@ import logging
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_grid, new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
@@ -59,7 +58,9 @@ def check(ds: Any, paths: list[str], **kwargs: Any) -> None:
         return
 
     if len(ds) != count:
-        raise ValueError(f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})")
+        raise ValueError(
+            f"Expected {count} fields, got {len(ds)} (kwargs={kwargs}, paths={paths})"
+        )
 
 
 def _expand(paths: list[str]) -> Any:
@@ -86,7 +87,6 @@ def _expand(paths: list[str]) -> Any:
 
 @source_registry.register("grib")
 class GribSource(Source):
-
     def __init__(
         self,
         context: Any,
@@ -116,7 +116,11 @@ class GribSource(Source):
         super().__init__(context)
         self.path = path
         self.flavour = RuleBasedFlavour(flavour) if flavour is not None else None
-        self.grid = grid_registry.from_config(grid_definition) if grid_definition is not None else None
+        self.grid = (
+            grid_registry.from_config(grid_definition)
+            if grid_definition is not None
+            else None
+        )
         self.args = args
         self.kwargs = kwargs
 
@@ -139,21 +143,26 @@ class GribSource(Source):
         dates = [d.isoformat() for d in dates]
 
         for path in given_paths:
-
             # do not substitute if not needed
             if "{" not in path:
                 paths = [path]
             else:
-                paths = Pattern(path).substitute(*self.args, date=dates, allow_extra=True, **self.kwargs)
+                paths = Pattern(path).substitute(
+                    *self.args, date=dates, allow_extra=True, **self.kwargs
+                )
 
             for name in ("grid", "area", "rotation", "frame", "resol", "bitmap"):
                 if name in self.kwargs:
-                    raise ValueError(f"MARS interpolation parameter '{name}' not supported")
+                    raise ValueError(
+                        f"MARS interpolation parameter '{name}' not supported"
+                    )
 
             for path in _expand(paths):
                 self.context.trace("📁", "PATH", path)
 
-                if isinstance(path, str) and (path.startswith("ec:") or path.startswith("ectmp:")):
+                if isinstance(path, str) and (
+                    path.startswith("ec:") or path.startswith("ectmp:")
+                ):
                     from anemoi.datasets.create.ecfs import get_ecfs_file
 
                     path = get_ecfs_file(path)
@@ -171,9 +180,13 @@ class GribSource(Source):
         # BACK    check(ds, given_paths, valid_datetime=dates, **kwargs)
 
         if self.grid is not None:
-            ds = new_fieldlist_from_list([new_field_from_grid(f, self.grid) for f in ds])
+            ds = new_fieldlist_from_list(
+                [new_field_from_grid(f, self.grid) for f in ds]
+            )
 
         if len(ds) == 0:
-            LOG.warning(f"No fields found for {dates} in {given_paths} (kwargs={self.kwargs})")
+            LOG.warning(
+                f"No fields found for {dates} in {given_paths} (kwargs={self.kwargs})"
+            )
 
         return ds

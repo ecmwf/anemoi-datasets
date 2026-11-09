@@ -17,18 +17,16 @@ import numpy as np
 from anemoi.transform.spatial import cropping_mask
 from numpy.typing import NDArray
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..dataset import Shape
-from ..dataset import TupleIndex
-from ..debug import Node
-from ..debug import debug_indexing
+from ..dataset import Dataset, FullIndex, Shape, TupleIndex
+from ..debug import Node, debug_indexing
 from ..forwards import Forwards
 from ..mixins.thinning import ThinningMixin
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from .indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    update_tuple,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -137,7 +135,7 @@ class Masked(Forwards):
 class Thinning(ThinningMixin, Masked):
     """A class to represent a thinned dataset."""
 
-    def __init__(self, forward: Dataset, thinning: int | float | None, method: str) -> None:
+    def __init__(self, forward: Dataset, thinning: float | None, method: str) -> None:
         """Initialize the Thinning class.
 
         Parameters
@@ -157,7 +155,6 @@ class Thinning(ThinningMixin, Masked):
         self.grid_shape = forward.field_shape
 
         if thinning is not None:
-
             shape = forward.field_shape
             if len(shape) != 2:
                 raise ValueError("Thinning only works latitude/longitude fields")
@@ -190,7 +187,9 @@ class Thinning(ThinningMixin, Masked):
         Node
             The tree representation of the dataset.
         """
-        return Node(self, [self.forward.tree()], thinning=self.thinning, method=self.method)
+        return Node(
+            self, [self.forward.tree()], thinning=self.thinning, method=self.method
+        )
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the Thinning subclass.
@@ -243,7 +242,9 @@ class Masking(Masked):
             raise ValueError(f"Mask file {mask_file} does not contain boolean values.")
 
         if len(mask) != forward.shape[-1]:
-            raise ValueError(f"Mask length {len(mask)} does not match field size {forward.shape[-1]}.")
+            raise ValueError(
+                f"Mask length {len(mask)} does not match field size {forward.shape[-1]}."
+            )
 
         if np.sum(mask) == 0:
             LOG.warning(f"Mask in {mask_file} eliminates all points in field.")
@@ -274,7 +275,9 @@ class Masking(Masked):
 class Cropping(Masked):
     """A class to represent a cropped dataset."""
 
-    def __init__(self, forward: Dataset, area: Dataset | tuple[float, float, float, float]) -> None:
+    def __init__(
+        self, forward: Dataset, area: Dataset | tuple[float, float, float, float]
+    ) -> None:
         """Initialize the Cropping class.
 
         Parameters
@@ -344,9 +347,13 @@ class TrimEdge(Masked):
             raise ValueError("TrimEdge only works on regular grids")
 
         if self.edge[0] + self.edge[1] >= shape[0]:
-            raise ValueError("Too much triming of the first grid dimension, resulting in an empty dataset")
+            raise ValueError(
+                "Too much triming of the first grid dimension, resulting in an empty dataset"
+            )
         if self.edge[2] + self.edge[3] >= shape[1]:
-            raise ValueError("Too much triming of the second grid dimension, resulting in an empty dataset")
+            raise ValueError(
+                "Too much triming of the second grid dimension, resulting in an empty dataset"
+            )
 
         mask = np.full(shape, True, dtype=bool)
         mask[0 : self.edge[0], :] = False

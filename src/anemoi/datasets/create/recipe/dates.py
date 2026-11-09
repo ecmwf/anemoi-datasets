@@ -13,21 +13,19 @@ import datetime
 import logging
 from collections.abc import Iterator
 from functools import cached_property
-from typing import Annotated
-from typing import Any
-from typing import Union
+from typing import Annotated, Any
 
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
-from pydantic import BaseModel
-from pydantic import BeforeValidator
-from pydantic import ConfigDict
-from pydantic import Discriminator
-from pydantic import Field
-from pydantic import PlainSerializer
-from pydantic import Tag
-from pydantic import model_validator
+from anemoi.utils.dates import as_datetime, frequency_to_string, frequency_to_timedelta
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Discriminator,
+    Field,
+    PlainSerializer,
+    Tag,
+    model_validator,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -83,7 +81,6 @@ def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]
 
 
 class DatesProvider(BaseModel):
-
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Iterate over the dates.
 
@@ -118,11 +115,12 @@ class DatesProvider(BaseModel):
         return len(self.values)
 
     def full_dates_list(self) -> list[datetime.datetime]:
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement full_dates_list()")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement full_dates_list()"
+        )
 
 
 class StartEndDates(DatesProvider):
-
     class MissingRange(BaseModel):
         start: NaiveDatetime
         end: NaiveDatetime
@@ -134,7 +132,7 @@ class StartEndDates(DatesProvider):
     missing: list[datetime.datetime | str | MissingRange] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _expand_missing_ranges(self) -> "StartEndDates":
+    def _expand_missing_ranges(self) -> StartEndDates:
         expanded = []
         for item in self.missing:
             if isinstance(item, self.MissingRange):
@@ -221,11 +219,15 @@ class Steps(BaseModel):
     frequency: Frequency
 
     @model_validator(mode="after")
-    def _check_range(self) -> "Steps":
+    def _check_range(self) -> Steps:
         if self.frequency <= datetime.timedelta(0):
-            raise ValueError(f"'steps.frequency' must be positive, got {self.frequency}")
+            raise ValueError(
+                f"'steps.frequency' must be positive, got {self.frequency}"
+            )
         if self.end < self.start:
-            raise ValueError(f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})")
+            raise ValueError(
+                f"'steps.end' ({self.end}) must be >= 'steps.start' ({self.start})"
+            )
         if (self.end - self.start) % self.frequency != datetime.timedelta(0):
             raise ValueError(
                 f"'steps.frequency' ({frequency_to_string(self.frequency)}) must divide "
@@ -331,7 +333,11 @@ class HindcastsDates(DatesProvider):
 
 
 def _dates_discriminator(config_or_model: Any) -> str:
-    config = config_or_model.model_dump() if isinstance(config_or_model, BaseModel) else config_or_model
+    config = (
+        config_or_model.model_dump()
+        if isinstance(config_or_model, BaseModel)
+        else config_or_model
+    )
 
     if config.get("hindcasts", False):
         return "hindcasts"
@@ -343,10 +349,8 @@ def _dates_discriminator(config_or_model: Any) -> str:
 
 
 Dates = Annotated[
-    Union[
-        Annotated[StartEndDates, Tag("start_end")],
-        Annotated[ValuesDates, Tag("values")],
-        Annotated[HindcastsDates, Tag("hindcasts")],
-    ],
+    Annotated[StartEndDates, Tag("start_end")]
+    | Annotated[ValuesDates, Tag("values")]
+    | Annotated[HindcastsDates, Tag("hindcasts")],
     Discriminator(_dates_discriminator),
 ]

@@ -32,14 +32,12 @@ argument type (``ForecastDates``), not by the recipe.
 from __future__ import annotations
 
 import datetime
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .interval_generators import IntervalGenerator
-from .interval_generators import interval_generator_factory
+from .interval_generators import IntervalGenerator, interval_generator_factory
 
 
 class Covering(ABC):
@@ -131,7 +129,10 @@ class ForecastCovering(Covering):
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
         if accumulation not in _VALID_ACCUMULATIONS:
-            raise ValueError(f"Invalid accumulation {accumulation!r}; " f"expected one of {_VALID_ACCUMULATIONS}")
+            raise ValueError(
+                f"Invalid accumulation {accumulation!r}; "
+                f"expected one of {_VALID_ACCUMULATIONS}"
+            )
         self.period = period
         self.accumulation = accumulation
 
@@ -164,7 +165,9 @@ class ForecastCovering(Covering):
                 f"(step_start={step_start_h}h); not supported in v1."
             )
         if step_end_h <= step_start_h:
-            raise ValueError(f"Window {start}..{end} has non-positive length relative to basetime {basetime}.")
+            raise ValueError(
+                f"Window {start}..{end} has non-positive length relative to basetime {basetime}."
+            )
 
         if self.accumulation == "from-zero":
             covering: list[SignedInterval] = []
@@ -237,7 +240,11 @@ def covering_factory(
     """
     _DISCRIMINATORS = ("auto", "cycle")
 
-    if isinstance(config, dict) and len(config) == 1 and next(iter(config)) in ("auto", "cycle", "forecast"):
+    if (
+        isinstance(config, dict)
+        and len(config) == 1
+        and next(iter(config)) in ("auto", "cycle", "forecast")
+    ):
         kind, value = next(iter(config.items()))
         if kind == "auto":
             availability = interval_generator_factory(value, source_name, source)

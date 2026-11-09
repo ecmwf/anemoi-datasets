@@ -11,23 +11,33 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import EnsembleCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import ScalarCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import UnsupportedCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import XCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import YCoordinate
-from anemoi.datasets.create.sources.xarray_support.flavour import DefaultCoordinateGuesser
+from anemoi.datasets.create.sources.xarray_support.coordinates import (
+    DateCoordinate,
+    EnsembleCoordinate,
+    LatitudeCoordinate,
+    LevelCoordinate,
+    LongitudeCoordinate,
+    ScalarCoordinate,
+    StepCoordinate,
+    TimeCoordinate,
+    UnsupportedCoordinate,
+    XCoordinate,
+    YCoordinate,
+)
+from anemoi.datasets.create.sources.xarray_support.flavour import (
+    DefaultCoordinateGuesser,
+)
 
 
 def create_ds(var_name, standard_name, long_name, units, coord_length=5):
     attrs = {
-        k: v for k, v in [("standard_name", standard_name), ("long_name", long_name), ("units", units)] if v is not None
+        k: v
+        for k, v in [
+            ("standard_name", standard_name),
+            ("long_name", long_name),
+            ("units", units),
+        ]
+        if v is not None
     }
 
     ds = xr.Dataset(
@@ -68,13 +78,31 @@ def create_ds(var_name, standard_name, long_name, units, coord_length=5):
         # date
         ("t", "forecast_reference_time", None, None, DateCoordinate),
         ("forecast_reference_time", None, None, None, DateCoordinate),
-        ("forecast_reference_time", "forecast_reference_time", None, None, DateCoordinate),
+        (
+            "forecast_reference_time",
+            "forecast_reference_time",
+            None,
+            None,
+            DateCoordinate,
+        ),
         # step
         ("fp", "forecast_period", None, None, StepCoordinate),
-        ("forecast_period", None, "time elapsed since the start of the forecast", None, StepCoordinate),
+        (
+            "forecast_period",
+            None,
+            "time elapsed since the start of the forecast",
+            None,
+            StepCoordinate,
+        ),
         ("prediction_timedelta", None, None, None, StepCoordinate),
         # level
-        ("lev", "atmosphere_hybrid_sigma_pressure_coordinate", None, None, LevelCoordinate),
+        (
+            "lev",
+            "atmosphere_hybrid_sigma_pressure_coordinate",
+            None,
+            None,
+            LevelCoordinate,
+        ),
         ("h", None, "height", "m", LevelCoordinate),
         ("h", "height", None, "m", LevelCoordinate),
         ("level", "air_pressure", None, "hPa", LevelCoordinate),

@@ -22,7 +22,9 @@ class AnnotatedNDArray(np.ndarray):
     for the recommended way to add metadata to numpy arrays.
     """
 
-    def __new__(cls, input_array, *, dtype=None, copy=False, anemoi_annotation=None) -> "AnnotatedNDArray":
+    def __new__(
+        cls, input_array, *, dtype=None, copy=False, anemoi_annotation=None
+    ) -> "AnnotatedNDArray":
         """Create a new AnnotatedNDArray with attached metadata.
 
         Parameters

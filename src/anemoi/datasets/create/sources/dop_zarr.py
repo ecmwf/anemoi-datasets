@@ -60,7 +60,9 @@ class DOPZarrSource(Source):
         self.lon_idx = self.data.attrs["colnames"].index(self.longitude)
 
         self.colnames = ["date", "latitude", "longitude"] + [
-            col for col in self.data.attrs["colnames"] if col not in [self.latitude, self.longitude]
+            col
+            for col in self.data.attrs["colnames"]
+            if col not in [self.latitude, self.longitude]
         ]
         self.dtypes = {col: "float32" for col in self.colnames}
         self.dtypes["date"] = "datetime64[ns]"
@@ -88,13 +90,19 @@ class DOPZarrSource(Source):
 
         start = time.time()
         # Search only the first dimension of the 2D dates array, without loading all dates
-        start_idx = bisect.bisect_left(Proxy(self.dates), np.datetime64(dates.start_range))
+        start_idx = bisect.bisect_left(
+            Proxy(self.dates), np.datetime64(dates.start_range)
+        )
         end_idx = bisect.bisect_right(Proxy(self.dates), np.datetime64(dates.end_range))
         date_lookup_time = time.time() - start
 
         if start_idx >= end_idx:
-            LOG.warning(f"No data found between {dates.start_range} and {dates.end_range}")
-            return pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in self.dtypes.items()})
+            LOG.warning(
+                f"No data found between {dates.start_range} and {dates.end_range}"
+            )
+            return pd.DataFrame(
+                {col: pd.Series(dtype=dt) for col, dt in self.dtypes.items()}
+            )
 
         # Load data slice
         LOG.info(
@@ -114,13 +122,17 @@ class DOPZarrSource(Source):
             f"Loaded data slice with {len(data_slice):,} records in {data_load_time:.2f} seconds, date slice in {date_load_time:.2f} seconds"
         )
 
-        LOG.info(f"First date in slice: {date_slice[0][0]}, last date in slice: {date_slice[-1][0]}")
+        LOG.info(
+            f"First date in slice: {date_slice[0][0]}, last date in slice: {date_slice[-1][0]}"
+        )
         LOG.info(f"Requested date range: {dates.start_range} to {dates.end_range}")
 
-        assert date_slice[0][0] >= np.datetime64(
-            dates.start_range
-        ), "First date in slice is before requested start date"
-        assert date_slice[-1][0] <= np.datetime64(dates.end_range), "Last date in slice is after requested end date"
+        assert date_slice[0][0] >= np.datetime64(dates.start_range), (
+            "First date in slice is before requested start date"
+        )
+        assert date_slice[-1][0] <= np.datetime64(dates.end_range), (
+            "Last date in slice is after requested end date"
+        )
 
         start = time.time()
         frame = pd.DataFrame(
@@ -136,7 +148,9 @@ class DOPZarrSource(Source):
             }
         )
         data_frame_time = time.time() - start
-        total_time = date_lookup_time + data_load_time + date_load_time + data_frame_time
+        total_time = (
+            date_lookup_time + data_load_time + date_load_time + data_frame_time
+        )
 
         LOG.info(
             f"Loaded data frame with {len(frame):,} records in {total_time:.2f} seconds ({date_lookup_time:.2f}s dates lookup, {data_load_time:.2f}s data load, {date_load_time:.2f}s date load, {data_frame_time:.2f}s frame build)"

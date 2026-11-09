@@ -16,13 +16,15 @@ import pytest
 
 import anemoi.datasets
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import (
+    DEFAULT_ZARR_FORMAT,
+    ZarrFileNotFoundError,
+    blosc_compressor,
+    get_zarr_format,
+    zarr_format_from_name,
+    zarr_open,
+    zarr_version,
+)
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.misc.check import check_zarr
 
@@ -96,7 +98,9 @@ def test_zarr_open_format_3_requires_zarr3(tmp_path: Path) -> None:
 def test_zarr_open_creates_format_3(tmp_path: Path) -> None:
     path = tmp_path / "test.zarr"
 
-    zarr_open(str(path), "w", zarr_format=3).create_array("array", shape=(4,), dtype="int64")
+    zarr_open(str(path), "w", zarr_format=3).create_array(
+        "array", shape=(4,), dtype="int64"
+    )
 
     assert _format_on_disk(path) == 3
     assert _format_on_disk(path / "array") == 3
@@ -122,12 +126,17 @@ def test_blosc_compressor_matches_format(tmp_path: Path, zarr_format: int) -> No
     array = root.create_array(
         "array",
         data=data,
-        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2, zarr_format=zarr_format),
+        compressors=blosc_compressor(
+            cname="zstd", clevel=3, shuffle=2, zarr_format=zarr_format
+        ),
     )
 
     np.testing.assert_array_equal(array[:], data)
     if zarr_format == 2:
-        assert json.loads((path / "array" / ".zarray").read_text())["compressor"]["id"] == "blosc"
+        assert (
+            json.loads((path / "array" / ".zarray").read_text())["compressor"]["id"]
+            == "blosc"
+        )
     else:
         codecs = json.loads((path / "array" / "zarr.json").read_text())["codecs"]
         assert "blosc" in [codec["name"] for codec in codecs]
@@ -138,7 +147,9 @@ def test_check_zarr_follows_store_format(tmp_path: Path, zarr_format: int) -> No
     path = tmp_path / "test.zarr"
 
     root = zarr_open(str(path), "w", zarr_format=zarr_format)
-    root.create_array("data", data=np.arange(10, dtype=np.float32).reshape(5, 2), chunks=(2, 2))
+    root.create_array(
+        "data", data=np.arange(10, dtype=np.float32).reshape(5, 2), chunks=(2, 2)
+    )
 
     check_zarr(str(path))
 
@@ -155,7 +166,9 @@ def test_dataset_writes_default_format(tmp_path: Path) -> None:
         fill_value=np.nan,
         dimensions=("time", "cell"),
     )
-    dataset.add_array(name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",))
+    dataset.add_array(
+        name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",)
+    )
 
     for node in (path, path / "data", path / "_build", path / "_build" / "flags"):
         assert _format_on_disk(node) == DEFAULT_ZARR_FORMAT
@@ -166,7 +179,9 @@ def test_dataset_writes_format_3(tmp_path: Path) -> None:
     path = tmp_path / "test.zarr"
 
     dataset = Dataset(str(path), create=True, format="zarr3")
-    dataset.add_array(name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",))
+    dataset.add_array(
+        name="_build/flags", data=np.zeros(2, dtype=bool), dimensions=("group",)
+    )
 
     for node in (path, path / "_build", path / "_build" / "flags"):
         assert _format_on_disk(node) == 3
@@ -243,6 +258,10 @@ def test_stores_are_only_opened_with_zarr_open() -> None:
                 and node.func.value.id == "zarr"
                 and node.func.attr in _ZARR_OPENERS
             ):
-                offenders.append(f"{file.relative_to(package)}:{node.lineno}: zarr.{node.func.attr}()")
+                offenders.append(
+                    f"{file.relative_to(package)}:{node.lineno}: zarr.{node.func.attr}()"
+                )
 
-    assert not offenders, "Use anemoi.datasets.compat.zarr_open instead of:\n" + "\n".join(offenders)
+    assert not offenders, (
+        "Use anemoi.datasets.compat.zarr_open instead of:\n" + "\n".join(offenders)
+    )

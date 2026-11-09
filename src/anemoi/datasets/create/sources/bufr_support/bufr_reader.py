@@ -19,7 +19,9 @@ class BUFRMessage:
     def __init__(self, bid: int):
         self.bid = bid
 
-    def get_array(self, element: str, typ: type, nsubsets: int, missing_val=np.nan) -> np.ndarray:
+    def get_array(
+        self, element: str, typ: type, nsubsets: int, missing_val=np.nan
+    ) -> np.ndarray:
         """Wrapper for codes_get_array to work around the inconsistent handling of arrays in eccodes when data is constant"""
         try:
             arr = eccodes.codes_get_array(self.bid, element, typ)

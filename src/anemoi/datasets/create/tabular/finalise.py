@@ -20,12 +20,9 @@ import socket
 import threading
 import time
 from collections.abc import Generator
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from functools import cached_property
-from typing import Any
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -33,13 +30,11 @@ import psutil
 import tqdm
 
 from anemoi.datasets.buffering import WriteBehindBuffer
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import blosc_compressor, get_zarr_format
 from anemoi.datasets.create.parts import part_bounds
 from anemoi.datasets.create.statistics import StatisticsCollector
 from anemoi.datasets.date_indexing import create_date_indexing
-from anemoi.datasets.epochs import array_to_epoch
-from anemoi.datasets.epochs import epoch_to_date
+from anemoi.datasets.epochs import array_to_epoch, epoch_to_date
 from anemoi.datasets.memory import available_memory
 
 LOG = logging.getLogger(__name__)
@@ -90,9 +85,9 @@ class Fragment:
         self._shape: tuple[int, ...] = shape
         self._offset: int | None = None
 
-        assert (
-            self.first_date <= self.last_date
-        ), f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+        assert self.first_date <= self.last_date, (
+            f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+        )
 
     @property
     def file_path(self) -> str:
@@ -128,9 +123,9 @@ class Fragment:
         value : int
             The offset value to set.
         """
-        assert (
-            self._offset is None
-        ), f"Offset for fragment {self.file_path} is already set to {self._offset}, cannot overwrite with {value}"
+        assert self._offset is None, (
+            f"Offset for fragment {self.file_path} is already set to {self._offset}, cannot overwrite with {value}"
+        )
         self._offset = value
 
     @classmethod
@@ -159,7 +154,9 @@ class Fragment:
         first_date: datetime.datetime = _date(array, 0)
         last_date: datetime.datetime = _date(array, -1)
         shape: tuple[int, ...] = array.shape
-        return cls(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
+        return cls(
+            first_date=first_date, last_date=last_date, shape=shape, file_path=file_path
+        )
 
     @classmethod
     def from_path(cls, file_path: str) -> "Fragment":
@@ -239,7 +236,9 @@ def _date(array: np.ndarray, index: int) -> datetime.datetime:
 def _path(dirname: str, array: np.ndarray, short_hash: str) -> str:
     first_date = _date(array, 0)
     last_date = _date(array, -1)
-    return os.path.join(dirname, f"{first_date.isoformat()}-{last_date.isoformat()}-{short_hash}")
+    return os.path.join(
+        dirname, f"{first_date.isoformat()}-{last_date.isoformat()}-{short_hash}"
+    )
 
 
 _DEDUP_JOURNAL = "dedup_journal.log"
@@ -331,7 +330,10 @@ def _deoverlap_worker(one: Fragment, two: Fragment) -> list[Fragment]:
         # Write each half as a new `.deduped` file; the originals `one`/`two` are left for the
         # caller to delete once these outputs are durable. Empty halves simply drop out.
         outputs: list[str] = []
-        for region, suffix in ((concat[:split_point], "deduped.1"), (concat[split_point:], "deduped.2")):
+        for region, suffix in (
+            (concat[:split_point], "deduped.1"),
+            (concat[split_point:], "deduped.2"),
+        ):
             if len(region) == 0:
                 continue
             path = _path(dirname, region, short_hash)
@@ -354,7 +356,9 @@ def _deoverlap_worker(one: Fragment, two: Fragment) -> list[Fragment]:
         return result
 
     except Exception as e:
-        LOG.error(f"Error deoverlapping fragments {one.file_path} and {two.file_path}: {e}")
+        LOG.error(
+            f"Error deoverlapping fragments {one.file_path} and {two.file_path}: {e}"
+        )
         LOG.exception("Error in deoverlap_worker")
         raise
 
@@ -536,7 +540,9 @@ def _find_duplicate_and_overlapping_dates(
                     fragments[fragment.file_path] = fragment
                 pbar.update(1)
 
-        LOG.info(f"Loaded {len(fragments):,} fragments in {time.time() - now:.2f} seconds")
+        LOG.info(
+            f"Loaded {len(fragments):,} fragments in {time.time() - now:.2f} seconds"
+        )
 
         now = time.time()
         LOG.info("Checking overlaps")
@@ -561,7 +567,10 @@ def _find_duplicate_and_overlapping_dates(
                         prev = fragment
                         continue
 
-                    if fragment.first_date <= prev.last_date and (prev.file_path, fragment.file_path) not in seen:
+                    if (
+                        fragment.first_date <= prev.last_date
+                        and (prev.file_path, fragment.file_path) not in seen
+                    ):
                         # Overlap detected, resolve in parallel
                         future = executor.submit(_deoverlap_worker, prev, fragment)
                         task_inputs[future] = (prev.file_path, fragment.file_path)
@@ -577,10 +586,14 @@ def _find_duplicate_and_overlapping_dates(
                     LOG.info("No more overlaps detected")
                     break
 
-                with tqdm.tqdm(total=len(tasks), desc="Checking overlaps", unit="pair") as pbar:
+                with tqdm.tqdm(
+                    total=len(tasks), desc="Checking overlaps", unit="pair"
+                ) as pbar:
                     for future in as_completed(tasks):
                         updates = future.result()
-                        fragments.update({update.file_path: update for update in updates})
+                        fragments.update(
+                            {update.file_path: update for update in updates}
+                        )
 
                         # The pair's data is now held entirely by the durable outputs, so journal the
                         # two inputs (fsync) and delete them to free their disk right away.
@@ -651,14 +664,18 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         # which can cause the OS to allocate physical memory for the entire file.
         # By using open() and truncate(), we create a sparse file without triggering OOM.
 
-        self.row_size = 3 * np.dtype(np.int64).itemsize  # Each row has 3 int64 values: (value, start_index, length)
+        self.row_size = (
+            3 * np.dtype(np.int64).itemsize
+        )  # Each row has 3 int64 values: (value, start_index, length)
         bytes_needed = self.total_size * self.row_size
 
         with open(self.path, "wb") as f:
             f.truncate(bytes_needed)
 
         # Mmap the file for writing the output ranges
-        self.dates_ranges = np.memmap(self.path, dtype=np.int64, mode="r+", shape=(length, 3))
+        self.dates_ranges = np.memmap(
+            self.path, dtype=np.int64, mode="r+", shape=(length, 3)
+        )
         self.last_date = None
         self.range_idx = 0
 
@@ -680,7 +697,9 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
 
         self.last_date = dates[-1]
 
-        assert np.all(dates[:-1] <= dates[1:]), "Dates must be sorted in ascending order"
+        assert np.all(dates[:-1] <= dates[1:]), (
+            "Dates must be sorted in ascending order"
+        )
 
         # assert False, dates
 
@@ -688,7 +707,10 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
 
         # Add cumulative sum of counts, starting with 0 for the first row
         offsets = np.concatenate(([0], np.cumsum(counts)[:-1])) + data_slice.start
-        assert offsets[-1] + counts[-1] == data_slice.stop, (offsets[-1] + counts[-1], data_slice)
+        assert offsets[-1] + counts[-1] == data_slice.stop, (
+            offsets[-1] + counts[-1],
+            data_slice,
+        )
         result = np.column_stack((unique_dates, offsets, counts))
         size = len(result)
 
@@ -707,7 +729,9 @@ class _DuplicateRangeBuilder:  # (value, start_index, length)
         return np.memmap(self.path, dtype=np.int64, mode="r", shape=(self.range_idx, 3))
 
 
-def _build_duplicate_ranges_worker(builder, dates: np.ndarray, data_slice: slice) -> None:
+def _build_duplicate_ranges_worker(
+    builder, dates: np.ndarray, data_slice: slice
+) -> None:
     try:
         return builder.add(dates, data_slice)
     except Exception:
@@ -748,12 +772,12 @@ def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
         first = _date(array, 0)
         last = _date(array, -1)
 
-        assert (
-            first == fragment.first_date
-        ), f"First date {first} does not match fragment first date {fragment.first_date} for file {fragment.file_path}"
-        assert (
-            last == fragment.last_date
-        ), f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
+        assert first == fragment.first_date, (
+            f"First date {first} does not match fragment first date {fragment.first_date} for file {fragment.file_path}"
+        )
+        assert last == fragment.last_date, (
+            f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
+        )
 
         return (fragment, array, time.time() - now)
     except Exception:
@@ -845,7 +869,9 @@ def _reclaim_unreferenced_fragments(work_dir: str, manifest: dict) -> None:
         _unlink_if_exists(path)
 
 
-def _daily_epochs(first_date: datetime.datetime, last_date: datetime.datetime) -> np.ndarray:
+def _daily_epochs(
+    first_date: datetime.datetime, last_date: datetime.datetime
+) -> np.ndarray:
     """Rebuild the daily date axis used to derive the statistics date range."""
     epochs = []
     date = first_date
@@ -875,7 +901,9 @@ def _write_part_into_zarr(
     part is committed, so a re-run of an interrupted part still finds every fragment on disk.
     """
     with (
-        WriteBehindBuffer(dataset.store["data"], no_reload=True, max_cached_chunks=50) as data,
+        WriteBehindBuffer(
+            dataset.store["data"], no_reload=True, max_cached_chunks=50
+        ) as data,
         ThreadPoolExecutor(max_workers=2) as read_ahead,
         ThreadPoolExecutor(max_workers=1) as compute_statistics,
         ThreadPoolExecutor(max_workers=1) as build_duplicate_ranges,
@@ -892,7 +920,9 @@ def _write_part_into_zarr(
         build = None
         previous_date = None
 
-        with tqdm.tqdm(total=row_hi - row_lo, desc="Writing to Zarr", unit="row") as pbar:
+        with tqdm.tqdm(
+            total=row_hi - row_lo, desc="Writing to Zarr", unit="row"
+        ) as pbar:
             while tasks:
                 fragment, array, _ = tasks.pop(0).result()
 
@@ -918,7 +948,9 @@ def _write_part_into_zarr(
                 # Wait for previous statistics computation to complete
                 if stats is not None:
                     stats.result()
-                stats = compute_statistics.submit(_statistics_collector_worker, collector, sub[:, offset:], epochs)
+                stats = compute_statistics.submit(
+                    _statistics_collector_worker, collector, sub[:, offset:], epochs
+                )
 
                 # Wait for previous duplicate range building to complete
                 if build is not None:
@@ -934,7 +966,9 @@ def _write_part_into_zarr(
 
                 # Pre-load next fragment
                 if i < len(part_fragments):
-                    tasks.append(read_ahead.submit(_load_fragment_worker, part_fragments[i]))
+                    tasks.append(
+                        read_ahead.submit(_load_fragment_worker, part_fragments[i])
+                    )
                     i += 1
 
             # Ensure the last statistics/range computations are complete
@@ -987,7 +1021,9 @@ def prepare_tabular_dataset(
 
     assert fragments, "No data found to finalise"
     shape: tuple[int, int] = fragments[0].shape
-    assert all(fragment.shape[1] == shape[1] for fragment in fragments), "Inconsistent number of columns in fragments"
+    assert all(fragment.shape[1] == shape[1] for fragment in fragments), (
+        "Inconsistent number of columns in fragments"
+    )
     shape = (sum(fragment.shape[0] for fragment in fragments), fragments[0].shape[1])
 
     # Backstop for the resume path: fragments reused from already-done groups
@@ -1022,7 +1058,10 @@ def prepare_tabular_dataset(
         "offset": offset,
         "first_date": fragments[0].first_date,
         "last_date": fragments[-1].last_date,
-        "fragments": [(f.file_path, f.first_date, f.last_date, tuple(f.shape), f.offset) for f in fragments],
+        "fragments": [
+            (f.file_path, f.first_date, f.last_date, tuple(f.shape), f.offset)
+            for f in fragments
+        ],
     }
     _write_manifest(work_dir, manifest)
 
@@ -1034,7 +1073,9 @@ def prepare_tabular_dataset(
     LOG.info(f"Prepared {len(fragments):,} fragments for a final shape of {shape}.")
 
 
-def _create_data_array(store: Any, shape: tuple[int, int], chunking: tuple[int, int]) -> None:
+def _create_data_array(
+    store: Any, shape: tuple[int, int], chunking: tuple[int, int]
+) -> None:
     """Create the empty ``data`` array, replacing any existing one."""
     if "data" in store:
         del store["data"]
@@ -1043,11 +1084,15 @@ def _create_data_array(store: Any, shape: tuple[int, int], chunking: tuple[int, 
         shape=shape,
         chunks=chunking,
         dtype=np.float32,
-        compressors=blosc_compressor(cname="zstd", clevel=3, shuffle=2, zarr_format=get_zarr_format(store)),
+        compressors=blosc_compressor(
+            cname="zstd", clevel=3, shuffle=2, zarr_format=get_zarr_format(store)
+        ),
     )
 
 
-def set_rows_per_chunk(dataset: Any, work_dir: str, rows_per_chunk: int) -> tuple[int, int]:
+def set_rows_per_chunk(
+    dataset: Any, work_dir: str, rows_per_chunk: int
+) -> tuple[int, int]:
     """Re-chunk the (still empty) ``data`` array to ``rows_per_chunk`` and update the manifest.
 
     Called after ``prepare`` (which created the array with a provisional chunking) and before
@@ -1057,7 +1102,9 @@ def set_rows_per_chunk(dataset: Any, work_dir: str, rows_per_chunk: int) -> tupl
     manifest = _read_manifest(work_dir)
     shape = tuple(manifest["shape"])
     chunking = (min(int(rows_per_chunk), shape[0]), shape[1])
-    LOG.info(f"Re-chunking the data array to {chunking} (rows_per_chunk={chunking[0]:,}).")
+    LOG.info(
+        f"Re-chunking the data array to {chunking} (rows_per_chunk={chunking[0]:,})."
+    )
     _create_data_array(dataset.store, shape, chunking)
     manifest["chunking"] = chunking
     _write_manifest(work_dir, manifest)
@@ -1071,11 +1118,15 @@ _DURATION_UNITS = {"s": 1, "min": 60, "m": 60, "h": 3600, "d": 86400}
 _DEFAULT_CHUNK_WINDOWS = ("1h", "3h", "6h", "12h", "24h")
 
 # Filesystem read-performance model (all overridable via the recipe / function arguments).
-_DEFAULT_COMPRESSION_RATIO = 0.5  # on-disk bytes / raw bytes (zstd typically ~0.5 on this data)
+_DEFAULT_COMPRESSION_RATIO = (
+    0.5  # on-disk bytes / raw bytes (zstd typically ~0.5 on this data)
+)
 _DEFAULT_FS_READ_MIN_BYTES = 64 << 20  # below this a read under-uses the filesystem
 _DEFAULT_FS_READ_MAX_BYTES = 512 << 20  # above this throughput rolls off again
 _DEFAULT_FS_LATENCY_SECONDS = 5e-3  # fixed per-read cost (open + metadata + seek)
-_DEFAULT_FS_BANDWIDTH_BYTES_PER_S = 2e9  # peak streaming bandwidth inside the sweet spot
+_DEFAULT_FS_BANDWIDTH_BYTES_PER_S = (
+    2e9  # peak streaming bandwidth inside the sweet spot
+)
 
 
 def _to_epoch_seconds(date: datetime.datetime) -> float:
@@ -1137,7 +1188,10 @@ def _load_density_histogram(work_dir: str) -> tuple[np.ndarray, np.ndarray] | No
     if not os.path.isdir(directory):
         return None
     files = list(_list_files(directory))
-    parts = [np.load(f) for f in tqdm.tqdm(files, desc="Loading density histogram", unit="file")]
+    parts = [
+        np.load(f)
+        for f in tqdm.tqdm(files, desc="Loading density histogram", unit="file")
+    ]
     if not parts:
         return None
     combined = np.concatenate(parts)
@@ -1186,12 +1240,30 @@ def compute_rows_per_chunk(
     All model parameters (``compression_ratio``, the read-size sweet spot, latency and bandwidth)
     are overridable; the defaults are module-level ``_DEFAULT_*`` constants.
     """
-    compression_ratio = _DEFAULT_COMPRESSION_RATIO if compression_ratio is None else float(compression_ratio)
-    fs_read_min_bytes = _DEFAULT_FS_READ_MIN_BYTES if fs_read_min_bytes is None else int(fs_read_min_bytes)
-    fs_read_max_bytes = _DEFAULT_FS_READ_MAX_BYTES if fs_read_max_bytes is None else int(fs_read_max_bytes)
-    fs_latency_seconds = _DEFAULT_FS_LATENCY_SECONDS if fs_latency_seconds is None else float(fs_latency_seconds)
+    compression_ratio = (
+        _DEFAULT_COMPRESSION_RATIO
+        if compression_ratio is None
+        else float(compression_ratio)
+    )
+    fs_read_min_bytes = (
+        _DEFAULT_FS_READ_MIN_BYTES
+        if fs_read_min_bytes is None
+        else int(fs_read_min_bytes)
+    )
+    fs_read_max_bytes = (
+        _DEFAULT_FS_READ_MAX_BYTES
+        if fs_read_max_bytes is None
+        else int(fs_read_max_bytes)
+    )
+    fs_latency_seconds = (
+        _DEFAULT_FS_LATENCY_SECONDS
+        if fs_latency_seconds is None
+        else float(fs_latency_seconds)
+    )
     fs_bandwidth_bytes_per_s = (
-        _DEFAULT_FS_BANDWIDTH_BYTES_PER_S if fs_bandwidth_bytes_per_s is None else float(fs_bandwidth_bytes_per_s)
+        _DEFAULT_FS_BANDWIDTH_BYTES_PER_S
+        if fs_bandwidth_bytes_per_s is None
+        else float(fs_bandwidth_bytes_per_s)
     )
     if not os.path.exists(_manifest_path(work_dir)):
         raise RuntimeError(
@@ -1232,7 +1304,9 @@ def compute_rows_per_chunk(
         total = int(uniq_counts.sum())
         # Counts are pre-dedup; rescale so the curve ends exactly at the final (post-dedup) row count.
         scale = nrows / total if total else 1.0
-        cum_before = np.concatenate(([0], np.cumsum(uniq_counts)))  # rows with epoch < uniq_epochs[k]
+        cum_before = np.concatenate(
+            ([0], np.cumsum(uniq_counts))
+        )  # rows with epoch < uniq_epochs[k]
 
         def cumulative_rows(query: np.ndarray) -> np.ndarray:
             idx = np.searchsorted(uniq_epochs, query, side="left")
@@ -1257,10 +1331,14 @@ def compute_rows_per_chunk(
         times[1::2] = np.maximum(times[1::2], times[0::2] + 1e-3)
 
         def cumulative_rows(query: np.ndarray) -> np.ndarray:
-            return np.clip(np.rint(np.interp(query, times, cum)), 0, nrows).astype(np.int64)
+            return np.clip(np.rint(np.interp(query, times, cum)), 0, nrows).astype(
+                np.int64
+            )
 
         first_e, last_e = float(times[0]), float(times[-1])
-        density_source = "fragment list (uniform-in-time guess for multi-date fragments)"
+        density_source = (
+            "fragment list (uniform-in-time guess for multi-date fragments)"
+        )
 
     # Candidate chunk sizes on a log grid up to the dataset size. The true optimum for a regular
     # dataset is a *sharp* dip at chunk == rows-per-window (every read is then one aligned chunk),
@@ -1274,9 +1352,9 @@ def compute_rows_per_chunk(
         f"compression x{compression_ratio:g}). Density from {density_source}."
     )
     LOG.info(
-        f"Filesystem read sweet spot {fs_read_min_bytes>>20}-{fs_read_max_bytes>>20} MB on disk "
+        f"Filesystem read sweet spot {fs_read_min_bytes >> 20}-{fs_read_max_bytes >> 20} MB on disk "
         f"= {fs_min_rows:,}-{fs_max_rows:,} rows/chunk; "
-        f"latency {fs_latency_seconds*1e3:g} ms, bandwidth {fs_bandwidth_bytes_per_s/1e9:g} GB/s."
+        f"latency {fs_latency_seconds * 1e3:g} ms, bandwidth {fs_bandwidth_bytes_per_s / 1e9:g} GB/s."
     )
 
     def on_disk_mb(chunk_rows: int) -> float:
@@ -1304,13 +1382,17 @@ def compute_rows_per_chunk(
         aligned = [a / k for a in anchors for k in (1, 2, 3, 4)]
         aligned += [a * k for a in anchors for k in (2, 3, 4)]
         aligned += [fs_min_rows, fs_max_rows]
-        candidates = np.unique(np.rint(np.concatenate([log_grid, aligned])).astype(np.int64))
+        candidates = np.unique(
+            np.rint(np.concatenate([log_grid, aligned])).astype(np.int64)
+        )
         candidates = candidates[candidates >= 1]
 
         touched = np.array(
             [
                 int(((hi_ne - 1) // c - lo_ne // c + 1).sum())
-                for c in tqdm.tqdm(candidates, desc=f"  {window} candidates", unit="size", leave=False)
+                for c in tqdm.tqdm(
+                    candidates, desc=f"  {window} candidates", unit="size", leave=False
+                )
             ]
         )
         cost = read_time(candidates.astype(np.float64)) * touched
@@ -1324,7 +1406,7 @@ def compute_rows_per_chunk(
         chunks_per_read = touched[best] / len(lo_ne)
 
         LOG.info(
-            f"  window {str(window):>4}: rows/window≈{mean_rpw:,.0f} "
+            f"  window {window!s:>4}: rows/window≈{mean_rpw:,.0f} "
             f"(min {rows_per_window.min():,} max {rows_per_window.max():,}) | "
             f"time-opt {best_c:,} rows ({on_disk_mb(best_c):.0f} MB/chunk, {chunks_per_read:.1f} chunks/read) | "
             f"band-clamped {ops_c:,} rows ({on_disk_mb(ops_c):.0f} MB/chunk)"
@@ -1368,13 +1450,17 @@ def load_tabular_dataset(
         return
 
     if not os.path.exists(_manifest_path(work_dir)):
-        raise RuntimeError(f"No manifest in {work_dir!r}: run `anemoi-datasets finalise --prepare` before `--load`.")
+        raise RuntimeError(
+            f"No manifest in {work_dir!r}: run `anemoi-datasets finalise --prepare` before `--load`."
+        )
 
     manifest = _read_manifest(work_dir)
 
     fragments: list[Fragment] = []
     for file_path, first_date, last_date, shape, off in manifest["fragments"]:
-        fragment = Fragment(first_date=first_date, last_date=last_date, shape=shape, file_path=file_path)
+        fragment = Fragment(
+            first_date=first_date, last_date=last_date, shape=shape, file_path=file_path
+        )
         fragment.offset = off
         fragments.append(fragment)
 
@@ -1390,12 +1476,20 @@ def load_tabular_dataset(
     # Fragments overlapping this part's row range. A fragment fully inside the range is read only
     # by this part, so it can be deleted once committed; a fragment straddling a part boundary is
     # shared with a neighbouring part and is left for tidy/cleanup to remove.
-    part_fragments = [f for f in fragments if f.offset < row_hi and f.offset + f.shape[0] > row_lo]
-    deletable = [f for f in part_fragments if f.offset >= row_lo and f.offset + f.shape[0] <= row_hi]
+    part_fragments = [
+        f for f in fragments if f.offset < row_hi and f.offset + f.shape[0] > row_lo
+    ]
+    deletable = [
+        f
+        for f in part_fragments
+        if f.offset >= row_lo and f.offset + f.shape[0] <= row_hi
+    ]
 
     marker = f"load_{part_index:06d}"
     if _is_marked_done(work_dir, marker):
-        LOG.info(f"Part {part_index} already loaded; ensuring its fragment files are removed.")
+        LOG.info(
+            f"Part {part_index} already loaded; ensuring its fragment files are removed."
+        )
         if delete_files:
             _delete_fragment_files(deletable)
         return
@@ -1413,14 +1507,26 @@ def load_tabular_dataset(
 
     ranges_path = _part_ranges_path(work_dir, part_index)
     if row_hi > row_lo:
-        date_range_builder = _DuplicateRangeBuilder(length=row_hi - row_lo, path=ranges_path)
-        _write_part_into_zarr(dataset, part_fragments, row_lo, row_hi, collector, date_range_builder, offset)
+        date_range_builder = _DuplicateRangeBuilder(
+            length=row_hi - row_lo, path=ranges_path
+        )
+        _write_part_into_zarr(
+            dataset,
+            part_fragments,
+            row_lo,
+            row_hi,
+            collector,
+            date_range_builder,
+            offset,
+        )
         date_range_builder.array()  # close and truncate the ranges file to its used size
     else:
         # Empty part: still emit an (empty) ranges file so tidy sees every part.
         open(ranges_path, "wb").close()
 
-    stats_path = os.path.join(work_dir, f"statistics_{part_index:06d}-{row_lo:09d}-{row_hi:09d}.pkl")
+    stats_path = os.path.join(
+        work_dir, f"statistics_{part_index:06d}-{row_lo:09d}-{row_hi:09d}.pkl"
+    )
     collector.serialise(stats_path + ".tmp", group=part_index, start=row_lo, end=row_hi)
     os.replace(stats_path + ".tmp", stats_path)
 
@@ -1432,7 +1538,9 @@ def load_tabular_dataset(
     if delete_files:
         _delete_fragment_files(deletable)
 
-    LOG.info(f"Loaded part {part_index}: wrote rows [{row_lo}:{row_hi}) and saved partial statistics.")
+    LOG.info(
+        f"Loaded part {part_index}: wrote rows [{row_lo}:{row_hi}) and saved partial statistics."
+    )
 
 
 def tidy_tabular_dataset(
@@ -1464,14 +1572,20 @@ def tidy_tabular_dataset(
 
     # Only consider parts whose load committed (marker present), in part order.
     done_markers = sorted(glob.glob(_marker_path(work_dir, "load_*")))
-    part_indices = [int(os.path.basename(p)[len("load_") : -len(".done")]) for p in done_markers]
-    assert part_indices, "No completed load parts found; run the load stage before tidy."
+    part_indices = [
+        int(os.path.basename(p)[len("load_") : -len(".done")]) for p in done_markers
+    ]
+    assert part_indices, (
+        "No completed load parts found; run the load stage before tidy."
+    )
 
     stats_files: list[str] = []
     range_files: list[str] = []
     for idx in part_indices:
         matches = glob.glob(os.path.join(work_dir, f"statistics_{idx:06d}-*.pkl"))
-        assert len(matches) == 1, f"Expected exactly one statistics file for part {idx}, found {matches}"
+        assert len(matches) == 1, (
+            f"Expected exactly one statistics file for part {idx}, found {matches}"
+        )
         stats_files.append(matches[0])
         range_files.append(_part_ranges_path(work_dir, idx))
 
@@ -1484,16 +1598,22 @@ def tidy_tabular_dataset(
     for path in range_files:
         n_rows = os.path.getsize(path) // row_size
         if n_rows:
-            part_arrays.append(np.memmap(path, dtype=np.int64, mode="r", shape=(n_rows, 3)))
+            part_arrays.append(
+                np.memmap(path, dtype=np.int64, mode="r", shape=(n_rows, 3))
+            )
 
     assert part_arrays, "No date ranges found; run the load stage before tidy."
-    dates_ranges = part_arrays[0] if len(part_arrays) == 1 else np.concatenate(part_arrays)
+    dates_ranges = (
+        part_arrays[0] if len(part_arrays) == 1 else np.concatenate(part_arrays)
+    )
 
     # A date whose rows straddle a chunk/part boundary is split across two parts; merge the
     # boundary entries so the index sees one (epoch, offset, count) row per date.
     dates_ranges = _merge_adjacent_epochs(np.asarray(dates_ranges))
 
-    LOG.info(f"Duplicate date ranges: {len(dates_ranges):,} ranges from {len(part_arrays)} part(s)")
+    LOG.info(
+        f"Duplicate date ranges: {len(dates_ranges):,} ranges from {len(part_arrays)} part(s)"
+    )
 
     if recipe.build.validate_date_ranges:
         from .validate import validate_date_ranges
@@ -1505,7 +1625,9 @@ def tidy_tabular_dataset(
     now = time.time()
     LOG.info("Bulking load duplicate date ranges into index")
     index.bulk_load(dates_ranges)
-    LOG.info(f"Duplicate date ranges written to index in {time.time() - now:.2f} seconds")
+    LOG.info(
+        f"Duplicate date ranges written to index in {time.time() - now:.2f} seconds"
+    )
 
     del dates_ranges
     del part_arrays

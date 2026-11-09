@@ -53,7 +53,11 @@ def _executor() -> ThreadPoolExecutor | None:
 
     if _EXECUTOR_PID != os.getpid():
         cpus = _available_cpus()
-        _EXECUTOR = ThreadPoolExecutor(max_workers=cpus, thread_name_prefix="statistics") if cpus > 1 else None
+        _EXECUTOR = (
+            ThreadPoolExecutor(max_workers=cpus, thread_name_prefix="statistics")
+            if cpus > 1
+            else None
+        )
         _EXECUTOR_PID = os.getpid()
         LOG.info(f"Statistics computed with {cpus} thread(s)")
 
@@ -76,7 +80,9 @@ def _(t):
 
 
 class _State:
-    def __init__(self, group: int, start: int, end: int, collector: "StatisticsCollector") -> None:
+    def __init__(
+        self, group: int, start: int, end: int, collector: "StatisticsCollector"
+    ) -> None:
         self.group = group
         self.start = start
         self.end = end
@@ -91,7 +97,11 @@ class _Base:
         self._column_names = column_names
 
     def __repr__(self, extra: str = ""):
-        return f"{self.__class__.__name__}(column_names={_(self._column_names)}" + (f", {extra}" if extra else "") + ")"
+        return (
+            f"{self.__class__.__name__}(column_names={_(self._column_names)}"
+            + (f", {extra}" if extra else "")
+            + ")"
+        )
 
 
 class _CollectorBase(_Base):
@@ -111,7 +121,9 @@ class _CollectorBase(_Base):
         )
 
     @classmethod
-    def _merge(cls, a: "_CollectorBase", b: "_CollectorBase", result: "_CollectorBase") -> "_CollectorBase":
+    def _merge(
+        cls, a: "_CollectorBase", b: "_CollectorBase", result: "_CollectorBase"
+    ) -> "_CollectorBase":
         if a._column_names != b._column_names:
             raise ValueError("Cannot merge collectors with different column names")
         count = a._count + b._count
@@ -150,7 +162,9 @@ class _CollectorBase(_Base):
 
         # Each column only updates its own entries of the accumulators, so the columns
         # can be processed in any order.
-        _for_each_column(lambda col_idx: self._update_column(data, col_idx), data.shape[1], data.size)
+        _for_each_column(
+            lambda col_idx: self._update_column(data, col_idx), data.shape[1], data.size
+        )
 
     def _update_column(self, data: NDArray[np.float64], col_idx: int) -> None:
         # Converting each column to float64 gives the same values as converting the whole array
@@ -176,7 +190,9 @@ class _CollectorBase(_Base):
         # Update M2 using parallel algorithm formula
         batch_m2 = np.sum((valid_data - batch_mean) ** 2)
         delta = batch_mean - old_mean
-        self._m2[col_idx] = self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
+        self._m2[col_idx] = (
+            self._m2[col_idx] + batch_m2 + (old_count * n * delta * delta) / new_count
+        )
 
         self._count[col_idx] = new_count
 
@@ -190,7 +206,9 @@ class _CollectorBase(_Base):
 
         for col_idx in range(len(self._count)):
             if self._count[col_idx] == 0:
-                LOG.warning(f"Column {self._column_names[col_idx]}: no statistics collected")
+                LOG.warning(
+                    f"Column {self._column_names[col_idx]}: no statistics collected"
+                )
 
         # Compute variance using Welford's M2
         # variance = M2 / count (except when count == 0, then variance is set to NaN)
@@ -206,7 +224,9 @@ class _CollectorBase(_Base):
         if np.any(negative_mask):
             for col_idx in np.where(negative_mask)[0]:
                 var = variance[col_idx]
-                relative_error = abs(var) / max(abs(self._m2[col_idx]), abs(self._mean[col_idx] ** 2), 1e-100)
+                relative_error = abs(var) / max(
+                    abs(self._m2[col_idx]), abs(self._mean[col_idx] ** 2), 1e-100
+                )
                 if relative_error > 1e-6:
                     msg = f"Negative variance {var} for column {self._column_names[col_idx]}, {relative_error=}"
                     msg += f" m2={self._m2[col_idx]}, count={self._count[col_idx]}, mean={self._mean[col_idx]}"
@@ -246,13 +266,20 @@ class _TendencyCollector(_CollectorBase):
         self._last_window_date = None  # Store only last date for validation
 
     def __repr__(self, extra: str = ""):
-        return super().__repr__(f"delta={_(self._delta)}" + (f", {extra}" if extra else ""))
+        return super().__repr__(
+            f"delta={_(self._delta)}" + (f", {extra}" if extra else "")
+        )
 
     @classmethod
-    def _merge(cls, a: "_TendencyCollector", b: "_TendencyCollector", result: "_TendencyCollector"):
-        assert (
-            a._window is None and b._window is None
-        ), "Merging tendency collectors with non-empty windows is not supported"
+    def _merge(
+        cls,
+        a: "_TendencyCollector",
+        b: "_TendencyCollector",
+        result: "_TendencyCollector",
+    ):
+        assert a._window is None and b._window is None, (
+            "Merging tendency collectors with non-empty windows is not supported"
+        )
 
         if a._delta != b._delta:
             raise ValueError("Cannot merge tendency collectors with different deltas")
@@ -265,17 +292,24 @@ class _TendencyCollector(_CollectorBase):
         return self._merge(self, other, result)
 
     def _check_dates(self, dates) -> None:
-        assert np.all(np.array(dates[1:]) >= np.array(dates[:-1])), ("Dates must be sorted", dates)
+        assert np.all(np.array(dates[1:]) >= np.array(dates[:-1])), (
+            "Dates must be sorted",
+            dates,
+        )
         if len(dates) > 1:
             diffs = np.diff(dates)
-            assert np.all(diffs == diffs[0]), f"Dates must be regularly spaced, got diffs: {np.unique(diffs)}"
+            assert np.all(diffs == diffs[0]), (
+                f"Dates must be regularly spaced, got diffs: {np.unique(diffs)}"
+            )
         if self._last_window_date is not None and len(dates) > 0:
             assert dates[0] >= self._last_window_date, (
                 f"New dates must follow window dates chronologically: "
                 f"window ends at {self._last_window_date}, new data starts at {dates[0]}"
             )
 
-    def _push(self, data: NDArray[np.float64], out: NDArray[np.float64] | None = None) -> int:
+    def _push(
+        self, data: NDArray[np.float64], out: NDArray[np.float64] | None = None
+    ) -> int:
         # Write the rows of `data` into the ring buffer, in order. If `out` is given, the
         # tendency of each row that has 'delta' rows of history is written to it.
         # Returns the number of tendencies.
@@ -305,7 +339,9 @@ class _TendencyCollector(_CollectorBase):
         return n
 
     def update(self, data: NDArray[np.float64], dates) -> None:
-        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        assert len(data) == len(dates), (
+            f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        )
         self._check_dates(dates)
 
         if len(data) == 0:
@@ -315,7 +351,10 @@ class _TendencyCollector(_CollectorBase):
         count = min(max(self._filled + len(data) - self._delta, 0), len(data))
         tendencies = None
         if count > 0:
-            dtype = np.result_type(data.dtype, self._window.dtype if self._window is not None else data.dtype)
+            dtype = np.result_type(
+                data.dtype,
+                self._window.dtype if self._window is not None else data.dtype,
+            )
             tendencies = np.empty((count,) + data.shape[1:], dtype=dtype)
 
         n = self._push(data, tendencies)
@@ -339,7 +378,9 @@ class _TendencyCollector(_CollectorBase):
         dates : Any
             Dates corresponding to the rows of ``data``.
         """
-        assert len(data) == len(dates), f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        assert len(data) == len(dates), (
+            f"Data and dates length mismatch: {len(data)} vs {len(dates)}"
+        )
         if len(data) == 0:
             return
         self._check_dates(dates)
@@ -371,7 +412,11 @@ class _ConstantsCollector(_Base):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        state["_hash"] = hashlib.sha256(self._first.tobytes()).hexdigest() if self._first is not None else None
+        state["_hash"] = (
+            hashlib.sha256(self._first.tobytes()).hexdigest()
+            if self._first is not None
+            else None
+        )
         state["_first"] = None
         state["_nans"] = None
         return state
@@ -383,7 +428,10 @@ class _ConstantsCollector(_Base):
 
     @classmethod
     def _merge(
-        cls, a: "_ConstantsCollector", b: "_ConstantsCollector", result: "_ConstantsCollector"
+        cls,
+        a: "_ConstantsCollector",
+        b: "_ConstantsCollector",
+        result: "_ConstantsCollector",
     ) -> "_ConstantsCollector":
 
         if a._hash is None:  # a has seen no data
@@ -391,10 +439,20 @@ class _ConstantsCollector(_Base):
         if b._hash is None:  # b has seen no data
             return a
 
-        if a._index != b._index or a._name != b._name or a._column_names != b._column_names:
+        if (
+            a._index != b._index
+            or a._name != b._name
+            or a._column_names != b._column_names
+        ):
             raise ValueError("Cannot merge incompatible constants collectors")
 
-        result._nans = a._nans.copy() if a._nans is not None else b._nans.copy() if b._nans is not None else None
+        result._nans = (
+            a._nans.copy()
+            if a._nans is not None
+            else b._nans.copy()
+            if b._nans is not None
+            else None
+        )
         result._is_constant = a._is_constant and b._is_constant and a._hash == b._hash
         result._hash = a._hash
         result._first = None
@@ -498,12 +556,16 @@ class StatisticsCollector:
         if not isinstance(other, StatisticsCollector):
             raise ValueError("Can only merge with another StatisticsCollector")
         if self._variables_names != other._variables_names:
-            raise ValueError("Cannot merge StatisticsCollectors with different variable names")
+            raise ValueError(
+                "Cannot merge StatisticsCollectors with different variable names"
+            )
 
         variables_names = self._variables_names
 
         if self._allow_nans != other._allow_nans:
-            raise ValueError("Cannot merge StatisticsCollectors with different allow_nans settings")
+            raise ValueError(
+                "Cannot merge StatisticsCollectors with different allow_nans settings"
+            )
 
         allow_nans = self._allow_nans
 
@@ -520,32 +582,60 @@ class StatisticsCollector:
             )
         tendencies = self._tendencies
 
-        if set(self._tendencies_collectors.keys()) != set(other._tendencies_collectors.keys()):
+        if set(self._tendencies_collectors.keys()) != set(
+            other._tendencies_collectors.keys()
+        ):
             raise ValueError(
                 f"Cannot merge StatisticsCollectors with different tendencies collectors keys {self._tendencies_collectors.keys()} vs {other._tendencies_collectors.keys()}"
             )
 
         tendencies_collectors = {}
-        for delta in self._tendencies_collectors.keys() | other._tendencies_collectors.keys():
-            if delta not in self._tendencies_collectors or delta not in other._tendencies_collectors:
+        for delta in (
+            self._tendencies_collectors.keys() | other._tendencies_collectors.keys()
+        ):
+            if (
+                delta not in self._tendencies_collectors
+                or delta not in other._tendencies_collectors
+            ):
                 LOG.error(f"Delta {delta} not in both collectors")
                 LOG.error(f"Self tendencies: {self._tendencies_collectors}")
                 LOG.error(f"Other tendencies: {other._tendencies_collectors}")
-                LOG.error(f"Self tendencies keys: {list(self._tendencies_collectors.keys())}")
-                LOG.error(f"Other tendencies keys: {list(other._tendencies_collectors.keys())}")
-                raise ValueError(f"Cannot merge StatisticsCollectors with different tendencies settings, {delta=}")
-            tendencies_collectors[delta] = self._tendencies_collectors[delta].merge(other._tendencies_collectors[delta])
+                LOG.error(
+                    f"Self tendencies keys: {list(self._tendencies_collectors.keys())}"
+                )
+                LOG.error(
+                    f"Other tendencies keys: {list(other._tendencies_collectors.keys())}"
+                )
+                raise ValueError(
+                    f"Cannot merge StatisticsCollectors with different tendencies settings, {delta=}"
+                )
+            tendencies_collectors[delta] = self._tendencies_collectors[delta].merge(
+                other._tendencies_collectors[delta]
+            )
 
         constants_collectors = {}
-        for name in self._constants_collectors.keys() | other._constants_collectors.keys():
-            if name not in self._constants_collectors or name not in other._constants_collectors:
+        for name in (
+            self._constants_collectors.keys() | other._constants_collectors.keys()
+        ):
+            if (
+                name not in self._constants_collectors
+                or name not in other._constants_collectors
+            ):
                 LOG.error(f"Constant {name} not in both collectors")
                 LOG.error(f"Self constants: {self._constants_collectors}")
                 LOG.error(f"Other constants: {other._constants_collectors}")
-                LOG.error(f"Self constants keys: {list(self._constants_collectors.keys())}")
-                LOG.error(f"Other constants keys: {list(other._constants_collectors.keys())}")
-                raise ValueError(f"Cannot merge StatisticsCollectors with different constants settings, {name=}")
-            constants_collectors[name] = self._constants_collectors[name].merge(other._constants_collectors[name])
+                LOG.error(
+                    f"Self constants keys: {list(self._constants_collectors.keys())}"
+                )
+                LOG.error(
+                    f"Other constants keys: {list(other._constants_collectors.keys())}"
+                )
+                raise ValueError(
+                    f"Cannot merge StatisticsCollectors with different constants settings, {name=}"
+                )
+            constants_collectors[name] = self._constants_collectors[name].merge(
+                other._constants_collectors[name]
+            )
 
         return StatisticsCollector(
             variables_names=variables_names,
@@ -558,26 +648,32 @@ class StatisticsCollector:
 
     def _init_collectors(self, num_columns: int) -> None:
         names = self._variables_names
-        column_names = [str(i) if names is None else names[i] for i in range(num_columns)]
+        column_names = [
+            str(i) if names is None else names[i] for i in range(num_columns)
+        ]
 
         self._collector = _Collector(column_names)
 
         for i, name in enumerate(names):
-            self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
+            self._constants_collectors[name] = _ConstantsCollector(
+                i, column_names, name
+            )
 
         for name, delta in self._tendencies.items():
             self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
 
-    def _filtered(self, array: NDArray[np.float64], dates: Any) -> tuple[NDArray[np.float64], Any]:
-        assert array.shape[1] == len(
-            self._variables_names
-        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+    def _filtered(
+        self, array: NDArray[np.float64], dates: Any
+    ) -> tuple[NDArray[np.float64], Any]:
+        assert array.shape[1] == len(self._variables_names), (
+            f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+        )
 
         filtered_array = self._filter(array, dates)
         filtered_dates = self._filter(dates, dates)
-        assert len(filtered_array) == len(
-            filtered_dates
-        ), f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
+        assert len(filtered_array) == len(filtered_dates), (
+            f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
+        )
 
         if self._collector is None:  # lazily initialise collectors
             self._init_collectors(filtered_array.shape[1])
@@ -686,8 +782,12 @@ class StatisticsCollector:
         """
         stats = self.statistics()
         for name, data in stats.items():
-            assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"
-            dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
+            assert data.dtype == np.float64, (
+                f"Expected float64 {name}, got {data.dtype}"
+            )
+            dataset.add_array(
+                name=name, data=data, dimensions=("variable",), overwrite=True
+            )
 
         constants = self.constant_variables()
 
@@ -702,10 +802,14 @@ class StatisticsCollector:
         )
 
         if hasattr(self._filter, "statistics_start_date"):
-            dataset.update_metadata(statistics_start_date=self._filter.statistics_start_date)
+            dataset.update_metadata(
+                statistics_start_date=self._filter.statistics_start_date
+            )
 
         if hasattr(self._filter, "statistics_end_date"):
-            dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
+            dataset.update_metadata(
+                statistics_end_date=self._filter.statistics_end_date
+            )
 
     def serialise(self, path, group, start, end) -> None:
         state = _State(group=group, start=start, end=end, collector=self)
@@ -730,12 +834,16 @@ class StatisticsCollector:
                 raise ValueError(f"Missing statistics for group {i}")
 
             if state.start != offset:
-                raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
+                raise ValueError(
+                    f"Statistics for group {i} has start {state.start}, expected {offset}"
+                )
 
             offset = state.end
 
         if offset != dataset.data.shape[0]:
-            raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
+            raise ValueError(
+                f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}"
+            )
 
         # Merge all collectors
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])
@@ -824,11 +932,15 @@ class TrajectoryStatisticsCollector:
 
         if self._collector is None:  # lazily initialise collectors
             names = self._variables_names
-            column_names = [str(i) if names is None else names[i] for i in range(array.shape[1])]
+            column_names = [
+                str(i) if names is None else names[i] for i in range(array.shape[1])
+            ]
 
             self._collector = _Collector(column_names)
             for i, name in enumerate(column_names):
-                self._constants_collectors[name] = _ConstantsCollector(i, column_names, name)
+                self._constants_collectors[name] = _ConstantsCollector(
+                    i, column_names, name
+                )
             for name in self._tendencies:
                 self._tendencies_collectors[name] = _Collector(column_names)
 
@@ -848,13 +960,21 @@ class TrajectoryStatisticsCollector:
             diff = kept[:, :, :, step_delta:, :] - kept[:, :, :, :-step_delta, :]
             self._tendencies_collectors[name].update(diff)
 
-    def merge(self, other: "TrajectoryStatisticsCollector") -> "TrajectoryStatisticsCollector":
+    def merge(
+        self, other: "TrajectoryStatisticsCollector"
+    ) -> "TrajectoryStatisticsCollector":
         if not isinstance(other, TrajectoryStatisticsCollector):
-            raise ValueError("Can only merge with another TrajectoryStatisticsCollector")
+            raise ValueError(
+                "Can only merge with another TrajectoryStatisticsCollector"
+            )
         if self._variables_names != other._variables_names:
-            raise ValueError("Cannot merge TrajectoryStatisticsCollectors with different variable names")
+            raise ValueError(
+                "Cannot merge TrajectoryStatisticsCollectors with different variable names"
+            )
         if self._allow_nans != other._allow_nans:
-            raise ValueError("Cannot merge TrajectoryStatisticsCollectors with different allow_nans settings")
+            raise ValueError(
+                "Cannot merge TrajectoryStatisticsCollectors with different allow_nans settings"
+            )
 
         if self._collector is None:
             return other
@@ -866,7 +986,9 @@ class TrajectoryStatisticsCollector:
                 f"Cannot merge TrajectoryStatisticsCollectors with different tendencies settings "
                 f"{self._tendencies.keys()} vs {other._tendencies.keys()}"
             )
-        if set(self._tendencies_collectors.keys()) != set(other._tendencies_collectors.keys()):
+        if set(self._tendencies_collectors.keys()) != set(
+            other._tendencies_collectors.keys()
+        ):
             raise ValueError(
                 f"Cannot merge TrajectoryStatisticsCollectors with different tendencies collectors keys "
                 f"{self._tendencies_collectors.keys()} vs {other._tendencies_collectors.keys()}"
@@ -875,17 +997,26 @@ class TrajectoryStatisticsCollector:
         collector = self._collector.merge(other._collector)
 
         tendencies_collectors = {
-            name: self._tendencies_collectors[name].merge(other._tendencies_collectors[name])
+            name: self._tendencies_collectors[name].merge(
+                other._tendencies_collectors[name]
+            )
             for name in self._tendencies_collectors
         }
 
         constants_collectors = {}
-        for name in self._constants_collectors.keys() | other._constants_collectors.keys():
-            if name not in self._constants_collectors or name not in other._constants_collectors:
+        for name in (
+            self._constants_collectors.keys() | other._constants_collectors.keys()
+        ):
+            if (
+                name not in self._constants_collectors
+                or name not in other._constants_collectors
+            ):
                 raise ValueError(
                     f"Cannot merge TrajectoryStatisticsCollectors with different constants settings, {name=}"
                 )
-            constants_collectors[name] = self._constants_collectors[name].merge(other._constants_collectors[name])
+            constants_collectors[name] = self._constants_collectors[name].merge(
+                other._constants_collectors[name]
+            )
 
         return TrajectoryStatisticsCollector(
             variables_names=self._variables_names,
@@ -929,8 +1060,12 @@ class TrajectoryStatisticsCollector:
     def add_to_dataset(self, dataset: Any) -> None:
         stats = self.statistics()
         for name, data in stats.items():
-            assert data.dtype == np.float64, f"Expected float64 {name}, got {data.dtype}"
-            dataset.add_array(name=name, data=data, dimensions=("variable",), overwrite=True)
+            assert data.dtype == np.float64, (
+                f"Expected float64 {name}, got {data.dtype}"
+            )
+            dataset.add_array(
+                name=name, data=data, dimensions=("variable",), overwrite=True
+            )
 
         constants = self.constant_variables()
 
@@ -945,10 +1080,14 @@ class TrajectoryStatisticsCollector:
         )
 
         if hasattr(self._filter, "statistics_start_date"):
-            dataset.update_metadata(statistics_start_date=self._filter.statistics_start_date)
+            dataset.update_metadata(
+                statistics_start_date=self._filter.statistics_start_date
+            )
 
         if hasattr(self._filter, "statistics_end_date"):
-            dataset.update_metadata(statistics_end_date=self._filter.statistics_end_date)
+            dataset.update_metadata(
+                statistics_end_date=self._filter.statistics_end_date
+            )
 
     def serialise(self, path, group, start, end) -> None:
         state = _State(group=group, start=start, end=end, collector=self)
@@ -971,11 +1110,15 @@ class TrajectoryStatisticsCollector:
             if state.group != i:
                 raise ValueError(f"Missing statistics for group {i}")
             if state.start != offset:
-                raise ValueError(f"Statistics for group {i} has start {state.start}, expected {offset}")
+                raise ValueError(
+                    f"Statistics for group {i} has start {state.start}, expected {offset}"
+                )
             offset = state.end
 
         if offset != dataset.data.shape[0]:
-            raise ValueError(f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}")
+            raise ValueError(
+                f"Statistics end {offset} does not match dataset length {dataset.data.shape[0]}"
+            )
 
         # No cross-chunk adjustment needed for trajectories.
         return reduce(lambda a, b: a.merge(b), [s.collector for s in states])

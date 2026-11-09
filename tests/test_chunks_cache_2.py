@@ -47,7 +47,9 @@ def _test_read(array, data, random, key):
 
     for test_key in _test_keys(key):
         try:
-            assert np.array_equal(array[test_key], data[test_key]), f"Data mismatch for key {test_key}"
+            assert np.array_equal(array[test_key], data[test_key]), (
+                f"Data mismatch for key {test_key}"
+            )
         except Exception as e:
             logging.error(f"Error reading key {test_key}: {e}")
             raise
@@ -92,7 +94,12 @@ def _test_cache(test_func):
 
     test_func(array, data, random, np.array([0, 10, 20, 30, 40]))
     test_func(array, data, random, np.array([SIZE - 1, SIZE - 10, SIZE - 20]))
-    test_func(array, data, random, np.array([True if i % 2 == 0 else False for i in range(SIZE)]))
+    test_func(
+        array,
+        data,
+        random,
+        np.array([True if i % 2 == 0 else False for i in range(SIZE)]),
+    )
     test_func(array, data, random, [i * 1000 for i in range(SIZE // 1000)])
 
 

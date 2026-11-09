@@ -68,7 +68,9 @@ class TrajectoryJoin(Join):
     """
 
     def __init__(self, datasets: list[Dataset], options: Options) -> None:
-        self._template = next((d for d in datasets if not isinstance(d, GriddedAsTrajectory)), None)
+        self._template = next(
+            (d for d in datasets if not isinstance(d, GriddedAsTrajectory)), None
+        )
         if self._template is None:
             raise ValueError(
                 f"{self.__class__.__name__} requires at least one trajectory member "
@@ -101,7 +103,9 @@ class TrajectoryJoin(Join):
     def check_same_steps(self, d1: Dataset, d2: Dataset) -> None:
         """Raise if two members have different steps."""
         if not np.array_equal(d1.steps, d2.steps):
-            raise ValueError(f"{self.__class__.__name__}: Incompatible steps: {d1.steps} and {d2.steps} ({d1} {d2})")
+            raise ValueError(
+                f"{self.__class__.__name__}: Incompatible steps: {d1.steps} and {d2.steps} ({d1} {d2})"
+            )
 
     # ------------------------------------------------------------------
     # Operation dispatch and date filtering (delegated to a real trajectory)
@@ -127,7 +131,9 @@ class TrajectoryJoin(Join):
     # Metadata (trajectory convention)
     # ------------------------------------------------------------------
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Return joined statistics tendencies, defaulting the delta to the step frequency."""
         if delta is None:
             delta = self.step_frequency
@@ -170,6 +176,9 @@ def trajectory_join(datasets: list[Dataset], options: Options) -> Dataset:
     base_dates = template.base_dates
     steps = template.steps
 
-    members = [d if is_trajectory(d) else GriddedAsTrajectory(d, base_dates, steps) for d in datasets]
+    members = [
+        d if is_trajectory(d) else GriddedAsTrajectory(d, base_dates, steps)
+        for d in datasets
+    ]
 
     return TrajectoryJoin(members, options)

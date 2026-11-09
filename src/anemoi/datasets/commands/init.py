@@ -34,7 +34,9 @@ class Init(Command):
         subparser : Any
             The argument parser to which the arguments will be added.
         """
-        subparser.add_argument("recipe", help="YAML file defining the recipe to create the dataset.")
+        subparser.add_argument(
+            "recipe", help="YAML file defining the recipe to create the dataset."
+        )
         subparser.add_argument("path", help="Path to store the created data.")
 
         subparser.add_argument(
@@ -55,7 +57,9 @@ class Init(Command):
             help="Do not check if the dataset name is valid before creating it.",
         )
         subparser.set_defaults(check_name=False)
-        subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
+        subparser.add_argument(
+            "--cache", help="Location to store the downloaded data.", metavar="DIR"
+        )
 
         subparser.add_argument("--trace", action="store_true")
 
@@ -79,7 +83,9 @@ class Init(Command):
 
         task("init", options)
 
-        LOG.info(f"Create step '{self.__class__.__name__.lower()}' completed in {seconds_to_human(time.time()-now)}")
+        LOG.info(
+            f"Create step '{self.__class__.__name__.lower()}' completed in {seconds_to_human(time.time() - now)}"
+        )
 
 
 command = Init

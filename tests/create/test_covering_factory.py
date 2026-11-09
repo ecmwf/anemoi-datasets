@@ -11,8 +11,10 @@
 
 import pytest
 
-from anemoi.datasets.create.sources.accumulate.covering import AutoCovering
-from anemoi.datasets.create.sources.accumulate.covering import covering_factory
+from anemoi.datasets.create.sources.accumulate.covering import (
+    AutoCovering,
+    covering_factory,
+)
 
 
 def test_discriminator_auto():

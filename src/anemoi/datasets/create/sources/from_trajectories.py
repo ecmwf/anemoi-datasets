@@ -38,8 +38,7 @@ import fnmatch
 import logging
 from typing import Any
 
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import ForecastDates, ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry
@@ -90,7 +89,8 @@ class FromTrajectoriesSource(Source):
 
         if len(source_config) != 1:
             raise ValueError(
-                f"from-trajectories: 'source' must be a single-key dict, " f"got keys: {list(source_config.keys())}"
+                f"from-trajectories: 'source' must be a single-key dict, "
+                f"got keys: {list(source_config.keys())}"
             )
 
         from anemoi.datasets.create.sources import create_source
@@ -112,7 +112,9 @@ class FromTrajectoriesSource(Source):
         """
         if self.bases_pattern is None:
             return True
-        return fnmatch.fnmatch(basetime.strftime("%Y-%m-%d %H:%M:%S"), self.bases_pattern)
+        return fnmatch.fnmatch(
+            basetime.strftime("%Y-%m-%d %H:%M:%S"), self.bases_pattern
+        )
 
     def _pick_basetime(self, valid_time: datetime.datetime) -> datetime.datetime:
         """Pick the first candidate basetime for *valid_time* satisfying the filters.
@@ -143,9 +145,7 @@ class FromTrajectoriesSource(Source):
     def _as_forecast_dates(self, argument: Any) -> ForecastDates:
         """Convert a ``ValidDates``-like argument into a ``ForecastDates``."""
 
-        if isinstance(argument, ValidDates):
-            valid_times = list(argument.dates)
-        elif hasattr(argument, "dates"):
+        if isinstance(argument, ValidDates) or hasattr(argument, "dates"):
             valid_times = list(argument.dates)
         else:
             valid_times = list(argument)

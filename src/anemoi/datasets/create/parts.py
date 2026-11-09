@@ -47,7 +47,9 @@ def part_bounds(parts: str | list | None, total: int) -> tuple[int, int, int]:
         return 0, 0, total
 
     i, n = (int(x) for x in parts.split("/"))
-    assert 0 < i <= n, f"Invalid part {parts}: must be in the form 'i/n' with 1 <= i <= n."
+    assert 0 < i <= n, (
+        f"Invalid part {parts}: must be in the form 'i/n' with 1 <= i <= n."
+    )
 
     chunk_size = total / n
     lo = sum(1 for x in range(total) if x < (i - 1) * chunk_size)
@@ -93,7 +95,9 @@ class PartFilter:
             elif len(parts) == 0:
                 parts = None
             else:
-                raise ValueError(f"Invalid parts format: {parts}. Must be in the form 'i/n'.")
+                raise ValueError(
+                    f"Invalid parts format: {parts}. Must be in the form 'i/n'."
+                )
 
         if not parts:
             parts = "all"
@@ -104,7 +108,9 @@ class PartFilter:
             self.allowed = ALL
             return
 
-        assert "/" in parts, f"Invalid parts format: {parts}. Must be in the form 'i/n'."
+        assert "/" in parts, (
+            f"Invalid parts format: {parts}. Must be in the form 'i/n'."
+        )
 
         i, n = parts.split("/")
         i, n = int(i), int(n)
@@ -118,11 +124,15 @@ class PartFilter:
             )
 
         chunk_size = total / n
-        parts = [x for x in range(total) if x >= (i - 1) * chunk_size and x < i * chunk_size]
+        parts = [
+            x for x in range(total) if x >= (i - 1) * chunk_size and x < i * chunk_size
+        ]
 
         for i in parts:
             if i < 0 or i >= total:
-                raise AssertionError(f"Invalid chunk number {i}. Must be between 0 and {total - 1}.")
+                raise AssertionError(
+                    f"Invalid chunk number {i}. Must be between 0 and {total - 1}."
+                )
         if not parts:
             warnings.warn(f"Nothing to do for chunk {i}/{n}.")
 
@@ -149,7 +159,9 @@ class PartFilter:
             If the chunk number is invalid.
         """
         if i < 0 or i >= self.total:
-            raise AssertionError(f"Invalid chunk number {i}. Must be between 0 and {self.total - 1}.")
+            raise AssertionError(
+                f"Invalid chunk number {i}. Must be between 0 and {self.total - 1}."
+            )
 
         return (self.allowed is ALL) or (i in self.allowed)
 

@@ -22,7 +22,9 @@ def test_constant_generator() -> None:
     from anemoi.datasets.usage.gridded.synthetic import ConstantValue
 
     g = ConstantValue(3.5)
-    out = g.generate(date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0)
+    out = g.generate(
+        date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0
+    )
     assert out.shape == (2, 1, 4)
     assert (out == 3.5).all()
     assert g.is_constant is True
@@ -32,7 +34,9 @@ def test_random_generator_is_deterministic() -> None:
     from anemoi.datasets.usage.gridded.synthetic import RandomValue
 
     g = RandomValue(mean=10.0, std=2.0)
-    kw = dict(date_indices=[0, 1, 2], n_ensemble=2, n_grid=5, n_vars=4, var_index=1, seed=7)
+    kw = dict(
+        date_indices=[0, 1, 2], n_ensemble=2, n_grid=5, n_vars=4, var_index=1, seed=7
+    )
     np.testing.assert_array_equal(g.generate(**kw), g.generate(**kw))
 
     kw_other = dict(kw, var_index=2)
@@ -43,7 +47,9 @@ def test_random_generator_is_deterministic() -> None:
     assert abs(float(g.generate(**kw).mean()) - 10.0) < 1.0
 
     # Each date is seeded independently of the range it is drawn in.
-    one = g.generate(date_indices=[2], n_ensemble=2, n_grid=5, n_vars=4, var_index=1, seed=7)
+    one = g.generate(
+        date_indices=[2], n_ensemble=2, n_grid=5, n_vars=4, var_index=1, seed=7
+    )
     np.testing.assert_array_equal(one[0], g.generate(**kw)[2])
 
 
@@ -51,8 +57,10 @@ def test_random_generator_is_deterministic() -> None:
 # values spec: one-of type-key dict + scalar / string shorthand
 # --------------------------------------------------------------------------
 def test_build_value_generator_constant_takes_value_directly() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ConstantValue,
+        build_value_generator,
+    )
 
     g = build_value_generator({"constant": 273.15})
     assert isinstance(g, ConstantValue)
@@ -60,8 +68,10 @@ def test_build_value_generator_constant_takes_value_directly() -> None:
 
 
 def test_build_value_generator_random_with_params() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import (
+        RandomValue,
+        build_value_generator,
+    )
 
     g = build_value_generator({"random": {"mean": 2.0, "std": 3.0}})
     assert isinstance(g, RandomValue)
@@ -69,8 +79,10 @@ def test_build_value_generator_random_with_params() -> None:
 
 
 def test_build_value_generator_random_defaults_when_payload_empty() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import (
+        RandomValue,
+        build_value_generator,
+    )
 
     g = build_value_generator({"random": {}})
     assert isinstance(g, RandomValue)
@@ -78,8 +90,10 @@ def test_build_value_generator_random_defaults_when_payload_empty() -> None:
 
 
 def test_build_value_generator_bare_scalar_is_constant() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ConstantValue,
+        build_value_generator,
+    )
 
     g = build_value_generator(5.0)
     assert isinstance(g, ConstantValue)
@@ -87,8 +101,10 @@ def test_build_value_generator_bare_scalar_is_constant() -> None:
 
 
 def test_build_value_generator_bare_string_is_named_generator_with_defaults() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import (
+        RandomValue,
+        build_value_generator,
+    )
 
     g = build_value_generator("random")
     assert isinstance(g, RandomValue)
@@ -137,7 +153,9 @@ def test_build_value_generator_constant_rejects_dict_payload() -> None:
 def test_resolve_bbox_geography() -> None:
     from anemoi.datasets.usage.gridded.synthetic import resolve_geography
 
-    lat, lon, field_shape = resolve_geography({"bbox": [10, 0, 0, 10], "resolution": 1.0})
+    lat, lon, field_shape = resolve_geography(
+        {"bbox": [10, 0, 0, 10], "resolution": 1.0}
+    )
     assert field_shape == (11, 11)
     assert lat.shape == (121,)
     assert lat[0] == 10.0 and lat[-1] == 0.0
@@ -200,7 +218,9 @@ def test_resolve_icon_geography(monkeypatch) -> None:
             return np.array([5.0, 6.0]), np.array([7.0, 8.0])
 
     monkeypatch.setattr("anemoi.transform.grids.icon.IconGrid", FakeIconGrid)
-    lat, lon, field_shape = synthetic.resolve_geography({"icon": {"path": "/fake/grid.nc"}})
+    lat, lon, field_shape = synthetic.resolve_geography(
+        {"icon": {"path": "/fake/grid.nc"}}
+    )
     assert field_shape == (2,)
     np.testing.assert_array_equal(lon, [7.0, 8.0])
 
@@ -246,9 +266,11 @@ def test_parse_config_rejects_integer_variables() -> None:
 
 
 def test_parse_config_variable_dict_entries() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ConstantValue,
+        RandomValue,
+        parse_synthetic_config,
+    )
 
     cfg = parse_synthetic_config(
         _minimal_raw(
@@ -264,17 +286,21 @@ def test_parse_config_variable_dict_entries() -> None:
 
 
 def test_parse_config_top_level_values_is_default() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ConstantValue,
+        parse_synthetic_config,
+    )
 
     cfg = parse_synthetic_config(_minimal_raw(values={"constant": 1.0}))
     assert all(isinstance(g, ConstantValue) for g in cfg.generators)
 
 
 def test_parse_config_per_variable_overrides_default() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ConstantValue,
+        RandomValue,
+        parse_synthetic_config,
+    )
 
     cfg = parse_synthetic_config(
         _minimal_raw(
@@ -303,7 +329,11 @@ def test_parse_config_rejects_duplicate_variable_names() -> None:
 def test_parse_config_threads_variable_metadata() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
-    cfg = parse_synthetic_config(_minimal_raw(variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"]))
+    cfg = parse_synthetic_config(
+        _minimal_raw(
+            variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"]
+        )
+    )
     assert cfg.variables_metadata["2t"] == {"mars": {"param": "T_2M"}}
     assert cfg.variables_metadata["b"] == {}
 
@@ -312,7 +342,16 @@ def test_parse_config_per_variable_statistics_override() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
     cfg = parse_synthetic_config(
-        _minimal_raw(variables=[{"name": "a", "values": {"constant": 1.0}, "statistics": {"mean": 99.0}}, "b"])
+        _minimal_raw(
+            variables=[
+                {
+                    "name": "a",
+                    "values": {"constant": 1.0},
+                    "statistics": {"mean": 99.0},
+                },
+                "b",
+            ]
+        )
     )
     assert cfg.stats_overrides[0] == {"mean": 99.0}
     assert cfg.stats_overrides[1] is None
@@ -431,7 +470,9 @@ def test_computed_forcing_generator_matches_earthkit() -> None:
     dates = np.array(["2020-01-01T00", "2020-06-01T12"], dtype="datetime64[s]")
 
     g = ComputedForcingValue("insolation", latitudes=lat, longitudes=lon, dates=dates)
-    out = g.generate(date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0)
+    out = g.generate(
+        date_indices=[0, 1], n_ensemble=1, n_grid=4, n_vars=1, var_index=0, seed=0
+    )
     assert out.shape == (2, 1, 4)
 
     fl = from_source(
@@ -452,7 +493,9 @@ def test_computed_forcing_broadcasts_over_ensemble() -> None:
     lon = np.array([0.0, 90.0])
     dates = np.array(["2020-01-01T00", "2020-01-01T06"], dtype="datetime64[s]")
     g = ComputedForcingValue("cos_latitude", latitudes=lat, longitudes=lon, dates=dates)
-    out = g.generate(date_indices=[0, 1], n_ensemble=3, n_grid=2, n_vars=1, var_index=0, seed=0)
+    out = g.generate(
+        date_indices=[0, 1], n_ensemble=3, n_grid=2, n_vars=1, var_index=0, seed=0
+    )
     assert out.shape == (2, 3, 2)
     # all ensemble members identical
     np.testing.assert_array_equal(out[:, 0, :], out[:, 1, :])
@@ -464,16 +507,30 @@ def test_computed_forcing_constant_in_time_is_marked_constant() -> None:
     lat = np.array([0.0, 30.0])
     lon = np.array([0.0, 90.0])
     dates = np.array(["2020-01-01T00", "2020-01-01T06"], dtype="datetime64[s]")
-    assert ComputedForcingValue("cos_latitude", latitudes=lat, longitudes=lon, dates=dates).is_constant is True
-    assert ComputedForcingValue("insolation", latitudes=lat, longitudes=lon, dates=dates).is_constant is False
+    assert (
+        ComputedForcingValue(
+            "cos_latitude", latitudes=lat, longitudes=lon, dates=dates
+        ).is_constant
+        is True
+    )
+    assert (
+        ComputedForcingValue(
+            "insolation", latitudes=lat, longitudes=lon, dates=dates
+        ).is_constant
+        is False
+    )
 
 
 def test_parse_config_routes_forcing_string_to_computed_generator() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import (
+        ComputedForcingValue,
+        RandomValue,
+        parse_synthetic_config,
+    )
 
-    cfg = parse_synthetic_config(_minimal_raw(variables=["2t", "insolation", "cos_latitude"]))
+    cfg = parse_synthetic_config(
+        _minimal_raw(variables=["2t", "insolation", "cos_latitude"])
+    )
     assert isinstance(cfg.generators[0], RandomValue)  # ordinary variable
     assert isinstance(cfg.generators[1], ComputedForcingValue)
     assert isinstance(cfg.generators[2], ComputedForcingValue)
@@ -483,7 +540,11 @@ def test_parse_config_forcing_with_values_block_is_error() -> None:
     from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
 
     with pytest.raises(ValueError, match="forcing"):
-        parse_synthetic_config(_minimal_raw(variables=[{"name": "insolation", "values": {"constant": 1.0}}, "b"]))
+        parse_synthetic_config(
+            _minimal_raw(
+                variables=[{"name": "insolation", "values": {"constant": 1.0}}, "b"]
+            )
+        )
 
 
 def test_parse_config_forcing_metadata_marks_computed_forcing() -> None:
@@ -499,8 +560,10 @@ def test_parse_config_forcing_metadata_marks_computed_forcing() -> None:
 # dataset behaviour
 # --------------------------------------------------------------------------
 def _dataset(**overrides):
-    from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import (
+        SyntheticGriddedDataset,
+        parse_synthetic_config,
+    )
 
     return SyntheticGriddedDataset(parse_synthetic_config(_minimal_raw(**overrides)))
 
@@ -625,7 +688,9 @@ def test_dataset_metadata_roundtrip() -> None:
 
 
 def test_dataset_variables_metadata_surfaced() -> None:
-    ds = _dataset(variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"])
+    ds = _dataset(
+        variables=[{"name": "2t", "metadata": {"mars": {"param": "T_2M"}}}, "b"]
+    )
     assert ds.metadata()["variables_metadata"]["2t"] == {"mars": {"param": "T_2M"}}
 
 

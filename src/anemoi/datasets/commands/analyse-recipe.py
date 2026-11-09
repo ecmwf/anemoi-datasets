@@ -62,7 +62,9 @@ class AnalyseRecipe(Command):
         command_parser : Any
             The command parser.
         """
-        command_parser.add_argument("path", metavar="RECIPE", help="Path to the recipe (YAML).")
+        command_parser.add_argument(
+            "path", metavar="RECIPE", help="Path to the recipe (YAML)."
+        )
         command_parser.add_argument(
             "-v",
             "--verbose",

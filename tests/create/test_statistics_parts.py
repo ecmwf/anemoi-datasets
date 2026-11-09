@@ -51,17 +51,21 @@ class _Dataset:
 def _make_data(n: int, nan_rows: list[int] = ()) -> np.ndarray:
     rng = np.random.default_rng(42)
     # A trend makes tendencies non-trivial, the noise makes every row distinct.
-    data = np.arange(n)[:, None, None, None] * np.linspace(0.5, 2, C)[None, :, None, None] + rng.normal(
-        size=(n, C, 1, G)
-    )
+    data = np.arange(n)[:, None, None, None] * np.linspace(0.5, 2, C)[
+        None, :, None, None
+    ] + rng.normal(size=(n, C, 1, G))
     data[:, 0] = 7.0  # a constant variable
     data = data.astype(np.float32)
     for i in nan_rows:
-        data[i, 1:] = np.nan  # missing date (constant variable kept, as in a real dataset)
+        data[i, 1:] = (
+            np.nan
+        )  # missing date (constant variable kept, as in a real dataset)
     return data
 
 
-def _creator(work_dir: str, tendencies: dict[str, int], start=None, end=None, parts=None) -> SimpleGriddedCreator:
+def _creator(
+    work_dir: str, tendencies: dict[str, int], start=None, end=None, parts=None
+) -> SimpleGriddedCreator:
     creator = SimpleGriddedCreator.__new__(SimpleGriddedCreator)
     creator.path = os.path.join(work_dir, "dataset.zarr")
     creator.work_dir = os.path.join(work_dir, "dataset.zarr.work_dir")
@@ -74,7 +78,9 @@ def _creator(work_dir: str, tendencies: dict[str, int], start=None, end=None, pa
             dates[-1] if end is None else dates[end],
         )
 
-    creator.recipe = SimpleNamespace(statistics=SimpleNamespace(statistics_filter=statistics_filter))
+    creator.recipe = SimpleNamespace(
+        statistics=SimpleNamespace(statistics_filter=statistics_filter)
+    )
     creator._tendencies_to_compute = lambda dataset: tendencies
     return creator
 
@@ -83,9 +89,11 @@ def _run_parts(tmp_path, dataset, n, **kwargs) -> StatisticsCollector:
     creator = _creator(str(tmp_path), **kwargs)
     creator.finalise_prepare(dataset)
     for i in range(n):
-        creator.parts = [f"{i+1}/{n}"]
+        creator.parts = [f"{i + 1}/{n}"]
         creator.finalise_load(dataset)
-    return StatisticsCollector.load_precomputed(dataset, creator._statistics_part_files())
+    return StatisticsCollector.load_precomputed(
+        dataset, creator._statistics_part_files()
+    )
 
 
 def _reference(tmp_path, dataset, **kwargs) -> StatisticsCollector:
@@ -98,7 +106,9 @@ def _expected_tendencies(data, delta, start, end):
     sub = data[start : end + 1].astype(np.float64)
     if len(sub) <= delta:
         return None
-    diff = (data[start + delta : end + 1] - data[start : end + 1 - delta]).astype(np.float64)
+    diff = (data[start + delta : end + 1] - data[start : end + 1 - delta]).astype(
+        np.float64
+    )
     out = {}
     for c in range(C):
         values = diff[:, c].ravel()
@@ -117,7 +127,9 @@ def _compare(actual: StatisticsCollector, expected: StatisticsCollector) -> None
         if "minimum" in name or "maximum" in name:
             np.testing.assert_array_equal(a[name], e[name], err_msg=name)
         else:
-            np.testing.assert_allclose(a[name], e[name], rtol=1e-12, atol=1e-12, equal_nan=True, err_msg=name)
+            np.testing.assert_allclose(
+                a[name], e[name], rtol=1e-12, atol=1e-12, equal_nan=True, err_msg=name
+            )
     assert actual.constant_variables() == expected.constant_variables()
 
 
@@ -145,7 +157,9 @@ def test_parts_equivalence(tmp_path, tendencies, chunk_rows, n_parts):
     for name, delta in tendencies.items():
         expected = _expected_tendencies(dataset.data[:], delta, 0, N - 1)
         for key, value in expected.items():
-            np.testing.assert_allclose(stats[f"statistics_tendencies_{name}_{key}"], value, rtol=1e-9)
+            np.testing.assert_allclose(
+                stats[f"statistics_tendencies_{name}_{key}"], value, rtol=1e-9
+            )
 
 
 @pytest.mark.parametrize("tendencies", TENDENCIES)
@@ -165,19 +179,27 @@ def test_parts_equivalence(tmp_path, tendencies, chunk_rows, n_parts):
 def test_parts_filter_at_boundaries(tmp_path, tendencies, start, end):
     N = 100
     dataset = _Dataset(_make_data(N), chunk_rows=10)
-    merged = _run_parts(tmp_path, dataset, 5, tendencies=tendencies, start=start, end=end)
-    reference = _reference(tmp_path, dataset, tendencies=tendencies, start=start, end=end)
+    merged = _run_parts(
+        tmp_path, dataset, 5, tendencies=tendencies, start=start, end=end
+    )
+    reference = _reference(
+        tmp_path, dataset, tendencies=tendencies, start=start, end=end
+    )
     _compare(merged, reference)
 
     stats = reference.statistics()
     for name, delta in tendencies.items():
-        expected = _expected_tendencies(dataset.data[:], delta, start or 0, N - 1 if end is None else end)
+        expected = _expected_tendencies(
+            dataset.data[:], delta, start or 0, N - 1 if end is None else end
+        )
         key = f"statistics_tendencies_{name}_mean"
         if expected is None:
             assert np.all(np.isnan(stats[key][1:])), (name, stats[key])
             continue
         for k, value in expected.items():
-            np.testing.assert_allclose(stats[f"statistics_tendencies_{name}_{k}"], value, rtol=1e-9)
+            np.testing.assert_allclose(
+                stats[f"statistics_tendencies_{name}_{k}"], value, rtol=1e-9
+            )
 
 
 @pytest.mark.parametrize("nan_rows", [[19, 20], [17, 18, 19], [0, 1, 40], [55]])
@@ -193,7 +215,9 @@ def test_parts_missing_dates(tmp_path, nan_rows):
     for name, delta in tendencies.items():
         expected = _expected_tendencies(dataset.data[:], delta, 0, N - 1)
         for k, value in expected.items():
-            np.testing.assert_allclose(stats[f"statistics_tendencies_{name}_{k}"], value, rtol=1e-9)
+            np.testing.assert_allclose(
+                stats[f"statistics_tendencies_{name}_{k}"], value, rtol=1e-9
+            )
 
 
 def test_parts_restart(tmp_path):
@@ -222,7 +246,9 @@ def test_parts_restart(tmp_path):
     creator.parts = ["3/3"]
     creator.finalise_load(dataset)
 
-    merged = StatisticsCollector.load_precomputed(dataset, creator._statistics_part_files())
+    merged = StatisticsCollector.load_precomputed(
+        dataset, creator._statistics_part_files()
+    )
     _compare(merged, _reference(tmp_path, dataset, tendencies=tendencies))
 
 
@@ -255,7 +281,12 @@ def test_parts_old_loader_pickles_ignored(tmp_path):
 
     # Pickles written by the loaders of older versions.
     for group, (lo, hi) in enumerate([(0, 30), (30, 60)]):
-        with open(os.path.join(creator.work_dir, f"statistics_{group:06d}-{lo:09d}-{hi:09d}.pkl"), "wb") as f:
+        with open(
+            os.path.join(
+                creator.work_dir, f"statistics_{group:06d}-{lo:09d}-{hi:09d}.pkl"
+            ),
+            "wb",
+        ) as f:
             pickle.dump("old", f)
 
     assert creator._statistics_part_files() == []
@@ -275,7 +306,7 @@ def test_parts_prepare_requires_loaded_dataset(tmp_path):
 @pytest.mark.parametrize("total", [0, 1, 5, 10])
 @pytest.mark.parametrize("n", [1, 2, 3, 7, 12])
 def test_part_bounds_contiguous(total, n):
-    bounds = [part_bounds(f"{i+1}/{n}", total) for i in range(n)]
+    bounds = [part_bounds(f"{i + 1}/{n}", total) for i in range(n)]
     assert [b[0] for b in bounds] == list(range(n))
     assert bounds[0][1] == 0
     assert bounds[-1][2] == total

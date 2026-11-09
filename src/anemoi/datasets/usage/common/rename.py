@@ -37,7 +37,9 @@ class Rename(Forwards):
             assert n in dataset.variables, n
 
         self._variables = [rename.get(v, v) for v in dataset.variables]
-        self._variables_metadata = {rename.get(k, k): v for k, v in dataset.variables_metadata.items()}
+        self._variables_metadata = {
+            rename.get(k, k): v for k, v in dataset.variables_metadata.items()
+        }
 
         self.rename = rename
 

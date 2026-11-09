@@ -23,8 +23,7 @@ import datetime
 
 import numpy as np
 import pytest
-from test_trajectories import make_trajectories_zarr
-from test_trajectories import open_trajectories_zarr
+from test_trajectories import make_trajectories_zarr, open_trajectories_zarr
 
 # ---------------------------------------------------------------------------
 # Build side: recipe aliases
@@ -32,7 +31,6 @@ from test_trajectories import open_trajectories_zarr
 
 
 class TestDatesAliases:
-
     def test_weekday_alias(self):
         from anemoi.datasets.dates import DatesProvider
 
@@ -125,7 +123,6 @@ class TestDatesAliases:
 
 
 class TestTrajectoryGroupsMissing:
-
     def _make(self, missing=None, group_by=None, **base_dates_kwargs):
         from anemoi.datasets.dates.groups import TrajectoryGroups
 
@@ -198,11 +195,14 @@ class TestTrajectoryGroupsMissing:
 
 
 class TestTrajectoriesZarrWithMissingDates:
-
     def setup_method(self):
-        from anemoi.datasets.usage.trajectories.store import TrajectoriesZarrWithMissingDates
+        from anemoi.datasets.usage.trajectories.store import (
+            TrajectoriesZarrWithMissingDates,
+        )
 
-        self.group = make_trajectories_zarr(n_dates=6, n_steps=3, n_vars=2, n_cells=5, frequency_h=6)
+        self.group = make_trajectories_zarr(
+            n_dates=6, n_steps=3, n_vars=2, n_cells=5, frequency_h=6
+        )
         self.bd = np.array(self.group["base_dates"])
         # Mark indices 1 and 4 as missing in the store
         self.group.attrs["missing_dates"] = [str(self.bd[1]), str(self.bd[4])]

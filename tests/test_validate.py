@@ -14,8 +14,7 @@ from functools import cached_property
 import numpy as np
 import pytest
 import xarray as xr
-from anemoi.utils.testing import GetTestData
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import GetTestData, skip_if_offline
 
 from anemoi.datasets.misc.validate import validate_dataset
 
@@ -29,7 +28,6 @@ LOG = logging.getLogger(__name__)
 
 
 class DemoAlternativeDataset:
-
     def __init__(self, ds: xr.Dataset):
         self.ds = ds
 
@@ -38,11 +36,15 @@ class DemoAlternativeDataset:
         for name in ds.data_vars:
             if "level" in ds[name].dims:
                 for level in ds[name].level.values:
-                    self._xarray_variables[f"{name}_{level}"] = ds[name].sel(level=level)
+                    self._xarray_variables[f"{name}_{level}"] = ds[name].sel(
+                        level=level
+                    )
             else:
                 self._xarray_variables[name] = ds[name]
 
-        self._latitudes, self._longitudes = np.meshgrid(ds.latitude.values, ds.longitude.values)
+        self._latitudes, self._longitudes = np.meshgrid(
+            ds.latitude.values, ds.longitude.values
+        )
         assert len(self._latitudes) == len(self._longitudes)
 
         self._latitudes = self._latitudes.flatten()
@@ -69,16 +71,23 @@ class DemoAlternativeDataset:
 
         if isinstance(index, int):
             result = np.concatenate(
-                [self._xarray_variables[name].isel(time=index).values.flatten() for name in self._xarray_variables]
+                [
+                    self._xarray_variables[name].isel(time=index).values.flatten()
+                    for name in self._xarray_variables
+                ]
             )
-            return result.reshape(-1, self._number_of_members, self._number_of_grid_points)
+            return result.reshape(
+                -1, self._number_of_members, self._number_of_grid_points
+            )
 
         if isinstance(index, slice):
             result = np.concatenate(
                 [
                     self._xarray_variables[name]
                     .isel(time=index)
-                    .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
+                    .values.reshape(
+                        -1, 1, self._number_of_members, self._number_of_grid_points
+                    )
                     for name in self._xarray_variables
                 ],
                 axis=1,
@@ -87,10 +96,16 @@ class DemoAlternativeDataset:
 
         # First, handle Ellipsis
         if Ellipsis in index:
-            assert index.count(Ellipsis) == 1, "Only one Ellipsis is allowed in the index"
+            assert index.count(Ellipsis) == 1, (
+                "Only one Ellipsis is allowed in the index"
+            )
             size = len(self._shape) - len(index)
             assert size >= 1, "Invalid index: Ellipsis must be at least one dimension"
-            index = index[: index.index(Ellipsis)] + (slice(None),) * size + index[index.index(Ellipsis) + 1 :]
+            index = (
+                index[: index.index(Ellipsis)]
+                + (slice(None),) * size
+                + index[index.index(Ellipsis) + 1 :]
+            )
 
         # Complete the index with slices
         while len(index) < len(self._shape):
@@ -112,7 +127,9 @@ class DemoAlternativeDataset:
             [
                 self._xarray_variables[name]
                 .isel(time=time_slice)
-                .values.reshape(-1, 1, self._number_of_members, self._number_of_grid_points)
+                .values.reshape(
+                    -1, 1, self._number_of_members, self._number_of_grid_points
+                )
                 for name in variables
             ],
             axis=1,
@@ -156,10 +173,18 @@ class DemoAlternativeDataset:
     def statistics(self):
         # Return the statistics of the dataset
 
-        mean = np.array([self._xarray_variables[name].mean().values for name in self._variables])
-        stdev = np.array([self._xarray_variables[name].std().values for name in self._variables])
-        minimum = np.array([self._xarray_variables[name].min().values for name in self._variables])
-        maximum = np.array([self._xarray_variables[name].max().values for name in self._variables])
+        mean = np.array(
+            [self._xarray_variables[name].mean().values for name in self._variables]
+        )
+        stdev = np.array(
+            [self._xarray_variables[name].std().values for name in self._variables]
+        )
+        minimum = np.array(
+            [self._xarray_variables[name].min().values for name in self._variables]
+        )
+        maximum = np.array(
+            [self._xarray_variables[name].max().values for name in self._variables]
+        )
 
         assert len(mean.shape) == 1, mean.shape
 
@@ -227,7 +252,9 @@ def test_validate(test_netcdf) -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")

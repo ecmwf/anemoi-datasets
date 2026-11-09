@@ -14,9 +14,7 @@ import os
 import numpy as np
 import pytest
 
-from anemoi.datasets.compat import NestedDirectoryStore
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import NestedDirectoryStore, zarr_open, zarr_version
 from anemoi.datasets.misc.check import check_zarr
 
 LAYOUTS = [
@@ -26,7 +24,9 @@ LAYOUTS = [
         3,
         False,
         id="format3",
-        marks=pytest.mark.skipif(zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"),
+        marks=pytest.mark.skipif(
+            zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"
+        ),
     ),
 ]
 
@@ -39,7 +39,12 @@ def _write(path: str, zarr_format: int, nested: bool) -> None:
         else {}
     )
     root = zarr_open(store, "w", zarr_format=zarr_format)
-    root.create_array("data", data=np.arange(24, dtype="float32").reshape(4, 2, 3), chunks=(1, 2, 3), **kwargs)
+    root.create_array(
+        "data",
+        data=np.arange(24, dtype="float32").reshape(4, 2, 3),
+        chunks=(1, 2, 3),
+        **kwargs,
+    )
 
 
 @pytest.mark.parametrize(("zarr_format", "nested"), LAYOUTS)

@@ -12,8 +12,7 @@ import logging
 import os
 import shutil
 import uuid
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -22,12 +21,13 @@ import tqdm
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import DEFAULT_FORMAT, zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
-from anemoi.datasets.create.recipe import loader_recipe_from_yaml
-from anemoi.datasets.create.recipe import loader_recipe_from_zarr
+from anemoi.datasets.create.recipe import (
+    loader_recipe_from_yaml,
+    loader_recipe_from_zarr,
+)
 from anemoi.datasets.dates.groups import Groups
 
 from .parts import PartFilter
@@ -109,7 +109,6 @@ class Creator(ABC):
         LOG.info(f"Creating dataset with layout: {layout}")
 
         match layout:
-
             case "gridded":
                 from .gridded.creator import SimpleGriddedCreator
 
@@ -157,7 +156,9 @@ class Creator(ABC):
         self.collect_metadata(metadata)
         dataset.update_metadata(metadata)
 
-        assert "uuid" in metadata, "super().collect_metadata() was not called or did not set 'uuid'"
+        assert "uuid" in metadata, (
+            "super().collect_metadata() was not called or did not set 'uuid'"
+        )
 
         # Initialize the dataset
         self.initialise_dataset(dataset)
@@ -330,7 +331,9 @@ class Creator(ABC):
             for filename in filenames
         )
 
-        for file_path in tqdm.tqdm(files, desc=f"Computing size of {os.path.basename(self.path)}", unit="files"):
+        for file_path in tqdm.tqdm(
+            files, desc=f"Computing size of {os.path.basename(self.path)}", unit="files"
+        ):
             size += os.path.getsize(file_path)
             count += 1
 
@@ -372,7 +375,13 @@ class Creator(ABC):
         dataset = Dataset(self.path, update=True)
         recompute_statistics = self.kwargs.get("recompute_statistics", False)
 
-        if all(name in dataset.store for name in ("mean", "minimum", "maximum", "stdev")) and not recompute_statistics:
+        if (
+            all(
+                name in dataset.store
+                for name in ("mean", "minimum", "maximum", "stdev")
+            )
+            and not recompute_statistics
+        ):
             LOG.info("Statistics already present, skipping computation.")
             return
 

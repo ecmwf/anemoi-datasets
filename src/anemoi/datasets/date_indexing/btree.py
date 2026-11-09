@@ -18,10 +18,8 @@ from lru import LRU
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.epochs import epoch_to_date
 
-from ..buffering import RandomReadBuffer
-from ..buffering import WriteBehindBuffer
-from . import DateIndexing
-from . import date_indexing_registry
+from ..buffering import RandomReadBuffer, WriteBehindBuffer
+from . import DateIndexing, date_indexing_registry
 from .ranges import DateRange
 
 LOG = logging.getLogger(__name__)
@@ -101,7 +99,9 @@ class ZarrBTree:
         """
 
         self.page_size = page_size
-        self.max_entries = max(4, page_size)  # 4 because a b-tree needs at least 2 entries per node after a split
+        self.max_entries = max(
+            4, page_size
+        )  # 4 because a b-tree needs at least 2 entries per node after a split
         self.path = path
 
         if isinstance(path, str):
@@ -119,9 +119,10 @@ class ZarrBTree:
             self.page_size = self.pages.attrs["page_size"]
             self.max_entries = self.pages.attrs["max_entries"]
             self.chunk_sizes = self.pages.attrs["chunk_sizes"]
-            LOG.info(f"Opened existing B-tree with page size {self.page_size} and max entries {self.max_entries}")
+            LOG.info(
+                f"Opened existing B-tree with page size {self.page_size} and max entries {self.max_entries}"
+            )
         else:
-
             # Single array stores all pages:
             # Column layout: [is_node, count, left, right,
             #                 key0, val0_a, val0_b, key1, val1_a, val1_b, ..., keyN, valN_a, valN_b]
@@ -132,7 +133,9 @@ class ZarrBTree:
 
             row_size = cols_per_page * 8
             chunk = round(chunk_sizes / row_size)
-            LOG.info(f"Creating new B-tree with page size {self.page_size} and max entries {self.max_entries}")
+            LOG.info(
+                f"Creating new B-tree with page size {self.page_size} and max entries {self.max_entries}"
+            )
             LOG.info(f"Zarr array chunk size: {chunk} rows x {cols_per_page} cols")
 
             # Initialize with root page
@@ -209,7 +212,9 @@ class ZarrBTree:
 
             if is_node:
                 # For nodes, val_a is child page_id, val_b is unused
-                entries.append(NodeEntry(key=int(data[key_idx]), child_page=int(data[val_a_idx])))
+                entries.append(
+                    NodeEntry(key=int(data[key_idx]), child_page=int(data[val_a_idx]))
+                )
             else:
                 # For leaves, val_a and val_b are the actual value pair
                 val_b_idx = 4 + (i * 3) + 2
@@ -269,7 +274,9 @@ class ZarrBTree:
 
         if self.number_of_rows >= self.pages.shape[0]:
             # Resize Zarr array to add more pages
-            self.pages.resize((self.pages.shape[0] + self.pages.chunks[0], self.pages.shape[1]))
+            self.pages.resize(
+                (self.pages.shape[0] + self.pages.chunks[0], self.pages.shape[1])
+            )
 
         new_row = self.number_of_rows
         self.number_of_rows += 1
@@ -381,7 +388,9 @@ class ZarrBTree:
         page.entries.insert(idx, NodeEntry(key=key, child_page=child_page_id))
         self._write_page(page)
 
-    def _insert_recursive(self, page_id: int, key: int, value: tuple[int, int]) -> tuple[int, int] | None:
+    def _insert_recursive(
+        self, page_id: int, key: int, value: tuple[int, int]
+    ) -> tuple[int, int] | None:
         """Insert key-value pair recursively.
         Returns (split_key, new_page_id) if split occurred, None otherwise.
         """
@@ -671,7 +680,9 @@ class ZarrBTree:
         indent = "  " * depth
 
         page_type = "NODE" if page.is_node else "LEAF"
-        print(f"{indent}{page_type} [id={page.page_id}, count={page.count} right={page.right}]")
+        print(
+            f"{indent}{page_type} [id={page.page_id}, count={page.count} right={page.right}]"
+        )
 
         if not page.is_node:
             for entry in page.entries:
@@ -822,7 +833,9 @@ class ZarrBTree:
 
             # Verify the write worked
             verify = self.pages[root_row, :]
-            assert verify[1] == n_entries, f"Write verification failed: count is {verify[1]}, expected {n_entries}"
+            assert verify[1] == n_entries, (
+                f"Write verification failed: count is {verify[1]}, expected {n_entries}"
+            )
             self.flush()
             return
 
@@ -830,7 +843,9 @@ class ZarrBTree:
         total_pages = 1 + n_leaves  # Keep existing root + new leaves starting after it
         current_level_size = n_leaves
         while current_level_size > 1:
-            current_level_size = (current_level_size + self.max_entries) // (self.max_entries + 1)
+            current_level_size = (current_level_size + self.max_entries) // (
+                self.max_entries + 1
+            )
             total_pages += current_level_size
 
         # Allocate all pages at once

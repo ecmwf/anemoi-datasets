@@ -9,8 +9,7 @@
 
 import datetime
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Any
 
 from anemoi.utils.registry import Registry
@@ -28,7 +27,6 @@ def create_date_indexing(config: Any, store: Any) -> Any:
 
 
 class DateIndexing(ABC):
-
     @abstractmethod
     def bulk_load(self, store, dates_ranges: Any) -> None:
         """Bulk load the date indexing structure with the provided dates.
@@ -83,7 +81,9 @@ class DateIndexing(ABC):
         # Validate
         total = 0
         last = None
-        for i, (epoch, offset, length) in enumerate(tqdm.tqdm(dates_ranges, desc="Validating date ranges")):
+        for i, (epoch, offset, length) in enumerate(
+            tqdm.tqdm(dates_ranges, desc="Validating date ranges")
+        ):
             if last is None:
                 last = epoch
             else:
@@ -99,4 +99,6 @@ class DateIndexing(ABC):
             total += length
 
         if total != data_length:
-            raise ValueError(f"Total length {total} does not match expected data length {data_length}")
+            raise ValueError(
+                f"Total length {total} does not match expected data length {data_length}"
+            )

@@ -46,8 +46,12 @@ class Extract(Command):
             default="netcdf",
             help="Output format (default: netcdf).",
         )
-        command_parser.add_argument("dataset", metavar="DATASET", help="Path or name of the dataset.")
-        command_parser.add_argument("output", metavar="OUTPUT", help="Output file path.")
+        command_parser.add_argument(
+            "dataset", metavar="DATASET", help="Path or name of the dataset."
+        )
+        command_parser.add_argument(
+            "output", metavar="OUTPUT", help="Output file path."
+        )
 
     def run(self, args: Any) -> None:
 
@@ -72,7 +76,9 @@ class Extract(Command):
         climatologies = args.climatology
 
         if not constants and not climatologies:
-            raise ValueError("At least one --constant or --climatology must be specified.")
+            raise ValueError(
+                "At least one --constant or --climatology must be specified."
+            )
 
         constant_data = {}
         climatology_data = {}
@@ -116,11 +122,14 @@ class Extract(Command):
                 selected[month] = np.datetime64(date)
         if len(selected) < 12:
             raise ValueError(
-                f"Dataset does not cover all 12 months (found {len(selected)}). " "Cannot compute climatologies."
+                f"Dataset does not cover all 12 months (found {len(selected)}). "
+                "Cannot compute climatologies."
             )
         return [selected[m] for m in range(1, 13)]
 
-    def _write_netcdf(self, output: str, constant_data: dict, climatology_data: dict, ds: Any) -> None:
+    def _write_netcdf(
+        self, output: str, constant_data: dict, climatology_data: dict, ds: Any
+    ) -> None:
         import datetime
 
         import numpy as np
@@ -128,7 +137,9 @@ class Extract(Command):
         try:
             from netCDF4 import Dataset as NetCDFDataset
         except ImportError:
-            raise ImportError("netCDF4 is required for netcdf output. Install it with: pip install netCDF4")
+            raise ImportError(
+                "netCDF4 is required for netcdf output. Install it with: pip install netCDF4"
+            )
 
         num_points = len(ds.latitudes)
         variables_metadata = ds.variables_metadata
@@ -179,7 +190,9 @@ class Extract(Command):
                 time_var.climatology = "climatology_bounds"
                 time_var.calendar = "gregorian"
 
-                clim_bounds_var = nc.createVariable("climatology_bounds", np.float64, ("time", "nv"))
+                clim_bounds_var = nc.createVariable(
+                    "climatology_bounds", np.float64, ("time", "nv")
+                )
                 clim_bounds_var[:] = clim_bounds
 
                 for name, monthly_values in climatology_data.items():

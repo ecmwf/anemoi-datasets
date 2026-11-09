@@ -12,8 +12,7 @@ import datetime
 import logging
 import os
 from functools import cached_property
-from typing import Any
-from typing import Union
+from typing import Any, Union
 
 from numpy.typing import NDArray
 
@@ -66,17 +65,23 @@ class Statistics(Forwards):
                 "Statistics requires at least one of `statistic` or `statistic_tendencies` to be provided."
             )
         self._statistic = self._open_compatible(dataset, statistic)
-        self._statistic_tendencies = self._open_compatible(dataset, statistic_tendencies)
+        self._statistic_tendencies = self._open_compatible(
+            dataset, statistic_tendencies
+        )
 
     @staticmethod
-    def _open_compatible(dataset: Dataset, source: DatasetSource | None) -> Dataset | None:
+    def _open_compatible(
+        dataset: Dataset, source: DatasetSource | None
+    ) -> Dataset | None:
         """Open ``source`` and check that its variables match ``dataset``."""
         if source is None:
             return None
         ds = open_dataset(source, select=dataset.variables)
         # TODO: relax that check to allow for a subset of variables
         if dataset.variables != ds.variables:
-            raise ValueError(f"Incompatible variables: {dataset.variables} and {ds.variables} ({dataset} {ds})")
+            raise ValueError(
+                f"Incompatible variables: {dataset.variables} and {ds.variables} ({dataset} {ds})"
+            )
         return ds
 
     @cached_property
@@ -86,7 +91,9 @@ class Statistics(Forwards):
             return self._statistic.statistics
         return self.forward.statistics
 
-    def statistics_tendencies(self, delta: datetime.timedelta | None = None) -> dict[str, NDArray[Any]]:
+    def statistics_tendencies(
+        self, delta: datetime.timedelta | None = None
+    ) -> dict[str, NDArray[Any]]:
         """Get the statistics tendencies.
 
         Parameters

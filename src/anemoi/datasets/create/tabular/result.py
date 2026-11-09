@@ -58,7 +58,11 @@ class TabularResult(Result):
         # Round date to the nearest second
         # Convert "date" to integer seconds since the Unix epoch
         start = time.time()
-        self.frame["date"] = (self.frame["date"].astype("int64") / SCALINGS[date_unit]).round().astype("int64")
+        self.frame["date"] = (
+            (self.frame["date"].astype("int64") / SCALINGS[date_unit])
+            .round()
+            .astype("int64")
+        )
 
         if len(self.frame) > 0:
             # Validate that the conversion from datetime to integer seconds since epoch is correct
@@ -74,38 +78,60 @@ class TabularResult(Result):
                 LOG.error(
                     f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
                 )
-                LOG.error(f"           start_range: {start_range} ({type(start_range)})")
+                LOG.error(
+                    f"           start_range: {start_range} ({type(start_range)})"
+                )
                 LOG.error(f"           end_range: {end_range} ({type(end_range)})")
-                LOG.error(f"           original_first: {original_first} ({type(original_first)})")
-                LOG.error(f"           original_last: {original_last} ({type(original_last)})")
-                LOG.error(f"           encoded_first: {encoded_first} ({type(encoded_first)})")
-                LOG.error(f"           encoded_last: {encoded_last} ({type(encoded_last)})")
+                LOG.error(
+                    f"           original_first: {original_first} ({type(original_first)})"
+                )
+                LOG.error(
+                    f"           original_last: {original_last} ({type(original_last)})"
+                )
+                LOG.error(
+                    f"           encoded_first: {encoded_first} ({type(encoded_first)})"
+                )
+                LOG.error(
+                    f"           encoded_last: {encoded_last} ({type(encoded_last)})"
+                )
                 print(original_frame.head(), file=sys.stderr)
                 print(original_frame.tail(), file=sys.stderr)
-                LOG.error(f"           delta: {datetime.timedelta(seconds=first_delta)}")
+                LOG.error(
+                    f"           delta: {datetime.timedelta(seconds=first_delta)}"
+                )
 
-                assert (
-                    first_delta < 1
-                ), f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+                assert first_delta < 1, (
+                    f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+                )
 
             if not (last_delta < 1):
                 LOG.error(
                     f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
                 )
-                LOG.error(f"           start_range: {start_range} ({type(start_range)})")
+                LOG.error(
+                    f"           start_range: {start_range} ({type(start_range)})"
+                )
                 LOG.error(f"           end_range: {end_range} ({type(end_range)})")
-                LOG.error(f"           original_first: {original_first} ({type(original_first)})")
-                LOG.error(f"           original_last: {original_last} ({type(original_last)})")
-                LOG.error(f"           encoded_first: {encoded_first} ({type(encoded_first)})")
-                LOG.error(f"           encoded_last: {encoded_last} ({type(encoded_last)})")
+                LOG.error(
+                    f"           original_first: {original_first} ({type(original_first)})"
+                )
+                LOG.error(
+                    f"           original_last: {original_last} ({type(original_last)})"
+                )
+                LOG.error(
+                    f"           encoded_first: {encoded_first} ({type(encoded_first)})"
+                )
+                LOG.error(
+                    f"           encoded_last: {encoded_last} ({type(encoded_last)})"
+                )
                 LOG.error(f"           delta: {datetime.timedelta(seconds=last_delta)}")
                 print(original_frame.head(), file=sys.stderr)
                 print(original_frame.tail(), file=sys.stderr)
                 LOG.error(f"           delta: {datetime.timedelta(seconds=last_delta)}")
 
-                assert (
-                    last_delta < 1
-                ), f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
+                assert last_delta < 1, (
+                    f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
+                )
 
         LOG.info(
             f"Converted 'date' to integer seconds since epoch in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
@@ -124,14 +150,18 @@ class TabularResult(Result):
         start = time.time()
         self.frame["__time"] = self.frame["__date"] % 86400
         self.frame["__date"] = self.frame["__date"] // 86400
-        LOG.info(f"Created __date and __time columns in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)")
+        LOG.info(
+            f"Created __date and __time columns in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
+        )
 
         # print(self.frame.head())
 
         # Normalize longitudes to be within [0, 360)
         start = time.time()
         self.frame["__longitude"] = self.frame["__longitude"] % 360
-        LOG.info(f"Normalised longitudes in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)")
+        LOG.info(
+            f"Normalised longitudes in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
+        )
 
         # Move __date, __time, __latitude and __longitude to the beginning of the DataFrame
         cols = self.frame.columns.tolist()
@@ -141,18 +171,26 @@ class TabularResult(Result):
 
         # Sort the DataFrame lexicographically by all columns
         start = time.time()
-        self.frame = self.frame.sort_values(by=self.frame.columns.tolist(), kind="mergesort").reset_index(drop=True)
-        LOG.info(f"Sorted TabularResult in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)")
+        self.frame = self.frame.sort_values(
+            by=self.frame.columns.tolist(), kind="mergesort"
+        ).reset_index(drop=True)
+        LOG.info(
+            f"Sorted TabularResult in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"
+        )
 
         # Remove duplicate rows
         start = time.time()
         size = len(self.frame)
         self.frame = self.frame.drop_duplicates().reset_index(drop=True)
         dedup_size = len(self.frame)
-        LOG.info(f"Deduplicated TabularResult in {time.time() - start:.2f} seconds {size:,} rows")
+        LOG.info(
+            f"Deduplicated TabularResult in {time.time() - start:.2f} seconds {size:,} rows"
+        )
 
         if dedup_size < size:
-            LOG.warning(f"Removed {size - dedup_size:,} duplicate rows during TabularResult creation")
+            LOG.warning(
+                f"Removed {size - dedup_size:,} duplicate rows during TabularResult creation"
+            )
 
         self.argument = argument
 

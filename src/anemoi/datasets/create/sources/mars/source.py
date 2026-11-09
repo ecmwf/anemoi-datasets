@@ -10,16 +10,16 @@
 import datetime
 from typing import Any
 
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ForecastIntervals
-from anemoi.datasets.create.arguments import Intervals
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import (
+    ForecastDates,
+    ForecastIntervals,
+    Intervals,
+    ValidDates,
+)
 from anemoi.datasets.create.source import Source
 from anemoi.datasets.create.sources import source_registry
 
-from .retrieval import RequestFilter
-from .retrieval import execute_mars_request
-from .retrieval import fire_prebuilt_requests
+from .retrieval import RequestFilter, execute_mars_request, fire_prebuilt_requests
 
 
 def _reject_filters(requests: list[dict[str, Any]], context_label: str) -> None:
@@ -31,13 +31,15 @@ def _reject_filters(requests: list[dict[str, Any]], context_label: str) -> None:
     for r in requests:
         filter_, _ = RequestFilter.extract(r)
         if not filter_.is_empty:
-            raise ValueError(f"Wildcard 'date' filters are not supported in " f"{context_label} mars blocks.")
+            raise ValueError(
+                f"Wildcard 'date' filters are not supported in "
+                f"{context_label} mars blocks."
+            )
 
 
 # TODO: there is some code duplication between here and FDB source, might be reduced
 @source_registry.register("mars")
 class MarsSource(Source):
-
     def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, *args, **kwargs)
         self.use_cdsapi_dataset = kwargs.pop("use_cdsapi_dataset", None)
@@ -55,9 +57,15 @@ class MarsSource(Source):
             for r in requests:
                 if isinstance(r.get("date"), datetime.date):
                     r["date"] = r["date"].strftime("%Y%m%d")
-            return fire_prebuilt_requests(self.context, requests, self.use_cdsapi_dataset)
+            return fire_prebuilt_requests(
+                self.context, requests, self.use_cdsapi_dataset
+            )
         return execute_mars_request(
-            self.context, dates.dates, *self.args, use_cdsapi_dataset=self.use_cdsapi_dataset, **self.kwargs
+            self.context,
+            dates.dates,
+            *self.args,
+            use_cdsapi_dataset=self.use_cdsapi_dataset,
+            **self.kwargs,
         )
 
     def execute_forecast_dates(self, dates: ForecastDates) -> Any:
@@ -80,8 +88,13 @@ class MarsSource(Source):
                 r["step"] = step_hours
                 per_item_requests.append(r)
 
-        self.context.trace("🛰️", f"Forecast dates: {len(dates)} items → {len(per_item_requests)} requests")
-        return fire_prebuilt_requests(self.context, per_item_requests, self.use_cdsapi_dataset)
+        self.context.trace(
+            "🛰️",
+            f"Forecast dates: {len(dates)} items → {len(per_item_requests)} requests",
+        )
+        return fire_prebuilt_requests(
+            self.context, per_item_requests, self.use_cdsapi_dataset
+        )
 
     def execute_intervals(self, dates: Intervals) -> Any:
         """Handle archive-resolved interval requests from AccumulateSource."""
@@ -102,7 +115,9 @@ class MarsSource(Source):
                 per_interval_requests.append(r)
 
         self.context.trace("🌧️", f"Total requests: {len(per_interval_requests)}")
-        return fire_prebuilt_requests(self.context, per_interval_requests, self.use_cdsapi_dataset)
+        return fire_prebuilt_requests(
+            self.context, per_interval_requests, self.use_cdsapi_dataset
+        )
 
     def execute_forecast_intervals(self, dates: ForecastIntervals) -> Any:
         """Handle forecast (trajectory) accumulation requests.
@@ -135,5 +150,9 @@ class MarsSource(Source):
                 self.context.trace("🌧️", "  adjusted request =", r)
                 per_interval_requests.append(r)
 
-        self.context.trace("🌧️", f"Total forecast accumulation requests: {len(per_interval_requests)}")
-        return fire_prebuilt_requests(self.context, per_interval_requests, self.use_cdsapi_dataset)
+        self.context.trace(
+            "🌧️", f"Total forecast accumulation requests: {len(per_interval_requests)}"
+        )
+        return fire_prebuilt_requests(
+            self.context, per_interval_requests, self.use_cdsapi_dataset
+        )

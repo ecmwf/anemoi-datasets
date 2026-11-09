@@ -10,9 +10,7 @@
 import datetime
 import logging
 import time
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from typing import Any
 
 import tqdm
@@ -51,7 +49,9 @@ def task(what: str, options: dict, *args: Any, **kwargs: Any) -> Any:
 
     result = run_task(what.replace("-", "_"), **options, **kwargs)
 
-    LOG.info(f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now()-now})")
+    LOG.info(
+        f"🏁 Task {what}({args},{kwargs}) completed ({datetime.datetime.now() - now})"
+    )
     return result
 
 
@@ -80,11 +80,18 @@ class Create(Command):
             help="Force the re-computation of statistics, even if they already exist.",
         )
 
-        command_parser.add_argument("recipe", help="Configuration yaml file defining the recipe to create the dataset.")
+        command_parser.add_argument(
+            "recipe",
+            help="Configuration yaml file defining the recipe to create the dataset.",
+        )
         command_parser.add_argument("path", help="Path to store the created data.")
         group = command_parser.add_mutually_exclusive_group()
-        group.add_argument("--threads", help="Use `n` parallel thread workers.", type=int, default=0)
-        group.add_argument("--processes", help="Use `n` parallel process workers.", type=int, default=0)
+        group.add_argument(
+            "--threads", help="Use `n` parallel thread workers.", type=int, default=0
+        )
+        group.add_argument(
+            "--processes", help="Use `n` parallel process workers.", type=int, default=0
+        )
         command_parser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
@@ -100,7 +107,7 @@ class Create(Command):
             self.parallel_create(args)
         else:
             self.serial_create(args)
-        LOG.info(f"Create completed in {seconds_to_human(time.time()-now)}")
+        LOG.info(f"Create completed in {seconds_to_human(time.time() - now)}")
 
     def serial_create(self, args: Any) -> None:
         """Create the dataset in serial mode.
@@ -161,23 +168,29 @@ class Create(Command):
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(total):
                 opt = options.copy()
-                opt["parts"] = f"{n+1}/{total}"
+                opt["parts"] = f"{n + 1}/{total}"
                 futures.append(executor.submit(task, "load", opt))
 
             for future in tqdm.tqdm(
-                as_completed(futures), desc="Loading", total=len(futures), colour="green", position=parallel + 1
+                as_completed(futures),
+                desc="Loading",
+                total=len(futures),
+                colour="green",
+                position=parallel + 1,
             ):
                 future.result()
 
         # Staged finalise: the statistics are computed in parallel over contiguous row ranges,
         # then merged by the tidy stage.
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise", dict(options, finalise_stage="prepare")).result()
+            executor.submit(
+                task, "finalise", dict(options, finalise_stage="prepare")
+            ).result()
 
         futures = []
         with ExecutorClass(max_workers=parallel) as executor:
             for n in range(parallel):
-                opt = dict(options, finalise_stage="load", parts=f"{n+1}/{parallel}")
+                opt = dict(options, finalise_stage="load", parts=f"{n + 1}/{parallel}")
                 futures.append(executor.submit(task, "finalise", opt))
 
             for future in tqdm.tqdm(
@@ -190,7 +203,9 @@ class Create(Command):
                 future.result()
 
         with ExecutorClass(max_workers=1) as executor:
-            executor.submit(task, "finalise", dict(options, finalise_stage="tidy")).result()
+            executor.submit(
+                task, "finalise", dict(options, finalise_stage="tidy")
+            ).result()
             executor.submit(task, "patch", options).result()
             executor.submit(task, "cleanup", options).result()
             executor.submit(task, "verify", options).result()

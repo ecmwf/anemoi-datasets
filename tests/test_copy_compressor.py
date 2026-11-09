@@ -17,14 +17,20 @@ import numpy as np
 import pytest
 
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import blosc_compressor, zarr_open, zarr_version
 
 NDATES = 4
 NPOINTS = 10
 VARIABLES = ["a", "b"]
-FORMATS = [2, pytest.param(3, marks=pytest.mark.skipif(zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"))]
+FORMATS = [
+    2,
+    pytest.param(
+        3,
+        marks=pytest.mark.skipif(
+            zarr_version < 3, reason="Zarr format 3 needs zarr-python>=3"
+        ),
+    ),
+]
 SHUFFLE = {0: "noshuffle", 1: "shuffle", 2: "bitshuffle"}
 BLOSC_LZ4 = ("blosc", "lz4", 5, "shuffle")
 
@@ -36,22 +42,50 @@ def _compressor_kwargs(spec: str, zarr_format: int) -> dict:
     if spec == "none":
         return {"compressors": None}
     if spec == "blosc_lz4":
-        return {"compressors": blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format)}
+        return {
+            "compressors": blosc_compressor(
+                cname="lz4", clevel=5, shuffle=1, zarr_format=zarr_format
+            )
+        }
     if spec == "blosc_zstd_bitshuffle":
-        return {"compressors": blosc_compressor(cname="zstd", clevel=3, shuffle=2, zarr_format=zarr_format)}
+        return {
+            "compressors": blosc_compressor(
+                cname="zstd", clevel=3, shuffle=2, zarr_format=zarr_format
+            )
+        }
     if spec == "lz4":  # no format 3 equivalent
         return {"compressors": numcodecs.LZ4()}
     if zarr_format == 2:
-        return {"compressors": {"zstd": numcodecs.Zstd(level=3), "gzip": numcodecs.GZip(level=4)}[spec]}
+        return {
+            "compressors": {
+                "zstd": numcodecs.Zstd(level=3),
+                "gzip": numcodecs.GZip(level=4),
+            }[spec]
+        }
     from zarr import codecs
 
-    return {"compressors": {"zstd": codecs.ZstdCodec(level=3), "gzip": codecs.GzipCodec(level=4)}[spec]}
+    return {
+        "compressors": {
+            "zstd": codecs.ZstdCodec(level=3),
+            "gzip": codecs.GzipCodec(level=4),
+        }[spec]
+    }
 
 
-def _write_source(path: str, zarr_format: int, spec: str, shards: bool = False) -> np.ndarray:
+def _write_source(
+    path: str, zarr_format: int, spec: str, shards: bool = False
+) -> np.ndarray:
     """Write a tiny anemoi dataset whose data array uses the codec ``spec``, return its data."""
-    dates = np.array([np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h") for i in range(NDATES)], "<M8[s]")
-    data = np.random.default_rng(0).random((NDATES, len(VARIABLES), 1, NPOINTS), "float32")
+    dates = np.array(
+        [
+            np.datetime64("2021-01-01T00:00") + np.timedelta64(6 * i, "h")
+            for i in range(NDATES)
+        ],
+        "<M8[s]",
+    )
+    data = np.random.default_rng(0).random(
+        (NDATES, len(VARIABLES), 1, NPOINTS), "float32"
+    )
     root = zarr_open(path, "w", zarr_format=zarr_format)
     extra = {"shards": (2, len(VARIABLES), 1, NPOINTS)} if shards else {}
     root.create_array(
@@ -77,7 +111,12 @@ def _write_source(path: str, zarr_format: int, spec: str, shards: bool = False) 
 def _normalise(name: str, config: dict) -> tuple:
     if name == "blosc":
         shuffle = config["shuffle"]
-        return ("blosc", config["cname"], config["clevel"], SHUFFLE[shuffle] if isinstance(shuffle, int) else shuffle)
+        return (
+            "blosc",
+            config["cname"],
+            config["clevel"],
+            SHUFFLE[shuffle] if isinstance(shuffle, int) else shuffle,
+        )
     if name in ("zstd", "gzip"):
         return (name, config["level"])
     return (name,)
@@ -119,10 +158,14 @@ def _copy(source: str, target: str, zarr_format: int) -> None:
     ).run()
 
 
-@pytest.mark.parametrize("spec", ["default", "none", "blosc_lz4", "blosc_zstd_bitshuffle", "zstd", "gzip"])
+@pytest.mark.parametrize(
+    "spec", ["default", "none", "blosc_lz4", "blosc_zstd_bitshuffle", "zstd", "gzip"]
+)
 @pytest.mark.parametrize("target_format", FORMATS)
 @pytest.mark.parametrize("source_format", FORMATS)
-def test_copy_keeps_the_compressor_of_the_source(tmp_path, source_format, target_format, spec) -> None:
+def test_copy_keeps_the_compressor_of_the_source(
+    tmp_path, source_format, target_format, spec
+) -> None:
     source, target = str(tmp_path / "source.zarr"), str(tmp_path / "target.zarr")
     expected = _write_source(source, source_format, spec)
     wanted = _compressors(source)
@@ -134,7 +177,9 @@ def test_copy_keeps_the_compressor_of_the_source(tmp_path, source_format, target
 
 
 @pytest.mark.skipif(zarr_version < 3, reason="the target has to be in format 3")
-def test_copy_falls_back_to_blosc_lz4_when_the_codec_has_no_format_3_equivalent(tmp_path, caplog) -> None:
+def test_copy_falls_back_to_blosc_lz4_when_the_codec_has_no_format_3_equivalent(
+    tmp_path, caplog
+) -> None:
     source, target = str(tmp_path / "source.zarr"), str(tmp_path / "target.zarr")
     expected = _write_source(source, 2, "lz4")
     assert _compressors(source) == [("lz4",)]
@@ -148,7 +193,9 @@ def test_copy_falls_back_to_blosc_lz4_when_the_codec_has_no_format_3_equivalent(
 
 @pytest.mark.skipif(zarr_version < 3, reason="sharding needs zarr-python 3")
 @pytest.mark.parametrize("target_format", [2, 3])
-def test_copy_keeps_the_inner_compressor_of_a_sharded_source(tmp_path, target_format) -> None:
+def test_copy_keeps_the_inner_compressor_of_a_sharded_source(
+    tmp_path, target_format
+) -> None:
     source, target = str(tmp_path / "source.zarr"), str(tmp_path / "target.zarr")
     expected = _write_source(source, 3, "blosc_zstd_bitshuffle", shards=True)
     assert _compressors(source) == [("blosc", "zstd", 3, "bitshuffle")]

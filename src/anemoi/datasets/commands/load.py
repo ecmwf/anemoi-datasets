@@ -34,14 +34,18 @@ class Load(Command):
         subparser : Any
             The command parser.
         """
-        subparser.add_argument("--parts", nargs="+", help="Only load the specified parts of the dataset.")
+        subparser.add_argument(
+            "--parts", nargs="+", help="Only load the specified parts of the dataset."
+        )
         # subparser.add_argument(
         #        "--delta",
         #        help="Compute statistics tendencies on a given time delta, if possible. Must be a multiple of the frequency.",
         #    )
 
         subparser.add_argument("path", help="Path to store the created data.")
-        subparser.add_argument("--cache", help="Location to store the downloaded data.", metavar="DIR")
+        subparser.add_argument(
+            "--cache", help="Location to store the downloaded data.", metavar="DIR"
+        )
         subparser.add_argument("--trace", action="store_true")
 
     def run(self, args: Any) -> None:
@@ -65,7 +69,9 @@ class Load(Command):
 
         task(step, options)
 
-        LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time()-now)}")
+        LOG.info(
+            f"Create step '{step}' completed in {seconds_to_human(time.time() - now)}"
+        )
 
 
 command = Load

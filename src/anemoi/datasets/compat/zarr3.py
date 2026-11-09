@@ -40,7 +40,9 @@ DirectoryStore = zarr.storage.LocalStore
 ZipStore = zarr.storage.ZipStore
 
 
-def LRUStoreCache(store: zarr.abc.store.Store, max_size: int | None) -> zarr.storage.WrapperStore:
+def LRUStoreCache(
+    store: zarr.abc.store.Store, max_size: int | None
+) -> zarr.storage.WrapperStore:
     """Wrap a store in an in-memory cache of at most ``max_size`` bytes, evicting the least recently used keys."""
     # zarr-python 3 replaced LRUStoreCache with CacheStore, which is still experimental
     from zarr.experimental.cache_store import CacheStore

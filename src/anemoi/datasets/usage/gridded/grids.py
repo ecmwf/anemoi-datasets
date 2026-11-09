@@ -22,21 +22,17 @@ from numpy.typing import NDArray
 from scipy.spatial import KDTree
 
 from anemoi.datasets import __version__
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import debug_indexing
-from anemoi.datasets.usage.forwards import Combined
-from anemoi.datasets.usage.forwards import GivenAxis
-from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
-from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
-from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import length_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape, TupleIndex
+from anemoi.datasets.usage.debug import Node, debug_indexing
+from anemoi.datasets.usage.forwards import Combined, GivenAxis
+from anemoi.datasets.usage.gridded.indexing import (
+    apply_index_to_slices_changes,
+    expand_list_indexing,
+    index_to_slices,
+    length_to_slices,
+    update_tuple,
+)
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)
@@ -75,7 +71,11 @@ class Concat(Combined):
         lengths = [d.shape[0] for d in self.datasets]
         slices = length_to_slices(index[0], lengths)
         # print("slies", slices)
-        result = [d[update_tuple(index, 0, i)[0]] for (d, i) in zip(self.datasets, slices) if i is not None]
+        result = [
+            d[update_tuple(index, 0, i)[0]]
+            for (d, i) in zip(self.datasets, slices)
+            if i is not None
+        ]
         result = np.concatenate(result, axis=0)
         return apply_index_to_slices_changes(result, changes)
 
@@ -153,7 +153,6 @@ class Concat(Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the first axis
-        pass
 
     def check_same_dates(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the dates of two datasets are the same.
@@ -166,7 +165,6 @@ class Concat(Combined):
             The second dataset.
         """
         # Turned off because we are concatenating along the dates axis
-        pass
 
     @property
     def dates(self) -> NDArray[np.datetime64]:
@@ -219,7 +217,6 @@ class GridsBase(GivenAxis):
             The second dataset.
         """
         # We don't check the grid, because we want to be able to combine
-        pass
 
     def check_same_resolution(self, d1: Dataset, d2: Dataset) -> None:
         """Check if the resolutions of two datasets are the same.
@@ -232,7 +229,6 @@ class GridsBase(GivenAxis):
             The second dataset.
         """
         # We don't check the resolution, because we want to be able to combine
-        pass
 
     def metadata_specific(self, **kwargs: Any) -> dict[str, Any]:
         """Returns metadata specific to the GridsBase object.
@@ -376,14 +372,17 @@ class Cutout(GridsBase):
         """Initialize ``self.masks`` and ``self.global_mask`` based on the cache argument."""
         if cache is True:
             raise NotImplementedError(
-                "cache=True is reserved for a future default cache location; " "pass a .npz path or leave cache=False."
+                "cache=True is reserved for a future default cache location; "
+                "pass a .npz path or leave cache=False."
             )
         if cache is False or cache is None:
             self._initialize_masks()
             return
         cache_path = Path(cache)
         if cache_path.suffix != ".npz":
-            raise ValueError(f"Cutout cache file must end with '.npz', got '{cache_path.name}'.")
+            raise ValueError(
+                f"Cutout cache file must end with '.npz', got '{cache_path.name}'."
+            )
         if cache_path.exists():
             LOG.info("Using provided cutout cache file '%s'.", cache_path)
             self._load_cutout_masks(cache_path)
@@ -422,7 +421,9 @@ class Cutout(GridsBase):
             "neighbours": self.neighbours,
             "min_distance_km": self.min_distance_km,
             "max_distance_km": self.max_distance_km,
-            "datasets": [self._hash_coordinates(ds.latitudes, ds.longitudes) for ds in datasets],
+            "datasets": [
+                self._hash_coordinates(ds.latitudes, ds.longitudes) for ds in datasets
+            ],
         }
 
     def _cutout_masks_metadata(self) -> dict[str, Any]:
@@ -458,12 +459,16 @@ class Cutout(GridsBase):
         """Load the masks from a .npz file."""
         data = np.load(path)
         if "metadata" not in data.files:
-            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; " "regenerate the cache.")
+            raise ValueError(
+                f"Cutout cache file '{path}' is missing the 'metadata' entry; "
+                "regenerate the cache."
+            )
         # we can avoid pickling with json.loads
         metadata = json.loads(str(data["metadata"]))
         if metadata.get("type") != "cutout_mask":
             raise ValueError(
-                f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
+                f"Cutout cache file '{path}' has unexpected type "
+                f"{metadata.get('type')!r}; expected 'cutout_mask'."
             )
         cached_version = metadata.get("version")
         if cached_version != __version__:
@@ -495,9 +500,9 @@ class Cutout(GridsBase):
         from anemoi.transform.spatial import cutout_mask
 
         for i, lam in enumerate(self.lams):
-            assert len(lam.shape) == len(
-                self.globe.shape
-            ), "LAMs and global dataset must have the same number of dimensions"
+            assert len(lam.shape) == len(self.globe.shape), (
+                "LAMs and global dataset must have the same number of dimensions"
+            )
             lam_lats = lam.latitudes
             lam_lons = lam.longitudes
             # Create a mask for the global dataset excluding all LAM points
@@ -515,7 +520,9 @@ class Cutout(GridsBase):
 
             # Ensure the mask dimensions match the global grid points
             if global_overlap_mask.shape[0] != self.globe.shape[-1]:
-                raise ValueError("Global mask dimension does not match global dataset grid " "points.")
+                raise ValueError(
+                    "Global mask dimension does not match global dataset grid points."
+                )
             self.global_mask[~global_overlap_mask] = False
 
             # Create a mask for the LAM datasets hierarchically, excluding
@@ -527,7 +534,9 @@ class Cutout(GridsBase):
                     prev_lam_lats = prev_lam.latitudes
                     prev_lam_lons = prev_lam.longitudes
                     # Check for overlap by computing distances
-                    if self.has_overlap(prev_lam_lats, prev_lam_lons, lam_lats, lam_lons):
+                    if self.has_overlap(
+                        prev_lam_lats, prev_lam_lons, lam_lats, lam_lons
+                    ):
                         lam_overlap_mask = cutout_mask(
                             prev_lam_lats,
                             prev_lam_lons,
@@ -599,7 +608,9 @@ class Cutout(GridsBase):
     @cached_property
     def _mask_indices(self) -> list[NDArray[Any]]:
         """Source-space indices retained by each mask (LAMs first, then the global dataset)."""
-        return [np.flatnonzero(mask) for mask in self.masks] + [np.flatnonzero(self.global_mask)]
+        return [np.flatnonzero(mask) for mask in self.masks] + [
+            np.flatnonzero(self.global_mask)
+        ]
 
     @debug_indexing
     @expand_list_indexing
@@ -627,17 +638,24 @@ class Cutout(GridsBase):
             # length_to_slices only handles ascending selections: read the
             # same points in ascending order and flip the result back below
             positions = range(*index[self.axis].indices(self.shape[self.axis]))
-            ascending = slice(positions[-1], positions[0] + 1, -positions.step) if positions else slice(0, 0)
+            ascending = (
+                slice(positions[-1], positions[0] + 1, -positions.step)
+                if positions
+                else slice(0, 0)
+            )
             index, _ = update_tuple(index, self.axis, ascending)
 
         # resolve the requested grid index for each dataset
         # relative to each dataset's own masked points
         requested_per_dataset = length_to_slices(
-            index[self.axis], [len(source_indices) for source_indices in self._mask_indices]
+            index[self.axis],
+            [len(source_indices) for source_indices in self._mask_indices],
         )
 
         parts = []
-        for dataset, source_indices, requested in zip(self.datasets, self._mask_indices, requested_per_dataset):
+        for dataset, source_indices, requested in zip(
+            self.datasets, self._mask_indices, requested_per_dataset
+        ):
             if requested is None:
                 # this dataset contributes no columns to the requested grid range
                 continue
@@ -646,7 +664,9 @@ class Cutout(GridsBase):
             selected_source_indices = source_indices[requested]
             # read only the contiguous native-grid range spanning the selected points,
             # instead of loading the whole grid and slicing in memory
-            window = slice(int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1)
+            window = slice(
+                int(selected_source_indices[0]), int(selected_source_indices[-1]) + 1
+            )
             part = dataset[index[:3] + (window,)]
             if len(selected_source_indices) != window.stop - window.start:
                 # the mask has gaps (or the index has a step) inside the window: drop the extra points
@@ -702,7 +722,6 @@ class Cutout(GridsBase):
             The second dataset.
         """
         # Turned off because we are combining different resolutions
-        pass
 
     @property
     def grids(self) -> TupleIndex:
@@ -718,13 +737,18 @@ class Cutout(GridsBase):
         """Returns the concatenated latitudes of each LAM and the global dataset
         after applying masks.
         """
-        lam_latitudes = np.concatenate([lam.latitudes[mask] for lam, mask in zip(self.lams, self.masks)])
+        lam_latitudes = np.concatenate(
+            [lam.latitudes[mask] for lam, mask in zip(self.lams, self.masks)]
+        )
 
         assert (
-            len(lam_latitudes) + len(self.globe.latitudes[self.global_mask]) == self.shape[-1]
+            len(lam_latitudes) + len(self.globe.latitudes[self.global_mask])
+            == self.shape[-1]
         ), "Mismatch in number of latitudes"
 
-        latitudes = np.concatenate([lam_latitudes, self.globe.latitudes[self.global_mask]])
+        latitudes = np.concatenate(
+            [lam_latitudes, self.globe.latitudes[self.global_mask]]
+        )
         return latitudes
 
     @property
@@ -732,13 +756,18 @@ class Cutout(GridsBase):
         """Returns the concatenated longitudes of each LAM and the global dataset
         after applying masks.
         """
-        lam_longitudes = np.concatenate([lam.longitudes[mask] for lam, mask in zip(self.lams, self.masks)])
+        lam_longitudes = np.concatenate(
+            [lam.longitudes[mask] for lam, mask in zip(self.lams, self.masks)]
+        )
 
         assert (
-            len(lam_longitudes) + len(self.globe.longitudes[self.global_mask]) == self.shape[-1]
+            len(lam_longitudes) + len(self.globe.longitudes[self.global_mask])
+            == self.shape[-1]
         ), "Mismatch in number of longitudes"
 
-        longitudes = np.concatenate([lam_longitudes, self.globe.longitudes[self.global_mask]])
+        longitudes = np.concatenate(
+            [lam_longitudes, self.globe.longitudes[self.global_mask]]
+        )
         return longitudes
 
     def tree(self) -> Node:
@@ -797,7 +826,9 @@ def grids_factory(args: tuple[Any, ...], kwargs: dict, options: Options) -> Data
     return Grids(datasets, axis=axis, options=options)._subset(**kwargs)
 
 
-def cutout_factory(args: tuple[Any, ...], kwargs: dict[str, Any], options: Options) -> Dataset:
+def cutout_factory(
+    args: tuple[Any, ...], kwargs: dict[str, Any], options: Options
+) -> Dataset:
     """Factory function to create a Cutout object.
 
     Parameters

@@ -14,15 +14,16 @@ import sys
 import earthkit.data as ekd
 import numpy as np
 import pandas as pd
-from anemoi.transform.fields import new_field_from_latitudes_longitudes
-from anemoi.transform.fields import new_field_from_numpy
-from anemoi.transform.fields import new_field_with_valid_datetime
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.datasets.usage.grids import cropping_mask
+from anemoi.transform.fields import (
+    new_field_from_latitudes_longitudes,
+    new_field_from_numpy,
+    new_field_with_valid_datetime,
+    new_fieldlist_from_list,
+)
 from anemoi.transform.filter import Filter
 from anemoi.transform.filters import filter_registry
 from earthkit.data.utils.dates import to_datetime
-
-from anemoi.datasets.usage.grids import cropping_mask
 
 LOG = logging.getLogger(__name__)
 
@@ -85,7 +86,6 @@ def expect_gridded(func):
 
 @filter_registry.register("crop")
 class Crop(Filter):
-
     def __init__(
         self,
         north: float,
@@ -101,7 +101,9 @@ class Crop(Filter):
 
     @expect_tabular
     def forward(self, frame):
-        LOG.info(f"Cropping to N:{self.north}, S:{self.south}, E:{self.east}, W:{self.west}")
+        LOG.info(
+            f"Cropping to N:{self.north}, S:{self.south}, E:{self.east}, W:{self.west}"
+        )
         LOG.info(f"Parameter type: {type(frame)}")
 
         # Just a test, does not support
@@ -112,9 +114,13 @@ class Crop(Filter):
         # Handle longitude wrapping (date line)
         if self.east < self.west:
             # Crop region crosses the date line
-            lon_mask = (frame["longitude"] >= self.west) | (frame["longitude"] <= self.east)
+            lon_mask = (frame["longitude"] >= self.west) | (
+                frame["longitude"] <= self.east
+            )
         else:
-            lon_mask = (frame["longitude"] >= self.west) & (frame["longitude"] <= self.east)
+            lon_mask = (frame["longitude"] >= self.west) & (
+                frame["longitude"] <= self.east
+            )
 
         lat_mask = (frame["latitude"] >= self.south) & (frame["latitude"] <= self.north)
 
@@ -124,7 +130,9 @@ class Crop(Filter):
 
     @expect_gridded
     def forward(self, fields):  # noqa: F811
-        LOG.info(f"Cropping to N:{self.north}, S:{self.south}, E:{self.east}, W:{self.west}")
+        LOG.info(
+            f"Cropping to N:{self.north}, S:{self.south}, E:{self.east}, W:{self.west}"
+        )
         LOG.info(f"Parameter type: {type(fields)}")
 
         mask = None
@@ -154,7 +162,9 @@ class Crop(Filter):
             result.append(
                 new_field_from_numpy(
                     cropped_array,
-                    template=new_field_from_latitudes_longitudes(field, latitudes, longitudes),
+                    template=new_field_from_latitudes_longitudes(
+                        field, latitudes, longitudes
+                    ),
                 )
             )
 
@@ -163,7 +173,6 @@ class Crop(Filter):
 
 @filter_registry.register("tabularise", aliases=["to_tabular", "tabularize"])
 class Tabularise(Filter):
-
     def __init__(
         self,
         param: list[str] = None,
@@ -175,7 +184,6 @@ class Tabularise(Filter):
         frames = {}
         assert len(fields)
         for field in fields:
-
             param = field.metadata("param")
             if self.param is not None and param not in self.param:
                 continue
@@ -183,7 +191,9 @@ class Tabularise(Filter):
             date = to_datetime(field.metadata("valid_datetime"))
 
             if param not in frames:
-                frames[param] = pd.DataFrame(columns=["date", "latitude", "longitude", param])
+                frames[param] = pd.DataFrame(
+                    columns=["date", "latitude", "longitude", param]
+                )
 
             latitudes, longitudes, values = field.data()
 
@@ -229,7 +239,6 @@ class Tabularise(Filter):
 
 @filter_registry.register("griddify", aliases=["to_gridded"])
 class Griddify(Filter):
-
     def __init__(
         self,
         template: str,
@@ -252,14 +261,18 @@ class Griddify(Filter):
         from anemoi.utils.grids import latlon_to_xyz
 
         result = []
-        value_columns = [col for col in frame.columns if col not in ("date", "latitude", "longitude")]
+        value_columns = [
+            col for col in frame.columns if col not in ("date", "latitude", "longitude")
+        ]
 
         for col in value_columns:
             for date, group in frame.groupby("date"):
                 # Only keep relevant columns for this variable and date
                 df = group[["date", "latitude", "longitude", col]]
 
-                xyz = latlon_to_xyz(df["latitude"].to_numpy(), df["longitude"].to_numpy())
+                xyz = latlon_to_xyz(
+                    df["latitude"].to_numpy(), df["longitude"].to_numpy()
+                )
                 points = np.array(xyz).transpose()
 
                 distances, indices = self.tree.query(points)
@@ -270,7 +283,12 @@ class Griddify(Filter):
 
                 result.append(
                     new_field_with_valid_datetime(
-                        new_field_from_numpy(gridded_values, template=self.template, valid_datetime=date, param=col),
+                        new_field_from_numpy(
+                            gridded_values,
+                            template=self.template,
+                            valid_datetime=date,
+                            param=col,
+                        ),
                         valid_datetime=date,
                     )
                 )
