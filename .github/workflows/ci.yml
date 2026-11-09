@@ -30,11 +30,14 @@ jobs:
   ci-approval:
     # A fork's own pull_request run does nothing; ci-fork.yml runs this workflow instead.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - uses: ecmwf/ci-infrastructure/actions/require-ci-approval@main
+        with:
+          check-workflows: 'true'
 
   resolve:
     needs: ci-approval
