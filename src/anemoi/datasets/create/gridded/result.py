@@ -141,11 +141,14 @@ def _mars_request(field: Any) -> dict[str, Any]:
 
     Filters leave ``metadata.mars`` as it was before them, so the keys the components
     carry are read from the components and the collection provides the others.
+    The result keeps the keys and values earthkit-data 0.x gave (eccodes' mars namespace,
+    or the "default" namespace for sources without one, such as xarray).
     """
     if _computed_forcing(field):
         return {}
 
     param = field.get("parameter.variable", default=None)
+    member = field.get("ensemble.member", default=None)
 
     raw = field.get(collections="metadata.mars") or field.get(collections="metadata.default") or {}
     md = {k: v for k, v in raw.items() if k not in ("param", "levtype", "levelist", "date", "time", "step", "number")}
@@ -156,9 +159,16 @@ def _mars_request(field: Any) -> dict[str, Any]:
 
     level = field.get("vertical.level", default=None)
     level_type = field.get("vertical.level_type", default=None)
-    levtype = LEVEL_TYPE_TO_LEVTYPE.get(level_type) or raw.get("levtype") or ("sfc" if level is None else level_type)
+    # The single GRIB key is only readable on fields no filter has changed, where it is eccodes' own levtype
+    levtype = (
+        field.get("metadata.levtype", default=None)
+        or LEVEL_TYPE_TO_LEVTYPE.get(level_type)
+        or raw.get("levtype")
+        or ("sfc" if level is None else level_type)
+    )
     md["levtype"] = levtype
-    if levtype != "sfc" and level is not None:
+    # eccodes gives some surface-like fields a levelist (e.g. cloudTop, COSMO's HSURF), which a flavour sets to None
+    if "levelist" in raw or (levtype != "sfc" and level is not None):
         md["levelist"] = level
 
     base = field.get("time.base_datetime", default=None)
@@ -170,9 +180,26 @@ def _mars_request(field: Any) -> dict[str, Any]:
     if step is not None:
         hours, rest = divmod(step, datetime.timedelta(hours=1))
         md["step"] = f"{step // datetime.timedelta(minutes=1)}m" if rest else hours
+        # eccodes spells a zero step in the message's unit when it is below an hour ("0m"), keep it unless the
+        # field was moved in time (e.g. by repeated-dates)
+        moved = (md.get("date"), md.get("time")) != (raw.get("date"), raw.get("time"))
+        if not step and isinstance(raw.get("step"), str) and not moved:
+            md["step"] = raw["step"]
 
-    if "number" in raw:
-        md["number"] = _ensemble_member(field.get("ensemble.member", default=None))
+    if "number" in raw or (not raw and member is not None):
+        md["number"] = _ensemble_member(member)
+
+    if not raw:
+        # Keys earthkit-data 0.x's "default" namespace added for sources without a mars namespace (xarray)
+        md["variable"] = param
+        if "levelist" in md:
+            md["level"] = md["levelist"]
+        units = field.get("labels.units", default=None)
+        if units is not None:
+            md["units"] = units
+        valid = field.get("time.valid_datetime", default=None)
+        if valid is not None:
+            md["valid_datetime"] = valid.isoformat()
 
     return md
 

@@ -435,6 +435,102 @@ def test_selection_by_other_keys(tmp_path) -> None:
     assert ds.shape[2] == 2
 
 
+def _mars_by_param(recipe: dict) -> dict:
+    """The ``mars`` entry of each variable of the dataset built from ``recipe``, by MARS param."""
+    variables_metadata = open_dataset(create_dataset(recipe=recipe, output=None)).variables_metadata
+    return {md["mars"]["param"]: md["mars"] for md in variables_metadata.values()}
+
+
+@pytest.mark.parametrize(
+    "flavour, expected",
+    [
+        (None, {"levtype": "unknown", "levelist": 0}),
+        ([[{"shortName": "t"}, {"levtype": "sfc", "levelist": None}]], {"levtype": "sfc", "levelist": None}),
+    ],
+)
+def test_mars_levelist_of_surface_like_fields(tmp_path, flavour, expected) -> None:
+    """A levelist that eccodes gives a non pressure-level field (cloudTop) is kept, and set to None by a flavour."""
+    path = _write_grib(tmp_path / "cloud.grib", [dict(dataDate=20200101, dataTime=0, typeOfLevel="cloudTop", value=1)])
+    dates = {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"}
+
+    mars = _mars_by_param({"dates": dates, "input": {"grib": {"path": path, "flavour": flavour}}})
+    assert mars == {"t": dict(param="t", date=20200101, time=0, step=0, **expected)}
+
+
+@pytest.mark.parametrize("flavour", [None, [[{"levtype": "sfc"}, {"levtype": "sfc", "levelist": None}]]])
+def test_mars_step_units(tmp_path, flavour) -> None:
+    """The MARS step is spelled as eccodes does: in minutes for a zero step of a minutes GRIB, else in hours."""
+    minutes = _write_grib(
+        tmp_path / "minutes.grib",
+        [
+            dict(dataDate=20200101, dataTime=0, shortName="sp", indicatorOfUnitOfTimeRange=0, forecastTime=0, value=1),
+            dict(
+                dataDate=20191231, dataTime=2330, shortName="2t", indicatorOfUnitOfTimeRange=0, forecastTime=30, value=1
+            ),
+        ],
+    )
+    hours = _write_grib(tmp_path / "hours.grib", [dict(dataDate=20200101, dataTime=0, shortName="msl", value=1)])
+    constant = _write_grib(
+        tmp_path / "constant.grib",
+        [dict(dataDate=20190601, dataTime=1200, shortName="z", indicatorOfUnitOfTimeRange=0, forecastTime=0, value=1)],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {
+            "join": [
+                {"grib": {"path": minutes, "flavour": flavour}},
+                {"grib": {"path": hours, "flavour": flavour}},
+                # moved in time, so the step is the new one
+                {"repeated-dates": {"mode": "constant", "source": {"grib": {"path": constant, "flavour": flavour}}}},
+            ]
+        },
+    }
+
+    steps = {param: mars["step"] for param, mars in _mars_by_param(recipe).items()}
+    assert steps == {"sp": "0m", "2t": "30m", "msl": 0, "z": 0}
+
+
+def test_mars_of_xarray_fields(tmp_path) -> None:
+    """Fields from xarray keep the MARS keys earthkit-data 0.x took from its "default" namespace."""
+    import xarray as xr
+
+    lat, lon = np.arange(50.0, 44.0, -1.0), np.arange(0.0, 6.0, 1.0)
+    coords = {
+        "time": [np.datetime64("2020-01-01T00:00", "ns"), np.datetime64("2020-01-01T06:00", "ns")],
+        "latitude": ("latitude", lat, {"standard_name": "latitude", "units": "degrees_north"}),
+        "longitude": ("longitude", lon, {"standard_name": "longitude", "units": "degrees_east"}),
+    }
+    level = ("level", [500, 850], {"units": "hPa", "standard_name": "air_pressure", "positive": "down"})
+    xr.Dataset(
+        {
+            "t": (("time", "level", "latitude", "longitude"), np.ones((2, 2, lat.size, lon.size)), {"units": "K"}),
+            "lsm": (("time", "latitude", "longitude"), np.ones((2, lat.size, lon.size))),
+        },
+        coords={**coords, "level": level},
+    ).to_netcdf(tmp_path / "pl.nc")
+    xr.Dataset(
+        {"t2m": (("time", "number", "latitude", "longitude"), np.ones((2, 3, lat.size, lon.size)), {"units": "K"})},
+        coords={**coords, "number": ("number", [1, 2, 3], {"standard_name": "realization"})},
+    ).to_netcdf(tmp_path / "ens.nc")
+    dates = {"start": "2020-01-01T00:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"}
+
+    time = dict(date=20200101, time=0, step=0, valid_datetime="2020-01-01T00:00:00")
+    for path, expected in (
+        (
+            "pl.nc",
+            {
+                "t_500": dict(param="t", variable="t", levtype="pl", levelist=500, level=500, units="K", **time),
+                "t_850": dict(param="t", variable="t", levtype="pl", levelist=850, level=850, units="K", **time),
+                "lsm": dict(param="lsm", variable="lsm", levtype="sfc", **time),
+            },
+        ),
+        ("ens.nc", {"t2m": dict(param="t2m", variable="t2m", levtype="sfc", number=[1, 2, 3], units="K", **time)}),
+    ):
+        recipe = {"dates": dates, "input": {"netcdf": {"path": str(tmp_path / path)}}}
+        variables_metadata = open_dataset(create_dataset(recipe=recipe, output=None)).variables_metadata
+        assert {name: md["mars"] for name, md in variables_metadata.items()} == expected
+
+
 @skip_if_offline
 def test_grib_gridfile(get_test_data) -> None:
     """Test the creation of a dataset from GRIB files with an unstructured grid.
