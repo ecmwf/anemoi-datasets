@@ -22,7 +22,6 @@ LOG = logging.getLogger(__name__)
 
 
 class TabularCreator(Creator):
-
     allow_nans = True
 
     ######################################################
@@ -61,9 +60,9 @@ class TabularCreator(Creator):
 
         metadata["dimensions"] = ["dates", "variables"]
 
-        assert (
-            variables == metadata["meta_variables"] + metadata["variables"]
-        ), "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
+        assert variables == metadata["meta_variables"] + metadata["variables"], (
+            "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
+        )
 
     def initialise_dataset(self, dataset: Dataset) -> None:
         """Initialise the dataset arrays and coordinates for tabular data.

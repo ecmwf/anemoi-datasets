@@ -160,7 +160,7 @@ class PlanetaryComputerSource(XarraySourceBase):
                     uris[abfs_uri] = (open_kwargs, item.datetime)
 
         if not uris:
-            msg = f"No STAC items or assets found: collection={collection_id}, " f"search_params={search_params}"
+            msg = f"No STAC items or assets found: collection={collection_id}, search_params={search_params}"
             raise ValueError(msg)
         return uris
 

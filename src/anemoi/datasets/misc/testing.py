@@ -154,7 +154,6 @@ def default_test_indexing(ds):
 
 
 class Trace:
-
     def __init__(self, ds):
         self.ds = ds
         self.f = open("trace.txt", "a")

@@ -109,7 +109,6 @@ class Creator(ABC):
         LOG.info(f"Creating dataset with layout: {layout}")
 
         match layout:
-
             case "gridded":
                 from .gridded.creator import SimpleGriddedCreator
 

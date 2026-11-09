@@ -115,7 +115,7 @@ class Dataset:
         def _(d):
             if "data" in d:
                 d = d.copy()
-                d["data"] = f'[... {d["data"].shape} {d["data"].dtype} array ...]'
+                d["data"] = f"[... {d['data'].shape} {d['data'].dtype} array ...]"
             return d
 
         LOG.info(f"Creating array {name} with kwargs={_(kwargs)} (dimensions={dimensions})")

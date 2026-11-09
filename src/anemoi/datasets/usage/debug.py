@@ -90,7 +90,7 @@ class Node:
             if isinstance(v, (list, tuple)):
                 v = ", ".join(str(i) for i in v)
                 v = textwrap.shorten(v, width=40, placeholder="...")
-            result.append(f"{_spaces(indent+2)}{k}: {v}")
+            result.append(f"{_spaces(indent + 2)}{k}: {v}")
         for kid in self.kids:
             kid._put(indent + 2, result)
 
@@ -131,7 +131,7 @@ class Node:
                 #     param.append(v)
                 # else:
                 param.append(f"{k}={v}")
-            label = f'{label}({",".join(param)})'
+            label = f"{label}({','.join(param)})"
 
         label += "\n" + "\n".join(
             textwrap.shorten(str(v), width=40, placeholder="...")

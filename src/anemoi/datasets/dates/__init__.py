@@ -446,7 +446,6 @@ class HindcastsDates(DatesProvider):
         for hdate, refdate in HindcastDatesTimes(reference_dates=reference_dates, years=years):
             assert refdate - hdate >= datetime.timedelta(days=365), (refdate - hdate, refdate, hdate)
             for step in steps:
-
                 date = hdate + datetime.timedelta(hours=step)
 
                 if date in seen:

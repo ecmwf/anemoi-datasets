@@ -275,8 +275,8 @@ class Version:
             print(f"📅 Date start : {_fmt(self.dataset.start_date)}")
             print(f"📅 Date end   : {_fmt(self.dataset.end_date)}")
         else:
-            print(f'📅 Date      start: {self.first_date.strftime("%Y-%m-%d %H:%M")}')
-            print(f'📅 Date      end  : {self.last_date.strftime("%Y-%m-%d %H:%M")}')
+            print(f"📅 Date      start: {self.first_date.strftime('%Y-%m-%d %H:%M')}")
+            print(f"📅 Date      end  : {self.last_date.strftime('%Y-%m-%d %H:%M')}")
             print(f"⏰ Frequency  : {self.frequency}")
         if self.n_missing_dates is not None:
             print(f"🚫 Missing    : {self.n_missing_dates:,}")

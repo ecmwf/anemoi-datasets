@@ -83,7 +83,6 @@ def _extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]
 
 
 class DatesProvider(BaseModel):
-
     def __iter__(self) -> Iterator[datetime.datetime]:
         """Iterate over the dates.
 
@@ -122,7 +121,6 @@ class DatesProvider(BaseModel):
 
 
 class StartEndDates(DatesProvider):
-
     class MissingRange(BaseModel):
         start: NaiveDatetime
         end: NaiveDatetime

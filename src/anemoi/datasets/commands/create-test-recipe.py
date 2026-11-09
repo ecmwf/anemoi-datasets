@@ -97,8 +97,7 @@ def update_name(data: dict, input_path: Path, suffix: str = "-test") -> None:
 
 def update_description(data: dict, options: str) -> None:
     prefix = (
-        "This is a test version of the following recipe, "
-        f"created using anemoi-datasets create-test-recipe {options}:"
+        f"This is a test version of the following recipe, created using anemoi-datasets create-test-recipe {options}:"
     )
     description = data.get("description", "")
     description = str(description).strip()

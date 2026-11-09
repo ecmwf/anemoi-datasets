@@ -29,7 +29,6 @@ LOG = logging.getLogger(__name__)
 
 
 class DemoAlternativeDataset:
-
     def __init__(self, ds: xr.Dataset):
         self.ds = ds
 

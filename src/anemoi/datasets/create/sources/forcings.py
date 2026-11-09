@@ -45,7 +45,6 @@ def _units_for(field: Any) -> str:
 
 @source_registry.register("forcings")
 class ForcingsSource(Source):
-
     def __init__(self, context: Any, template: Any, param: list[str]) -> None:
         super().__init__(context)
         self.template = template

@@ -129,9 +129,9 @@ def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
 
     for field in q_fields:
         levtype = field.metadata("levtype", default=None)
-        assert (
-            levtype is not None
-        ), f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
+        assert levtype is not None, (
+            f"levtype is None for pressure-level field q at level={field.metadata('level', default='?')}"
+        )
 
         units = field.metadata("units", default=None)
         assert units == "kg kg**-1", f"Expected units='kg kg**-1' for q, got {units!r}"

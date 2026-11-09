@@ -39,7 +39,6 @@ class _Error:
 
 
 class Added(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -47,7 +46,6 @@ class Added(_Error):
 
 
 class MissingOK(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -55,19 +53,16 @@ class MissingOK(_Error):
 
 
 class Missing(_Error):
-
     def __repr__(self):
         return f"❌ {self.message}"
 
 
 class Error(_Error):
-
     def __repr__(self):
         return f"❗ {self.message}"
 
 
 class Warning(_Error):
-
     fatal = False
 
     def __repr__(self):
@@ -122,12 +117,11 @@ def _compare_arrays_partial(
         rtol = tolerance
         atol = tolerance * max(np.nanmax(np.abs(a)), np.nanmax(np.abs(b)))
         if np.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True):
-
             return True
 
     close = "close" if np.allclose(a, b, equal_nan=True) else "different"
 
-    errors.error(f"🧮 {path}: arrays are {close} {a[:]}, {b[:]} {a[:]-b[:]}")
+    errors.error(f"🧮 {path}: arrays are {close} {a[:]}, {b[:]} {a[:] - b[:]}")
     return False
 
 
@@ -169,7 +163,6 @@ def _compare_arrays(errors, a: zarr.Array, b: zarr.Array, path: str, tolerance=1
     LOG.info(f"Comparing large arrays {path} using {max_workers} workers")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-
         tasks = []
         starts = itertools.product(*(range(0, s, step) for s, step in zip(a.shape, buffer_shape)))
         for start in tqdm.tqdm(list(starts), desc=f"Comparing {path}"):
@@ -221,7 +214,6 @@ def _compare_zarrs(errors, reference, actual, data, *path) -> None:
     actual_arrays = list(actual.keys())
 
     for key in sorted(set(reference_arrays) | set(actual_arrays)):
-
         if key not in actual_arrays:
             if ".".join(path + (key,)) in IGNORE_MISSINGS:
                 errors.missing_ok(f"🧮 {'.'.join(path)}.{key}")
@@ -299,7 +291,6 @@ def _compare_dot_zattrs(errors, reference: dict, actual: dict, *path) -> None:
         reference_keys = set(reference.keys())
         actual_keys = set(actual.keys())
         for k in sorted(reference_keys | actual_keys):
-
             if k not in reference_keys:
                 errors.added(f"🏷️ {'.'.join(path)}.{k}")
                 continue
