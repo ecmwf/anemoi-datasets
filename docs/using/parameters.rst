@@ -114,7 +114,7 @@ as follows:
    -  -  cutout
       -  ✅
       -  ❌
-      -  🧪
+      -  ✅
       -  List of datasets used as cutouts for complements/cutout
          operations.
 
