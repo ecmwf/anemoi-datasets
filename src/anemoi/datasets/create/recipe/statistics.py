@@ -129,7 +129,12 @@ class Statistics(BaseModel):
         """
         base_dates = np.asarray(base_dates)
         steps = np.asarray(steps)
-        assert np.all(np.diff(steps) >= 0), f"steps must be sorted ascending, got {steps}"
+        step_diffs = np.diff(steps)
+        if np.issubdtype(step_diffs.dtype, np.timedelta64):
+            zero_step = np.timedelta64(0, "s")
+        else:
+            zero_step = 0
+        assert np.all(step_diffs >= zero_step), f"steps must be sorted ascending, got {steps}"
         valid_times = np.unique((base_dates[:, None] + steps[None, :]).ravel())
 
         start, end = self.statistics_dates(list(valid_times))
