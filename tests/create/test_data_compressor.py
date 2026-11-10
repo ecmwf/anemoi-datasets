@@ -15,8 +15,7 @@ import pytest
 import yaml
 
 from anemoi.datasets import open_dataset
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import zarr_open, zarr_version
 from anemoi.datasets.create.tasks import run_task
 
 ZARR_FORMATS = [

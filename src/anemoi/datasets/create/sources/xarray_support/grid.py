@@ -9,8 +9,7 @@
 
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -173,8 +172,7 @@ class ProjectionGrid(XYGrid):
         Any
             The transformer.
         """
-        from pyproj import CRS
-        from pyproj import Transformer
+        from pyproj import CRS, Transformer
 
         if isinstance(self.projection, dict):
             data_crs = CRS.from_cf(self.projection)

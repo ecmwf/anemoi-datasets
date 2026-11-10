@@ -11,21 +11,17 @@
 import datetime
 import logging
 from collections.abc import Callable
-from functools import cached_property
-from functools import wraps
+from functools import cached_property, wraps
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import Dataset, FullIndex, Shape
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.forwards import Combined
 from anemoi.datasets.usage.gridded.concat import ConcatMixin
-from anemoi.datasets.usage.misc import _auto_adjust
-from anemoi.datasets.usage.misc import _open
+from anemoi.datasets.usage.misc import _auto_adjust, _open
 from anemoi.datasets.usage.options import Options
 
 LOG = logging.getLogger(__name__)

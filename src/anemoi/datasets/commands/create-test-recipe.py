@@ -11,15 +11,12 @@ from __future__ import annotations
 
 import argparse
 import re
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Iterable
+from typing import Any, Iterable
 
 import ruamel.yaml
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import as_datetime, frequency_to_timedelta
 from ruamel.yaml.constructor import RoundTripConstructor
 
 from . import Command

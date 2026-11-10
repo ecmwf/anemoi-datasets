@@ -38,8 +38,7 @@ import fnmatch
 import logging
 from typing import Any
 
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import ForecastDates, ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry

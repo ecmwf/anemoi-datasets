@@ -10,8 +10,7 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from earthkit.data import FieldList
@@ -20,8 +19,7 @@ from .field import EmptyFieldList
 from .flavour import CoordinateGuesser
 from .patch import patch_dataset
 from .time import Time
-from .variable import FilteredVariable
-from .variable import Variable
+from .variable import FilteredVariable, Variable
 
 if TYPE_CHECKING:
     import xarray as xr

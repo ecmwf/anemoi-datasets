@@ -13,13 +13,11 @@ import math
 import time
 from collections import defaultdict
 from functools import cached_property
-from typing import Any
-from typing import DefaultDict
+from typing import Any, DefaultDict
 
 import numpy as np
 from anemoi.utils.dates import as_timedelta
-from anemoi.utils.humanize import seconds_to_human
-from anemoi.utils.humanize import shorten_list
+from anemoi.utils.humanize import seconds_to_human, shorten_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result

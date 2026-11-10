@@ -13,8 +13,7 @@ import os
 import textwrap
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemoi.utils.text import Tree
 from numpy.typing import NDArray

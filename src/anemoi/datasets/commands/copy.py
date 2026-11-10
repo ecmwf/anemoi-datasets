@@ -12,26 +12,24 @@ import logging
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import numpy as np
 import tqdm
-from anemoi.utils.remote import Transfer
-from anemoi.utils.remote import TransferMethodNotImplementedError
+from anemoi.utils.remote import Transfer, TransferMethodNotImplementedError
 
-from anemoi.datasets.compat import NestedDirectoryStore
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_private_files
-from anemoi.datasets.compat import zarr_version
-from anemoi.datasets.compat.codecs import numcodecs_codec
-from anemoi.datasets.compat.codecs import zarr3_codec
-from anemoi.datasets.compat.codecs import zarr3_spec
+from anemoi.datasets.compat import (
+    NestedDirectoryStore,
+    ZarrFileNotFoundError,
+    blosc_compressor,
+    get_zarr_format,
+    zarr_format_from_name,
+    zarr_open,
+    zarr_private_files,
+    zarr_version,
+)
+from anemoi.datasets.compat.codecs import numcodecs_codec, zarr3_codec, zarr3_spec
 from anemoi.datasets.misc.check import check_zarr
 from anemoi.datasets.usage.store import open_zarr_store
 
