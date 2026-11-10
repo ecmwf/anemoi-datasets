@@ -306,9 +306,9 @@ class Join(Combined):
         return {}
 
     def origin(self, index):
-        assert (
-            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
-        ), tuple
+        assert isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index)), (
+            tuple
+        )
 
         i = index[1]
         for dataset in self.datasets:

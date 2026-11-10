@@ -46,7 +46,6 @@ def make_rescale(variable: str, rescale: tuple[float, float] | list[str] | dict[
         The scale and offset values.
     """
     if isinstance(rescale, (tuple, list)):
-
         assert len(rescale) == 2, rescale
 
         if isinstance(rescale[0], (int, float)):

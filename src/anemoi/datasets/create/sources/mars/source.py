@@ -31,13 +31,12 @@ def _reject_filters(requests: list[dict[str, Any]], context_label: str) -> None:
     for r in requests:
         filter_, _ = RequestFilter.extract(r)
         if not filter_.is_empty:
-            raise ValueError(f"Wildcard 'date' filters are not supported in " f"{context_label} mars blocks.")
+            raise ValueError(f"Wildcard 'date' filters are not supported in {context_label} mars blocks.")
 
 
 # TODO: there is some code duplication between here and FDB source, might be reduced
 @source_registry.register("mars")
 class MarsSource(Source):
-
     def __init__(self, context: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(context, *args, **kwargs)
         self.use_cdsapi_dataset = kwargs.pop("use_cdsapi_dataset", None)

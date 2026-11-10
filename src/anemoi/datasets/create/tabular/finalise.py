@@ -90,9 +90,9 @@ class Fragment:
         self._shape: tuple[int, ...] = shape
         self._offset: int | None = None
 
-        assert (
-            self.first_date <= self.last_date
-        ), f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+        assert self.first_date <= self.last_date, (
+            f"Fragment {file_path} has invalid date range: {self.first_date} to {self.last_date}"
+        )
 
     @property
     def file_path(self) -> str:
@@ -128,9 +128,9 @@ class Fragment:
         value : int
             The offset value to set.
         """
-        assert (
-            self._offset is None
-        ), f"Offset for fragment {self.file_path} is already set to {self._offset}, cannot overwrite with {value}"
+        assert self._offset is None, (
+            f"Offset for fragment {self.file_path} is already set to {self._offset}, cannot overwrite with {value}"
+        )
         self._offset = value
 
     @classmethod
@@ -748,12 +748,12 @@ def _load_fragment_worker(fragment: Fragment) -> tuple[Fragment, np.ndarray]:
         first = _date(array, 0)
         last = _date(array, -1)
 
-        assert (
-            first == fragment.first_date
-        ), f"First date {first} does not match fragment first date {fragment.first_date} for file {fragment.file_path}"
-        assert (
-            last == fragment.last_date
-        ), f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
+        assert first == fragment.first_date, (
+            f"First date {first} does not match fragment first date {fragment.first_date} for file {fragment.file_path}"
+        )
+        assert last == fragment.last_date, (
+            f"Last date {last} does not match fragment last date {fragment.last_date} for file {fragment.file_path}"
+        )
 
         return (fragment, array, time.time() - now)
     except Exception:
@@ -1274,9 +1274,9 @@ def compute_rows_per_chunk(
         f"compression x{compression_ratio:g}). Density from {density_source}."
     )
     LOG.info(
-        f"Filesystem read sweet spot {fs_read_min_bytes>>20}-{fs_read_max_bytes>>20} MB on disk "
+        f"Filesystem read sweet spot {fs_read_min_bytes >> 20}-{fs_read_max_bytes >> 20} MB on disk "
         f"= {fs_min_rows:,}-{fs_max_rows:,} rows/chunk; "
-        f"latency {fs_latency_seconds*1e3:g} ms, bandwidth {fs_bandwidth_bytes_per_s/1e9:g} GB/s."
+        f"latency {fs_latency_seconds * 1e3:g} ms, bandwidth {fs_bandwidth_bytes_per_s / 1e9:g} GB/s."
     )
 
     def on_disk_mb(chunk_rows: int) -> float:

@@ -28,7 +28,6 @@ def create_date_indexing(config: Any, store: Any) -> Any:
 
 
 class DateIndexing(ABC):
-
     @abstractmethod
     def bulk_load(self, store, dates_ranges: Any) -> None:
         """Bulk load the date indexing structure with the provided dates.

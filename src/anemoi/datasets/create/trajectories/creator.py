@@ -33,7 +33,6 @@ LOG = logging.getLogger(__name__)
 
 
 class TrajectoryGriddedCreator(GriddedCreator):
-
     @cached_property
     def groups(self) -> TrajectoryGroups:
         """Return the date groups for the trajectories dataset.
@@ -228,9 +227,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         all_basetimes = dataset.base_dates  # numpy datetime64[s] – authoritative
         all_steps = dataset.steps  # numpy timedelta64  – authoritative
 
-        assert np.array_equal(
-            np.array(base_dates_from_provider, dtype="datetime64[s]"), all_basetimes
-        ), "provider.factorise() base_dates do not match dataset.base_dates"
+        assert np.array_equal(np.array(base_dates_from_provider, dtype="datetime64[s]"), all_basetimes), (
+            "provider.factorise() base_dates do not match dataset.base_dates"
+        )
         assert np.array_equal(steps_from_provider, all_steps), "provider.factorise() steps do not match dataset.steps"
 
         # Coverage guard (mirrors the gridded creator's ``check_shape``): the
@@ -287,9 +286,9 @@ class TrajectoryGriddedCreator(GriddedCreator):
         # cube axis guarantees each region is visited exactly once and
         # contiguously.
         data_array = dataset.data
-        assert (
-            data_array.chunks[0] == 1 and data_array.chunks[3] == 1
-        ), f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
+        assert data_array.chunks[0] == 1 and data_array.chunks[3] == 1, (
+            f"Trajectory streaming write requires base_dates/steps chunks == 1, got {data_array.chunks}"
+        )
         n_variables = len(variables)
         n_ensembles = data_array.shape[2]
         n_cells = data_array.shape[4]
@@ -332,8 +331,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
                 ens_idx = number_to_index.get(int(number))
                 if ens_idx is None:
                     raise ValueError(
-                        f"Trajectories: member number {number} not in the cube's "
-                        f"'number' coordinate {list(numbers)}"
+                        f"Trajectories: member number {number} not in the cube's 'number' coordinate {list(numbers)}"
                     )
 
             date_idx = basetime_index_of(basetime)
