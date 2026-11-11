@@ -114,23 +114,8 @@ class MissingDatesFill(Forwards):
         if n < 0:
             n += self._len
 
-        a = None
-        i = n
-        while a is None and i >= 0:
-            if i in self._missing:
-                i -= 1
-            else:
-                a = i
-
-        len = self._len
-        b = None
-        i = n
-        while b is None and n < len:
-            if i in self._missing:
-                i += 1
-            else:
-                b = i
-
+        a = next((i for i in range(n, -1, -1) if i not in self._missing), None)
+        b = next((i for i in range(n, self._len) if i not in self._missing), None)
         return self._fill_missing(n, a, b)
 
     def _issue_warning(self, n):
@@ -178,7 +163,13 @@ class MissingDatesClosest(MissingDatesFill):
         """
         if n not in self._warnings:
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
-            if abs(n - a) == abs(b - n):
+            if a is None and b is None:
+                raise MissingDateError(f"Cannot fill index {n} ({self.dates[n]}): all dates are missing")
+            if a is None:
+                u = b
+            elif b is None:
+                u = a
+            elif abs(n - a) == abs(b - n):
                 if self.closest == "up":
                     u = b
                 else:
@@ -219,17 +210,6 @@ class MissingDatesClosest(MissingDatesFill):
 class MissingDatesInterpolate(MissingDatesFill):
     """Class to handle filling missing dates using interpolation."""
 
-    def __init__(self, dataset: Any) -> None:
-        """Initialize the MissingDatesInterpolate class.
-
-        Parameters
-        ----------
-        dataset : Any
-            The dataset with missing dates.
-        """
-        super().__init__(dataset)
-        self._alpha = {}
-
     def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
         """Fill the missing date at the given index using interpolation.
 
@@ -253,22 +233,15 @@ class MissingDatesInterpolate(MissingDatesFill):
                 f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
             )
 
-        if self._do_warning:
+        assert a < n < b, (a, n, b)
+        alpha = (n - a) / (b - a)
+
+        if self._issue_warning(n):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]})")
-
-            assert a < n < b, (a, n, b)
-
-            alpha = (n - a) / (b - a)
-            assert 0 < alpha < 1, alpha
-
             LOG.warning(f"Interpolating between index {a} ({self.dates[a]}) and {b} ({self.dates[b]})")
             LOG.warning(f"Interpolation {1 - alpha:g} * ({self.dates[a]}) + {alpha:g} * ({self.dates[b]})")
-
-            self._alpha[n] = alpha
-
             self._register_warning(n)
 
-        alpha = self._alpha[n]
         return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:

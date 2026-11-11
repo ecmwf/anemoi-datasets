@@ -24,6 +24,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets import MissingDateError
 from anemoi.datasets import __version__ as _anemoi_datasets_version
 from anemoi.datasets import open_dataset
 from anemoi.datasets.misc.testing import FastGroup
@@ -1881,6 +1882,36 @@ def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
     # A failed save leaves neither a corrupt cache file nor a leftover temp file.
     assert not masks_path.exists()
     assert list(tmp_path.iterdir()) == []
+
+
+@mockup_open_zarr
+def test_fill_missing_dates_at_the_edges() -> None:
+    """Test filling missing dates with no available date on one side."""
+    base = open_dataset("test-2021-2021-24h-o96-abcd")
+    extended = dict(dataset="test-2021-2021-24h-o96-abcd", extend_start="2020-12-30", extend_end="2022-01-02")
+
+    closest = open_dataset(extended, fill_missing_dates="closest")
+    assert len(closest) == len(base) + 4
+    for n in (0, 1, 2):
+        assert (closest[n] == base[0]).all()
+    for n in (-1, -2, -3):
+        assert (closest[n] == base[-1]).all()
+    assert (closest[1:4] == base[[0, 0, 1]]).all()
+
+    # The first date is missing in the store itself.
+    missing = open_dataset("missing-2021-2021-24h-o96-abcd")
+    closest = open_dataset("missing-2021-2021-24h-o96-abcd", fill_missing_dates="closest")
+    assert (closest[0] == missing[1]).all()
+
+    interpolate = open_dataset(extended, fill_missing_dates="interpolate")
+    for n in (0, -1):
+        with pytest.raises(MissingDateError):
+            interpolate[n]
+
+    interpolate = open_dataset("missing-2021-2021-24h-o96-abcd", fill_missing_dates="interpolate")
+    assert (interpolate[31] == (missing[30] + missing[32]) / 2).all()
+    with pytest.raises(MissingDateError):
+        interpolate[0]
 
 
 if __name__ == "__main__":
