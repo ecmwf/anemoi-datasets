@@ -27,6 +27,7 @@ from anemoi.datasets.usage.gridded import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
+from anemoi.datasets.usage.gridded.indexing import positive_steps
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
@@ -102,20 +103,17 @@ class Extend(Forwards):
             The interpolated data for the tuple index.
         """
         index, changes = index_to_slices(index, self.shape)
+        index, flips = positive_steps(index)
         dates = range(index[0].start, index[0].stop, index[0].step)
         for n in dates:
             if not self._before <= n < self._before + len(self.forward):
                 raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
-        # Read the dates in increasing order, so the forward dataset only sees positive steps.
-        ordered = dates if dates.step > 0 else dates[::-1]
         first = slice(0, 0)
-        if ordered:
-            first = slice(ordered[0] - self._before, ordered[-1] - self._before + 1, ordered.step)
+        if dates:
+            first = slice(dates[0] - self._before, dates[-1] - self._before + 1, dates.step)
 
-        result = self.forward[(first,) + index[1:]]
-        if dates.step < 0:
-            result = result[::-1]
+        result = np.flip(self.forward[(first,) + index[1:]], flips)
         return apply_index_to_slices_changes(result, changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:

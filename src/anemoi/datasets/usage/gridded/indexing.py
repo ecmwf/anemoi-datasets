@@ -98,6 +98,18 @@ def index_to_slices(index: int | slice | tuple, shape: Shape) -> tuple[TupleInde
     return _tuple_with_slices(_index_to_tuple(index, shape), shape)
 
 
+def positive_steps(index: TupleIndex) -> tuple[TupleIndex, tuple[int, ...]]:
+    """Rewrite the negative-step slices of ``index_to_slices`` as positive ones; return the axes to flip after."""
+    result, flips = [], []
+    for axis, s in enumerate(index):
+        r = range(s.start, s.stop, s.step)
+        if s.step < 0:
+            r = r[::-1]
+            flips.append(axis)
+        result.append(slice(r.start, r.stop, r.step))
+    return tuple(result), tuple(flips)
+
+
 def apply_index_to_slices_changes(result: NDArray[Any], changes: tuple[int, ...]) -> NDArray[Any]:
     """Apply changes to the result array based on the slices.
 
