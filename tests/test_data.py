@@ -1957,36 +1957,46 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
     name = "missing-2021-2021-24h-o96-abcd-0-2"
     extended = dict(dataset="test-2021-2021-24h-o96-abcd-0-2", extend_start="2020-12-30", extend_end="2022-01-02")
 
+    mean = open_dataset(name, fill_missing_dates="mean")
+    # The mock stores have statistics per grid point, not per variable.
+    mean._statistics = np.arange(4.0).reshape(4, 1, 1)
+
     # Each case gives the range of dates that can be read.
     cases = [
         (open_dataset(extended), 2, 367),
         (open_dataset(extended, fill_missing_dates="closest"), 0, 369),
+        (open_dataset(dict(dataset=name, extend_end="2022-01-02"), fill_missing_dates="closest"), 0, 367),
         (open_dataset(name, fill_missing_dates="closest"), 0, 365),
         (open_dataset(name, fill_missing_dates="interpolate"), 1, 365),
         (open_dataset(name, fill_missing_dates="nan"), 0, 365),
-        (open_dataset(name, fill_missing_dates="mean"), 0, 365),
+        (mean, 0, 365),
     ]
-    # The mock stores have statistics per grid point, not per variable.
-    cases[-1][0]._statistics = np.arange(4.0).reshape(4, 1, 1)
 
     for ds, lo, hi in cases:
         full = np.full(ds.shape, np.nan, dtype=ds.dtype)
         for n in range(lo, hi):
             full[n] = ds[n]
 
+        # Every date index hits a missing date of the store (0, 31 or 59), so it goes through the
+        # filling code instead of straight to the store.
         dates = [
-            slice(lo, lo + 3),
-            slice(lo + 25, lo + 40, 3),
-            slice(lo + 40, lo + 25, -2),
-            lo + 31,
-            hi - 1 - len(ds),
-            [lo + 31, lo, lo + 59],
+            slice(30, 33),
+            slice(25, 40, 3),
+            slice(41, 25, -2),
+            slice(35, lo - 1 if lo else None, -1),
+            31,
+            [31, 59, lo],
         ]
-        variables = [slice(None), -1, slice(1, 3), [3, 0]]
+        # Zarr rejects negative steps, so they must not reach the store.
+        variables = [slice(None), -1, slice(1, 3), [3, 0], slice(3, 0, -1)]
         members = [slice(None), 1, [1, 0]]
-        grid = [slice(None), 3, slice(2, 8, 3), [9, 0, 4]]
+        grid = [slice(None), 3, slice(2, 8, 3), [9, 0, 4], slice(None, None, -3)]
 
-        indices = [(slice(lo, hi),), (lo + 31, 2), (slice(lo, lo + 3), slice(None), slice(None), slice(0, 5))]
+        indices = [
+            (slice(lo, hi),),
+            (hi - 1 - len(ds), 2),
+            (slice(lo, lo + 3), slice(None), slice(None), slice(0, 5)),
+        ]
         for index in itertools.product(dates, variables, members, grid):
             lists = sum(isinstance(i, list) for i in index)
             # Only one list is allowed, and lists cannot be mixed with integers.
