@@ -63,6 +63,9 @@ class MissingDatesFill(Forwards):
         """
         index, changes = index_to_slices(index, self.shape)
         index, flips = positive_steps(index)
+        if any(index[i].start >= index[i].stop for i in changes):
+            raise IndexError(f"Index out of range for shape {self.shape}")
+
         dates = range(index[0].start, index[0].stop, index[0].step)
         result = np.flip(np.stack([self._get_date(n, index[1:]) for n in dates]), flips)
         return apply_index_to_slices_changes(result, changes)
@@ -70,7 +73,7 @@ class MissingDatesFill(Forwards):
     def _get_date(self, n: int, index: TupleIndex) -> NDArray[Any]:
         """Get one date, filled if missing, with ``index`` applied to the other axes."""
         try:
-            return self.forward[(n,) + index]
+            return self._read(n, index)
         except MissingDateError:
             return self._fill(n, index)
 
@@ -80,7 +83,7 @@ class MissingDatesFill(Forwards):
         b = next((i for i in range(n, self._len) if i not in self._missing), None)
         return self._fill_missing(n, a, b, index)
 
-    def _forward(self, n: int, index: TupleIndex) -> NDArray[Any]:
+    def _read(self, n: int, index: TupleIndex) -> NDArray[Any]:
         """Read date ``n`` of the forward dataset, with ``index`` applied to the other axes."""
         return self.forward[(n,) + index] if index else self.forward[n]
 
@@ -202,7 +205,7 @@ class MissingDatesClosest(MissingDatesFill):
             self._closest[n] = u
             self._warnings.add(n)
 
-        return self._forward(self._closest[n], index)
+        return self._read(self._closest[n], index)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -253,7 +256,10 @@ class MissingDatesInterpolate(MissingDatesFill):
                 f"Cannot interpolate at index {n} ({self.dates[n]}). Are the first or last date missing?"
             )
 
-        assert a < n < b, (a, n, b)
+        if not a < n < b:
+            raise MissingDateError(
+                f"Cannot interpolate at index {n} ({self.dates[n]}): the date is not listed as missing"
+            )
         alpha = (n - a) / (b - a)
 
         if self._issue_warning(n):
@@ -262,7 +268,7 @@ class MissingDatesInterpolate(MissingDatesFill):
             LOG.warning(f"Interpolation {1 - alpha:g} * ({self.dates[a]}) + {alpha:g} * ({self.dates[b]})")
             self._register_warning(n)
 
-        return self._forward(a, index) * (1 - alpha) + self._forward(b, index) * alpha
+        return self._read(a, index) * (1 - alpha) + self._read(b, index) * alpha
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -311,7 +317,7 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
             self._register_warning(n)
 
-        shape = np.broadcast_to(0, self.shape[1:])[index].shape
+        shape = tuple(len(range(s.start, s.stop, s.step)) for s in index) or self.shape[1:]
         return np.full(shape, np.nan, dtype=self.dtype)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
