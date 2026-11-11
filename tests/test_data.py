@@ -2017,6 +2017,31 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
         with pytest.raises(IndexError):
             ds[index]
 
+    class CountReads:
+        def __init__(self, ds):
+            self.ds, self.reads = ds, []
+
+        def __getattr__(self, name):
+            return getattr(self.ds, name)
+
+        def __len__(self):
+            return len(self.ds)
+
+        def __getitem__(self, index):
+            result = self.ds[index]
+            self.reads.append(index[0])
+            return result
+
+    # A source date is read once per call, even when it fills several dates.
+    for ds, dates, reads in [
+        (open_dataset(extended, fill_missing_dates="closest"), range(365, 369), [365, 366]),
+        (open_dataset(name, fill_missing_dates="interpolate"), range(29, 34), [29, 30, 32, 33]),
+    ]:
+        expected = np.stack([ds[n] for n in dates])[:, 1:3]
+        ds.forward = CountReads(ds.forward)
+        result = ds[dates.start : dates.stop, 1:3]
+        assert result.tobytes() == expected.tobytes() and ds.forward.reads == reads
+
 
 if __name__ == "__main__":
     for name, obj in list(globals().items()):
