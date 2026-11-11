@@ -1903,6 +1903,14 @@ def test_fill_missing_dates_at_the_edges() -> None:
     closest = open_dataset("missing-2021-2021-24h-o96-abcd", fill_missing_dates="closest")
     assert (closest[0] == missing[1]).all()
 
+    # Extend over a store that has missing dates (the first of each month).
+    closest = open_dataset(
+        dict(dataset="missing-2021-2021-24h-o96-abcd", extend_end="2022-01-02"), fill_missing_dates="closest"
+    )
+    assert (closest[31] == missing[32]).all()
+    assert (closest[-1] == missing[-1]).all()
+    assert (closest[30:33] == np.stack([missing[30], missing[32], missing[32]])).all()
+
     interpolate = open_dataset(extended, fill_missing_dates="interpolate")
     for n in (0, -1):
         with pytest.raises(MissingDateError):

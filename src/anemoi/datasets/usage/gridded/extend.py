@@ -84,8 +84,8 @@ class Extend(Forwards):
         if self._extend_end is None:
             self._extend_end = last
 
-        self._before = (first - self._extend_start) // frequency64
-        self._after = (self._extend_end - last) // frequency64
+        self._before = int((first - self._extend_start) // frequency64)
+        self._after = int((self._extend_end - last) // frequency64)
 
     @debug_indexing
     @expand_list_indexing
