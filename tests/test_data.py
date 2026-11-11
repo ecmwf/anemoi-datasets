@@ -1996,6 +1996,7 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
             (slice(lo, hi),),
             (hi - 1 - len(ds), 2),
             (slice(lo, lo + 3), slice(None), slice(None), slice(0, 5)),
+            (slice(40, 40), slice(1, 3)),
         ]
         for index in itertools.product(dates, variables, members, grid):
             lists = sum(isinstance(i, list) for i in index)
@@ -2011,6 +2012,9 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
     ds = cases[0][0]
     for index in [(slice(0, 3), 0), (slice(365, 369), slice(None), 0), ([0, 5], 1)]:
         with pytest.raises(MissingDateError):
+            ds[index]
+    for ds, index in [(ds, (369, 0)), (ds, (-370,)), (ds, (5, 4)), (cases[3][0], (31, 0, 2))]:
+        with pytest.raises(IndexError):
             ds[index]
 
 
