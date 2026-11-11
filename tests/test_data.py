@@ -1950,6 +1950,36 @@ def test_join_reads_like_concatenated_members() -> None:
             assert ds[1:6, :, :, 2:9].tobytes() == expected.tobytes()
 
 
+@mockup_open_zarr
+def test_fill_missing_dates_at_the_edges() -> None:
+    """Test filling missing dates with no available date on one side."""
+    base = open_dataset("test-2021-2021-24h-o96-abcd")
+    extended = dict(dataset="test-2021-2021-24h-o96-abcd", extend_start="2020-12-30", extend_end="2022-01-02")
+
+    closest = open_dataset(extended, fill_missing_dates="closest")
+    assert len(closest) == len(base) + 4
+    for n in (0, 1, 2):
+        assert (closest[n] == base[0]).all()
+    for n in (-1, -2, -3):
+        assert (closest[n] == base[-1]).all()
+    assert (closest[1:4] == base[[0, 0, 1]]).all()
+
+    # The first date is missing in the store itself.
+    missing = open_dataset("missing-2021-2021-24h-o96-abcd")
+    closest = open_dataset("missing-2021-2021-24h-o96-abcd", fill_missing_dates="closest")
+    assert (closest[0] == missing[1]).all()
+
+    interpolate = open_dataset(extended, fill_missing_dates="interpolate")
+    for n in (0, -1):
+        with pytest.raises(MissingDateError):
+            interpolate[n]
+
+    interpolate = open_dataset("missing-2021-2021-24h-o96-abcd", fill_missing_dates="interpolate")
+    assert (interpolate[31] == (missing[30] + missing[32]) / 2).all()
+    with pytest.raises(MissingDateError):
+        interpolate[0]
+
+
 if __name__ == "__main__":
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
