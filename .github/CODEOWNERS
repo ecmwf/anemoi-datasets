@@ -1,7 +1,8 @@
-# Workflows
-/.github/ @ecmwf/AnemoiSecurity
+# Workflows & CI
+/.github/ @ecmwf/anemoi_security
+/.ci/ @ecmwf/anemoi_security
 
 # Project configs
-/pyproject.toml @ecmwf/AnemoiSecurity
-/.pre-commit-config.yaml @ecmwf/AnemoiSecurity
-/.release-please-config.json @ecmwf/AnemoiSecurity
+/pyproject.toml @ecmwf/anemoi_security
+/.pre-commit-config.yaml @ecmwf/anemoi_security
+/.release-please-config.json @ecmwf/anemoi_security
