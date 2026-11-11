@@ -24,7 +24,6 @@ from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
 
 LOG = logging.getLogger(__name__)
 
@@ -62,9 +61,26 @@ class MissingDatesFill(Forwards):
             The data for the given index.
         """
         index, changes = index_to_slices(index, self.shape)
-        index, previous = update_tuple(index, 0, slice(None))
-        result = self._get_slice(previous)
-        return apply_index_to_slices_changes(result[index], changes)
+        dates = range(index[0].start, index[0].stop, index[0].step)
+        result = np.stack([self._get_date(n, index[1:]) for n in dates])
+        return apply_index_to_slices_changes(result, changes)
+
+    def _get_date(self, n: int, index: TupleIndex) -> NDArray[Any]:
+        """Get one date, filled if missing, with ``index`` applied to the other axes."""
+        try:
+            return self.forward[(n,) + index]
+        except MissingDateError:
+            return self._fill(n, index)
+
+    def _fill(self, n: int, index: TupleIndex = ()) -> NDArray[Any]:
+        """Fill the missing date ``n`` from its closest available neighbours."""
+        a = next((i for i in range(n, -1, -1) if i not in self._missing), None)
+        b = next((i for i in range(n, self._len) if i not in self._missing), None)
+        return self._fill_missing(n, a, b, index)
+
+    def _forward(self, n: int, index: TupleIndex) -> NDArray[Any]:
+        """Read date ``n`` of the forward dataset, with ``index`` applied to the other axes."""
+        return self.forward[(n,) + index] if index else self.forward[n]
 
     def _get_slice(self, s: slice) -> NDArray[Any]:
         """Get a slice of data.
@@ -114,9 +130,7 @@ class MissingDatesFill(Forwards):
         if n < 0:
             n += self._len
 
-        a = next((i for i in range(n, -1, -1) if i not in self._missing), None)
-        b = next((i for i in range(n, self._len) if i not in self._missing), None)
-        return self._fill_missing(n, a, b)
+        return self._fill(n)
 
     def _issue_warning(self, n):
         return n not in self._warnings and len(self._warnings) < MAX_WARNINGS
@@ -144,7 +158,7 @@ class MissingDatesClosest(MissingDatesFill):
         self.closest = closest
         self._closest = {}
 
-    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None, index: TupleIndex = ()) -> NDArray[Any]:
         """Fill the missing date at the given index.
 
         Parameters
@@ -155,6 +169,8 @@ class MissingDatesClosest(MissingDatesFill):
             The previous available date index.
         b : Optional[int]
             The next available date index.
+        index : TupleIndex, optional
+            The index to apply to the non-date axes, as slices.
 
         Returns
         -------
@@ -184,7 +200,7 @@ class MissingDatesClosest(MissingDatesFill):
             self._closest[n] = u
             self._warnings.add(n)
 
-        return self.forward[self._closest[n]]
+        return self._forward(self._closest[n], index)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -210,7 +226,7 @@ class MissingDatesClosest(MissingDatesFill):
 class MissingDatesInterpolate(MissingDatesFill):
     """Class to handle filling missing dates using interpolation."""
 
-    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None, index: TupleIndex = ()) -> NDArray[Any]:
         """Fill the missing date at the given index using interpolation.
 
         Parameters
@@ -221,6 +237,8 @@ class MissingDatesInterpolate(MissingDatesFill):
             The previous available date index.
         b : Optional[int]
             The next available date index.
+        index : TupleIndex, optional
+            The index to apply to the non-date axes, as slices.
 
         Returns
         -------
@@ -242,7 +260,7 @@ class MissingDatesInterpolate(MissingDatesFill):
             LOG.warning(f"Interpolation {1 - alpha:g} * ({self.dates[a]}) + {alpha:g} * ({self.dates[b]})")
             self._register_warning(n)
 
-        return self.forward[a] * (1 - alpha) + self.forward[b] * alpha
+        return self._forward(a, index) * (1 - alpha) + self._forward(b, index) * alpha
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -268,7 +286,7 @@ class MissingDatesInterpolate(MissingDatesFill):
 class MissingDatesFillWithNaNs(MissingDatesFill):
     """Class to handle filling missing dates with NaNs."""
 
-    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None, index: TupleIndex = ()) -> NDArray[Any]:
         """Fill the missing date at the given index with NaNs.
 
         Parameters
@@ -279,6 +297,8 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
             The previous available date index.
         b : Optional[int]
             The next available date index.
+        index : TupleIndex, optional
+            The index to apply to the non-date axes, as slices.
 
         Returns
         -------
@@ -289,7 +309,8 @@ class MissingDatesFillWithNaNs(MissingDatesFill):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with NaNs")
             self._register_warning(n)
 
-        return np.full(self.shape[1:], np.nan, dtype=self.dtype)
+        shape = np.broadcast_to(0, self.shape[1:])[index].shape
+        return np.full(shape, np.nan, dtype=self.dtype)
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
@@ -331,7 +352,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
         self._statistics = self._statistics.reshape((-1,) + (1,) * (len(self.shape) - 2))
         self._statistics = self._statistics.astype(self.dtype)
 
-    def _fill_missing(self, n: int, a: int | None, b: int | None) -> NDArray[Any]:
+    def _fill_missing(self, n: int, a: int | None, b: int | None, index: TupleIndex = ()) -> NDArray[Any]:
         """Fill the missing date at the given index with statistical values.
 
         Parameters
@@ -342,6 +363,8 @@ class MissingDatesFillStatistics(MissingDatesFill):
             The previous available date index.
         b : Optional[int]
             The next available date index.
+        index : TupleIndex, optional
+            The index to apply to the non-date axes, as slices.
 
         Returns
         -------
@@ -353,7 +376,7 @@ class MissingDatesFillStatistics(MissingDatesFill):
             LOG.warning(f"Missing date at index {n} ({self.dates[n]}), filling with `{self._method}`")
             self._register_warning(n)
 
-        return np.broadcast_to(self._statistics, self.shape[1:])
+        return np.broadcast_to(self._statistics, self.shape[1:])[index]
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get metadata specific to the subclass.
