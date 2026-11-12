@@ -893,13 +893,20 @@ class Dataset(ABC, Sized):
     def empty_item(self) -> NDArray[Any]:
         return np.zeros((*self.shape[1:-1], 0), dtype=self.dtype)
 
+    def _read_into(self, index: TupleIndex, out: NDArray[Any]) -> None:
+        """Write ``self[index]`` into ``out``. Subclasses can override it to skip the intermediate array."""
+        data = self[index]
+        if data.shape != out.shape:
+            raise ValueError(f"{self}: shape of {index} is {data.shape}, expected {out.shape}")
+        out[...] = data
+
     def _check(self) -> None:
         """Check for overridden private methods in the dataset."""
         common = Dataset.__dict__.keys() & self.__class__.__dict__.keys()
         overriden = [m for m in common if Dataset.__dict__[m] is not self.__class__.__dict__[m]]
 
         # Methods intentionally exposed as subclass hooks.
-        allowed_overrides = {"_abc_impl", "_dates_to_indices", "_frequency_to_indices"}
+        allowed_overrides = {"_abc_impl", "_dates_to_indices", "_frequency_to_indices", "_read_into"}
 
         for n in overriden:
             if n.startswith("_") and not n.startswith("__") and n not in allowed_overrides:
