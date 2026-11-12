@@ -84,8 +84,8 @@ class Extend(Forwards):
         if self._extend_end is None:
             self._extend_end = last
 
-        self._before = (first - self._extend_start) // frequency64
-        self._after = (self._extend_end - last) // frequency64
+        self._before = int((first - self._extend_start) // frequency64)
+        self._after = int((self._extend_end - last) // frequency64)
 
     @debug_indexing
     @expand_list_indexing
@@ -199,7 +199,8 @@ class Extend(Forwards):
     @cached_property
     def missing(self) -> set[int]:
         """Get the missing data indices."""
-        return set(range(self._before)) | self.forward.missing | set(range(len(self.forward) + self._before, self._len))
+        shifted = {i + self._before for i in self.forward.missing}
+        return set(range(self._before)) | shifted | set(range(len(self.forward) + self._before, self._len))
 
     def forwards_subclass_metadata_specific(self) -> dict[str, Any]:
         """Get the metadata specific to the InterpolateFrequency subclass.
