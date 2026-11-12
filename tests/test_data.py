@@ -1922,6 +1922,34 @@ def test_fill_missing_dates_at_the_edges() -> None:
         interpolate[0]
 
 
+@mockup_open_zarr
+def test_extend_and_fill_missing_dates() -> None:
+    """Test that extending a dataset keeps its missing dates, so that they are filled."""
+    main = "test-2021-2021-24h-o96-efgh-1-2"
+    member = dict(dataset="missing-2021-2021-24h-o96-abcd-1-2", extend_start="2020-12-30", extend_end="2022-01-02")
+    ds = open_dataset(member)
+    raises = set()
+    for n in range(len(ds)):
+        try:
+            ds[n]
+        except MissingDateError:
+            raises.add(n)
+    assert ds.missing == raises
+
+    # A member of a join, like a forcing series extended to the dates of the main dataset.
+    member = dict(member, start="2021-01-01", end="2021-06-30")
+    stored = open_dataset(member)
+    for fill in ("closest", "nan"):
+        ds = open_dataset(join=[dict(dataset=main, end="2021-06-30"), dict(member, fill_missing_dates=fill)])
+        for dates in (range(27, 33), range(170, 181)):
+            result = ds[dates.start : dates.stop, :, :, :]
+            for n, row in zip(dates, result[:, 4:]):
+                if n in stored.missing:
+                    assert fill == "closest" or np.isnan(row).all(), (fill, n)
+                else:
+                    assert row.tobytes() == stored[n].tobytes(), (fill, n)
+
+
 if __name__ == "__main__":
     for name, obj in list(globals().items()):
         if name.startswith("test_") and callable(obj):
