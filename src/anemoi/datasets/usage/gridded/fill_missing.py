@@ -10,6 +10,7 @@
 
 import logging
 from collections.abc import Callable
+from functools import cached_property
 from functools import partial
 from typing import Any
 
@@ -92,9 +93,17 @@ class MissingDatesFill(Forwards):
 
     def _fill(self, n: int, index: TupleIndex = (), read: Callable[[int], NDArray[Any]] | None = None) -> NDArray[Any]:
         """Fill the missing date ``n`` from its closest available neighbours."""
-        a = next((i for i in range(n, -1, -1) if i not in self._missing), None)
-        b = next((i for i in range(n, self._len) if i not in self._missing), None)
+        available = self._available
+        k = int(np.searchsorted(available, n, side="right"))
+        j = int(np.searchsorted(available, n, side="left"))
+        a = int(available[k - 1]) if k > 0 else None
+        b = int(available[j]) if j < len(available) else None
         return self._fill_missing(n, a, b, index, read or partial(self._read, index=index))
+
+    @cached_property
+    def _available(self) -> NDArray[np.int64]:
+        """Sorted indices of the dates that are not missing, to find neighbours by bisection."""
+        return np.setdiff1d(np.arange(self._len), np.fromiter(self._missing, dtype=np.int64, count=len(self._missing)))
 
     def _read(self, n: int, index: TupleIndex) -> NDArray[Any]:
         """Read date ``n`` of the forward dataset, with ``index`` applied to the other axes."""
