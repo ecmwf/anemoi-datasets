@@ -62,6 +62,7 @@ class GriddedZarr(ZarrStore):
         """Decode a selection of slices straight into ``out``, without an intermediate array."""
         if (
             isinstance(self.data, zarr.Array)
+            and out.dtype == self.data.dtype  # zarr 2 decodes whole chunks into out without casting
             and not self.missing
             and len(index) == self.data.ndim
             and all(isinstance(i, slice) and (i.step or 1) > 0 for i in index)

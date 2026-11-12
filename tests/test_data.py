@@ -9,6 +9,7 @@
 
 
 import datetime
+import itertools
 import os
 from collections.abc import Callable
 from functools import cache
@@ -24,6 +25,7 @@ import zarr
 from anemoi.utils.dates import frequency_to_string
 from anemoi.utils.dates import frequency_to_timedelta
 
+from anemoi.datasets import MissingDateError
 from anemoi.datasets import __version__ as _anemoi_datasets_version
 from anemoi.datasets import open_dataset
 from anemoi.datasets.misc.testing import FastGroup
@@ -1884,20 +1886,24 @@ def test_cutout_masks_save_is_atomic_on_error(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
-if __name__ == "__main__":
-    for name, obj in list(globals().items()):
-        if name.startswith("test_") and callable(obj):
-            print(f"Running {name}...")
-            obj()
+FLOAT32_WHOLE_DATES = "test-2021-2021-24h-o96-xyz-2-2"
 
 
 def chunked_zarr(name: str, mode: str) -> zarr.Group:
-    """Create a mock dataset as a real zarr store with several chunks along every axis."""
+    """Create a mock dataset as a real zarr store with several chunks along every axis.
+
+    ``FLOAT32_WHOLE_DATES`` is stored as compressed float32 with one chunk per date instead, so
+    that a join with it mixes dtypes and its reads cover whole chunks.
+    """
     root = zarr_from_str(name, mode)
     root = getattr(root, "_group", root)
     data = root["data"][:]
     del root["data"]
-    root.create_array("data", data=data, chunks=(4, 2, 1, 4), compressors=None)
+    if name.removesuffix(".zarr") == FLOAT32_WHOLE_DATES:
+        data = data.astype(np.float32)
+        root.create_array("data", data=data, chunks=(1,) + data.shape[1:])
+    else:
+        root.create_array("data", data=data, chunks=(4, 2, 1, 4), compressors=None)
     return root
 
 
@@ -1909,6 +1915,7 @@ def test_join_reads_like_concatenated_members() -> None:
         [first, "test-2021-2021-24h-o96-efg-2-2"],
         [first, dict(dataset="test-2021-2021-24h-o96-efgh-2-2", select=["h", "e", "f"])],
         [first, "missing-2021-2021-24h-o96-efg-2-2"],
+        [first, FLOAT32_WHOLE_DATES],
     ]
     dates = [slice(1, 4), slice(2, 20, 3), 5, -300, [3, 1, 7]]
     variables = [slice(None), 5, -1, slice(1, 6, 2), [6, 0]]
@@ -1934,10 +1941,17 @@ def test_join_reads_like_concatenated_members() -> None:
                 assert result.tobytes() == expected.tobytes(), (case, index)
 
         with pytest.raises(MissingDateError):
-            ds[30:33]
+            open_dataset(join=cases[2])[30:33, :]
 
         # Zarr stores decode straight into the joined array, without the generic fallback.
         ds = open_dataset(join=cases[0])
         expected = np.concatenate([d[1:6, :, :, 2:9] for d in ds.datasets], axis=1)
         with patch.object(Dataset, "_read_into", side_effect=AssertionError):
             assert ds[1:6, :, :, 2:9].tobytes() == expected.tobytes()
+
+
+if __name__ == "__main__":
+    for name, obj in list(globals().items()):
+        if name.startswith("test_") and callable(obj):
+            print(f"Running {name}...")
+            obj()
