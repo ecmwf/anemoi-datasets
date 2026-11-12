@@ -25,7 +25,6 @@ from anemoi.utils.humanize import seconds_to_human
 
 from anemoi.datasets.buffering import ReadAheadBuffer
 from anemoi.datasets.buffering import WriteBehindBuffer
-from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
 
 from ..creator import Creator
@@ -38,7 +37,6 @@ LOG = logging.getLogger(__name__)
 
 
 class GriddedCreator(Creator):
-
     def _metadata_dates(self):
         """Return the datetime values used for statistics metadata.
 
@@ -459,9 +457,7 @@ class SimpleGriddedCreator(GriddedCreator):
             shape=shape,
             dimensions=("time", "variable", "ensemble", "cell"),
             fill_value=np.nan,
-            # Explicit, so that every Zarr format writes the same codec: without it, format 2 arrays get Blosc(lz4, 5, byte shuffle)
-            # and format 3 arrays get zstd without shuffle.
-            compressors=blosc_compressor(cname="lz4", clevel=5, shuffle=1, zarr_format=get_zarr_format(dataset.store)),
+            compressors=self.recipe.output.get_compressors(get_zarr_format(dataset.store)),
         )
 
         dataset.add_array(name="dates", data=np.array(all_dates, "<M8[s]"), dimensions=("time",))

@@ -105,8 +105,10 @@ def _normalise_dates_aliases(options: dict[str, Any]) -> None:
 def extend(x: str | list[Any] | tuple[Any, ...]) -> Iterator[datetime.datetime]:
     """Extend a date range or list of dates into individual datetime objects.
 
-    Args:
-        x (Union[str, List[Any], Tuple[Any, ...]]): A date range string or list/tuple of dates.
+    Parameters
+    ----------
+    x : str | list[Any] | tuple[Any, ...]
+        A date range string or list/tuple of dates.
 
     Returns
     -------
@@ -184,9 +186,12 @@ class DatesProvider:
     def from_config(cls, *args, **kwargs: Any) -> "DatesProvider":
         """Create a DatesProvider instance from configuration.
 
-        Args:
-            *args (Any): Positional arguments.
-            **kwargs (Any): Configuration parameters.
+        Parameters
+        ----------
+        *args : Any
+            Positional arguments.
+        **kwargs : Any
+            Configuration parameters.
 
         Returns
         -------
@@ -224,8 +229,10 @@ class DatesProvider:
     def __getitem__(self, i: int) -> datetime.datetime:
         """Get a date by index.
 
-        Args:
-            i (int): Index of the date.
+        Parameters
+        ----------
+        i : int
+            Index of the date.
 
         Returns
         -------
@@ -446,7 +453,6 @@ class HindcastsDates(DatesProvider):
         for hdate, refdate in HindcastDatesTimes(reference_dates=reference_dates, years=years):
             assert refdate - hdate >= datetime.timedelta(days=365), (refdate - hdate, refdate, hdate)
             for step in steps:
-
                 date = hdate + datetime.timedelta(hours=step)
 
                 if date in seen:

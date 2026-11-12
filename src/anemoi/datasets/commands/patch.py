@@ -57,7 +57,7 @@ class Patch(Command):
 
         task(step, options)
 
-        LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time()-now)}")
+        LOG.info(f"Create step '{step}' completed in {seconds_to_human(time.time() - now)}")
 
 
 command = Patch

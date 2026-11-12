@@ -160,9 +160,7 @@ def _create_tabular_store(indexing) -> zarr.Group:
     if False:
         data[:, 0] = np.repeat(np.arange(24 * 60 * 60 + 1), number_of_samples // (24 * 60 * 60) + 1)[
             :number_of_samples
-        ] + date_to_epoch(
-            START_DATE
-        )  # seconds since midnight
+        ] + date_to_epoch(START_DATE)  # seconds since midnight
         data[:, 1] = np.linspace(0, 24 * 60 * 60 - 1, 1).repeat(number_of_samples)[
             :number_of_samples
         ]  # time offsets in seconds within the day
@@ -218,7 +216,6 @@ def _test_window_view(view, expect):
     print("DEBUG len(view)", len(view))
 
     for i, sample in enumerate(view):
-
         assert 0 <= sample.shape[0] <= 2 * 100 * 60 * 60 * 3, f"Sample {i} has unexpected shape {sample.shape}"
         assert sample.shape[1] == VARIABLES
 
@@ -246,9 +243,9 @@ def _test_window_view(view, expect):
         offset += sample.shape[0]
         count += sample.shape[0]
 
-    assert (
-        offset == whole_range.stop
-    ), f"Total rows {offset:,} does not match expected {whole_range.stop:,} ({whole_range.stop - offset:,} missing)"
+    assert offset == whole_range.stop, (
+        f"Total rows {offset:,} does not match expected {whole_range.stop:,} ({whole_range.stop - offset:,} missing)"
+    )
 
     with pytest.raises(IndexError):
         view[len(view)]
@@ -262,7 +259,7 @@ def _expect(events, start_days, end_days):
     print()
     print(
         f"==> Calculating expected count for {start_days=}, {end_days=}"
-        f" ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events))+ datetime.timedelta(days=end_days)).isoformat()})"
+        f" ({(START_DATE + datetime.timedelta(days=start_days)).isoformat()} to {(START_DATE + datetime.timedelta(seconds=len(events)) + datetime.timedelta(days=end_days)).isoformat()})"
     )
 
     start = max(0, start_days * 24 * 60 * 60 - (3 * 60 * 60 - 1))  # account for window exclude_before of 3h
@@ -270,7 +267,7 @@ def _expect(events, start_days, end_days):
 
     print(f"    Results: {np.sum(events[start:end]):,} rows, dates: {len(events[start:end]):,}")
     print(
-        f"    from {START_DATE + datetime.timedelta(seconds=start)} to {START_DATE + datetime.timedelta(seconds=end-1)}"
+        f"    from {START_DATE + datetime.timedelta(seconds=start)} to {START_DATE + datetime.timedelta(seconds=end - 1)}"
     )
 
     return np.sum(events[start:end])
@@ -333,7 +330,6 @@ def test_window_view(store_and_events, start_delta, end_delta):
 
 
 if __name__ == "__main__":
-
     test_window_view(_create_tabular_store("btree"), 0, 0)
 
     # _create_tabular_store("bisect")

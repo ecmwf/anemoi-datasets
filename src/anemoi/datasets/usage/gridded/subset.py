@@ -302,9 +302,9 @@ class Subset(Forwards):
         }
 
     def forward_subclass_origin(self, index):
-        assert (
-            isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index))
-        ), tuple
+        assert isinstance(index, tuple) and len(index) == 4 and all(a > b >= 0 for a, b in zip(self.shape, index)), (
+            tuple
+        )
         return self.dataset.origin((self.indices[index[0]], index[1], index[2], index[3]))
 
     def project(self, projection):

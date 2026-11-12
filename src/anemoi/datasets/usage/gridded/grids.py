@@ -376,7 +376,7 @@ class Cutout(GridsBase):
         """Initialize ``self.masks`` and ``self.global_mask`` based on the cache argument."""
         if cache is True:
             raise NotImplementedError(
-                "cache=True is reserved for a future default cache location; " "pass a .npz path or leave cache=False."
+                "cache=True is reserved for a future default cache location; pass a .npz path or leave cache=False."
             )
         if cache is False or cache is None:
             self._initialize_masks()
@@ -458,12 +458,12 @@ class Cutout(GridsBase):
         """Load the masks from a .npz file."""
         data = np.load(path)
         if "metadata" not in data.files:
-            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; " "regenerate the cache.")
+            raise ValueError(f"Cutout cache file '{path}' is missing the 'metadata' entry; regenerate the cache.")
         # we can avoid pickling with json.loads
         metadata = json.loads(str(data["metadata"]))
         if metadata.get("type") != "cutout_mask":
             raise ValueError(
-                f"Cutout cache file '{path}' has unexpected type " f"{metadata.get('type')!r}; expected 'cutout_mask'."
+                f"Cutout cache file '{path}' has unexpected type {metadata.get('type')!r}; expected 'cutout_mask'."
             )
         cached_version = metadata.get("version")
         if cached_version != __version__:
@@ -495,9 +495,9 @@ class Cutout(GridsBase):
         from anemoi.transform.spatial import cutout_mask
 
         for i, lam in enumerate(self.lams):
-            assert len(lam.shape) == len(
-                self.globe.shape
-            ), "LAMs and global dataset must have the same number of dimensions"
+            assert len(lam.shape) == len(self.globe.shape), (
+                "LAMs and global dataset must have the same number of dimensions"
+            )
             lam_lats = lam.latitudes
             lam_lons = lam.longitudes
             # Create a mask for the global dataset excluding all LAM points
@@ -515,7 +515,7 @@ class Cutout(GridsBase):
 
             # Ensure the mask dimensions match the global grid points
             if global_overlap_mask.shape[0] != self.globe.shape[-1]:
-                raise ValueError("Global mask dimension does not match global dataset grid " "points.")
+                raise ValueError("Global mask dimension does not match global dataset grid points.")
             self.global_mask[~global_overlap_mask] = False
 
             # Create a mask for the LAM datasets hierarchically, excluding
@@ -720,9 +720,9 @@ class Cutout(GridsBase):
         """
         lam_latitudes = np.concatenate([lam.latitudes[mask] for lam, mask in zip(self.lams, self.masks)])
 
-        assert (
-            len(lam_latitudes) + len(self.globe.latitudes[self.global_mask]) == self.shape[-1]
-        ), "Mismatch in number of latitudes"
+        assert len(lam_latitudes) + len(self.globe.latitudes[self.global_mask]) == self.shape[-1], (
+            "Mismatch in number of latitudes"
+        )
 
         latitudes = np.concatenate([lam_latitudes, self.globe.latitudes[self.global_mask]])
         return latitudes
@@ -734,9 +734,9 @@ class Cutout(GridsBase):
         """
         lam_longitudes = np.concatenate([lam.longitudes[mask] for lam, mask in zip(self.lams, self.masks)])
 
-        assert (
-            len(lam_longitudes) + len(self.globe.longitudes[self.global_mask]) == self.shape[-1]
-        ), "Mismatch in number of longitudes"
+        assert len(lam_longitudes) + len(self.globe.longitudes[self.global_mask]) == self.shape[-1], (
+            "Mismatch in number of longitudes"
+        )
 
         longitudes = np.concatenate([lam_longitudes, self.globe.longitudes[self.global_mask]])
         return longitudes

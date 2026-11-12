@@ -366,7 +366,6 @@ class CoordinateGuesser(ABC):
 
         grid: Grid | None = None
         if grid_mapping is not None:
-
             grid_mapping = dict(self.ds[grid_mapping].attrs)
 
             if unstructured:

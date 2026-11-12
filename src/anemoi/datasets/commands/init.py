@@ -79,7 +79,7 @@ class Init(Command):
 
         task("init", options)
 
-        LOG.info(f"Create step '{self.__class__.__name__.lower()}' completed in {seconds_to_human(time.time()-now)}")
+        LOG.info(f"Create step '{self.__class__.__name__.lower()}' completed in {seconds_to_human(time.time() - now)}")
 
 
 command = Init

@@ -59,16 +59,12 @@ class Accumulator:
         Note: values have been extracted from field before the call to `compute`,
         so values are read from field only once.
 
-        Parameters:
+        Parameters
         ----------
-        field: Any
-            An earthkit-data-like field
-        values: NDArray
+        values : NDArray
             Values from the field, will be added to the held values array
-
-        Return
-        ------
-        None
+        interval : SignedInterval
+            The interval the values are accumulated over
         """
 
         def match_interval(interval: SignedInterval, lst: list[SignedInterval]) -> bool:

@@ -85,7 +85,6 @@ def expect_gridded(func):
 
 @filter_registry.register("crop")
 class Crop(Filter):
-
     def __init__(
         self,
         north: float,
@@ -163,7 +162,6 @@ class Crop(Filter):
 
 @filter_registry.register("tabularise", aliases=["to_tabular", "tabularize"])
 class Tabularise(Filter):
-
     def __init__(
         self,
         param: list[str] = None,
@@ -175,7 +173,6 @@ class Tabularise(Filter):
         frames = {}
         assert len(fields)
         for field in fields:
-
             param = field.metadata("param")
             if self.param is not None and param not in self.param:
                 continue
@@ -229,7 +226,6 @@ class Tabularise(Filter):
 
 @filter_registry.register("griddify", aliases=["to_gridded"])
 class Griddify(Filter):
-
     def __init__(
         self,
         template: str,

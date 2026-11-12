@@ -106,7 +106,6 @@ class Concat(Action):
         self.choices = []
 
         for i, item in enumerate(config):
-
             filters = {}
             for key in self.FILTER_KEYS:
                 if key in item:

@@ -402,9 +402,9 @@ def _interval_generator_factory(
 
             _class, _stream, _origin = source.get("class", None), source.get("stream", None), source.get("origin", None)
 
-            assert (
-                _class is not None
-            ), "Availability should be automatically determined from mars source, but the mars source has no 'class'"
+            assert _class is not None, (
+                "Availability should be automatically determined from mars source, but the mars source has no 'class'"
+            )
 
             if (_stream is None) or (_origin is None):
                 LOG.warning(
@@ -424,7 +424,7 @@ def _interval_generator_factory(
             if not (hours.is_integer() and hours > 0):
                 raise ValueError("Only accumulation periods multiple of 1 hour are supported for now")
 
-            return [["*", [f"{i}-{i+1}" for i in range(0, 24)]]]
+            return [["*", [f"{i}-{i + 1}" for i in range(0, 24)]]]
 
         case _:
             raise ValueError(f"Unknown interval generator config: {config}")
