@@ -187,7 +187,7 @@ class FastArray:
             if isinstance(k, slice) and k.step is not None and k.step < 0:
                 from zarr.errors import NegativeStepError
 
-                raise NegativeStepError("only slices with step >= 1 are supported.")
+                raise NegativeStepError()  # takes no arguments in zarr 2
         return self._data[key]
 
     def __array__(self, dtype=None):

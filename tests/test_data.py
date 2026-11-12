@@ -1977,8 +1977,8 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
         for n in range(lo, hi):
             full[n] = ds[n]
 
-        # Every date index hits a missing date of the store (0, 31 or 59), so it goes through the
-        # filling code instead of straight to the store.
+        # For the missing-store cases, every date index hits a missing date (0, 31 or 59), so it goes
+        # through the filling code instead of straight to the store.
         dates = [
             slice(30, 33),
             slice(25, 40, 3),
@@ -2008,6 +2008,11 @@ def test_fill_missing_dates_and_extend_tuple_indexing() -> None:
             result, expected = ds[index], full[index]
             assert result.shape == expected.shape and result.dtype == expected.dtype, (ds, index)
             assert result.tobytes() == expected.tobytes(), (ds, index)
+            if any(
+                isinstance(i, slice) and (i.step or 1) < 0 for i in (index if isinstance(index, tuple) else (index,))
+            ):
+                # Flipped back into a C-contiguous array, like a plain zarr read (torch rejects negative strides).
+                assert result.flags.c_contiguous, (ds, index)
 
     ds = cases[0][0]
     for index in [(slice(0, 3), 0), (slice(365, 369), slice(None), 0), ([0, 5], 1)]:

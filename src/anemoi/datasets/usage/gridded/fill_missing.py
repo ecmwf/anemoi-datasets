@@ -25,6 +25,7 @@ from anemoi.datasets.usage.debug import debug_indexing
 from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import flip_back
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import positive_steps
 
@@ -79,7 +80,7 @@ class MissingDatesFill(Forwards):
                 reads[n] = self._read(n, rest)
             return reads[n]
 
-        result = np.flip(np.stack([self._get_date(n, rest, read) for n in dates]), flips)
+        result = flip_back(np.stack([self._get_date(n, rest, read) for n in dates]), flips)
         return apply_index_to_slices_changes(result, changes)
 
     def _get_date(self, n: int, index: TupleIndex, read: Callable[[int], NDArray[Any]]) -> NDArray[Any]:

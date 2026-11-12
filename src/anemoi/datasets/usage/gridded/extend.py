@@ -26,6 +26,7 @@ from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import flip_back
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
 from anemoi.datasets.usage.gridded.indexing import positive_steps
 from anemoi.datasets.usage.misc import as_first_date
@@ -117,7 +118,7 @@ class Extend(Forwards):
                 raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
 
         first = slice(dates[0] - self._before, dates[-1] - self._before + 1, dates.step)
-        result = np.flip(self.forward[(first,) + index[1:]], flips)
+        result = flip_back(self.forward[(first,) + index[1:]], flips)
         return apply_index_to_slices_changes(result, changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:

@@ -110,6 +110,11 @@ def positive_steps(index: TupleIndex) -> tuple[TupleIndex, tuple[int, ...]]:
     return tuple(result), tuple(flips)
 
 
+def flip_back(result: NDArray[Any], flips: tuple[int, ...]) -> NDArray[Any]:
+    """Undo ``positive_steps`` on a result, returning a C-contiguous array like a plain read."""
+    return np.ascontiguousarray(np.flip(result, flips)) if flips else result
+
+
 def apply_index_to_slices_changes(result: NDArray[Any], changes: tuple[int, ...]) -> NDArray[Any]:
     """Apply changes to the result array based on the slices.
 
