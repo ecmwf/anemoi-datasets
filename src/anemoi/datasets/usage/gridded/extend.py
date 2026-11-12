@@ -26,8 +26,9 @@ from anemoi.datasets.usage.forwards import Forwards
 from anemoi.datasets.usage.gridded import MissingDateError
 from anemoi.datasets.usage.gridded.indexing import apply_index_to_slices_changes
 from anemoi.datasets.usage.gridded.indexing import expand_list_indexing
+from anemoi.datasets.usage.gridded.indexing import flip_back
 from anemoi.datasets.usage.gridded.indexing import index_to_slices
-from anemoi.datasets.usage.gridded.indexing import update_tuple
+from anemoi.datasets.usage.gridded.indexing import positive_steps
 from anemoi.datasets.usage.misc import as_first_date
 from anemoi.datasets.usage.misc import as_last_date
 
@@ -90,7 +91,7 @@ class Extend(Forwards):
     @debug_indexing
     @expand_list_indexing
     def _get_tuple(self, index: TupleIndex) -> NDArray[Any]:
-        """Get the interpolated data for a tuple index.
+        """Get the data for a tuple index.
 
         Parameters
         ----------
@@ -100,12 +101,25 @@ class Extend(Forwards):
         Returns
         -------
         NDArray[Any]
-            The interpolated data for the tuple index.
+            The data for the tuple index.
         """
         index, changes = index_to_slices(index, self.shape)
-        index, previous = update_tuple(index, 0, slice(None))
-        result = self._get_slice(previous)
-        return apply_index_to_slices_changes(result[index], changes)
+        index, flips = positive_steps(index)
+        if any(index[i].start >= index[i].stop for i in changes):
+            raise IndexError(f"Index out of range for shape {self.shape}")
+
+        dates = range(index[0].start, index[0].stop, index[0].step)
+        if not dates:
+            shape = tuple(len(range(s.start, s.stop, s.step)) for s in index)
+            return apply_index_to_slices_changes(np.empty(shape, dtype=self.dtype), changes)
+
+        for n in (dates[0], dates[-1]):
+            if not self._before <= n < self._before + len(self.forward):
+                raise MissingDateError(f"Date {self.dates[n]} is missing (index={n})")
+
+        first = slice(dates[0] - self._before, dates[-1] - self._before + 1, dates.step)
+        result = flip_back(self.forward[(first,) + index[1:]], flips)
+        return apply_index_to_slices_changes(result, changes)
 
     def _get_slice(self, s: slice) -> NDArray[Any]:
         """Get the interpolated data for a slice.
