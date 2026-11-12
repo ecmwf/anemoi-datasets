@@ -56,6 +56,7 @@ if zarr_version < 3:
     from .zarr2 import ZipStore
     from .zarr2 import blosc_compressor
     from .zarr2 import get_zarr_format
+    from .zarr2 import read_into
     from .zarr2 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
@@ -70,6 +71,7 @@ else:
     from .zarr3 import ZipStore
     from .zarr3 import blosc_compressor
     from .zarr3 import get_zarr_format
+    from .zarr3 import read_into
     from .zarr3 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
@@ -136,6 +138,7 @@ __all__ = [
     "MemoryStore",
     "blosc_compressor",
     "get_zarr_format",
+    "read_into",
     "zarr_format_from_name",
     "zarr_open",
     "NestedDirectoryStore",

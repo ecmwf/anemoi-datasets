@@ -9,7 +9,9 @@
 
 
 import numcodecs
+import numpy as np
 import zarr
+from zarr.core.buffer import default_buffer_prototype
 
 ZarrFileNotFoundError = FileNotFoundError
 
@@ -101,3 +103,8 @@ def blosc_compressor(
 
     shuffle_names = {0: "noshuffle", 1: "shuffle", 2: "bitshuffle"}
     return BloscCodec(cname=cname, clevel=clevel, shuffle=shuffle_names[shuffle])
+
+
+def read_into(array: zarr.Array, selection: tuple, out: np.ndarray) -> None:
+    """Read a basic selection of a zarr array straight into ``out``, which may be a strided view."""
+    array.get_basic_selection(selection, out=default_buffer_prototype().nd_buffer.from_numpy_array(out))
