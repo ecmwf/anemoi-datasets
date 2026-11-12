@@ -29,6 +29,7 @@ from anemoi.datasets import open_dataset
 from anemoi.datasets.misc.testing import FastGroup
 from anemoi.datasets.misc.testing import default_test_indexing
 from anemoi.datasets.usage.common.rename import Rename
+from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.gridded.concat import Concat
 from anemoi.datasets.usage.gridded.ensemble import Ensemble
 from anemoi.datasets.usage.gridded.grids import Cutout
@@ -1888,3 +1889,55 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(obj):
             print(f"Running {name}...")
             obj()
+
+
+def chunked_zarr(name: str, mode: str) -> zarr.Group:
+    """Create a mock dataset as a real zarr store with several chunks along every axis."""
+    root = zarr_from_str(name, mode)
+    root = getattr(root, "_group", root)
+    data = root["data"][:]
+    del root["data"]
+    root.create_array("data", data=data, chunks=(4, 2, 1, 4), compressors=None)
+    return root
+
+
+@mockup_open_zarr
+def test_join_reads_like_concatenated_members() -> None:
+    """Test that a join returns the concatenation of its members, for zarr stores and wrapped members."""
+    first = "test-2021-2021-24h-o96-abcd-1-2"
+    cases = [
+        [first, "test-2021-2021-24h-o96-efg-2-2"],
+        [first, dict(dataset="test-2021-2021-24h-o96-efgh-2-2", select=["h", "e", "f"])],
+        [first, "missing-2021-2021-24h-o96-efg-2-2"],
+    ]
+    dates = [slice(1, 4), slice(2, 20, 3), 5, -300, [3, 1, 7]]
+    variables = [slice(None), 5, -1, slice(1, 6, 2), [6, 0]]
+    members = [slice(None), 1, [1, 0]]
+    grid = [slice(None), 3, slice(2, 8, 3), [9, 0, 4]]
+    indices = [(slice(1, 30),), (2, 4), (slice(10, 10),)]
+    for index in itertools.product(dates, variables, members, grid):
+        lists = sum(isinstance(i, list) for i in index)
+        if lists == 0 or (lists == 1 and not any(isinstance(i, int) for i in index)):
+            indices.append(index)
+
+    with patch("zarr.open", chunked_zarr):
+        for case in cases:
+            ds = open_dataset(join=case)
+            assert isinstance(ds, Join), ds
+            full = np.full(ds.shape, np.nan, dtype=ds.dtype)
+            for n in set(range(len(ds))) - ds.missing:
+                full[n] = np.concatenate([d[n] for d in ds.datasets])
+
+            for index in indices:
+                result, expected = ds[index], full[index]
+                assert result.shape == expected.shape and result.dtype == expected.dtype, (case, index)
+                assert result.tobytes() == expected.tobytes(), (case, index)
+
+        with pytest.raises(MissingDateError):
+            ds[30:33]
+
+        # Zarr stores decode straight into the joined array, without the generic fallback.
+        ds = open_dataset(join=cases[0])
+        expected = np.concatenate([d[1:6, :, :, 2:9] for d in ds.datasets], axis=1)
+        with patch.object(Dataset, "_read_into", side_effect=AssertionError):
+            assert ds[1:6, :, :, 2:9].tobytes() == expected.tobytes()
