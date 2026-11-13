@@ -51,6 +51,7 @@ The following `sources` are currently available:
    :maxdepth: 1
 
    sources/csv
+   sources/netcdf-tabular
    sources/odb
 
 ..

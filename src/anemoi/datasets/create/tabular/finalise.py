@@ -846,12 +846,18 @@ def _reclaim_unreferenced_fragments(work_dir: str, manifest: dict) -> None:
 
 
 def _daily_epochs(first_date: datetime.datetime, last_date: datetime.datetime) -> np.ndarray:
-    """Rebuild the daily date axis used to derive the statistics date range."""
+    """Rebuild the daily date axis used to derive the statistics date range.
+
+    The axis always ends with ``last_date``, so that a statistics period can include
+    the observations of the last (partial) day.
+    """
     epochs = []
     date = first_date
     while date <= last_date:
         epochs.append(date)
         date += datetime.timedelta(days=1)
+    if epochs and epochs[-1] != last_date:
+        epochs.append(last_date)
     return np.array(epochs, dtype="datetime64[s]")
 
 

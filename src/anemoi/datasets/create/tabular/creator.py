@@ -60,6 +60,16 @@ class TabularCreator(Creator):
 
         metadata["dimensions"] = ["dates", "variables"]
 
+        variables_metadata = self.recipe.output.variables_metadata
+        unknown = sorted(set(variables_metadata) - set(metadata["variables"]))
+        if unknown:
+            raise ValueError(
+                f"output.variables_metadata: unknown variables {unknown}, the dataset has {metadata['variables']}"
+            )
+        metadata["variables_metadata"] = {
+            v: dict(variables_metadata[v]) for v in metadata["variables"] if v in variables_metadata
+        }
+
         assert variables == metadata["meta_variables"] + metadata["variables"], (
             "Variables should be partitioned into variables and meta_variables without overlap, meta_variables must be first."
         )

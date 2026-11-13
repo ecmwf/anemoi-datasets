@@ -263,6 +263,9 @@ class TabularOutput(OutputBase):
     bytes_per_chunk: int = 64 * 1024 * 1024  # 64 MiB
     """The target size of each chunk in bytes for tabular datasets. This is used to determine the number of rows per chunk if rows_per_chunk is None."""
 
+    variables_metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    """Metadata for the variables (columns) of the dataset, e.g. ``{"t2m": {"units": "K"}}``. Unlike gridded datasets, tabular sources carry no per-variable metadata, so it is taken from here and stored in the dataset's ``variables_metadata`` attribute (used e.g. by ``anemoi-datasets inspect`` to show the units)."""
+
 
 class TrajectoriesOutput(OutputBase):
     """Output configuration for trajectory datasets.

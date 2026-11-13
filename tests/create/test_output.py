@@ -267,3 +267,10 @@ def test_compressors_are_applied_to_data_array(tmp_path, format):
         assert zlib == [{"id": "zlib", "level": 4}]
     else:
         assert zlib == [{"name": "numcodecs.zlib", "configuration": {"level": 4}}]
+
+
+def test_tabular_variables_metadata():
+    output = _recipe({"layout": "tabular", "variables_metadata": {"t2m": {"units": "K"}}}).output
+    assert output.variables_metadata == {"t2m": {"units": "K"}}
+
+    assert _recipe({"layout": "tabular"}).output.variables_metadata == {}

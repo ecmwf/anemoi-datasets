@@ -613,6 +613,72 @@ def test_csv(get_test_data: callable) -> None:
     assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
+def _write_point_netcdf(path, reference: str, seconds: list, values: list) -> None:
+    """Write a point NetCDF file encoded like the ATMS brightness temperature files."""
+    import xarray as xr
+
+    n = len(seconds)
+    ds = xr.Dataset(
+        {
+            "BT_1": ("pt", np.array(values, dtype=np.float64)),
+            "BT_2": ("pt", np.full(n, 250.0)),
+            "latitude": ("pt", np.linspace(40.0, 50.0, n)),
+            "longitude": ("pt", np.linspace(-10.0, 10.0, n)),
+            "time": ("pt", np.datetime64(reference, "s") + np.array(seconds, dtype="timedelta64[s]")),
+        },
+        coords={"pt": np.arange(n, dtype=np.int64)},
+    )
+    scaled = {"dtype": "int32", "_FillValue": -9999}
+    ds.to_netcdf(
+        path,
+        encoding={
+            "BT_1": {**scaled, "scale_factor": 0.01},
+            "BT_2": {**scaled, "scale_factor": 0.01},
+            "latitude": {**scaled, "scale_factor": 0.001},
+            "longitude": {**scaled, "scale_factor": 0.001},
+            "time": {"dtype": "int64", "units": f"seconds since {reference}"},
+        },
+    )
+
+
+@skip_missing_packages("netCDF4")
+def test_netcdf_tabular(tmp_path) -> None:
+    """Test the netcdf-tabular source on point files with different time references."""
+
+    _write_point_netcdf(tmp_path / "obs_1.nc", "2023-12-01 12:19:55", [0, 60, 120, 180], [200.0, np.nan, 210.5, 220.25])
+    _write_point_netcdf(tmp_path / "obs_2.nc", "2023-12-02 12:01:07", [0, 30], [230.0, 240.0])
+
+    recipe = {
+        "dates": {
+            "start": "2023-12-01T00:00:00",
+            "end": "2023-12-01T18:00:00",
+            "frequency": "6h",
+        },
+        "input": {"netcdf-tabular": {"path": str(tmp_path / "obs_*.nc")}},
+        "build": {"group_by": 4},
+    }
+    frame = _run_one_group(recipe)
+
+    # Only the first file overlaps 2023-12-01
+    assert list(frame.columns) == ["date", "latitude", "longitude", "BT_1", "BT_2"]
+    assert len(frame) == 4
+
+    assert np.issubdtype(frame["latitude"].dtype, np.floating)
+    assert np.issubdtype(frame["longitude"].dtype, np.floating)
+    assert np.issubdtype(frame["date"].dtype, np.datetime64)
+
+    assert frame["date"].iloc[0] == np.datetime64("2023-12-01T12:19:55")
+    assert frame["date"].iloc[-1] == np.datetime64("2023-12-01T12:22:55")
+    np.testing.assert_allclose(frame["BT_1"], [200.0, np.nan, 210.5, 220.25])
+    np.testing.assert_allclose(frame["latitude"].iloc[[0, -1]], [40.0, 50.0])
+
+    # A group with no observations returns an empty frame with the same columns
+    recipe["dates"] = {"start": "2023-12-05T00:00:00", "end": "2023-12-05T18:00:00", "frequency": "6h"}
+    frame = _run_one_group(recipe)
+    assert list(frame.columns) == ["date", "latitude", "longitude", "BT_1", "BT_2"]
+    assert len(frame) == 0
+
+
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
 @pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
