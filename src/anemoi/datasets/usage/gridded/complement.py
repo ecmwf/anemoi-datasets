@@ -316,6 +316,42 @@ class ComplementNearest(Complement):
         index, changes = index_to_slices(index, self.shape)
         index, previous = update_tuple(index, variable_index, slice(None))
         source_index = [self._source.name_to_index[x] for x in self.variables[previous]]
+
+        # Nearest-neighbour complementation is commonly used to add global
+        # fields to a limited-area grid.  Reading the complete global field and
+        # selecting the regional points afterwards makes every sample scale
+        # with the global grid.  For the k=1 case, push the smallest contiguous
+        # source span covering the requested target points down to the source
+        # dataset instead.  A contiguous slice also avoids the per-point reads
+        # required by list indexing in the generic dataset API.
+        if self.k == 1:
+            nearest = self._nearest_grid_points[index[3], 0]
+            reachable = nearest < self._source.shape[-1]
+
+            if np.any(reachable):
+                source_start = int(np.min(nearest[reachable]))
+                source_stop = int(np.max(nearest[reachable])) + 1
+                source_data = self._source[
+                    index[0], source_index, index[2], slice(source_start, source_stop)
+                ]
+
+                if np.all(reachable):
+                    result = source_data[..., nearest - source_start]
+                else:
+                    target_shape = source_data.shape[:-1] + nearest.shape
+                    result = np.full(target_shape, np.nan, dtype=self._target.dtype)
+                    result[..., reachable] = source_data[
+                        ..., nearest[reachable] - source_start
+                    ]
+            else:
+                source_data = self._source[
+                    index[0], source_index, index[2], slice(0, 0)
+                ]
+                target_shape = source_data.shape[:-1] + nearest.shape
+                result = np.full(target_shape, np.nan, dtype=self._target.dtype)
+
+            return apply_index_to_slices_changes(result, changes)
+
         source_data = self._source[index[0], source_index, index[2], ...]
         if any(self._nearest_grid_points >= source_data.shape[-1]):
             target_shape = source_data.shape[:-1] + self._target.shape[-1:]
