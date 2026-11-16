@@ -84,10 +84,10 @@ jobs:
 
   rebuild-producers:
     needs: [ci-approval, resolve]
-    if: ${{ needs.resolve.outputs.dispatch-plans != '' && needs.resolve.outputs.dispatch-plans != '[]' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: ecmwf/ci-infrastructure/actions/dispatch-producers@main
+      - if: needs.resolve.outputs.dispatch-plans != '' && needs.resolve.outputs.dispatch-plans != '[]'
+        uses: ecmwf/ci-infrastructure/actions/dispatch-producers@main
         with:
           dispatch-plans: ${{ needs.resolve.outputs.dispatch-plans }}
           repositories: anemoi-datasets,anemoi-transform,anemoi-utils
@@ -96,7 +96,6 @@ jobs:
 
   test:
     needs: [ci-approval, resolve, rebuild-producers]
-    if: ${{ !cancelled() && needs['ci-approval'].result == 'success' && needs['resolve'].result == 'success' && needs['rebuild-producers'].result != 'failure' }}
     name: test (${{ matrix._resolved['job-name'] }})
     runs-on: ${{ matrix['runs-on'] }}
     container:
@@ -147,7 +146,6 @@ jobs:
 
   zarr2:
     needs: [ci-approval, resolve, rebuild-producers]
-    if: ${{ !cancelled() && needs['ci-approval'].result == 'success' && needs['resolve'].result == 'success' && needs['rebuild-producers'].result != 'failure' }}
     name: zarr2 (${{ matrix._resolved['job-name'] }})
     runs-on: ${{ matrix['runs-on'] }}
     container:
