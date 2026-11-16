@@ -5,6 +5,8 @@ visibility = "public"
 # Approved fork pull requests run ci.yml through the generated ci-fork.yml.
 fork-pull-requests = true
 compiler-inputs = []
+ci-pre-commit = false
+full-history = true
 
 [[deps]]
 repo = "ecmwf/anemoi-utils"
