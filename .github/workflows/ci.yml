@@ -45,8 +45,7 @@ jobs:
     needs: ci-approval
     runs-on: ubuntu-latest
     outputs:
-      test-matrix: ${{ toJSON(fromJSON(steps.r.outputs.json)['test']) }}
-      zarr2-matrix: ${{ toJSON(fromJSON(steps.r.outputs.json)['zarr2']) }}
+      matrices: ${{ steps.r.outputs.json }}
       dispatch-plans: ${{ steps.r.outputs.dispatch-plans }}
     steps:
       - id: mint
@@ -72,17 +71,12 @@ jobs:
         uses: ecmwf/ci-infrastructure/actions/print-dep-table@main
         with:
           matrices: ${{ steps.r.outputs.json }}
-      - name: Wait for the deps of test
+      - name: Wait for the deps of test, zarr2
         if: steps.r.outputs.dispatch-plans == '[]'
         uses: ecmwf/ci-infrastructure/actions/wait-for-deps@main
         with:
-          matrix: ${{ toJSON(fromJSON(steps.r.outputs.json)['test']) }}
-          token: ${{ steps.mint.outputs.token }}
-      - name: Wait for the deps of zarr2
-        if: steps.r.outputs.dispatch-plans == '[]'
-        uses: ecmwf/ci-infrastructure/actions/wait-for-deps@main
-        with:
-          matrix: ${{ toJSON(fromJSON(steps.r.outputs.json)['zarr2']) }}
+          matrix: ${{ steps.r.outputs.json }}
+          kinds: test,zarr2
           token: ${{ steps.mint.outputs.token }}
     name: resolve + wait-build
 
@@ -106,7 +100,7 @@ jobs:
       image: ${{ matrix.container || '' }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.resolve.outputs.test-matrix) }}
+      matrix: ${{ fromJSON(needs.resolve.outputs.matrices).test }}
     steps:
       - name: Announce image
         uses: ecmwf/ci-infrastructure/actions/announce-image@main
@@ -151,7 +145,7 @@ jobs:
       image: ${{ matrix.container || '' }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.resolve.outputs.zarr2-matrix) }}
+      matrix: ${{ fromJSON(needs.resolve.outputs.matrices).zarr2 }}
     steps:
       - name: Announce image
         uses: ecmwf/ci-infrastructure/actions/announce-image@main
