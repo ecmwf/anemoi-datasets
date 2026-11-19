@@ -22,7 +22,6 @@ from .xarray import load_one
 
 @source_registry.register("zenodo")
 class ZenodoSource(LegacySource):
-
     @staticmethod
     def _execute(context: Any, dates: Any, record_id: str, file_key: str, *args: Any, **kwargs: Any) -> ekd.FieldList:
         """Executes the download and processing of files from Zenodo.

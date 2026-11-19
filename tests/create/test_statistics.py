@@ -168,9 +168,9 @@ def test_statistics_collector_single_batch(N=1_000_000, C=5):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(
-            computed_stats[name], target, rtol=1e-10, equal_nan=True
-        ), f"{name.capitalize()} does not match!"
+        assert np.allclose(computed_stats[name], target, rtol=1e-10, equal_nan=True), (
+            f"{name.capitalize()} does not match!"
+        )
 
     print("✓ Single batch test PASSED")
 
@@ -205,9 +205,9 @@ def test_statistics_collector_multiple_batches(N=1_000_000, C=5, batch_size=10_0
         print(f"   Computed: {computed_stats[name]}")
         diff = np.abs(computed_stats[name] - target)
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(
-            computed_stats[name], target, rtol=1e-10, equal_nan=True
-        ), f"{name.capitalize()} does not match!"
+        assert np.allclose(computed_stats[name], target, rtol=1e-10, equal_nan=True), (
+            f"{name.capitalize()} does not match!"
+        )
 
     print("✓ Multiple batches test PASSED")
 
@@ -232,9 +232,9 @@ def test_statistics_with_nans(N=100_000, C=3, nan_fraction=0.1):
         print(f"{name.capitalize()}:")
         print(f"   Target:   {target}")
         print(f"   Computed: {computed_stats[name]}")
-        assert np.allclose(
-            computed_stats[name], target, rtol=1e-9, equal_nan=True
-        ), f"{name.capitalize()} does not match!"
+        assert np.allclose(computed_stats[name], target, rtol=1e-9, equal_nan=True), (
+            f"{name.capitalize()} does not match!"
+        )
 
     print("✓ NaN handling test PASSED")
 
@@ -251,9 +251,9 @@ def test_edge_cases():
 
     computed_stats = collector.statistics()
     for name in target_stats:
-        assert np.allclose(
-            computed_stats[name], target_stats[name], equal_nan=True
-        ), f"Single-row batch test failed for {name}"
+        assert np.allclose(computed_stats[name], target_stats[name], equal_nan=True), (
+            f"Single-row batch test failed for {name}"
+        )
     print("   ✓ Single-row batches work correctly")
 
     # Test with varying batch sizes
@@ -267,9 +267,9 @@ def test_edge_cases():
 
     computed_stats2 = collector2.statistics()
     for name in target_stats:
-        assert np.allclose(
-            computed_stats2[name], target_stats[name], equal_nan=True
-        ), f"Varying batch size test failed for {name}"
+        assert np.allclose(computed_stats2[name], target_stats[name], equal_nan=True), (
+            f"Varying batch size test failed for {name}"
+        )
     print("   ✓ Varying batch sizes work correctly")
 
     print("\n✓ All edge cases PASSED")
@@ -379,9 +379,9 @@ def test_tendencies_multiple_deltas(N=500, C=2):
             computed = computed_stats[key]
             diff = np.abs(computed - target)
             print(f"  {stat_name}: max_diff={np.max(diff):.2e}")
-            assert np.allclose(
-                computed, target, rtol=1e-9, equal_nan=True
-            ), f"Tendency {tendency_name}, {stat_name} does not match!"
+            assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
+                f"Tendency {tendency_name}, {stat_name} does not match!"
+            )
 
     print("\n✓ Multiple tendencies simultaneously test PASSED")
 
@@ -431,9 +431,9 @@ def test_tendencies_with_filter(filter_start, filter_end, delta, C=2):
         print(f"   Target:   {target}")
         print(f"   Computed: {computed}")
         print(f"   Max diff: {np.max(diff):.2e}")
-        assert np.allclose(
-            computed, target, rtol=1e-9, equal_nan=True
-        ), f"Tendency {stat_name} with filter does not match!"
+        assert np.allclose(computed, target, rtol=1e-9, equal_nan=True), (
+            f"Tendency {stat_name} with filter does not match!"
+        )
 
     print("✓ Tendencies with filter test PASSED")
 

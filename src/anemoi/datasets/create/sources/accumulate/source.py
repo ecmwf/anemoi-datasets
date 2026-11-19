@@ -60,7 +60,6 @@ def patch_groupby_keys(group_by: dict | None = None):
 
 @source_registry.register("accumulate")
 class AccumulateSource(Source):
-
     def __init__(
         self,
         context: Any,
@@ -79,7 +78,7 @@ class AccumulateSource(Source):
 
         if availability is not None and covering is not None:
             raise ValueError(
-                "Cannot specify both 'availability' (deprecated) and 'covering' " "in the same accumulate block."
+                "Cannot specify both 'availability' (deprecated) and 'covering' in the same accumulate block."
             )
         if availability is not None:
             warnings.warn(
@@ -103,9 +102,9 @@ class AccumulateSource(Source):
     def _prepare_source(self):
         """Validate source config and apply MARS defaults."""
         source = self.source
-        assert (
-            isinstance(source, dict) and len(source) == 1
-        ), f"Source must have exactly one key, got {list(source.keys())}"
+        assert isinstance(source, dict) and len(source) == 1, (
+            f"Source must have exactly one key, got {list(source.keys())}"
+        )
         source_name, source_config = next(iter(source.items()))
         if source_name == "mars":
             if "type" not in source_config:

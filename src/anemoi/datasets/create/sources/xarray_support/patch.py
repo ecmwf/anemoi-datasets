@@ -183,7 +183,9 @@ def patch_analysis_lead_to_valid_time(
         "analysis_time_coordinate",
         "lead_time_coordinate",
         "valid_time_coordinate",
-    }, "time_coord_names must contain exactly keys 'analysis_time_coordinate', 'lead_time_coordinate', and 'valid_time_coordinate'"
+    }, (
+        "time_coord_names must contain exactly keys 'analysis_time_coordinate', 'lead_time_coordinate', and 'valid_time_coordinate'"
+    )
 
     analysis_time_coordinate = time_coord_names["analysis_time_coordinate"]
     lead_time_coordinate = time_coord_names["lead_time_coordinate"]

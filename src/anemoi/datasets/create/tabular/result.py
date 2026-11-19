@@ -84,9 +84,9 @@ class TabularResult(Result):
                 print(original_frame.tail(), file=sys.stderr)
                 LOG.error(f"           delta: {datetime.timedelta(seconds=first_delta)}")
 
-                assert (
-                    first_delta < 1
-                ), f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+                assert first_delta < 1, (
+                    f"First date encoding mismatch: {encoded_first} != {original_first} (delta={datetime.timedelta(seconds=first_delta)} seconds)"
+                )
 
             if not (last_delta < 1):
                 LOG.error(
@@ -103,9 +103,9 @@ class TabularResult(Result):
                 print(original_frame.tail(), file=sys.stderr)
                 LOG.error(f"           delta: {datetime.timedelta(seconds=last_delta)}")
 
-                assert (
-                    last_delta < 1
-                ), f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
+                assert last_delta < 1, (
+                    f"Last date encoding mismatch: {encoded_last} != {original_last} (delta={datetime.timedelta(seconds=last_delta)} seconds)"
+                )
 
         LOG.info(
             f"Converted 'date' to integer seconds since epoch in {time.time() - start:.2f} seconds ({len(self.frame):,} rows)"

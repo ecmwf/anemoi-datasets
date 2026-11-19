@@ -21,7 +21,6 @@ LOG = logging.getLogger(__name__)
 
 
 class _Thinner(ABC):
-
     @abstractmethod
     def mask(self, latitudes: np.ndarray, longitudes: np.ndarray) -> np.ndarray: ...
 
@@ -114,7 +113,6 @@ class _RandomThinning(_Thinner):
 
 
 class ThinningMixin:
-
     @cached_property
     def thinner(self) -> _Thinner:
         THINNERS = {

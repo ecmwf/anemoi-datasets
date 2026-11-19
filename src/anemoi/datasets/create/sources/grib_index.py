@@ -132,7 +132,7 @@ class GribIndex:
             _path_id INTEGER not null,
             _offset INTEGER not null,
             _length INTEGER not null,
-            {', '.join(f"{self._quote_column(key)} TEXT not null default ''" for key in columns)},
+            {", ".join(f"{self._quote_column(key)} TEXT not null default ''" for key in columns)},
             FOREIGN KEY(_path_id) REFERENCES paths(id))
         """)  # ,
 
@@ -143,12 +143,12 @@ class GribIndex:
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(self._quote_column(col) for col in columns)})
+        ON grib_index ({", ".join(self._quote_column(col) for col in columns)})
         """)
 
         for key in columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(":", "_")}
             ON grib_index ({self._quote_column(key)})
             """)
 
@@ -201,11 +201,10 @@ class GribIndex:
         assert self.update
 
         try:
-
             self.cursor.execute(
                 f"""
-            INSERT INTO grib_index ({', '.join(self._quote_column(k) for k in kwargs.keys())})
-            VALUES ({', '.join('?' for _ in kwargs)})
+            INSERT INTO grib_index ({", ".join(self._quote_column(k) for k in kwargs.keys())})
+            VALUES ({", ".join("?" for _ in kwargs)})
             """,
                 tuple(kwargs.values()),
             )
@@ -271,12 +270,12 @@ class GribIndex:
 
         self.cursor.execute(f"""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_grib_index_all_keys
-        ON grib_index ({', '.join(self._quote_column(col) for col in all_columns)})
+        ON grib_index ({", ".join(self._quote_column(col) for col in all_columns)})
         """)
 
         for key in all_columns:
             self.cursor.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(':', '_')}
+            CREATE INDEX IF NOT EXISTS idx_grib_index_{key.replace(":", "_")}
             ON grib_index ({self._quote_column(key)})
             """)
 
@@ -295,7 +294,6 @@ class GribIndex:
             fields = self.flavour.map(fields)
 
         for i, field in enumerate(tqdm.tqdm(fields, leave=False)):
-
             keys = field.metadata(namespace="mars").copy()
             keys.update({k: field.metadata(k, default=None) for k in self.keys})
 
@@ -465,7 +463,7 @@ class GribIndex:
                 return s
 
         LOG.warning(
-            f"Unknown param for message {i+1} in {path} at offset {int(field.metadata('offset', default=None))}"
+            f"Unknown param for message {i + 1} in {path} at offset {int(field.metadata('offset', default=None))}"
         )
         LOG.warning(
             f"shortName/paramId: {field.metadata('shortName', default=None)}/{field.metadata('paramId', default=None)}"
@@ -473,15 +471,13 @@ class GribIndex:
         name = field.metadata("parameterName", default=None)
         units = field.metadata("parameterUnits", default=None)
         LOG.warning(f"Discipline/category/parameter: {param} ({name}, {units})")
-        LOG.warning(f"grib_copy -w count={i+1} {path} tmp.grib")
+        LOG.warning(f"grib_copy -w count={i + 1} {path} tmp.grib")
 
         info = self._paramdb(discipline=param[0], category=param[1])
         found = set()
         if info is not None:
             for n in tqdm.tqdm(info, desc="Scanning parameter database"):
-
                 for p in self._param_grib2_info(n["id"]):
-
                     keys = {k["name"]: _(k["value"]) for k in p["keys"]}
                     if keys.get("parameterNumber") == param[2]:
                         found.add(n["id"])

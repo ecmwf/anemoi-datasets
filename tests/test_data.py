@@ -1552,7 +1552,6 @@ def test_masking() -> None:
         patch("anemoi.datasets.usage.gridded.masked.np.load", return_value=test_mask),
         patch("anemoi.datasets.usage.gridded.masked.Path.exists", return_value=True),
     ):
-
         test = DatasetTester("test-2021-2022-6h-o96-abcd", mask="./test_mask.npy")
         test.run(
             expected_class=Masking,

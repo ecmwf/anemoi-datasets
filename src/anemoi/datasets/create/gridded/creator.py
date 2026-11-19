@@ -37,7 +37,6 @@ LOG = logging.getLogger(__name__)
 
 
 class GriddedCreator(Creator):
-
     def _metadata_dates(self):
         """Return the datetime values used for statistics metadata.
 

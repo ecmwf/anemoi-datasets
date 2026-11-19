@@ -146,7 +146,6 @@ class Invalid(Error):
 
 
 class Report:
-
     def __init__(self):
         self.report = {}
         self.methods = {}
@@ -286,7 +285,6 @@ def validate_statistics(report, dataset, name, result):
         raise ValueError(f"Result is not a dict {type(result)}")
 
     for key in ["mean", "stdev", "minimum", "maximum"]:
-
         if key not in result:
             raise ValueError(f"Result does not contain `{key}`")
 
@@ -497,7 +495,6 @@ def validate_field_shape(report, dataset, name, result):
 def validate(report, dataset, name, kwargs=None):
 
     try:
-
         validate_fn = globals().get(f"validate_{name}", _no_validate)
 
         # Check if the method is still in the Dataset class

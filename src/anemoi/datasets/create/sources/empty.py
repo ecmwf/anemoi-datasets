@@ -18,7 +18,6 @@ from .legacy import LegacySource
 
 @source_registry.register("empty")
 class EmptySource(LegacySource):
-
     @staticmethod
     def _execute(context: Any, dates: list[str], **kwargs: Any) -> ekd.FieldList:
         """Executes the loading of an empty data source.

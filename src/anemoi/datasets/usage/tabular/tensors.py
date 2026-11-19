@@ -35,7 +35,6 @@ def to_torch(data: Any) -> Any:
 
 
 class Tensors(Forwards):
-
     def __init__(self, forward: Dataset, tensors: str = "numpy") -> None:
         super().__init__(forward)
         self.tensors = tensors

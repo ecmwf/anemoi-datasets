@@ -18,7 +18,6 @@ LOG = logging.getLogger(__name__)
 
 
 class Validator(ABC):
-
     @abstractmethod
     def validate(self, path, ds, errors): ...
 

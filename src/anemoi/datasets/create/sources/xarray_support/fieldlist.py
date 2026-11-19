@@ -148,7 +148,6 @@ class XarrayFieldList(FieldList):
 
         # Select only geographical variables
         for name in ds.data_vars:
-
             if name in skip:
                 continue
 
@@ -156,7 +155,6 @@ class XarrayFieldList(FieldList):
             coordinates: list[Any] = []
 
             for coord in variable.coords:
-
                 c = guess.guess(ds[coord], coord)
                 assert c, f"Could not guess coordinate for {coord}"
                 if coord not in variable.dims:
@@ -213,7 +211,6 @@ class XarrayFieldList(FieldList):
         count: int = 0
 
         for v in self.variables:
-
             # First, select matching variables
 
             # This will consume 'param' or 'variable' from kwargs

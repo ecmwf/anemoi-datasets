@@ -131,7 +131,7 @@ class ForecastCovering(Covering):
 
     def __init__(self, period: datetime.timedelta, accumulation: str) -> None:
         if accumulation not in _VALID_ACCUMULATIONS:
-            raise ValueError(f"Invalid accumulation {accumulation!r}; " f"expected one of {_VALID_ACCUMULATIONS}")
+            raise ValueError(f"Invalid accumulation {accumulation!r}; expected one of {_VALID_ACCUMULATIONS}")
         self.period = period
         self.accumulation = accumulation
 

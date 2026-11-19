@@ -37,7 +37,6 @@ LOG = logging.getLogger(__name__)
 
 
 class Recipe(BaseModel):
-
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     @model_validator(mode="before")
@@ -63,7 +62,7 @@ class Recipe(BaseModel):
             build.setdefault("group_by", group_by)
             data = {**data, "dates": dates, "build": build}
             LOG.warning(
-                "'dates.group_by' is deprecated; use 'build.group_by'. " "Moved group_by=%r to build.group_by.",
+                "'dates.group_by' is deprecated; use 'build.group_by'. Moved group_by=%r to build.group_by.",
                 group_by,
             )
         return data
@@ -107,7 +106,7 @@ class Recipe(BaseModel):
                     "(use 'base_dates:' instead of 'dates:')"
                 )
             if self.dates is not None:
-                raise ValueError("'dates' is not accepted for the 'trajectories' layout; " "use 'base_dates:' instead")
+                raise ValueError("'dates' is not accepted for the 'trajectories' layout; use 'base_dates:' instead")
         else:
             if self.base_dates is not None:
                 raise ValueError("'base_dates' is only accepted for the 'trajectories' layout")

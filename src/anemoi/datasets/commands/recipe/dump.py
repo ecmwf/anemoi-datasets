@@ -17,7 +17,6 @@ from anemoi.datasets.create.recipe import Recipe
 
 
 class Dumper:
-
     def recipe(self, input, sources):
         return json.dumps({"input": input, "sources": sources}, indent=2, default=str)
 

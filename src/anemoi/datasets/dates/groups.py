@@ -342,7 +342,6 @@ class GrouperByTimedelta(Grouper):
         batch = []
 
         for d in dates:
-
             if len(batch) > 0 and (d - batch[0]) >= self.delta:
                 yield GroupOfDates(batch, dates)
                 batch = []

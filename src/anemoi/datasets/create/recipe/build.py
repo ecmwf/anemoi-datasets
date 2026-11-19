@@ -63,7 +63,6 @@ def validate_mapping(value):
 
 
 class Build(BaseModel):
-
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     use_grib_paramid: bool = False

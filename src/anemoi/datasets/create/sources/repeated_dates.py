@@ -23,7 +23,6 @@ LOG = logging.getLogger(__name__)
 
 @source_registry.register("repeated_dates")
 class RepeatedDatesSource(Source):
-
     def __init__(self, context, source: Any, mode: str, **kwargs) -> None:
         # assert False, (context, source, mode, kwargs)
         super().__init__(context, **kwargs)

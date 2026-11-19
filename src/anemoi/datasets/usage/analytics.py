@@ -75,7 +75,6 @@ def _collect_analytics_worker(event: str, **kwargs: Any) -> None:
     global COLLECT_ANALYTICS
 
     try:
-
         if not _do_collect_event(event, **kwargs):
             return
 

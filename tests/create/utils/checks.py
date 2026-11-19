@@ -19,7 +19,6 @@ from anemoi.datasets.usage.stores import open_zarr
 
 
 class _Check:
-
     def __init__(
         self,
         name: str,
@@ -111,7 +110,6 @@ class CompareToReferenceCheck(_Check):
         assert a.missing == b.missing, "Missing are different"
 
         for i_date, date in zip(range(a.shape[0]), a.dates):
-
             if i_date in a.missing:
                 continue
 
@@ -182,7 +180,6 @@ class CompareToReferenceCheck(_Check):
             a_keys = list(a.keys())
             b_keys = list(b.keys())
             for k in set(a_keys) | set(b_keys):
-
                 name = ".".join(path + (k,))
 
                 if name in self.ignore_keys:
@@ -250,13 +247,11 @@ class CompareToReferenceCheck(_Check):
 
 
 class NoneCheck(_Check):
-
     def run(self) -> None:
         pass
 
 
 class _ItemCheck(_Check):
-
     def normalise(self, item: Any) -> Any:
         """Normalize the item for comparison."""
         return item
@@ -324,7 +319,6 @@ def check_dataset(name: str, config_path: str, dataset_path: str, get_test_archi
         raise ValueError(f"No checks defined in {config_path}")
 
     for c in checks:
-
         if isinstance(c, str):
             check = c
             kwargs = {}

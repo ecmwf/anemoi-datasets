@@ -59,7 +59,6 @@ class Merge(Combined):
             for j, date in enumerate(d.dates):
                 date = date.astype(object)
                 if date in dates:
-
                     d1 = datasets[dates[date][0]]  # Selected
                     d2 = datasets[i]  # The new one
 

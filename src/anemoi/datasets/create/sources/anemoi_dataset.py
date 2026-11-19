@@ -15,7 +15,6 @@ from .legacy import LegacySource
 
 @source_registry.register("anemoi_dataset")
 class AnemoiDatasetSource(LegacySource):
-
     @staticmethod
     def _execute(context, dates, params=None, **kwargs):
         import earthkit.data as ekd
@@ -48,11 +47,9 @@ class AnemoiDatasetSource(LegacySource):
         resolution = ds.resolution
 
         for idx, date in indices:
-
             metadata = dict(valid_datetime=date, latitudes=latitudes, longitudes=longitudes, resolution=resolution)
 
             for j, y in enumerate(ds[idx]):
-
                 param = vars[j]
                 if param not in params:
                     continue
