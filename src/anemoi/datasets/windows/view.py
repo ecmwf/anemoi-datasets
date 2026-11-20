@@ -204,25 +204,31 @@ class WindowView:
         return last_index + 1
 
     def __getitem__(self, index: Any) -> np.ndarray:
-        """Retrieve the data for the specified window index, applying window boundaries and filtering.
+        """Retrieve the data for the specified window or windows, applying window boundaries and filtering.
 
         Parameters
         ----------
         index : Any
-            The window index to retrieve.
+            The window to retrieve: an integer, a slice (with any step), a list or 1-D array of
+            integers, or a tuple whose first entry is one of these and whose other entries select
+            columns.
 
         Returns
         -------
         np.ndarray
-            The filtered data array for the specified window.
+            The filtered data for the selected windows. Several windows are joined one after the
+            other, in the order they were asked for.
         """
 
         match index:
-            case int():
-                return self._getitem_int(index)
+            case int() | np.integer():
+                return self._getitem_int(int(index))
 
             case slice():
-                return self._getitem_slice(index)
+                return self._getitem_windows(range(*index.indices(self._len)), index)
+
+            case list() | np.ndarray():
+                return self._getitem_windows(self._as_window_indices(index), index)
 
             case tuple():
                 return self._getitem_tuple(index)
@@ -230,10 +236,17 @@ class WindowView:
             case _:
                 raise TypeError(f"WindowView: invalid index type: {type(index)}")
 
+    @staticmethod
+    def _as_window_indices(index: list | np.ndarray) -> list[int]:
+        indices = np.asarray(index)
+        if indices.ndim != 1 or (indices.size and not np.issubdtype(indices.dtype, np.integer)):
+            raise TypeError(f"WindowView: window indices must be a 1-D sequence of integers, got {index!r}")
+        return [int(i) for i in indices]
+
     def _slice(self, index: int) -> np.ndarray:
         assert isinstance(index, int)
         if index < 0:
-            index = self._len - index
+            index = self._len + index
 
         if not 0 <= index < self._len:
             raise IndexError(f"Index {index} out of range (len={self._len})")
@@ -319,14 +332,11 @@ class WindowView:
 
         return annotate(values, range_slice)
 
-    def _getitem_slice(self, index: slice) -> np.ndarray:
-        start, stop, step = index.indices(self._len)
-        if step != 1:
-            raise ValueError("WindowView: slicing with step is not supported")
-
-        arrays = []
-        for idx in range(start, stop):
-            arrays.append(self.__getitem__(idx))
+    def _getitem_windows(self, indices: range | list[int], index: slice | list | np.ndarray) -> np.ndarray:
+        """Read each window in ``indices`` and join them one after the other."""
+        arrays = [self._getitem_int(idx) for idx in indices]
+        if not arrays:
+            raise IndexError(f"WindowView: {index!r} selects no windows (len={self._len})")
 
         return AnnotatedNDArray(
             np.concatenate(arrays, axis=0),
