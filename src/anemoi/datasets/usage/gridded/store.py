@@ -20,6 +20,7 @@ from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
 from anemoi.datasets import MissingDateError
+from anemoi.datasets.compat import read_into
 from anemoi.datasets.usage.dataset import Dataset
 from anemoi.datasets.usage.dataset import FullIndex
 from anemoi.datasets.usage.dataset import Shape
@@ -56,6 +57,19 @@ class GriddedZarr(ZarrStore):
     def __getitem__(self, n: FullIndex) -> NDArray[Any]:
         """Retrieve an item from the dataset."""
         return self.data[n]
+
+    def _read_into(self, index: TupleIndex, out: NDArray[Any]) -> None:
+        """Decode a selection of slices straight into ``out``, without an intermediate array."""
+        if (
+            isinstance(self.data, zarr.Array)
+            and out.dtype == self.data.dtype  # zarr 2 decodes whole chunks into out without casting
+            and not self.missing
+            and len(index) == self.data.ndim
+            and all(isinstance(i, slice) and (i.step or 1) > 0 for i in index)
+        ):
+            read_into(self.data, index, out)
+        else:
+            super()._read_into(index, out)
 
     def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:
         """Unwind the index for multi-dimensional indexing."""

@@ -10,6 +10,7 @@
 import os
 import warnings
 
+import numpy as np
 import zarr
 from zarr import Group
 
@@ -225,3 +226,8 @@ def blosc_compressor(cname: str = "zstd", clevel: int = 3, shuffle: int = 2, *, 
     """
     zarr_format_kwargs(zarr_format)
     return zarr.Blosc(cname=cname, clevel=clevel, shuffle=shuffle)
+
+
+def read_into(array: zarr.core.Array, selection: tuple, out: np.ndarray) -> None:
+    """Read a basic selection of a zarr array straight into ``out``, which may be a strided view."""
+    array.get_basic_selection(selection, out=out)
