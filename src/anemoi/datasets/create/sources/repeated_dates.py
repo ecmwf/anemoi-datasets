@@ -11,8 +11,7 @@
 import logging
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_valid_datetime
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_with_valid_datetime, new_fieldlist_from_list
 
 from anemoi.datasets.create.input.repeated_dates import DateMapper
 from anemoi.datasets.create.source import Source

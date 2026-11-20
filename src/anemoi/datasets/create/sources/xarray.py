@@ -14,9 +14,7 @@ import earthkit.data as ekd
 from anemoi.datasets.create.types import DateList
 
 from ..source import Source
-from .xarray_support import XarrayFieldList
-from .xarray_support import load_many
-from .xarray_support import load_one
+from .xarray_support import XarrayFieldList, load_many, load_one
 
 __all__ = ["load_many", "load_one", "XarrayFieldList"]
 

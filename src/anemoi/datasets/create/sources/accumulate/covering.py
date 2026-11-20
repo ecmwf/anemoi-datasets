@@ -32,14 +32,12 @@ argument type (``ForecastDates``), not by the recipe.
 from __future__ import annotations
 
 import datetime
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 from anemoi.datasets.create.intervals import SignedInterval
 
-from .interval_generators import IntervalGenerator
-from .interval_generators import interval_generator_factory
+from .interval_generators import IntervalGenerator, interval_generator_factory
 
 
 class Covering(ABC):

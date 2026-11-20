@@ -10,8 +10,7 @@
 import logging
 from typing import Any
 
-from anemoi.datasets.usage.analytics import analytics_options
-from anemoi.datasets.usage.analytics import analytics_rest_options
+from anemoi.datasets.usage.analytics import analytics_options, analytics_rest_options
 from anemoi.datasets.usage.store import open_zarr_store
 
 from . import Command

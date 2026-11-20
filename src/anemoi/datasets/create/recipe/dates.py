@@ -13,21 +13,10 @@ import datetime
 import logging
 from collections.abc import Iterator
 from functools import cached_property
-from typing import Annotated
-from typing import Any
-from typing import Union
+from typing import Annotated, Any, Union
 
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
-from pydantic import BaseModel
-from pydantic import BeforeValidator
-from pydantic import ConfigDict
-from pydantic import Discriminator
-from pydantic import Field
-from pydantic import PlainSerializer
-from pydantic import Tag
-from pydantic import model_validator
+from anemoi.utils.dates import as_datetime, frequency_to_string, frequency_to_timedelta
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Discriminator, Field, PlainSerializer, Tag, model_validator
 
 LOG = logging.getLogger(__name__)
 

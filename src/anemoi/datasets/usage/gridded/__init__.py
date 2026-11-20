@@ -9,16 +9,12 @@
 
 import logging
 import os
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # from .dataset import FullIndex
 # from .dataset import Shape
 # from .dataset import TupleIndex
-from anemoi.datasets.usage.misc import _open_dataset
-from anemoi.datasets.usage.misc import _save_dataset
-from anemoi.datasets.usage.misc import add_dataset_path
-from anemoi.datasets.usage.misc import add_named_dataset
+from anemoi.datasets.usage.misc import _open_dataset, _save_dataset, add_dataset_path, add_named_dataset
 
 if TYPE_CHECKING:
     from anemoi.datasets.usage.dataset import Dataset

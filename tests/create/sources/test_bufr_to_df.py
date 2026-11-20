@@ -15,11 +15,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from anemoi.datasets.create.sources.bufr_support.bufr_reader import BUFRMessage
-from anemoi.datasets.create.sources.bufr_support.bufr_reader import BUFRReader
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import BUFRMessageSelector
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import BUFRToDataFrame
-from anemoi.datasets.create.sources.bufr_support.bufr_to_df import parse_slice
+from anemoi.datasets.create.sources.bufr_support.bufr_reader import BUFRMessage, BUFRReader
+from anemoi.datasets.create.sources.bufr_support.bufr_to_df import BUFRMessageSelector, BUFRToDataFrame, parse_slice
 
 
 def create_bufr_message(

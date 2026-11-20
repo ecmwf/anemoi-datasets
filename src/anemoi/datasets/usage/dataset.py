@@ -13,8 +13,7 @@ import json
 import logging
 import pprint
 import warnings
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 
 try:
@@ -22,20 +21,14 @@ try:
 except ImportError:
     # Python 3.9
     EllipsisType = type(Ellipsis)
-from collections.abc import Sequence
-from collections.abc import Sized
-from typing import TYPE_CHECKING
-from typing import Any
-from typing import Union
+from collections.abc import Sequence, Sized
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
-from anemoi.utils.dates import frequency_to_seconds
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_seconds, frequency_to_string, frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.debug import Node, Source
 
 if TYPE_CHECKING:
     import matplotlib
@@ -434,8 +427,7 @@ class Dataset(ABC, Sized):
         list of int
             The list of indices.
         """
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         # TODO: optimize
 
@@ -512,8 +504,7 @@ class Dataset(ABC, Sized):
         base_end: None | str | datetime.datetime,
     ) -> list[int]:
         """Convert base_start/base_end to base-date indices (direct, no envelope logic)."""
-        from anemoi.datasets.usage.misc import as_first_date
-        from anemoi.datasets.usage.misc import as_last_date
+        from anemoi.datasets.usage.misc import as_first_date, as_last_date
 
         base_dates = self.base_dates
 

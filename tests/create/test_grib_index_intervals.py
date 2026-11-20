@@ -14,8 +14,7 @@ import numpy as np
 from anemoi.datasets import open_dataset
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.sources.grib_index import GribIndex
-from anemoi.datasets.create.sources.grib_index import GribIndexSource
+from anemoi.datasets.create.sources.grib_index import GribIndex, GribIndexSource
 
 from .utils.create import create_dataset
 

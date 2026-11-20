@@ -12,8 +12,7 @@ import logging
 import os
 import shutil
 import uuid
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Any
 
@@ -22,12 +21,10 @@ import tqdm
 from anemoi.utils.humanize import bytes_to_human
 from anemoi.utils.sanitise import sanitise
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import DEFAULT_FORMAT, zarr_open
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.create.input.builder import InputBuilder
-from anemoi.datasets.create.recipe import loader_recipe_from_yaml
-from anemoi.datasets.create.recipe import loader_recipe_from_zarr
+from anemoi.datasets.create.recipe import loader_recipe_from_yaml, loader_recipe_from_zarr
 from anemoi.datasets.dates.groups import Groups
 
 from .parts import PartFilter

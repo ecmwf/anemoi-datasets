@@ -14,9 +14,7 @@ import os
 import numpy as np
 import pytest
 
-from anemoi.datasets.compat import NestedDirectoryStore
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import NestedDirectoryStore, zarr_open, zarr_version
 from anemoi.datasets.misc.check import check_zarr
 
 LAYOUTS = [

@@ -21,22 +21,20 @@ import zarr
 from anemoi.utils.dates import frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.compat import DebugStore
-from anemoi.datasets.compat import DirectoryStore
-from anemoi.datasets.compat import HTTPStore
-from anemoi.datasets.compat import LRUStoreCache
-from anemoi.datasets.compat import S3Store
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import ZipStore
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import (
+    DebugStore,
+    DirectoryStore,
+    HTTPStore,
+    LRUStoreCache,
+    S3Store,
+    ZarrFileNotFoundError,
+    ZipStore,
+    zarr_open,
+    zarr_version,
+)
 from anemoi.datasets.usage.analytics import collect_analytics
-from anemoi.datasets.usage.dataset import Dataset
-from anemoi.datasets.usage.dataset import Shape
-from anemoi.datasets.usage.dataset import TupleIndex
-from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING
-from anemoi.datasets.usage.debug import Node
-from anemoi.datasets.usage.debug import Source
+from anemoi.datasets.usage.dataset import Dataset, Shape, TupleIndex
+from anemoi.datasets.usage.debug import DEBUG_ZARR_LOADING, Node, Source
 from anemoi.datasets.usage.misc import load_config
 from anemoi.datasets.usage.options import Options
 

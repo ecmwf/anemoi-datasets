@@ -13,17 +13,14 @@ import os
 import warnings
 from collections.abc import Sequence
 from multiprocessing import Pool
-from typing import Any
-from typing import Iterator
-from typing import Literal
+from typing import Any, Iterator, Literal
 
 import eccodes
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from .bufr_reader import BUFRMessage
-from .bufr_reader import BUFRReader
+from .bufr_reader import BUFRMessage, BUFRReader
 
 log = logging.getLogger(__name__)
 logging.basicConfig(

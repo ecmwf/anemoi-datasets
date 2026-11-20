@@ -18,18 +18,15 @@ from __future__ import annotations
 
 import datetime
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 from numpy.typing import NDArray
 
-from anemoi.datasets.usage.dataset import FullIndex
-from anemoi.datasets.usage.dataset import Shape
+from anemoi.datasets.usage.dataset import FullIndex, Shape
 from anemoi.datasets.usage.debug import Node
 from anemoi.datasets.usage.gridded.store import GriddedZarr
 

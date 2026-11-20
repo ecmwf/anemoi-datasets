@@ -20,13 +20,9 @@ from pydantic import ValidationError
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.recipe.migrate import migrate_output_format
 from anemoi.datasets.compat import zarr_version
-from anemoi.datasets.compat.codecs import BLOSC_SHUFFLE
-from anemoi.datasets.compat.codecs import numcodecs_codec
-from anemoi.datasets.compat.codecs import zarr3_codec
-from anemoi.datasets.compat.codecs import zarr3_spec
+from anemoi.datasets.compat.codecs import BLOSC_SHUFFLE, numcodecs_codec, zarr3_codec, zarr3_spec
 from anemoi.datasets.create.recipe import Recipe
-from anemoi.datasets.create.recipe.output import GriddedOutput
-from anemoi.datasets.create.recipe.output import TabularOutput
+from anemoi.datasets.create.recipe.output import GriddedOutput, TabularOutput
 from anemoi.datasets.create.tasks import run_task
 
 

@@ -51,8 +51,7 @@ def test_random_generator_is_deterministic() -> None:
 # values spec: one-of type-key dict + scalar / string shorthand
 # --------------------------------------------------------------------------
 def test_build_value_generator_constant_takes_value_directly() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue, build_value_generator
 
     g = build_value_generator({"constant": 273.15})
     assert isinstance(g, ConstantValue)
@@ -60,8 +59,7 @@ def test_build_value_generator_constant_takes_value_directly() -> None:
 
 
 def test_build_value_generator_random_with_params() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue, build_value_generator
 
     g = build_value_generator({"random": {"mean": 2.0, "std": 3.0}})
     assert isinstance(g, RandomValue)
@@ -69,8 +67,7 @@ def test_build_value_generator_random_with_params() -> None:
 
 
 def test_build_value_generator_random_defaults_when_payload_empty() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue, build_value_generator
 
     g = build_value_generator({"random": {}})
     assert isinstance(g, RandomValue)
@@ -78,8 +75,7 @@ def test_build_value_generator_random_defaults_when_payload_empty() -> None:
 
 
 def test_build_value_generator_bare_scalar_is_constant() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue, build_value_generator
 
     g = build_value_generator(5.0)
     assert isinstance(g, ConstantValue)
@@ -87,8 +83,7 @@ def test_build_value_generator_bare_scalar_is_constant() -> None:
 
 
 def test_build_value_generator_bare_string_is_named_generator_with_defaults() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import build_value_generator
+    from anemoi.datasets.usage.gridded.synthetic import RandomValue, build_value_generator
 
     g = build_value_generator("random")
     assert isinstance(g, RandomValue)
@@ -246,9 +241,7 @@ def test_parse_config_rejects_integer_variables() -> None:
 
 
 def test_parse_config_variable_dict_entries() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue, RandomValue, parse_synthetic_config
 
     cfg = parse_synthetic_config(
         _minimal_raw(
@@ -264,17 +257,14 @@ def test_parse_config_variable_dict_entries() -> None:
 
 
 def test_parse_config_top_level_values_is_default() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue, parse_synthetic_config
 
     cfg = parse_synthetic_config(_minimal_raw(values={"constant": 1.0}))
     assert all(isinstance(g, ConstantValue) for g in cfg.generators)
 
 
 def test_parse_config_per_variable_overrides_default() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ConstantValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import ConstantValue, RandomValue, parse_synthetic_config
 
     cfg = parse_synthetic_config(
         _minimal_raw(
@@ -469,9 +459,7 @@ def test_computed_forcing_constant_in_time_is_marked_constant() -> None:
 
 
 def test_parse_config_routes_forcing_string_to_computed_generator() -> None:
-    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue
-    from anemoi.datasets.usage.gridded.synthetic import RandomValue
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import ComputedForcingValue, RandomValue, parse_synthetic_config
 
     cfg = parse_synthetic_config(_minimal_raw(variables=["2t", "insolation", "cos_latitude"]))
     assert isinstance(cfg.generators[0], RandomValue)  # ordinary variable
@@ -499,8 +487,7 @@ def test_parse_config_forcing_metadata_marks_computed_forcing() -> None:
 # dataset behaviour
 # --------------------------------------------------------------------------
 def _dataset(**overrides):
-    from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset
-    from anemoi.datasets.usage.gridded.synthetic import parse_synthetic_config
+    from anemoi.datasets.usage.gridded.synthetic import SyntheticGriddedDataset, parse_synthetic_config
 
     return SyntheticGriddedDataset(parse_synthetic_config(_minimal_raw(**overrides)))
 

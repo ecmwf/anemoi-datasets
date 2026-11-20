@@ -16,8 +16,7 @@ import pytest
 
 from anemoi.datasets import open_dataset
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import zarr_open, zarr_version
 
 FORMATS = [2, 3] if zarr_version >= 3 else [2]
 

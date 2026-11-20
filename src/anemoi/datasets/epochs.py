@@ -12,8 +12,7 @@ We cannot use timestamp() and fromtimestamp() directly because they
 depend on the local timezone.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
 
 import numpy as np
 
