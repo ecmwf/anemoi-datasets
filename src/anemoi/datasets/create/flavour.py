@@ -12,20 +12,25 @@ from anemoi.transform.fields import MISSING_METADATA
 from anemoi.transform.flavour import RuleBasedFlavour as _RuleBasedFlavour
 from anemoi.transform.metadata import key_to_component
 
-# Label set on the fields whose level a flavour set (see ``_name_level`` in ``gridded/result.py``)
+# Labels set on the fields whose level or level type a flavour set (see ``gridded/result.py``)
 FLAVOUR_LEVEL_LABEL = "labels.anemoi_flavour_level"
+FLAVOUR_LEVTYPE_LABEL = "labels.anemoi_flavour_levtype"
+_LABELS = {"vertical.level": FLAVOUR_LEVEL_LABEL, "vertical.level_type": FLAVOUR_LEVTYPE_LABEL}
 
 
 class RuleBasedFlavour(_RuleBasedFlavour):
-    """The rule-based flavour of anemoi-transform, recording on each field whether it set its level.
+    """The rule-based flavour of anemoi-transform, recording on each field whether it set its level and level type.
 
-    The level a flavour sets can be the field's own GRIB level (e.g. ``levelist: 2`` on a 2 m temperature): the field
-    alone does not tell it from a level that only went along with a new level type.
+    The level or level type a flavour sets can be the field's own GRIB one (e.g. ``levelist: 2`` on a 2 m
+    temperature, ``levtype: sfc`` on a surface field eccodes files under another levtype): the field alone does not
+    tell them from the ones decoded from GRIB.
     """
 
     def apply(self, field: ekd.Field) -> ekd.Field:
         flavoured = super().apply(field)
+        labels = {}
         for key in self.keys():
-            if key_to_component(key) == "vertical.level" and self(key, field) is not MISSING_METADATA:
-                return flavoured.set(**{FLAVOUR_LEVEL_LABEL: True})
-        return flavoured
+            label = _LABELS.get(key_to_component(key))
+            if label is not None and self(key, field) is not MISSING_METADATA:
+                labels[label] = True
+        return flavoured.set(**labels) if labels else flavoured

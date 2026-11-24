@@ -538,6 +538,28 @@ def test_mars_levtype_after_filters(tmp_path, filters, flavour, u, t) -> None:
     }
 
 
+@pytest.mark.parametrize("filters, name", [([], "2t"), ([{"rename": {"param": {"2t": "t2m"}}}], "t2m")])
+def test_mars_levtype_unknown_from_flavour(tmp_path, filters, name) -> None:
+    """A flavour that sets the levtype unknown (an earthkit-data level type name) is followed, also after a filter."""
+    keys = dict(dataDate=20200101, dataTime=0)
+    path = _write_grib(
+        tmp_path / "sfc.grib",
+        [dict(keys, paramId=167, value=1), dict(keys, paramId=151, typeOfLevel="meanSea", value=2)],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path, "flavour": [[{"param": "2t"}, {"levtype": "unknown"}]]}}, *filters]},
+    }
+    created = create_dataset(recipe=recipe, output=None)
+
+    mars = {name: md["mars"] for name, md in open_dataset(created).variables_metadata.items()}
+    assert {name: (m["levtype"], m.get("levelist", "-")) for name, m in mars.items()} == {
+        name: ("unknown", "-"),
+        "msl": ("sfc", "-"),
+    }
+    assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["msl"], "unknown": [name]}
+
+
 @pytest.mark.parametrize("edition", [1, 2])
 @pytest.mark.parametrize("flavour", [None, [[{"levtype": "sfc"}, {"levtype": "sfc", "levelist": None}]]])
 def test_mars_levtype_of_soil_to_levtype_sol(tmp_path, edition, flavour) -> None:

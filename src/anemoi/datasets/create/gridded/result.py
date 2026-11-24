@@ -26,17 +26,15 @@ from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
-from earthkit.data.field.component.level_type import LevelTypes
+from earthkit.data.field.grib.vertical import GribVerticalBuilder
 
 from anemoi.datasets.create.flavour import FLAVOUR_LEVEL_LABEL
+from anemoi.datasets.create.flavour import FLAVOUR_LEVTYPE_LABEL
 from anemoi.datasets.create.input.result import Result
 from anemoi.datasets.create.recipe.build import NAME_LEVEL_LABEL
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
-
-# earthkit-data's level type names
-_LEVEL_TYPE_NAMES = {level_type.value.name for level_type in LevelTypes}
 
 # ---------------------------------------------------------------------------
 # earthkit 1.0rc12 compatibility shim:
@@ -168,22 +166,22 @@ def _computed_forcing(field: Any) -> bool:
     return _KNOWN_VARIABLES.get(field.get("parameter.variable", default=None), {}).get("computed_forcing", False)
 
 
-def _levtype_set(level_type: Any, grib: Any) -> str | None:
+def _levtype_set(field: Any, level_type: Any, grib: Any) -> str | None:
     """Return the MARS levtype of a GRIB field's level type if a flavour or a filter set it, else None.
 
     Flavours and filters set a MARS levtype, which earthkit-data stores under its own name for the ones it knows
     (``sfc`` as ``surface``) and as it is for the others (``sol``). A level type decoded from the GRIB message is
     left to eccodes' levtype: MARS files some under several levtypes (``height_above_ground_level`` is ``sfc`` or
-    ``hl``) and has none for others (``mean_sea``, or ``cloudTop`` as eccodes names it).
+    ``hl``) and has none for others (``mean_sea``, or COSMO's ``surface`` for HSURF).
     """
     if level_type is None:
         return None
     levtype = component_value_to_mars("levtype", level_type)
+    if field.get(FLAVOUR_LEVTYPE_LABEL, default=False):
+        return levtype
     if mars_value_to_component("levtype", levtype) != level_type:
         return None
-    if levtype == level_type and (
-        level_type in _LEVEL_TYPE_NAMES or level_type == grib.get("typeOfLevel", default=None)
-    ):
+    if level_type == GribVerticalBuilder.build(grib).component.level_type():
         return None
     return levtype
 
@@ -215,7 +213,7 @@ def _mars_request(field: Any) -> dict[str, Any]:
     levtype = field.get("metadata.levtype", default=None)
     grib = _grib_message(field)
     if levtype is None and grib is not None:
-        levtype = _levtype_set(level_type, grib) or raw.get("levtype")
+        levtype = _levtype_set(field, level_type, grib) or raw.get("levtype")
     levtype = (
         levtype
         or LEVEL_TYPE_TO_LEVTYPE.get(level_type)
