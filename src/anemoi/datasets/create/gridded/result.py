@@ -20,16 +20,22 @@ from typing import DefaultDict
 import numpy as np
 from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.metadata import LEVEL_TYPE_TO_LEVTYPE
+from anemoi.transform.metadata import component_value_to_mars
+from anemoi.transform.metadata import mars_value_to_component
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
+from earthkit.data.field.component.level_type import LevelTypes
 
 from anemoi.datasets.create.input.result import Result
 from anemoi.datasets.create.recipe.build import NAME_LEVEL_LABEL
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
+
+# earthkit-data's level type names
+_LEVEL_TYPE_NAMES = {level_type.value.name for level_type in LevelTypes}
 
 # ---------------------------------------------------------------------------
 # earthkit 1.0rc12 compatibility shim:
@@ -151,6 +157,26 @@ def _computed_forcing(field: Any) -> bool:
     return _KNOWN_VARIABLES.get(field.get("parameter.variable", default=None), {}).get("computed_forcing", False)
 
 
+def _levtype_set(level_type: Any, grib: Any) -> str | None:
+    """Return the MARS levtype of a GRIB field's level type if a flavour or a filter set it, else None.
+
+    Flavours and filters set a MARS levtype, which earthkit-data stores under its own name for the ones it knows
+    (``sfc`` as ``surface``) and as it is for the others (``sol``). A level type decoded from the GRIB message is
+    left to eccodes' levtype: MARS files some under several levtypes (``height_above_ground_level`` is ``sfc`` or
+    ``hl``) and has none for others (``mean_sea``, or ``cloudTop`` as eccodes names it).
+    """
+    if level_type is None:
+        return None
+    levtype = component_value_to_mars("levtype", level_type)
+    if mars_value_to_component("levtype", levtype) != level_type:
+        return None
+    if levtype == level_type and (
+        level_type in _LEVEL_TYPE_NAMES or level_type == grib.get("typeOfLevel", default=None)
+    ):
+        return None
+    return levtype
+
+
 def _mars_request(field: Any) -> dict[str, Any]:
     """Return the MARS request of a field, or an empty dict for computed forcings.
 
@@ -175,15 +201,20 @@ def _mars_request(field: Any) -> dict[str, Any]:
     level = field.get("vertical.level", default=None)
     level_type = field.get("vertical.level_type", default=None)
     # The single GRIB key is only readable on fields no filter has changed, where it is eccodes' own levtype
+    levtype = field.get("metadata.levtype", default=None)
+    grib = _grib_message(field)
+    if levtype is None and grib is not None:
+        levtype = _levtype_set(level_type, grib) or raw.get("levtype")
     levtype = (
-        field.get("metadata.levtype", default=None)
+        levtype
         or LEVEL_TYPE_TO_LEVTYPE.get(level_type)
         or raw.get("levtype")
         or ("sfc" if level is None else level_type)
     )
     md["levtype"] = levtype
-    # eccodes gives some surface-like fields a levelist (e.g. cloudTop, COSMO's HSURF), which a flavour sets to None
-    if "levelist" in raw or (levtype != "sfc" and level is not None):
+    # eccodes gives some surface-like fields a levelist (e.g. cloudTop, COSMO's HSURF), which a flavour sets to None.
+    # Other GRIB fields have none, also when a flavour or a filter sets a level type (e.g. soil_to_levtype_sol).
+    if "levelist" in raw or (grib is None and levtype != "sfc" and level is not None):
         md["levelist"] = level
 
     base = field.get("time.base_datetime", default=None)

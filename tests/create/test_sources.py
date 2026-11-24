@@ -498,6 +498,80 @@ def test_mars_levelist_of_surface_like_fields(tmp_path, flavour, expected) -> No
     assert mars == {"t": dict(param="t", date=20200101, time=0, step=0, **expected)}
 
 
+@pytest.mark.parametrize(
+    "filters, flavour, u, t",
+    [
+        ([{"rename": {"param": {"u": "uu"}}}], None, "uu", "t"),
+        ([{"rename": {"param": {"t": "tc"}}}], None, "u", "tc"),
+        ([], [[{"param": "u"}, {"levelist": 80}]], "u", "t"),
+    ],
+)
+def test_mars_levtype_after_filters(tmp_path, filters, flavour, u, t) -> None:
+    """A filter or a flavour that does not set the level type keeps eccodes' levtype (hl for a wind at 80 m from
+    NCEP, unknown for cloudTop), also in the data request.
+    """
+    keys = dict(dataDate=20200101, dataTime=0, centre="kwbc", discipline=0)
+    path = _write_grib(
+        tmp_path / "ncep.grib",
+        [
+            dict(keys, parameterCategory=0, parameterNumber=0, typeOfLevel="heightAboveGround", level=2, value=1),
+            dict(keys, parameterCategory=2, parameterNumber=2, typeOfLevel="heightAboveGround", level=80, value=2),
+            dict(keys, parameterCategory=0, parameterNumber=0, typeOfLevel="cloudTop", value=3),
+        ],
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path, "flavour": flavour}}, *filters]},
+    }
+    created = create_dataset(recipe=recipe, output=None)
+
+    mars = {name: md["mars"] for name, md in open_dataset(created).variables_metadata.items()}
+    assert {name: (m["levtype"], m.get("levelist", "-")) for name, m in mars.items()} == {
+        "2t": ("sfc", "-"),
+        f"{u}_80": ("hl", 80),
+        f"{t}_0": ("unknown", 0),
+    }
+    assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {
+        "hl": [[u, 80]],
+        "sfc": ["2t"],
+        "unknown": [[t, 0]],
+    }
+
+
+@pytest.mark.parametrize("edition", [1, 2])
+@pytest.mark.parametrize("flavour", [None, [[{"levtype": "sfc"}, {"levtype": "sfc", "levelist": None}]]])
+def test_mars_levtype_of_soil_to_levtype_sol(tmp_path, edition, flavour) -> None:
+    """soil_to_levtype_sol sets the MARS levtype sol, without a levelist (eccodes has none for these soil layers)."""
+    path = _write_grib(
+        tmp_path / "soil.grib",
+        [
+            dict(
+                dataDate=20200101,
+                dataTime=0,
+                paramId=139,
+                typeOfLevel="depthBelowLandLayer",
+                topLevel=0,
+                bottomLevel=7,
+                value=1,
+            ),
+            dict(dataDate=20200101, dataTime=0, paramId=167, value=2),
+        ],
+        edition=edition,
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path, "flavour": flavour}}, {"soil_to_levtype_sol": {}}]},
+    }
+    created = create_dataset(recipe=recipe, output=None)
+
+    mars = {name: md["mars"] for name, md in open_dataset(created).variables_metadata.items()}
+    assert {name: (m["levtype"], m.get("levelist", "-")) for name, m in mars.items()} == {
+        "2t": ("sfc", "-"),
+        "sot_1": ("sol", "-"),
+    }
+    assert zarr.open(created, mode="r").attrs["data_request"]["param_level"] == {"sfc": ["2t"], "sol": ["sot"]}
+
+
 @pytest.mark.parametrize("edition", [1, 2])
 @pytest.mark.parametrize(
     "flavour, filters, expected",
