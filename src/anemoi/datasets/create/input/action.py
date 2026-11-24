@@ -34,28 +34,35 @@ def _check_join_grids(results: list, path: tuple) -> None:
         longitude convention).
     """
     import earthkit.data as ekd
-    from anemoi.transform.grids.latlon import GridComparison
     from anemoi.transform.grids.latlon import LatLonGrid
 
     fieldlists = [r for r in results if isinstance(r, ekd.FieldList) and len(r) > 0]
     if len(fieldlists) < 2:
         return
 
-    reference = LatLonGrid.from_field(fieldlists[0][0])
+    first = fieldlists[0][0]
+    if not hasattr(first, "grid_points"):
+        LOG.warning("join: cannot extract grid from %s, skipping grid check", type(first).__name__)
+        return
+
+    reference = LatLonGrid.from_field(first)
     for i, result in enumerate(fieldlists[1:], start=1):
-        comparison = reference.compare(LatLonGrid.from_field(result[0]))
-        if comparison is GridComparison.IDENTICAL_ORDERING:
+        field = result[0]
+        if not hasattr(field, "grid_points"):
+            LOG.warning("join: cannot extract grid from %s, skipping grid check", type(field).__name__)
             continue
-        where = ".".join(str(p) for p in path)
-        if comparison is GridComparison.REORDERABLE:
+        comparison = reference.compare(LatLonGrid.from_field(field))
+        if comparison.is_identical:
+            continue
+        where = ".".join(str(p) for p in path) + f".{i}"
+        if comparison.is_reorderable:
             raise ValueError(
-                f"join: source {i} at {where} has the same grid as source 0 "
-                "but a different point ordering (e.g. reversed latitude or "
-                "0-360 vs -180-180 longitude convention). Apply a "
-                "'canonical_order' or 'regrid' filter in a 'pipe' to align "
-                "the sources before joining."
+                f"join: source at {where} has the same grid points but a different "
+                f"point ordering (e.g. reversed latitude or 0-360 vs -180-180 "
+                f"longitude convention). Reorder the source before joining, e.g. "
+                f"with the 'canonical_order' filter in a pipe."
             )
-        raise ValueError(f"join: source {i} at {where} has an incompatible grid.")
+        raise comparison.error or ValueError(f"join: incompatible grid at {where}")
 
 
 class Action(ABC):
