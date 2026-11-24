@@ -624,6 +624,66 @@ def test_variable_names_of_single_level_fields(tmp_path, edition, flavour, filte
     assert open_dataset(create_dataset(recipe=recipe, output=None)).variables == expected
 
 
+class _WithoutGetGrib:
+    """A field as it would be if earthkit-data renamed its private ``Field._get_grib``."""
+
+    def __init__(self, field) -> None:
+        self._field = field
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "_get_grib":
+            raise AttributeError(name)
+        return getattr(self._field, name)
+
+
+def test_grib_message_without_accessor(tmp_path) -> None:
+    """Without ``Field._get_grib``, reading the masked GRIB keys of a GRIB field fails instead of returning nothing,
+    and fields not from GRIB (xarray, computed forcings) still have none.
+    """
+    import earthkit.data as ekd
+    import xarray as xr
+    from anemoi.transform.fields import new_field_from_numpy
+
+    from anemoi.datasets.create.gridded.result import _grib_message
+    from anemoi.datasets.create.gridded.result import _name_level
+
+    path = _write_grib(
+        tmp_path / "stl2.grib",
+        [
+            dict(
+                dataDate=20200101,
+                dataTime=0,
+                paramId=170,
+                typeOfLevel="depthBelowLandLayer",
+                topLevel=7,
+                bottomLevel=28,
+                value=1,
+            )
+        ],
+    )
+    # renamed, as by a filter: the single GRIB keys are masked
+    grib = ekd.from_source("file", path).to_fieldlist()[0].set(**{"parameter.variable": "soil"})
+    assert _name_level(grib) is None
+    with pytest.raises(RuntimeError, match="_get_grib"):
+        _name_level(_WithoutGetGrib(grib))
+
+    forcing = new_field_from_numpy(np.ones(grib.shape), template=grib, param="cos_latitude")
+    assert _grib_message(_WithoutGetGrib(forcing)) is None
+
+    lat, lon = np.arange(50.0, 44.0, -1.0), np.arange(0.0, 6.0, 1.0)
+    xr.Dataset(
+        {"t2m": (("time", "latitude", "longitude"), np.ones((1, lat.size, lon.size)), {"units": "K"})},
+        coords={
+            "time": [np.datetime64("2020-01-01T00:00", "ns")],
+            "latitude": ("latitude", lat, {"standard_name": "latitude", "units": "degrees_north"}),
+            "longitude": ("longitude", lon, {"standard_name": "longitude", "units": "degrees_east"}),
+        },
+    ).to_netcdf(tmp_path / "t2m.nc")
+    field = ekd.from_source("file", str(tmp_path / "t2m.nc")).to_fieldlist()[0]
+    assert _grib_message(_WithoutGetGrib(field)) is None
+    assert _name_level(_WithoutGetGrib(field)) is None
+
+
 @pytest.mark.parametrize("edition", [1, 2])
 def test_variable_names_of_levels_set_by_a_flavour(tmp_path, edition) -> None:
     """A flavour can tell apart the levels of a parameter eccodes gives no levelist (cdww at 10 and 20 m)."""

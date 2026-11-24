@@ -92,11 +92,17 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 
 
 def _grib_message(field: Any) -> Any:
-    """Return the GRIB message behind a field, also after filters changed it, or None.
+    """Return the GRIB message behind a field, also after filters changed it, or None for fields not from GRIB.
 
-    This is how earthkit-data's GRIB encoder reads it: there is no public route once ``set()`` masked the raw keys.
+    Raises if earthkit-data no longer has the accessor, rather than reading no GRIB keys.
     """
-    return field._get_grib() if hasattr(field, "_get_grib") else None
+    # Private, but earthkit-data has no public route to the GRIB keys that set() masked: its GRIB encoder uses it too
+    get_grib = getattr(field, "_get_grib", None)
+    if get_grib is not None:
+        return get_grib()
+    if field.get(collections="metadata.ls") and not _computed_forcing(field):
+        raise RuntimeError(f"earthkit-data has no Field._get_grib(): cannot read the GRIB keys of {field}")
+    return None
 
 
 def _grib_key(field: Any, key: str) -> Any:
