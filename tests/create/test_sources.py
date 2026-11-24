@@ -580,13 +580,24 @@ def test_mars_levtype_of_soil_to_levtype_sol(tmp_path, edition, flavour) -> None
         (None, [{"rename": {"param": {"2t": "t2m"}}}], ["cdww", "stl2", "t2m", "t_500"]),
         ([[{"param": "2t"}, {"param": "t2m"}]], [], ["cdww", "stl2", "t2m", "t_500"]),
         ([[{"param": "2t"}, {"levelist": 3}]], [], ["2t_3", "cdww", "stl2", "t_500"]),
+        # the level a flavour sets can be the GRIB level
+        (
+            [[{"param": "2t"}, {"levelist": 2}], [{"param": "stl2"}, {"levelist": 7}]],
+            [],
+            ["2t_2", "cdww", "stl2_7", "t_500"],
+        ),
+        (
+            [[{"param": "2t"}, {"levelist": 2}]],
+            [{"rename": {"param": {"2t": "t2m"}}}],
+            ["cdww", "stl2", "t2m_2", "t_500"],
+        ),
         ([[{"param": "t"}, {"levelist": None}]], [], ["2t", "cdww", "stl2", "t"]),
         (None, [{"soil_to_levtype_sol": {}}], ["2t", "cdww", "sot_2", "t_500"]),
     ],
 )
 def test_variable_names_of_single_level_fields(tmp_path, edition, flavour, filters, expected) -> None:
     """Fields eccodes gives no levelist (MARS levtype sfc) are named without their GRIB level (7 for stl2, 10 for
-    cdww, 2 for 2t in GRIB2), unless a flavour or a filter sets one.
+    cdww, 2 for 2t in GRIB2), unless a flavour or a filter sets one, which can be the GRIB level.
     """
     path = _write_grib(
         tmp_path / "sfc.grib",
@@ -611,6 +622,25 @@ def test_variable_names_of_single_level_fields(tmp_path, edition, flavour, filte
         "input": {"pipe": [{"grib": {"path": path, "flavour": flavour}}, *filters]},
     }
     assert open_dataset(create_dataset(recipe=recipe, output=None)).variables == expected
+
+
+@pytest.mark.parametrize("edition", [1, 2])
+def test_variable_names_of_levels_set_by_a_flavour(tmp_path, edition) -> None:
+    """A flavour can tell apart the levels of a parameter eccodes gives no levelist (cdww at 10 and 20 m)."""
+    path = _write_grib(
+        tmp_path / "cdww.grib",
+        [
+            dict(dataDate=20200101, dataTime=0, paramId=140233, typeOfLevel="heightAboveGround", level=level, value=1)
+            for level in (10, 20)
+        ],
+        edition=edition,
+    )
+    flavour = [[{"param": "cdww", "level": level}, {"levelist": level}] for level in (10, 20)]
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"grib": {"path": path, "flavour": flavour}},
+    }
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).variables == ["cdww_10", "cdww_20"]
 
 
 @pytest.mark.parametrize("flavour, expected", [(None, ["t_0"]), ([[{"shortName": "t"}, {"levelist": None}]], ["t"])])

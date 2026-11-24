@@ -14,11 +14,11 @@ from typing import Any
 import earthkit.data as ekd
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 
 from anemoi.datasets.create.arguments import Intervals
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.flavour import RuleBasedFlavour
 from anemoi.datasets.create.intervals import timedelta_to_step
 
 from ..source import Source

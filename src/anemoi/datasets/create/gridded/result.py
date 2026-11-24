@@ -28,6 +28,7 @@ from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 from earthkit.data.field.component.level_type import LevelTypes
 
+from anemoi.datasets.create.flavour import FLAVOUR_LEVEL_LABEL
 from anemoi.datasets.create.input.result import Result
 from anemoi.datasets.create.recipe.build import NAME_LEVEL_LABEL
 
@@ -111,8 +112,9 @@ def _name_level(field: Any) -> Any:
 
     This is eccodes' ``levelist`` key, as earthkit-data 0.x gave it. eccodes has none for many single-level
     fields (e.g. ECMWF soil layers or 10 m fields, filed under MARS ``levtype=sfc``), whose ``vertical.level``
-    is their GRIB level (7, 10). A flavour or a filter that sets the level of such a field is followed, and one
-    that sets it to None removes it, as in 0.x. Computed forcings have no level.
+    is their GRIB level (7, 10). A flavour or a filter that sets the level of such a field is followed, also to
+    its GRIB level (a flavour records it on the field), and one that sets it to None removes it, as in 0.x.
+    Computed forcings have no level.
     """
     if _computed_forcing(field):
         return None
@@ -124,6 +126,9 @@ def _name_level(field: Any) -> Any:
     grib = _grib_message(field)
     if level is None or grib is None or grib.get("levelist", default=None) is not None:
         return level
+    if field.get(FLAVOUR_LEVEL_LABEL, default=False):
+        return level
+    # The filters that set the level of such a field change it (e.g. soil_to_levtype_sol)
     return None if level == grib.get("level", default=None) else level
 
 

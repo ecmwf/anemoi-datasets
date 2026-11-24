@@ -15,12 +15,12 @@ from typing import Any
 import earthkit.data as ekd
 from anemoi.transform.fields import new_field_from_latitudes_longitudes
 from anemoi.transform.fields import new_fieldlist_from_list
-from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source
 from earthkit.data.utils.patterns import Pattern
 
 from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.flavour import RuleBasedFlavour
 
 from ..source import Source
 from . import source_registry
