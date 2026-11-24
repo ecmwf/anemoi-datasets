@@ -662,9 +662,9 @@ class GriddedResult(Result):
         assert self.order_by, self.order_by
 
         self.patches: dict[str, Any] = {"ensemble.member": _ensemble_member}
-        ds = _with_name_levels(ds)
 
         try:
+            ds = _with_name_levels(ds)
             cube: Any = ds.to_cube(
                 self.order_by,
                 remapping=self.remapping,

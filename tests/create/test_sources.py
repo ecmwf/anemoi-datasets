@@ -1215,6 +1215,17 @@ def test_csv(get_test_data: callable) -> None:
     assert frame["date"].dtype == "datetime64[ns]" or np.issubdtype(frame["date"].dtype, np.datetime64)
 
 
+def test_csv_without_tabular_layout(tmp_path) -> None:
+    """A gridded build of a tabular source suggests the tabular layout."""
+    (tmp_path / "obs.csv").write_text("date,latitude,longitude,value\n2020-01-01T00:00:00,45.0,7.0,1.0\n")
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"csv": {"path": str(tmp_path / "obs.csv")}},
+    }
+    with pytest.raises(ValueError, match="layout: tabular"):
+        create_dataset(recipe=recipe, output=None)
+
+
 # @pytest.mark.skip(reason="ODB source currently not functional")
 @skip_if_offline
 @pytest.mark.skipif(shutil.which("odc") is None, reason="odc command not accessible")
