@@ -413,9 +413,9 @@ class Combined(Forwards):
         g2 = LatLonGrid.from_latlon(d2.latitudes, d2.longitudes)
 
         comparison = g1.compare(g2)
-        if comparison is GridComparison.IDENTICAL_ORDERING:
+        if comparison.is_identical:
             return
-        if comparison is GridComparison.REORDERABLE:
+        if comparison.is_reorderable:
             raise ValueError(
                 f"{self.__class__.__name__}: datasets have the same grid but "
                 "different point ordering (e.g. reversed latitude or 0-360 "
