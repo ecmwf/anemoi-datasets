@@ -19,6 +19,45 @@ from anemoi.datasets.create.recipe.dates import Steps
 LOG = logging.getLogger(__name__)
 
 
+def _check_join_grids(results: list, path: tuple) -> None:
+    """Check that all fieldlist results in a join share the same grid ordering.
+
+    Compares the grid of each result's first field against the first result's,
+    using anemoi-transform's LatLonGrid. Non-fieldlist results (e.g. pandas
+    DataFrames) and empty results are skipped.
+
+    Raises
+    ------
+    ValueError
+        If a result has a different grid, or the same grid points in a
+        different order (e.g. reversed latitude or 0-360 vs -180-180
+        longitude convention).
+    """
+    import earthkit.data as ekd
+    from anemoi.transform.grids.latlon import GridComparison
+    from anemoi.transform.grids.latlon import LatLonGrid
+
+    fieldlists = [r for r in results if isinstance(r, ekd.FieldList) and len(r) > 0]
+    if len(fieldlists) < 2:
+        return
+
+    reference = LatLonGrid.from_field(fieldlists[0][0])
+    for i, result in enumerate(fieldlists[1:], start=1):
+        comparison = reference.compare(LatLonGrid.from_field(result[0]))
+        if comparison is GridComparison.IDENTICAL_ORDERING:
+            continue
+        where = ".".join(str(p) for p in path)
+        if comparison is GridComparison.REORDERABLE:
+            raise ValueError(
+                f"join: source {i} at {where} has the same grid as source 0 "
+                "but a different point ordering (e.g. reversed latitude or "
+                "0-360 vs -180-180 longitude convention). Apply a "
+                "'canonical_order' or 'regrid' filter in a 'pipe' to align "
+                "the sources before joining."
+            )
+        raise ValueError(f"join: source {i} at {where} has an incompatible grid.")
+
+
 class Action(ABC):
     """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
     pipe, join, etc.
@@ -150,7 +189,9 @@ class Join(Action):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
-        results = context.join(action(context, argument) for action in self.actions)
+        results = [action(context, argument) for action in self.actions]
+        _check_join_grids(results, self.path)
+        results = context.join(results)
         return context.register(results, self.path)
 
     def dump(self, dumper) -> None:
