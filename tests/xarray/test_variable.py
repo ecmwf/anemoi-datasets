@@ -128,9 +128,9 @@ def test_levtype_metadata_on_pressure_level_field(mixed_fieldlist):
 
     for field in q_fields:
         level_type = field.get("vertical.level_type", default=None)
-        assert (
-            level_type is not None
-        ), f"level_type is None for pressure-level field q at level={field.get('vertical.level', default='?')}"
+        assert level_type is not None, (
+            f"level_type is None for pressure-level field q at level={field.get('vertical.level', default='?')}"
+        )
 
         units = field.get("parameter.units", default=None)
         assert units is not None, "Expected units to be set for q, got None"
@@ -145,9 +145,9 @@ def test_levtype_metadata_on_surface_field(mixed_fieldlist):
 
     for field in tcw_fields:
         level_type = field.get("vertical.level_type", default=None)
-        assert (
-            level_type == "unknown"
-        ), f"Expected level_type='unknown' for surface field tcw, got level_type={level_type!r}"
+        assert level_type == "unknown", (
+            f"Expected level_type='unknown' for surface field tcw, got level_type={level_type!r}"
+        )
 
         units = field.get("parameter.units", default=None)
         assert units is not None, "Expected units to be set for tcw, got None"

@@ -113,8 +113,7 @@ class PartFilter:
         assert i <= n, f"Chunk number {i} must be less than total chunks {n}."
         if n > total:
             warnings.warn(
-                f"Number of chunks {n} is larger than the total number of chunks: {total}. "
-                "Some chunks will be empty."
+                f"Number of chunks {n} is larger than the total number of chunks: {total}. Some chunks will be empty."
             )
 
         chunk_size = total / n

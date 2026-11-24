@@ -51,7 +51,6 @@ def name_to_zarr_store(path_or_url: str) -> Any:
         return S3Store(store)
 
     if store.startswith("http://") or store.startswith("https://"):
-
         if store.endswith(".zip"):
             import multiurl
 
@@ -125,7 +124,6 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         name = name[:-1]
 
     if name.endswith(".zarr") or name.endswith(".zip") or name.endswith(".vz"):
-
         if os.path.exists(name):
             return name
 
@@ -136,7 +134,6 @@ def dataset_lookup(name: str, fail: bool = True) -> str | None:
         name = os.path.splitext(os.path.basename(name))[0]
 
     if name in config["named"]:
-
         return str(config["named"][name])
 
     tried = []

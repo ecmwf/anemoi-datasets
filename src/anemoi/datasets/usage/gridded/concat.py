@@ -237,8 +237,7 @@ class Concat(ConcatMixin, Combined):
                     r = [str(e) for e in r]
                     s = [str(e) for e in s]
                     raise ValueError(
-                        "Datasets must be sorted by dates, with no gaps: "
-                        f"{r} and {s} ({datasets[i]} {datasets[i+1]})"
+                        f"Datasets must be sorted by dates, with no gaps: {r} and {s} ({datasets[i]} {datasets[i + 1]})"
                     )
 
         result.append(datasets[-1])

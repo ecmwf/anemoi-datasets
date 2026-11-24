@@ -157,7 +157,6 @@ class Thinning(ThinningMixin, Masked):
         self.grid_shape = forward.field_shape
 
         if thinning is not None:
-
             shape = forward.field_shape
             if len(shape) != 2:
                 raise ValueError("Thinning only works latitude/longitude fields")

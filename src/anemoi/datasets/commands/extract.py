@@ -116,7 +116,7 @@ class Extract(Command):
                 selected[month] = np.datetime64(date)
         if len(selected) < 12:
             raise ValueError(
-                f"Dataset does not cover all 12 months (found {len(selected)}). " "Cannot compute climatologies."
+                f"Dataset does not cover all 12 months (found {len(selected)}). Cannot compute climatologies."
             )
         return [selected[m] for m in range(1, 13)]
 

@@ -153,11 +153,9 @@ trace.txt
 prof/
 *.gz
 
-# Synthetic-dataset sidecars used to build the documentation view trees
-# (see docs/build_trees.py); these must be tracked despite the *.json rule.
+# Azure tests
+__blobstorage__/
+
+# anemoi-datasets docs/build_trees.py inputs, tracked despite *.json
 !docs/using/code/*.json
 !docs/using/yaml/*.json
-
-# Recorded MARS requests per test recipe (see tests/create/test_create.py);
-# these must be tracked despite the *.json rule.
-!tests/create/requests/*.json

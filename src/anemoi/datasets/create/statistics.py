@@ -250,9 +250,9 @@ class _TendencyCollector(_CollectorBase):
 
     @classmethod
     def _merge(cls, a: "_TendencyCollector", b: "_TendencyCollector", result: "_TendencyCollector"):
-        assert (
-            a._window is None and b._window is None
-        ), "Merging tendency collectors with non-empty windows is not supported"
+        assert a._window is None and b._window is None, (
+            "Merging tendency collectors with non-empty windows is not supported"
+        )
 
         if a._delta != b._delta:
             raise ValueError("Cannot merge tendency collectors with different deltas")
@@ -569,15 +569,15 @@ class StatisticsCollector:
             self._tendencies_collectors[name] = _TendencyCollector(column_names, delta)
 
     def _filtered(self, array: NDArray[np.float64], dates: Any) -> tuple[NDArray[np.float64], Any]:
-        assert array.shape[1] == len(
-            self._variables_names
-        ), f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+        assert array.shape[1] == len(self._variables_names), (
+            f"Array column count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
+        )
 
         filtered_array = self._filter(array, dates)
         filtered_dates = self._filter(dates, dates)
-        assert len(filtered_array) == len(
-            filtered_dates
-        ), f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
+        assert len(filtered_array) == len(filtered_dates), (
+            f"Filtered array and dates length mismatch: {len(filtered_array)} vs {len(filtered_dates)}"
+        )
 
         if self._collector is None:  # lazily initialise collectors
             self._init_collectors(filtered_array.shape[1])
@@ -812,8 +812,7 @@ class TrajectoryStatisticsCollector:
         """
         assert array.ndim == 5, f"Expected 5-D array, got shape {array.shape}"
         assert array.shape[1] == len(self._variables_names), (
-            f"Array variables count {array.shape[1]} does not match variables names count "
-            f"{len(self._variables_names)}"
+            f"Array variables count {array.shape[1]} does not match variables names count {len(self._variables_names)}"
         )
 
         if self._filter is not None:

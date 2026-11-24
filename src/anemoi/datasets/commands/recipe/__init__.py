@@ -54,7 +54,6 @@ class Recipe(Command):
             config = yaml.safe_load(file)
 
         if args.validate:
-
             if args.inplace and (not args.format and not args.migrate and not args.dump):
                 argparse.ArgumentError(None, "--inplace is not supported with --validate.")
 
@@ -87,7 +86,6 @@ class Recipe(Command):
             f.close()
 
         if args.dump:
-
             dumped = dump_recipe(config)
             f = sys.stdout
             if args.output:

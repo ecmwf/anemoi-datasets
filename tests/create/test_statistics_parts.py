@@ -83,7 +83,7 @@ def _run_parts(tmp_path, dataset, n, **kwargs) -> StatisticsCollector:
     creator = _creator(str(tmp_path), **kwargs)
     creator.finalise_prepare(dataset)
     for i in range(n):
-        creator.parts = [f"{i+1}/{n}"]
+        creator.parts = [f"{i + 1}/{n}"]
         creator.finalise_load(dataset)
     return StatisticsCollector.load_precomputed(dataset, creator._statistics_part_files())
 
@@ -275,7 +275,7 @@ def test_parts_prepare_requires_loaded_dataset(tmp_path):
 @pytest.mark.parametrize("total", [0, 1, 5, 10])
 @pytest.mark.parametrize("n", [1, 2, 3, 7, 12])
 def test_part_bounds_contiguous(total, n):
-    bounds = [part_bounds(f"{i+1}/{n}", total) for i in range(n)]
+    bounds = [part_bounds(f"{i + 1}/{n}", total) for i in range(n)]
     assert [b[0] for b in bounds] == list(range(n))
     assert bounds[0][1] == 0
     assert bounds[-1][2] == total

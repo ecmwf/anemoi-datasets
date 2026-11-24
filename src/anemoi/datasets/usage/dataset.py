@@ -237,7 +237,6 @@ class Dataset(ABC, Sized):
             return Rescale(self, rescale)._subset(**kwargs).mutate()
 
         if "statistics" in kwargs or "statistics_tendencies" in kwargs:
-
             Statistics = self.usage_factory_load("Statistics")
 
             statistics = kwargs.pop("statistics", None)
@@ -504,7 +503,7 @@ class Dataset(ABC, Sized):
             indices = [i for i in indices if (td[i] - base) % freq == datetime.timedelta(0)]
 
         if not indices:
-            raise ValueError(f"No steps found in range [{lo}, {hi}] with frequency {freq}. " f"Available steps: {td}")
+            raise ValueError(f"No steps found in range [{lo}, {hi}] with frequency {freq}. Available steps: {td}")
         return indices
 
     def _base_dates_to_indices(
@@ -672,7 +671,6 @@ class Dataset(ABC, Sized):
 
         result = {}
         for k, v in self.variables_metadata.items():
-
             # TODO: Once all datasets are updated, we can remove this
             v = v.copy()
             if k in constants:

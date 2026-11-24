@@ -121,7 +121,6 @@ class ZarrBTree:
             self.chunk_sizes = self.pages.attrs["chunk_sizes"]
             LOG.info(f"Opened existing B-tree with page size {self.page_size} and max entries {self.max_entries}")
         else:
-
             # Single array stores all pages:
             # Column layout: [is_node, count, left, right,
             #                 key0, val0_a, val0_b, key1, val1_a, val1_b, ..., keyN, valN_a, valN_b]

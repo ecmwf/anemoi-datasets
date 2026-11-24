@@ -344,7 +344,6 @@ class ReadAheadWriteBehindBuffer:
         chunk = _Buffer(self._arr, chunk_index)
 
         with self._lock:
-
             # For debugging purposes, check again if the chunk was loaded while we were outside the lock
             if self._no_reload:
                 if chunk_index in self._was_loaded:
@@ -416,7 +415,6 @@ class ReadAheadWriteBehindBuffer:
     def _get_key_chunk(self, key: Any) -> _Buffer:
 
         match key:
-
             case int():
                 chunk_index = key // self._nrows_in_chunks
                 return self._ensure_chunk_in_cache(chunk_index)
@@ -425,7 +423,6 @@ class ReadAheadWriteBehindBuffer:
                 return self._get_key_chunk(key[0])
 
             case slice():
-
                 start, stop, step = key.start, key.stop, key.step
 
                 if start == stop:
@@ -446,7 +443,6 @@ class ReadAheadWriteBehindBuffer:
                 return _MultiBufferSpan(self, self._arr.shape[0])
 
             case np.ndarray():
-
                 if np.any(key < 0):
                     key = np.where(key < 0, key + self._arr.shape[0], key)
                 unique_chunks = np.unique(key // self._nrows_in_chunks)
@@ -496,7 +492,6 @@ class ReadAheadWriteBehindBuffer:
             new_shape = tuple(new_shape[0])
 
         with self._lock:
-
             self._arr.resize(new_shape)
 
             for chunk in list(self._lru_chunks_cache.values()):

@@ -52,7 +52,6 @@ for path in glob.glob(os.path.join(HERE, "*.yaml")):
 # Used by pipe.yaml
 @filter_registry.register("filter")
 class FilterForTesting(Filter):
-
     def __init__(self, **kwargs):
 
         self.kwargs = kwargs

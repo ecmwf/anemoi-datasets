@@ -322,16 +322,13 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             variables_axis_idx = axis_idx
             break
     if variables_axis_idx is None:
-        raise ValueError(
-            f"Could not find variables axis among {list(cube.user_coords.keys())}; " f"variables={variables}"
-        )
+        raise ValueError(f"Could not find variables axis among {list(cube.user_coords.keys())}; variables={variables}")
 
     # We hold the first axis fixed (so we only walk one "row" of the cube) and
     # collect one representative field per variable.
     seen_variables: set[str] = set()
     primary_axis_value: Any = None
     for c in cube.iterate_cubelets():
-
         if primary_axis_value is None:
             primary_axis_value = c._coords_names[0]
 
@@ -571,9 +568,9 @@ class GriddedResult(Result):
         self.context: Any = context
         self.datasource = datasource
         self.group_of_dates = argument
-        assert isinstance(
-            self.group_of_dates, (GroupOfDates, ForecastDates)
-        ), f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
+        assert isinstance(self.group_of_dates, (GroupOfDates, ForecastDates)), (
+            f"Expected group_of_dates to be a GroupOfDates or ForecastDates, got {type(self.group_of_dates)}: {self.group_of_dates}"
+        )
 
         self._origins = []
         # Used to check if units are consistent across fields for the same variable
@@ -624,7 +621,7 @@ class GriddedResult(Result):
                 patch=self.patches,
             )
             cube = cube.squeeze()
-            LOG.debug(f"Sorting done in {seconds_to_human(time.time()-self.start)}.")
+            LOG.debug(f"Sorting done in {seconds_to_human(time.time() - self.start)}.")
         except AttributeError:
             import pandas as pd
 
@@ -774,7 +771,7 @@ class GriddedResult(Result):
             )
 
         else:
-            print(f"More fields in dataset that expected for {names}. " "This means that some fields are duplicated.")
+            print(f"More fields in dataset that expected for {names}. This means that some fields are duplicated.")
             duplicated = defaultdict(list)
             for f in ds:
                 # print(f.metadata(namespace="default"))
@@ -801,7 +798,7 @@ class GriddedResult(Result):
             print()
             print("To solve this issue, you can:")
             print("  - Provide a better selection, like 'step: 0' or 'level: 1000'")
-            print("  - Change the way 'param' is computed using 'variable_naming' " "in the 'build' section.")
+            print("  - Change the way 'param' is computed using 'variable_naming' in the 'build' section.")
 
         print()
         print("❌" * 40)

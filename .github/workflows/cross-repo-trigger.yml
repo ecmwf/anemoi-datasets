@@ -2,7 +2,9 @@
 # Regenerate via the ci-infrastructure-generate CLI.
 # Source of truth: each repo's .ci/manifest.toml.
 name: Cross-repo trigger (anemoi-datasets)
+
 run-name: Cross-repo trigger (${{ inputs.from-repo }}@${{ inputs.from-sha }}) [${{ inputs.dispatch-id }}]
+
 on:
   workflow_call:
     inputs:
@@ -34,7 +36,17 @@ on:
         type: string
         default: main
       pin:
-        description: owner/repo@sha the dispatching consumer was pinned to; only with rebuild-request
+        description: 'Space-separated owner/repo@sha to resolve against: those of the downstream runner, or of the consumer that requests a rebuild. Empty pins from-repo@from-sha alone.'
+        required: false
+        default: ''
+        type: string
+      resolved:
+        description: The resolve-deps json output for this repo's kinds, resolved by the downstream runner with the rest of its run. Empty resolves here.
+        required: false
+        default: ''
+        type: string
+      resolved-ref:
+        description: The commit of this repo that `resolved` is for
         required: false
         default: ''
         type: string
@@ -73,13 +85,25 @@ on:
         type: string
         default: main
       pin:
-        description: owner/repo@sha the dispatching consumer was pinned to; only with rebuild-request
+        description: 'Space-separated owner/repo@sha to resolve against: those of the downstream runner, or of the consumer that requests a rebuild. Empty pins from-repo@from-sha alone.'
         required: false
         default: ''
         type: string
+      resolved:
+        description: The resolve-deps json output for this repo's kinds, resolved by the downstream runner with the rest of its run. Empty resolves here.
+        required: false
+        default: ''
+        type: string
+      resolved-ref:
+        description: The commit of this repo that `resolved` is for
+        required: false
+        default: ''
+        type: string
+
 concurrency:
-  group: cross-repo-trigger-runner-anemoi-datasets-${{ github.ref }}
+  group: cross-repo-trigger-runner-anemoi-datasets-${{ inputs.from-repo }}-${{ inputs.from-sha }}
   cancel-in-progress: false
+
 env:
   ARTIFACT_POLL_INTERVAL: ${{ vars.ARTIFACT_POLL_INTERVAL || '60' }}
   ARTIFACT_WAIT_TIMEOUT: ${{ vars.ARTIFACT_WAIT_TIMEOUT || '1800' }}
@@ -88,137 +112,135 @@ env:
   SCCACHE_BUCKET: ${{ secrets.SCCACHE_BUCKET }}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
 jobs:
   resolve:
-    if: contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request
+    if: (contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request) && !inputs.resolved
     runs-on: ubuntu-latest
     outputs:
-      ref: ${{ steps.pick.outputs.ref }}
-      matrix-test: ${{ toJSON(fromJSON(steps.r.outputs.json)['test']) }}
+      ref: ${{ steps.r.outputs.own-sha }}
+      json: ${{ steps.r.outputs.json }}
+      dispatch-plans: ${{ steps.r.outputs.dispatch-plans }}
     steps:
-    - id: mint
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ secrets.CI_PERMISSIONS_APP_CLIENT_ID }}
-        private-key: ${{ secrets.CI_PERMISSIONS_APP_PRIVATE_KEY }}
-        owner: ${{ github.repository_owner }}
-    - id: pick
-      uses: ecmwf/ci-infrastructure/actions/pick-ref@main
-      with:
-        repo: ecmwf/anemoi-datasets
-        try-branch: ${{ inputs.branch }}
-        fallback-ref: ${{ inputs.fallback-ref }}
-        token: ${{ steps.mint.outputs.token }}
-    - uses: actions/checkout@v6
-      with:
-        repository: ecmwf/anemoi-datasets
-        ref: ${{ steps.pick.outputs.ref }}
-        token: ${{ steps.mint.outputs.token }}
-        persist-credentials: false
-    - id: r
-      uses: ecmwf/ci-infrastructure/actions/resolve-deps@main
-      with:
-        current-branch: ${{ steps.pick.outputs.ref }}
-        pin: ${{ !inputs.rebuild-request && format('{0}@{1}', inputs.from-repo, inputs.from-sha) || inputs.pin }}
-        matrix: test
-        token: ${{ steps.mint.outputs.token }}
-        client-id: ${{ secrets.CI_PERMISSIONS_APP_CLIENT_ID }}
-        app-private-key: ${{ secrets.CI_PERMISSIONS_APP_PRIVATE_KEY }}
+      - id: mint
+        uses: ecmwf/ci-infrastructure/actions/mint-token@main
+        with:
+          client-id: ${{ secrets.CI_READER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_READER_APP_PRIVATE_KEY }}
+          repositories: anemoi-datasets,anemoi-transform,anemoi-utils
+          permissions: contents:read actions:read
+      - id: pick
+        uses: ecmwf/ci-infrastructure/actions/pick-ref@main
+        with:
+          repo: ecmwf/anemoi-datasets
+          try-branch: ${{ inputs.branch }}
+          fallback-ref: ${{ inputs.fallback-ref }}
+          token: ${{ steps.mint.outputs.token }}
+      - uses: actions/checkout@v6
+        with:
+          repository: ecmwf/anemoi-datasets
+          ref: ${{ steps.pick.outputs.ref }}
+          token: ${{ steps.mint.outputs.token }}
+          persist-credentials: false
+      - id: r
+        uses: ecmwf/ci-infrastructure/actions/resolve-deps@main
+        with:
+          current-branch: ${{ steps.pick.outputs.ref }}
+          pin: ${{ !inputs.rebuild-request && (inputs.pin || format('{0}@{1}', inputs.from-repo, inputs.from-sha)) || inputs.pin }}
+          matrix: test
+          token: ${{ steps.mint.outputs.token }}
+          rebuild-missing: 'true'
+
+  rebuild-producers:
+    needs: [resolve]
+    runs-on: ubuntu-latest
+    steps:
+      - if: needs.resolve.outputs.dispatch-plans != '' && needs.resolve.outputs.dispatch-plans != '[]'
+        uses: ecmwf/ci-infrastructure/actions/dispatch-producers@main
+        with:
+          dispatch-plans: ${{ needs.resolve.outputs.dispatch-plans }}
+          repositories: anemoi-datasets,anemoi-transform,anemoi-utils
+          client-id: ${{ secrets.CI_DISPATCHER_APP_CLIENT_ID }}
+          app-private-key: ${{ secrets.CI_DISPATCHER_APP_PRIVATE_KEY }}
+
   anemoi_datasets__test:
-    needs:
-    - resolve
-    if: contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request
+    needs: [resolve, rebuild-producers]
+    if: ${{ !failure() && !cancelled() && (contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request) }}
     name: anemoi-datasets/test (${{ matrix._resolved['job-name'] }})
     runs-on: ${{ matrix['runs-on'] }}
     container:
       image: ${{ matrix.container || '' }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.resolve.outputs.matrix-test) }}
+      matrix: ${{ fromJSON(inputs.resolved || needs.resolve.outputs.json)['test'] }}
     steps:
-    - id: mint
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ secrets.CI_PERMISSIONS_APP_CLIENT_ID }}
-        private-key: ${{ secrets.CI_PERMISSIONS_APP_PRIVATE_KEY }}
-        owner: ${{ github.repository_owner }}
-        permission-contents: read
-        permission-actions: read
-        permission-checks: write
-    - id: check_start
-      if: ${{ github.event_name == 'workflow_dispatch' && inputs.from-jobs != '[]' }}
-      uses: ecmwf/ci-infrastructure/actions/report-check-run@main
-      with:
-        token: ${{ steps.mint.outputs.token }}
-        head-repo: ${{ inputs.from-repo }}
-        head-sha: ${{ inputs.from-sha }}
-        name: anemoi-datasets/test (${{ matrix._resolved['job-name'] }})
-        details-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        phase: start
-    - name: Announce image
-      uses: ecmwf/ci-infrastructure/actions/announce-image@main
-    - uses: actions/checkout@v6
-      with:
-        repository: ecmwf/anemoi-datasets
-        ref: ${{ needs.resolve.outputs.ref }}
-        token: ${{ steps.mint.outputs.token }}
-        persist-credentials: false
-    - name: Decode matrix-leg
-      id: m
-      shell: bash
-      env:
-        MATRIX_LEG: ${{ toJSON(matrix) }}
-      run: |
-        set -euo pipefail
-        shopt -s inherit_errexit 2>/dev/null || true
-        command -v jq >/dev/null || {
-          echo "::error::jq is required but not installed in this runner/image." >&2
-          exit 1
-        }
-        leg="$MATRIX_LEG"
-        require() {
-          local val
-          val=$(jq -r "$1" <<<"$leg")
-          if [ -z "$val" ] || [ "$val" = "null" ]; then
-            echo "::error::matrix-leg field '$2' empty or null (jq -r '$1' returned '$val')." >&2
-            exit 1
-          fi
-          printf '%s' "$val"
-        }
-        deps_json=$(require '._resolved.deps | tojson' '_resolved.deps')
-        own_artifact_name=$(require '._resolved."own-artifact-name"' '_resolved.own-artifact-name')
-        {
-          echo "deps-json=${deps_json}"
-          echo "own-artifact-name=${own_artifact_name}"
-        } >> "$GITHUB_OUTPUT"
-    - name: Fetch resolved deps
-      id: deps
-      uses: ecmwf/ci-infrastructure/actions/fetch-deps@main
-      with:
-        deps-json: ${{ steps.m.outputs.deps-json }}
-        token: ${{ steps.mint.outputs.token }}
-    - name: Build
-      id: build
-      uses: ecmwf/ci-infrastructure/actions/run-job-script@main
-      with:
-        job-script: ${{ matrix.job-script }}
-        matrix-leg: ${{ toJSON(matrix) }}
-        package: anemoi-datasets
-        cmake-prefix-path: ${{ steps.deps.outputs.cmake-prefix-path }}
-    - name: Publish
-      uses: ecmwf/ci-infrastructure/actions/publish-artifact@main
-      with:
-        install-path: ${{ steps.build.outputs.install-path }}
-        artifact-name: ${{ steps.m.outputs.own-artifact-name }}
-    - name: Report check-run conclusion
-      if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.from-jobs != '[]' }}
-      uses: ecmwf/ci-infrastructure/actions/report-check-run@main
-      with:
-        token: ${{ steps.mint.outputs.token }}
-        head-repo: ${{ inputs.from-repo }}
-        head-sha: ${{ inputs.from-sha }}
-        name: anemoi-datasets/test (${{ matrix._resolved['job-name'] }})
-        details-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        phase: finish
-        conclusion: ${{ job.status }}
-        check-run-id: ${{ steps.check_start.outputs.check-run-id }}
+      - id: mint
+        uses: ecmwf/ci-infrastructure/actions/mint-token@main
+        with:
+          client-id: ${{ secrets.CI_READER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_READER_APP_PRIVATE_KEY }}
+          repositories: anemoi-datasets,anemoi-transform,anemoi-utils
+          permissions: contents:read actions:read
+      - name: Announce image
+        uses: ecmwf/ci-infrastructure/actions/announce-image@main
+      - uses: actions/checkout@v6
+        with:
+          repository: ecmwf/anemoi-datasets
+          ref: ${{ inputs.resolved-ref || needs.resolve.outputs.ref }}
+          token: ${{ steps.mint.outputs.token }}
+          persist-credentials: false
+      - name: Fetch resolved deps
+        id: deps
+        uses: ecmwf/ci-infrastructure/actions/fetch-deps@main
+        with:
+          deps-json: ${{ toJSON(matrix._resolved.deps) }}
+          token: ${{ steps.mint.outputs.token }}
+      - name: Build
+        id: build
+        uses: ecmwf/ci-infrastructure/actions/run-job-script@main
+        with:
+          job-script: ${{ matrix.job-script }}
+          matrix-leg: ${{ toJSON(matrix) }}
+          package: anemoi-datasets
+          cmake-prefix-path: ${{ steps.deps.outputs.cmake-prefix-path }}
+      - name: Publish
+        uses: ecmwf/ci-infrastructure/actions/publish-artifact@main
+        with:
+          install-path: ${{ steps.build.outputs.install-path }}
+          artifact-name: ${{ matrix._resolved['own-artifact-name'] }}
+
+  check-start__anemoi_datasets__test:
+    needs: [resolve]
+    if: ${{ !failure() && !cancelled() && (contains(fromJSON(inputs.from-jobs), 'anemoi-utils/test') || contains(fromJSON(inputs.from-jobs), 'anemoi-transform/test') || inputs.rebuild-request) && github.event_name == 'workflow_dispatch' && inputs.from-jobs != '[]' }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      check-runs: ${{ steps.report.outputs.check-runs }}
+    steps:
+      - id: report
+        uses: ecmwf/ci-infrastructure/actions/report-check-runs@main
+        with:
+          client-id: ${{ secrets.CI_REPORTER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_REPORTER_APP_PRIVATE_KEY }}
+          head-repo: ${{ inputs.from-repo }}
+          head-sha: ${{ inputs.from-sha }}
+          phase: start
+          job-name: anemoi-datasets/test
+          matrix: ${{ toJSON(fromJSON(inputs.resolved || needs.resolve.outputs.json)['test']) }}
+
+  check-finish__anemoi_datasets__test:
+    needs: [check-start__anemoi_datasets__test, anemoi_datasets__test]
+    if: ${{ always() && needs.check-start__anemoi_datasets__test.outputs.check-runs != '' && needs.check-start__anemoi_datasets__test.outputs.check-runs != '{}' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - uses: ecmwf/ci-infrastructure/actions/report-check-runs@main
+        with:
+          client-id: ${{ secrets.CI_REPORTER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_REPORTER_APP_PRIVATE_KEY }}
+          head-repo: ${{ inputs.from-repo }}
+          head-sha: ${{ inputs.from-sha }}
+          phase: finish
+          check-runs: ${{ needs.check-start__anemoi_datasets__test.outputs.check-runs }}
+          job-result: ${{ needs.anemoi_datasets__test.result }}

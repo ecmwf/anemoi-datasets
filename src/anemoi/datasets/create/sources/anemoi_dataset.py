@@ -15,7 +15,6 @@ from .legacy import LegacySource
 
 @source_registry.register("anemoi_dataset")
 class AnemoiDatasetSource(LegacySource):
-
     @staticmethod
     def _execute(context, dates, params=None, **kwargs):
         import earthkit.data as ekd
