@@ -60,15 +60,8 @@ class GriddedZarr(ZarrStore):
 
     def _read_into(self, index: TupleIndex, out: NDArray[Any]) -> None:
         """Decode a selection of slices straight into ``out``, without an intermediate array."""
-        if (
-            isinstance(self.data, zarr.Array)
-            and out.dtype == self.data.dtype  # zarr 2 decodes whole chunks into out without casting
-            and not self.missing
-            and len(index) == self.data.ndim
-            and all(isinstance(i, slice) and (i.step or 1) > 0 for i in index)
-        ):
-            read_into(self.data, index, out)
-        else:
+        # The plain read raises for missing dates
+        if self.missing or not read_into(self.data, index, out):
             super()._read_into(index, out)
 
     def _unwind(self, index: int | slice | list | tuple, rest: list, shape: tuple, axis: int, axes: list) -> iter:

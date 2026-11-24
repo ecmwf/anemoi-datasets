@@ -20,6 +20,7 @@ from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
 from anemoi.datasets.compat import ZarrFileNotFoundError
 from anemoi.datasets.compat import blosc_compressor
 from anemoi.datasets.compat import get_zarr_format
+from anemoi.datasets.compat import read_into
 from anemoi.datasets.compat import zarr_format_from_name
 from anemoi.datasets.compat import zarr_open
 from anemoi.datasets.compat import zarr_version
@@ -173,6 +174,27 @@ def test_dataset_writes_format_3(tmp_path: Path) -> None:
 
     # Updating detects the format of the existing store
     assert get_zarr_format(Dataset(str(path), update=True).store) == 3
+
+
+def test_read_into_reads_only_what_zarr_can_write_into_out(tmp_path: Path) -> None:
+    """``read_into`` reads positive-step slices over every axis into ``out`` of the same dtype, and refuses the rest."""
+    data = np.arange(60, dtype=np.float32).reshape(6, 10)
+    array = zarr_open(str(tmp_path / "store.zarr"), "w").create_array("data", data=data, chunks=(4, 3))
+
+    out = np.zeros((20, 10), dtype=np.float32)[::4]  # a strided view
+    assert read_into(array, (slice(1, 6), slice(None)), out)
+    assert np.array_equal(out, data[1:6])
+
+    refused = [
+        (array, (slice(0, 2), slice(None)), np.zeros((2, 10), dtype=np.float64)),  # other dtype
+        (array, (slice(None, None, -1), slice(None)), np.zeros((6, 10), dtype=np.float32)),  # negative step
+        (array, (slice(0, 2),), np.zeros((2, 10), dtype=np.float32)),  # not every axis
+        (array, (1, slice(None)), np.zeros(10, dtype=np.float32)),  # not a slice
+        (data, (slice(0, 2), slice(None)), np.zeros((2, 10), dtype=np.float32)),  # not a zarr array
+    ]
+    for source, selection, out in refused:
+        assert not read_into(source, selection, out), selection
+        assert not out.any(), selection
 
 
 def test_zarr_format_from_name() -> None:
