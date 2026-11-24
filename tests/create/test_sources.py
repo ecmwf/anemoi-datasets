@@ -411,6 +411,22 @@ def test_forcings_metadata_from_accumulation_template(tmp_path) -> None:
     assert not {"mars", "grib", "process", "period"} & set(ds.variables_metadata["cos_latitude"])
 
 
+@pytest.mark.parametrize("edition", [1, 2])
+def test_units_set_by_a_filter(tmp_path, edition) -> None:
+    """Units a filter sets are recorded as the filter spelled them (lnsp_to_sp gives sp in Pa, not pascal)."""
+    path = _write_grib(
+        tmp_path / "lnsp.grib",
+        [dict(dataDate=20200101, dataTime=0, paramId=152, typeOfLevel="hybrid", level=1, value=11.5)],
+        edition=edition,
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path}}, {"lnsp_to_sp": {}}]},
+    }
+
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).variables_metadata["sp"]["units"] == "Pa"
+
+
 def test_check_variables_compatibility(tmp_path) -> None:
     """A build fails when the variables of its parts are not compatible (tp over 0-6 h, then over 0-12 h)."""
     path = _write_grib(
