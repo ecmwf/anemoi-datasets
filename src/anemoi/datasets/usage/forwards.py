@@ -406,7 +406,6 @@ class Combined(Forwards):
             If the grids are not the same.
         """
 
-        from anemoi.transform.grids.latlon import GridComparison
         from anemoi.transform.grids.latlon import LatLonGrid
 
         g1 = LatLonGrid.from_latlon(d1.latitudes, d1.longitudes)
@@ -417,11 +416,11 @@ class Combined(Forwards):
             return
         if comparison.is_reorderable:
             raise ValueError(
-                f"{self.__class__.__name__}: datasets have the same grid but "
-                "different point ordering (e.g. reversed latitude or 0-360 "
-                "vs -180-180 longitude convention)"
+                f"{self.__class__.__name__}: datasets have the same grid points but "
+                f"different point ordering (e.g. reversed latitude or 0-360 vs "
+                f"-180-180 longitude convention)"
             )
-        raise ValueError(f"{self.__class__.__name__}: Incompatible grid")
+        raise comparison.error or ValueError(f"{self.__class__.__name__}: Incompatible grid")
 
     def check_same_shape(self, d1: Dataset, d2: Dataset) -> None:
         """Checks if the shapes of two datasets are the same.
