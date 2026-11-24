@@ -84,6 +84,22 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 }
 
 
+def _grib_message(field: Any) -> Any:
+    """Return the GRIB message behind a field, also after filters changed it, or None.
+
+    This is how earthkit-data's GRIB encoder reads it: there is no public route once ``set()`` masked the raw keys.
+    """
+    return field._get_grib() if hasattr(field, "_get_grib") else None
+
+
+def _grib_key(field: Any, key: str) -> Any:
+    """Return a raw GRIB key, from the field's GRIB message when filters mask the single key."""
+    value = field.get(f"metadata.{key}", default=None)
+    if value is None and (grib := _grib_message(field)) is not None:
+        value = grib.get(key, default=None)
+    return value
+
+
 def _name_level(field: Any) -> Any:
     """Return the level of a field's name (``{levelist}`` in ``build.variable_naming``), or None.
 
@@ -99,8 +115,7 @@ def _name_level(field: Any) -> Any:
     if levelist is not None:
         return levelist
     level = field.get("vertical.level", default=None)
-    # The GRIB message behind a changed field, as earthkit-data's GRIB encoder reads it (there is no public route)
-    grib = field._get_grib() if hasattr(field, "_get_grib") else None
+    grib = _grib_message(field)
     if level is None or grib is None or grib.get("levelist", default=None) is not None:
         return level
     return None if level == grib.get("level", default=None) else level
@@ -349,17 +364,18 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         if endStep is not None:
             endStep = as_timedelta(endStep)
 
-        stepTypeForConversion = f.get("metadata.stepTypeForConversion", default=None)
+        # Keys outside the metadata collections, which filters mask (e.g. a rename after an accumulate)
+        stepTypeForConversion = _grib_key(f, "stepTypeForConversion")
         stepType = _raw_key(f, "stepType", "time")
-        typeOfStatisticalProcessing = f.get("metadata.typeOfStatisticalProcessing", default=None)
-        timeRangeIndicator = f.get("metadata.timeRangeIndicator", default=None)
+        typeOfStatisticalProcessing = _grib_key(f, "typeOfStatisticalProcessing")
+        timeRangeIndicator = _grib_key(f, "timeRangeIndicator")
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
             # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
             # Note that this is, on purpose, the opposite of the usual convention.
-            endStep = as_timedelta(f.metadata("P1"))
-            startStep = as_timedelta(f.metadata("P2"))
+            endStep = as_timedelta(_grib_key(f, "P1"))
+            startStep = as_timedelta(_grib_key(f, "P2"))
 
         if startStep is not None and endStep is not None:
             assert endStep >= startStep, (startStep, endStep, md)

@@ -298,12 +298,14 @@ def test_fdb(tmp_path, monkeypatch) -> None:
     assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
 
 
-def _grib_index(tmp_path, messages: list[dict]) -> str:
+def _grib_index(tmp_path, messages: list[dict], edition: int = 2) -> str:
     """Index GRIB messages written with ``_write_grib`` in a new grib-index database."""
     from anemoi.datasets.create.sources.grib_index import GribIndex
 
     path = str(tmp_path / "index.db")
-    GribIndex(path, update=True, overwrite=True).add_grib_file(_write_grib(tmp_path / "index.grib", messages))
+    GribIndex(path, update=True, overwrite=True).add_grib_file(
+        _write_grib(tmp_path / "index.grib", messages, edition=edition)
+    )
     return path
 
 
@@ -339,6 +341,32 @@ def test_accumulate_with_grid_and_flavour(tmp_path) -> None:
     assert np.all(ds[0, 0, 0] == 0 + 1 + 2)
     assert np.allclose(ds.latitudes, latitudes) and np.allclose(ds.longitudes, longitudes)
     assert ds.variables_metadata["precip"]["process"] == "accumulation"
+
+
+@pytest.mark.parametrize("edition", [1, 2])
+def test_accumulate_then_filter(tmp_path, edition) -> None:
+    """Accumulations keep their process and period through a filter, also in GRIB1 (written as instant fields)."""
+    hourly = [
+        dict(
+            dataDate=20200101, dataTime=hour * 100, stepType="accum", shortName="tp", startStep=0, endStep=1, value=hour
+        )
+        for hour in range(6)
+    ]
+    accumulate = {
+        "period": "6h",
+        "availability": "1h",
+        "source": {"grib-index": {"indexdb": _grib_index(tmp_path, hourly, edition=edition), "param": "tp"}},
+    }
+    recipe = {
+        "dates": {"start": "2020-01-01T06:00:00", "end": "2020-01-01T06:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"accumulate": accumulate}, {"rename": {"param": {"tp": "precip"}}}]},
+    }
+
+    variables_metadata = open_dataset(create_dataset(recipe=recipe, output=None)).variables_metadata
+    assert (variables_metadata["precip"]["process"], variables_metadata["precip"]["period"]) == (
+        "accumulation",
+        ["0h", "6h"],
+    )
 
 
 def test_accumulate_grib_index_with_basetime(tmp_path) -> None:
