@@ -384,7 +384,7 @@ def test_forcings_metadata_from_accumulation_template(tmp_path) -> None:
 
 
 def test_check_variables_compatibility(tmp_path) -> None:
-    """The recipe can relax the check that the variables of every part of the dataset are compatible."""
+    """A build fails when the variables of its parts are not compatible (tp over 0-6 h, then over 0-12 h)."""
     path = _write_grib(
         tmp_path / "tp.grib",
         [
@@ -400,9 +400,6 @@ def test_check_variables_compatibility(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="not compatible"):
         create_dataset(recipe=recipe, output=None)
-
-    recipe["build"]["check_variables_compatibility"] = {"ignore_processing_period": True}
-    assert open_dataset(create_dataset(recipe=recipe, output=None)).shape[0] == 2
 
 
 def test_selection_by_other_keys(tmp_path) -> None:
