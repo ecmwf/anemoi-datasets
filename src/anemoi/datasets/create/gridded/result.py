@@ -18,6 +18,7 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
+from anemoi.transform.fields import new_fieldlist_from_list
 from anemoi.transform.metadata import LEVEL_TYPE_TO_LEVTYPE
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
@@ -25,6 +26,7 @@ from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
 
 from anemoi.datasets.create.input.result import Result
+from anemoi.datasets.create.recipe.build import NAME_LEVEL_LABEL
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
@@ -82,40 +84,38 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
 }
 
 
-def _strip_zero_level_suffix(name: str) -> str:
-    """Strip level suffixes from surface fields and known forcing variables.
+def _name_level(field: Any) -> Any:
+    """Return the level of a field's name (``{levelist}`` in ``build.variable_naming``), or None.
 
-    In earthkit-data 1.0 ``vertical.level`` returns 0 for surface-type fields
-    (level_type='surface', 'meanSea', etc.) rather than None.  The
-    ``{parameter.variable}_{vertical.level}`` remapping template therefore
-    produces names like ``"2t_0"`` or ``"cos_latitude_0"`` for surface
-    variables.  This callable is registered as a Patch on the ``param_level``
-    synthetic key so that the ``_0`` suffix is removed after template
-    evaluation, restoring the legacy variable naming (``"2t"``,
-    ``"cos_latitude"``).
-
-    For known computed forcing variables (e.g. ``cos_julian_day``), any
-    trailing ``_<digits>`` level suffix is stripped regardless of the level
-    value, since these synthetic variables are identified by name alone and
-    never carry a meaningful level distinction.
-
-    Level-bearing names such as ``"t_700"`` are returned unchanged.
+    This is eccodes' ``levelist`` key, as earthkit-data 0.x gave it. eccodes has none for many single-level
+    fields (e.g. ECMWF soil layers or 10 m fields, filed under MARS ``levtype=sfc``), whose ``vertical.level``
+    is their GRIB level (7, 10). A flavour or a filter that sets the level of such a field is followed, and one
+    that sets it to None removes it, as in 0.x. Computed forcings have no level.
     """
-    if name is None:
-        return name
+    if _computed_forcing(field):
+        return None
+    # Only readable on fields no filter has changed
+    levelist = field.get("metadata.levelist", default=None)
+    if levelist is not None:
+        return levelist
+    level = field.get("vertical.level", default=None)
+    # The GRIB message behind a changed field, as earthkit-data's GRIB encoder reads it (there is no public route)
+    grib = field._get_grib() if hasattr(field, "_get_grib") else None
+    if level is None or grib is None or grib.get("levelist", default=None) is not None:
+        return level
+    return None if level == grib.get("level", default=None) else level
 
-    # Surface level: always strip _0
-    if name.endswith("_0"):
-        return name[:-2]
 
-    # Known forcing variables: strip any trailing _<digits> level suffix
-    for var_name in _KNOWN_VARIABLES:
-        if name.startswith(var_name + "_"):
-            suffix = name[len(var_name) + 1 :]
-            if suffix.isdigit():
-                return var_name
-
-    return name
+def _with_name_levels(fields: Any) -> Any:
+    """Label each field with the level of its name, read by the ``{levelist}`` of the remapping."""
+    result, changed = [], False
+    for field in fields:
+        level = _name_level(field)
+        if field.get(NAME_LEVEL_LABEL, default=None) != level:
+            field = field.set(**{NAME_LEVEL_LABEL: level})
+            changed = True
+        result.append(field)
+    return new_fieldlist_from_list(result) if changed else fields
 
 
 def _ensemble_member(member: Any) -> int:
@@ -603,15 +603,8 @@ class GriddedResult(Result):
         LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
 
-        self.patches: dict[str, Any] = {
-            "ensemble.member": _ensemble_member,
-            # Strip the ``_0`` suffix produced for surface fields by the
-            # ``{parameter.variable}_{vertical.level}`` template.  In earthkit 1.0
-            # ``vertical.level`` returns 0 for surface fields (not None), so the
-            # template yields e.g. ``"2t_0"`` instead of ``"2t"``.  This callable
-            # Patch is applied to the final ``param_level`` value.
-            "param_level": _strip_zero_level_suffix,
-        }
+        self.patches: dict[str, Any] = {"ensemble.member": _ensemble_member}
+        ds = _with_name_levels(ds)
 
         try:
             cube: Any = ds.to_cube(

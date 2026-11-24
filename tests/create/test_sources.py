@@ -202,15 +202,15 @@ def test_accumulate_grib_index(get_test_data: callable) -> None:
         created = create_dataset(recipe=config_grib_index, output=None)
 
 
-def _write_grib(path, messages: list[dict]) -> str:
-    """Write one GRIB2 message per dict of eccodes keys, with every value set to the dict's ``value``."""
+def _write_grib(path, messages: list[dict], edition: int = 2) -> str:
+    """Write one GRIB message per dict of eccodes keys, with every value set to the dict's ``value``."""
     import eccodes
 
     with open(path, "wb") as f:
         for keys in messages:
             keys = dict(keys)
             value = keys.pop("value")
-            h = eccodes.codes_grib_new_from_samples("regular_ll_sfc_grib2")
+            h = eccodes.codes_grib_new_from_samples(f"regular_ll_sfc_grib{edition}")
             for k, v in keys.items():
                 eccodes.codes_set(h, k, v)
             eccodes.codes_set_values(h, np.full(eccodes.codes_get(h, "numberOfValues"), float(value)))
@@ -455,6 +455,58 @@ def test_mars_levelist_of_surface_like_fields(tmp_path, flavour, expected) -> No
 
     mars = _mars_by_param({"dates": dates, "input": {"grib": {"path": path, "flavour": flavour}}})
     assert mars == {"t": dict(param="t", date=20200101, time=0, step=0, **expected)}
+
+
+@pytest.mark.parametrize("edition", [1, 2])
+@pytest.mark.parametrize(
+    "flavour, filters, expected",
+    [
+        (None, [], ["2t", "cdww", "stl2", "t_500"]),
+        (None, [{"rename": {"param": {"2t": "t2m"}}}], ["cdww", "stl2", "t2m", "t_500"]),
+        ([[{"param": "2t"}, {"param": "t2m"}]], [], ["cdww", "stl2", "t2m", "t_500"]),
+        ([[{"param": "2t"}, {"levelist": 3}]], [], ["2t_3", "cdww", "stl2", "t_500"]),
+        ([[{"param": "t"}, {"levelist": None}]], [], ["2t", "cdww", "stl2", "t"]),
+        (None, [{"soil_to_levtype_sol": {}}], ["2t", "cdww", "sot_2", "t_500"]),
+    ],
+)
+def test_variable_names_of_single_level_fields(tmp_path, edition, flavour, filters, expected) -> None:
+    """Fields eccodes gives no levelist (MARS levtype sfc) are named without their GRIB level (7 for stl2, 10 for
+    cdww, 2 for 2t in GRIB2), unless a flavour or a filter sets one.
+    """
+    path = _write_grib(
+        tmp_path / "sfc.grib",
+        [
+            dict(dataDate=20200101, dataTime=0, paramId=167, value=1),
+            dict(
+                dataDate=20200101,
+                dataTime=0,
+                paramId=170,
+                typeOfLevel="depthBelowLandLayer",
+                topLevel=7,
+                bottomLevel=28,
+                value=1,
+            ),
+            dict(dataDate=20200101, dataTime=0, paramId=140233, typeOfLevel="heightAboveGround", level=10, value=1),
+            dict(dataDate=20200101, dataTime=0, paramId=130, typeOfLevel="isobaricInhPa", level=500, value=1),
+        ],
+        edition=edition,
+    )
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"pipe": [{"grib": {"path": path, "flavour": flavour}}, *filters]},
+    }
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).variables == expected
+
+
+@pytest.mark.parametrize("flavour, expected", [(None, ["t_0"]), ([[{"shortName": "t"}, {"levelist": None}]], ["t"])])
+def test_variable_names_of_surface_like_fields(tmp_path, flavour, expected) -> None:
+    """A field eccodes gives a levelist of 0 (cloudTop) keeps it in its name, unless a flavour removes it."""
+    path = _write_grib(tmp_path / "cloud.grib", [dict(dataDate=20200101, dataTime=0, typeOfLevel="cloudTop", value=1)])
+    recipe = {
+        "dates": {"start": "2020-01-01T00:00:00", "end": "2020-01-01T00:00:00", "frequency": "6h"},
+        "input": {"grib": {"path": path, "flavour": flavour}},
+    }
+    assert open_dataset(create_dataset(recipe=recipe, output=None)).variables == expected
 
 
 @pytest.mark.parametrize("flavour", [None, [[{"levtype": "sfc"}, {"levtype": "sfc", "levelist": None}]]])

@@ -27,7 +27,6 @@ from anemoi.datasets.dates.groups import TrajectoryGroups
 from ..dataset import Dataset
 from ..gridded.creator import GriddedCreator
 from ..gridded.result import _ensemble_member
-from ..gridded.result import _strip_zero_level_suffix
 from ..statistics import TrajectoryStatisticsCollector
 from .context import TrajectoryGriddedContext
 
@@ -322,9 +321,7 @@ class TrajectoryGriddedCreator(GriddedCreator):
             # (param_level pattern), matching the names declared at init.
             # Use field.get() so the remapping template {metadata.key} vars
             # route correctly through earthkit 1.0's _get_single.
-            var_name = _strip_zero_level_suffix(
-                remapping(lambda k, default=None: field.get(k, default=default))("param_level", default=None)
-            )
+            var_name = remapping(lambda k, default=None: field.get(k, default=default))("param_level", default=None)
             if var_name is None:
                 var_name = str(field.metadata("param"))
 

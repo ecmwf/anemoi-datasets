@@ -26,16 +26,18 @@ if TYPE_CHECKING:
 
 LOG = logging.getLogger(__name__)
 
+# Label holding the MARS levelist of a field, set on every field before naming (see ``_name_level`` in
+# ``gridded/result.py``): ``vertical.level`` is the GRIB level, which surface fields also have.
+NAME_LEVEL_LABEL = "labels.anemoi_levelist"
+
 # Mapping from legacy bare template keys to earthkit 1.0 component paths.
 # - ``parameter.variable`` survives ``field.set()`` and
 #   ``new_field_from_latitudes_longitudes`` wrapping.
-# - ``vertical.level`` also survives all wrapping; it returns 0 for surface
-#   fields.  A ``Patch`` on ``param_level`` strips the resulting ``_0`` suffix
-#   for surface variables (see ``result.py`` and ``context.py``).
+# - ``level`` is the GRIB level (``vertical.level``), ``levelist`` the MARS one.
 _LEGACY_KEY_MAP = {
     "param": "parameter.variable",
     "level": "vertical.level",
-    "levelist": "vertical.level",
+    "levelist": NAME_LEVEL_LABEL,
 }
 
 # Pattern that matches bare {key} or {key:type} template variables but leaves
@@ -49,7 +51,7 @@ def _to_earthkit10_template(template: str) -> str:
     """Translate bare ``{key}`` → earthkit 1.0 path ``{component.key}``.
 
     Known legacy keys (``param``, ``level``, ``levelist``) are mapped to their
-    earthkit 1.0 equivalents (``parameter.variable``, ``vertical.level``).
+    earthkit 1.0 equivalents (``parameter.variable``, ``vertical.level``, ``NAME_LEVEL_LABEL``).
     Already-prefixed forms such as ``{parameter.variable}`` are left unchanged
     (idempotent).  Unknown bare keys fall back to ``{metadata.key}`` so that
     custom remapping entries still work.
