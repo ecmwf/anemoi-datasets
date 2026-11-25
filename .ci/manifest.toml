@@ -31,6 +31,7 @@ allow-stale = false
 triggers = ["upstream-change", "rebuild-request"]
 
 [matrix.test.defaults]
+sccache = false
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
@@ -55,6 +56,7 @@ python-version = "3.13"
 publishes = false
 
 [[matrix.zarr2.include]]
+sccache = false
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
