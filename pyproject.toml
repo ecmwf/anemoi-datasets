@@ -41,7 +41,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "anemoi-transform>=0.4",
+  "anemoi-transform>=0.???", #TODO: pin to anemoi-transform version with the consolidated LatLonGrid implementation.
   "anemoi-utils[s3]>=0.5.12",
   "cfunits",
   "glom",
