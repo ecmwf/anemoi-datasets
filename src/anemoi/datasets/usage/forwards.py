@@ -406,7 +406,7 @@ class Combined(Forwards):
             If the grids are not the same.
         """
 
-        from anemoi.transform.grids.latlon import LatLonGrid
+        from anemoi.transform.grids import LatLonGrid
 
         g1 = LatLonGrid.from_latlon(d1.latitudes, d1.longitudes)
         g2 = LatLonGrid.from_latlon(d2.latitudes, d2.longitudes)
