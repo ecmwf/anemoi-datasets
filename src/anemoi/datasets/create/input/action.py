@@ -34,35 +34,41 @@ def _check_join_grids(results: list, path: tuple) -> None:
         longitude convention).
     """
     import earthkit.data as ekd
-    from anemoi.transform.grids.latlon import LatLonGrid
+    from anemoi.transform.grids import LatLonGrid
 
     fieldlists = [r for r in results if isinstance(r, ekd.FieldList) and len(r) > 0]
     if len(fieldlists) < 2:
         return
 
-    first = fieldlists[0][0]
-    if not hasattr(first, "grid_points"):
-        LOG.warning("join: cannot extract grid from %s, skipping grid check", type(first).__name__)
-        return
+    grids = []
+    for i, fl in enumerate(fieldlists):
+        first = fl[0]
+        grid = LatLonGrid.from_field(first)
+        if not grid.is_canonical():
+            LOG.warning(
+                "join: source at %s is not in canonical grid order "
+                "(N->S latitude, W->E longitude in [0, 360)). Consider adding "
+                "the 'canonical_order' filter in a pipe for this source.",
+                path + (i,),
+            )
+        grids.append((i, grid))
 
-    reference = LatLonGrid.from_field(first)
-    for i, result in enumerate(fieldlists[1:], start=1):
-        field = result[0]
-        if not hasattr(field, "grid_points"):
-            LOG.warning("join: cannot extract grid from %s, skipping grid check", type(field).__name__)
-            continue
-        comparison = reference.compare(LatLonGrid.from_field(field))
+    reference = grids[0][1]
+    for i, grid in grids[1:]:
+        comparison = reference.compare(grid)
         if comparison.is_identical:
             continue
-        where = ".".join(str(p) for p in path) + f".{i}"
         if comparison.is_reorderable:
             raise ValueError(
-                f"join: source at {where} has the same grid points but a different "
-                f"point ordering (e.g. reversed latitude or 0-360 vs -180-180 "
-                f"longitude convention). Reorder the source before joining, e.g. "
-                f"with the 'canonical_order' filter in a pipe."
+                f"join: source at {path + (i,)} has the same grid points but a "
+                f"different point ordering (e.g. reversed latitude or 0-360 vs "
+                f"-180-180 longitude convention). Reorder the source(s) before "
+                f"joining, e.g. with the 'canonical_order' filter in a pipe."
             )
-        raise comparison.error or ValueError(f"join: incompatible grid at {where}")
+        raise comparison.error or ValueError(
+            f"join: incompatible grid at {path + (i,)} "
+            f"Consider regridding the source e.g. with the `regrid` filter in a pipe."
+            )
 
 
 class Action(ABC):
