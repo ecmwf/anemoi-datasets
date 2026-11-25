@@ -15,6 +15,7 @@ package = "anemoi-utils"
 ref = "main"
 compiler-inputs = []
 python-version-input = "python-version"
+allow-stale = false
 
 [[deps]]
 repo = "ecmwf/anemoi-transform"
@@ -22,6 +23,7 @@ package = "anemoi-transform"
 ref = "main"
 compiler-inputs = []
 python-version-input = "python-version"
+allow-stale = false
 
 # Each leg publishes its wheel, so a consumer's leg takes the one tested on
 # its own Python (python-version-input).
