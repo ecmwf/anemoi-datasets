@@ -137,3 +137,13 @@ def test_window_indices_must_be_a_list_of_integers(view: WindowView, index) -> N
 def test_out_of_range_window_raises(view: WindowView) -> None:
     with pytest.raises(IndexError):
         view[[0, len(view)]]
+
+
+def test_view_covers_exactly_the_stored_hours(view: WindowView) -> None:
+    assert len(view) == N_HOURS
+    assert view.dates[-1] == np.datetime64((FIRST_DATE + datetime.timedelta(hours=N_HOURS - 1)).replace(tzinfo=None))
+
+
+def test_last_window_is_the_last_stored_hour(view: WindowView) -> None:
+    np.testing.assert_array_equal(view[-1].latitudes, [N_HOURS - 1] * REPORTS_PER_HOUR)
+    np.testing.assert_array_equal(view[-2].latitudes, [N_HOURS - 2] * REPORTS_PER_HOUR)

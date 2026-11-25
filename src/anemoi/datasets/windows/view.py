@@ -194,14 +194,15 @@ class WindowView:
     @property
     def _len(self) -> int:
 
-        # Compute the number of windows in the view
-        # TODO: review that logic
+        # Compute the number of windows in the view: one per date
+        # start_date + i * frequency, up to the first one at or after end_date,
+        # so that the last window covers end_date when it is not on the grid.
 
-        last_index = (self.end_date - self.start_date) // self.frequency
-        while self.start_date + last_index * self.frequency <= self.end_date:
-            last_index += 1
+        if self.end_date < self.start_date:
+            return 0
 
-        return last_index + 1
+        # Ceiling division of timedeltas
+        return -((self.start_date - self.end_date) // self.frequency) + 1
 
     def __getitem__(self, index: Any) -> np.ndarray:
         """Retrieve the data for the specified window or windows, applying window boundaries and filtering.
