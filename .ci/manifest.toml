@@ -4,6 +4,7 @@ repo = "ecmwf/anemoi-datasets"
 visibility = "public"
 # Approved fork pull requests run ci.yml through the generated ci-fork.yml.
 fork-pull-requests = true
+allow-stale-deps = true
 compiler-inputs = []
 ci-pre-commit = false
 full-history = true
@@ -14,6 +15,7 @@ package = "anemoi-utils"
 ref = "main"
 compiler-inputs = []
 python-version-input = "python-version"
+allow-stale = false
 
 [[deps]]
 repo = "ecmwf/anemoi-transform"
@@ -21,6 +23,7 @@ package = "anemoi-transform"
 ref = "main"
 compiler-inputs = []
 python-version-input = "python-version"
+allow-stale = false
 
 # Each leg publishes its wheel, so a consumer's leg takes the one tested on
 # its own Python (python-version-input).
@@ -28,6 +31,7 @@ python-version-input = "python-version"
 triggers = ["upstream-change", "rebuild-request"]
 
 [matrix.test.defaults]
+sccache = false
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
@@ -52,6 +56,7 @@ python-version = "3.13"
 publishes = false
 
 [[matrix.zarr2.include]]
+sccache = false
 job-script = "./.ci/test.sh.j2"
 runs-on = "ubuntu-24.04"
 platform = "gh-ubuntu-24.04"
