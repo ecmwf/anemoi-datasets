@@ -35,6 +35,7 @@ def _check_join_grids(results: list, path: tuple) -> None:
     """
     import earthkit.data as ekd
     from anemoi.transform.grids import LatLonGrid
+
     from anemoi.datasets.grids import check_grids_compatible
 
     fieldlists = [r for r in results if isinstance(r, ekd.FieldList) and len(r) > 0]
@@ -57,9 +58,10 @@ def _check_join_grids(results: list, path: tuple) -> None:
     reference = grids[0][1]
     for i, grid in grids[1:]:
         check_grids_compatible(
-            reference, grid, f"join: source at {path + (i,)}",
-            reorder_hint=" Reorder the source(s) before joining, e.g. with "
-                        "the 'canonical_order' filter in a pipe.",
+            reference,
+            grid,
+            f"join: source at {path + (i,)}",
+            reorder_hint=" Reorder the source(s) before joining, e.g. with the 'canonical_order' filter in a pipe.",
         )
 
 

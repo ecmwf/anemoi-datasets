@@ -9,6 +9,7 @@
 
 from anemoi.transform.grids import LatLonGrid
 
+
 def check_grids_compatible(
     reference: "LatLonGrid",
     other: "LatLonGrid",

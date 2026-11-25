@@ -407,6 +407,7 @@ class Combined(Forwards):
         """
 
         from anemoi.transform.grids import LatLonGrid
+
         from anemoi.datasets.grids import check_grids_compatible
 
         g1 = LatLonGrid.from_latlon(d1.latitudes, d1.longitudes)
