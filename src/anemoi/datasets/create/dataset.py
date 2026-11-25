@@ -17,12 +17,9 @@ from typing import Any
 
 import numpy as np
 import zarr
-from anemoi.utils.dates import frequency_to_string
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import frequency_to_string, frequency_to_timedelta
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
+from anemoi.datasets.compat import DEFAULT_FORMAT, zarr_format_from_name, zarr_open
 
 from .locking import Locking
 

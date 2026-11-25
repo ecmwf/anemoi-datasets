@@ -8,8 +8,7 @@
 # nor does it submit to any jurisdiction.
 
 import re
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 
 def step_to_timedelta(step: str | int | timedelta) -> timedelta:

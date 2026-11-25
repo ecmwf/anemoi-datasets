@@ -44,8 +44,7 @@ a ``Source``; an anemoi-transform ``Filter`` transforms a ``FieldList`` or
 
 from __future__ import annotations
 
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from anemoi.datasets.create.source import Source
 

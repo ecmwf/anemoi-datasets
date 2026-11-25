@@ -9,33 +9,29 @@
 
 
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Hashable
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemoi.utils.config import DotDict
 
-from .coordinates import Coordinate
-from .coordinates import DateCoordinate
-from .coordinates import EnsembleCoordinate
-from .coordinates import LatitudeCoordinate
-from .coordinates import LevelCoordinate
-from .coordinates import LongitudeCoordinate
-from .coordinates import PointCoordinate
-from .coordinates import ScalarCoordinate
-from .coordinates import StepCoordinate
-from .coordinates import TimeCoordinate
-from .coordinates import UnsupportedCoordinate
-from .coordinates import XCoordinate
-from .coordinates import YCoordinate
-from .coordinates import is_scalar
-from .grid import Grid
-from .grid import MeshedGrid
-from .grid import MeshProjectionGrid
-from .grid import UnstructuredGrid
-from .grid import UnstructuredProjectionGrid
+from .coordinates import (
+    Coordinate,
+    DateCoordinate,
+    EnsembleCoordinate,
+    LatitudeCoordinate,
+    LevelCoordinate,
+    LongitudeCoordinate,
+    PointCoordinate,
+    ScalarCoordinate,
+    StepCoordinate,
+    TimeCoordinate,
+    UnsupportedCoordinate,
+    XCoordinate,
+    YCoordinate,
+    is_scalar,
+)
+from .grid import Grid, MeshedGrid, MeshProjectionGrid, UnstructuredGrid, UnstructuredProjectionGrid
 
 if TYPE_CHECKING:
     # xarray is very slow to import, so we only import it for type checking

@@ -13,8 +13,7 @@ import logging
 from typing import Any
 
 import earthkit.data as ekd
-from anemoi.transform.fields import new_field_from_grid
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_from_grid, new_fieldlist_from_list
 from anemoi.transform.flavour import RuleBasedFlavour
 from anemoi.transform.grids import grid_registry
 from earthkit.data import from_source

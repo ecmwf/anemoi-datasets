@@ -12,8 +12,7 @@ import datetime
 import logging
 import os
 from functools import cached_property
-from typing import Any
-from typing import Union
+from typing import Any, Union
 
 from numpy.typing import NDArray
 

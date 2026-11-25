@@ -13,11 +13,9 @@ import logging
 from abc import abstractmethod
 from collections.abc import Iterable
 
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import as_datetime, frequency_to_timedelta
 
-from anemoi.datasets.create.intervals import SignedInterval
-from anemoi.datasets.create.intervals import step_to_timedelta
+from anemoi.datasets.create.intervals import SignedInterval, step_to_timedelta
 
 from .covering_intervals import covering_intervals
 

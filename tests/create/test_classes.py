@@ -14,8 +14,7 @@ from functools import wraps
 from unittest.mock import patch
 
 import pytest
-from anemoi.utils.testing import TEST_DATA_URL
-from anemoi.utils.testing import skip_if_offline
+from anemoi.utils.testing import TEST_DATA_URL, skip_if_offline
 
 from anemoi.datasets import open_dataset
 

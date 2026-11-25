@@ -9,12 +9,10 @@
 
 from typing import Any
 
-from anemoi.transform.fields import new_field_with_metadata
-from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.fields import new_field_with_metadata, new_fieldlist_from_list
 from earthkit.data import from_source
 
-from anemoi.datasets.create.arguments import ForecastDates
-from anemoi.datasets.create.arguments import ValidDates
+from anemoi.datasets.create.arguments import ForecastDates, ValidDates
 from anemoi.datasets.create.source import Source
 
 from . import source_registry

@@ -12,8 +12,7 @@ import pytest
 import semantic_version
 
 from anemoi.datasets.commands.inspect import Version
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import zarr_open, zarr_version
 
 ZARR_FORMATS = [
     2,

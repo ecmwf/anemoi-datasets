@@ -16,13 +16,15 @@ import pytest
 
 import anemoi.datasets
 from anemoi.datasets.commands.copy import ZarrCopier
-from anemoi.datasets.compat import DEFAULT_ZARR_FORMAT
-from anemoi.datasets.compat import ZarrFileNotFoundError
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import get_zarr_format
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_open
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import (
+    DEFAULT_ZARR_FORMAT,
+    ZarrFileNotFoundError,
+    blosc_compressor,
+    get_zarr_format,
+    zarr_format_from_name,
+    zarr_open,
+    zarr_version,
+)
 from anemoi.datasets.create.dataset import Dataset
 from anemoi.datasets.misc.check import check_zarr
 

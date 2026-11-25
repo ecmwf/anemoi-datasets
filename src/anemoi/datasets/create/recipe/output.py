@@ -11,26 +11,13 @@ from __future__ import annotations
 
 import logging
 from math import prod
-from typing import Annotated
-from typing import Any
-from typing import Literal
-from typing import Union
+from typing import Annotated, Any, Literal, Union
 
 import numpy as np
-from pydantic import BaseModel
-from pydantic import ConfigDict
-from pydantic import Discriminator
-from pydantic import Field
-from pydantic import Tag
-from pydantic import field_validator
-from pydantic import model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator, model_validator
 
-from anemoi.datasets.compat import DEFAULT_FORMAT
-from anemoi.datasets.compat import blosc_compressor
-from anemoi.datasets.compat import zarr_format_from_name
-from anemoi.datasets.compat import zarr_version
-from anemoi.datasets.compat.codecs import numcodecs_codec
-from anemoi.datasets.compat.codecs import zarr3_codec
+from anemoi.datasets.compat import DEFAULT_FORMAT, blosc_compressor, zarr_format_from_name, zarr_version
+from anemoi.datasets.compat.codecs import numcodecs_codec, zarr3_codec
 
 LOG = logging.getLogger(__name__)
 

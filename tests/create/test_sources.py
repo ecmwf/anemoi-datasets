@@ -13,8 +13,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from anemoi.utils.testing import skip_if_offline
-from anemoi.utils.testing import skip_missing_packages
+from anemoi.utils.testing import skip_if_offline, skip_missing_packages
 
 from anemoi.datasets import open_dataset
 

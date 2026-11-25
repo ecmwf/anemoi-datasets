@@ -13,12 +13,14 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from anemoi.datasets.create.sources.xarray_support.coordinates import DateCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LatitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LevelCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import LongitudeCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import StepCoordinate
-from anemoi.datasets.create.sources.xarray_support.coordinates import TimeCoordinate
+from anemoi.datasets.create.sources.xarray_support.coordinates import (
+    DateCoordinate,
+    LatitudeCoordinate,
+    LevelCoordinate,
+    LongitudeCoordinate,
+    StepCoordinate,
+    TimeCoordinate,
+)
 from anemoi.datasets.create.sources.xarray_support.fieldlist import XarrayFieldList
 from anemoi.datasets.create.sources.xarray_support.time import ForecastFromValidTimeAndStep
 from anemoi.datasets.create.sources.xarray_support.variable import Variable

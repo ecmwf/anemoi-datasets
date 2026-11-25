@@ -14,8 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from anemoi.datasets.compat import HTTPStore
-from anemoi.datasets.compat import zarr_version
+from anemoi.datasets.compat import HTTPStore, zarr_version
 
 ROOT = "https://data.example/anemoi-datasets/era.zarr"
 ROOT_DIR = ROOT + "/"

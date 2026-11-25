@@ -17,19 +17,12 @@ import numpy as np
 from anemoi.transform.spatial import nearest_grid_points
 from numpy.typing import NDArray
 
-from ..dataset import Dataset
-from ..dataset import FullIndex
-from ..dataset import Shape
-from ..dataset import TupleIndex
+from ..dataset import Dataset, FullIndex, Shape, TupleIndex
 from ..debug import Node
 from ..forwards import Combined
-from ..misc import _auto_adjust
-from ..misc import _open_dataset
+from ..misc import _auto_adjust, _open_dataset
 from ..options import Options
-from .indexing import apply_index_to_slices_changes
-from .indexing import expand_list_indexing
-from .indexing import index_to_slices
-from .indexing import update_tuple
+from .indexing import apply_index_to_slices_changes, expand_list_indexing, index_to_slices, update_tuple
 
 LOG = logging.getLogger(__name__)
 

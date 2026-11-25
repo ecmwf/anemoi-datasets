@@ -14,8 +14,7 @@ from collections.abc import Generator
 from typing import Any
 
 import numpy as np
-from anemoi.utils.dates import as_datetime
-from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.dates import as_datetime, frequency_to_timedelta
 
 LOG = logging.getLogger(__name__)
 
