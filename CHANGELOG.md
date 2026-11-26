@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.52](https://github.com/ecmwf/anemoi-datasets/compare/0.5.51...0.5.52) (2026-11-26)
+
+
+### Features
+
+* Read join members straight into the joined array ([#835](https://github.com/ecmwf/anemoi-datasets/issues/835)) ([4356872](https://github.com/ecmwf/anemoi-datasets/commit/4356872e5bfe687d8e03167db75634a92d2531be))
+
 ## [0.5.51](https://github.com/ecmwf/anemoi-datasets/compare/0.5.50...0.5.51) (2026-11-25)
 
 
