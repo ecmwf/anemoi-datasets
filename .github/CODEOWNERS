@@ -7,8 +7,8 @@
 /.release-please-config.json @ecmwf/anemoi_security
 
 # BEGIN org baseline: maintainers own .github/, .ci/ and CODEOWNERS
-/.github/ @b8raoult @ecmwf/anemoi_admins @ecmwf/anemoi_security @ecmwf/anemoi_technical_subgroup @floriankrb @gmertes @HCookie @JesperDramsch @JPXKQX @mchantry @mcocdawc @VeraChristina
-/.ci/ @b8raoult @ecmwf/anemoi_admins @ecmwf/anemoi_security @ecmwf/anemoi_technical_subgroup @floriankrb @gmertes @HCookie @JesperDramsch @JPXKQX @mchantry @mcocdawc @VeraChristina
-/CODEOWNERS @b8raoult @ecmwf/anemoi_admins @ecmwf/anemoi_security @ecmwf/anemoi_technical_subgroup @floriankrb @gmertes @HCookie @JesperDramsch @JPXKQX @mchantry @mcocdawc @VeraChristina
-/docs/CODEOWNERS @b8raoult @ecmwf/anemoi_admins @ecmwf/anemoi_security @ecmwf/anemoi_technical_subgroup @floriankrb @gmertes @HCookie @JesperDramsch @JPXKQX @mchantry @mcocdawc @VeraChristina
+/.github/ @ecmwf/anemoi_admins @ecmwf/anemoi_security
+/.ci/ @ecmwf/anemoi_admins @ecmwf/anemoi_security
+/CODEOWNERS @ecmwf/anemoi_admins @ecmwf/anemoi_security
+/docs/CODEOWNERS @ecmwf/anemoi_admins @ecmwf/anemoi_security
 # END org baseline

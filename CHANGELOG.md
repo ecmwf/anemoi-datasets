@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Please add your functional changes to the appropriate section in the PR.
 Keep it human-readable, your future self will thank you!
 
+## [0.5.51](https://github.com/ecmwf/anemoi-datasets/compare/0.5.50...0.5.51) (2026-11-25)
+
+
+### Bug Fixes
+
+* **windows:** Select several windows with a stepped slice, a list or … ([#841](https://github.com/ecmwf/anemoi-datasets/issues/841)) ([7ec0c1e](https://github.com/ecmwf/anemoi-datasets/commit/7ec0c1e94bfc877955102fa5b27fe3bb7ed25d35))
+
 ## [0.5.50](https://github.com/ecmwf/anemoi-datasets/compare/0.5.49...0.5.50) (2026-11-05)
 
 
