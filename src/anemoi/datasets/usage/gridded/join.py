@@ -103,12 +103,18 @@ class Join(Combined):
             The data for the tuple index.
         """
         index, changes = index_to_slices(index, self.shape)
+        shape = [len(range(s.start, s.stop, s.step)) for s in index]
+        shape[1] = self.shape[1]
         index, previous = update_tuple(index, 1, slice(None))
 
         # TODO: optimize if index does not access all datasets, so we don't load chunks we don't need
-        result = [d[index] for d in self.datasets]
+        # Each member writes its variables into the output, which saves a concatenation copy
+        result = np.empty(shape, dtype=np.result_type(*[d.dtype for d in self.datasets]))
+        start = 0
+        for d in self.datasets:
+            d._read_into(index, result[:, start : start + d.shape[1]])
+            start += d.shape[1]
 
-        result = np.concatenate(result, axis=1)
         return apply_index_to_slices_changes(result[:, previous], changes)
 
     @debug_indexing

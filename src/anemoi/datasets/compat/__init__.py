@@ -56,6 +56,7 @@ if zarr_version < 3:
     from .zarr2 import ZipStore
     from .zarr2 import blosc_compressor
     from .zarr2 import get_zarr_format
+    from .zarr2 import read_into as _read_into
     from .zarr2 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
@@ -70,12 +71,45 @@ else:
     from .zarr3 import ZipStore
     from .zarr3 import blosc_compressor
     from .zarr3 import get_zarr_format
+    from .zarr3 import read_into as _read_into
     from .zarr3 import zarr_format_kwargs
 
     MemoryStore = zarr.storage.MemoryStore
     # zarr 3 has no NestedDirectoryStore: format 3 arrays are always nested,
     # format 2 arrays need to specify chunk_key_encoding in create_array
     NestedDirectoryStore = zarr.storage.LocalStore
+
+
+def read_into(array: Any, selection: Any, out: Any) -> bool:
+    """Read a selection of a zarr array straight into ``out``, which may be a strided view.
+
+    Only a tuple of positive-step slices over every axis of a zarr array is read, and only when
+    ``out`` has the array's dtype (zarr-python 2 decodes whole chunks into ``out`` without casting).
+
+    Parameters
+    ----------
+    array : Any
+        The array to read from.
+    selection : Any
+        The selection to read.
+    out : Any
+        The array to read into, of the selection's shape.
+
+    Returns
+    -------
+    bool
+        Whether the selection was read. If not, ``out`` is untouched and the caller must read it another way.
+    """
+    if not (
+        isinstance(array, zarr.Array)
+        and out.dtype == array.dtype
+        and isinstance(selection, tuple)
+        and len(selection) == array.ndim
+        and all(isinstance(s, slice) and (s.step or 1) > 0 for s in selection)
+    ):
+        return False
+    _read_into(array, selection, out)
+    return True
 
 
 def zarr_open(store: Any, mode: str, *, zarr_format: int | None = None) -> Any:
@@ -136,6 +170,7 @@ __all__ = [
     "MemoryStore",
     "blosc_compressor",
     "get_zarr_format",
+    "read_into",
     "zarr_format_from_name",
     "zarr_open",
     "NestedDirectoryStore",
