@@ -13,8 +13,9 @@ in more detail.
 
    All methods and attributes will take into account any subsetting,
    selecting, or combining used to construct the final dataset, with the
-   exception of ``statistics``, which will return the values of the
-   first dataset encountered. See :ref:`using-statistics` for more
+   exception of ``statistics`` and ``residual_statistics``, which will
+   return the values of the first dataset encountered when datasets are
+   combined along the dates. See :ref:`using-statistics` for more
    details.
 
 *********
@@ -98,6 +99,24 @@ statistics:
       .. literalinclude:: code/methods_statistics_use_.py
 
    Use the ``name_to_index`` attribute to map variable names to indices.
+
+.. _residual-statistics-property:
+
+residual_statistics:
+   .. warning::
+
+      Experimental: this attribute may be removed or renamed in a
+      future release.
+
+   `Residual statistics` are statistics of the difference between two
+   datasets. They are not stored in a dataset: they are computed once
+   with the :ref:`compute command <compute_command>` and attached with
+   the ``residual_statistics`` option of ``open_dataset``. The returned
+   dictionary has the same entries and the same layout as
+   :ref:`statistics <statistics-property>` above. Accessing this
+   attribute on a dataset that has no residual statistics attached
+   raises ``ResidualStatisticsNotAvailable``. See
+   :ref:`using-statistics` for more details.
 
 resolution:
    The dataset's resolution.
