@@ -19,6 +19,52 @@ from anemoi.datasets.create.recipe.dates import Steps
 LOG = logging.getLogger(__name__)
 
 
+def _check_join_grids(results: list, path: tuple) -> None:
+    """Check that all fieldlist results in a join share the same grid ordering.
+
+    Compares the grid of each result's first field against the first result's,
+    using anemoi-transform's LatLonGrid. Non-fieldlist results (e.g. pandas
+    DataFrames) and empty results are skipped.
+
+    Raises
+    ------
+    ValueError
+        If a result has a different grid, or the same grid points in a
+        different order (e.g. reversed latitude or 0-360 vs -180-180
+        longitude convention).
+    """
+    import earthkit.data as ekd
+    from anemoi.transform.grids import LatLonGrid
+
+    from anemoi.datasets.grids import check_grids_compatible
+
+    fieldlists = [r for r in results if isinstance(r, ekd.FieldList) and len(r) > 0]
+    if len(fieldlists) < 2:
+        return
+
+    grids = []
+    for i, fl in enumerate(fieldlists):
+        first = fl[0]
+        grid = LatLonGrid.from_field(first)
+        if not grid.is_canonical():
+            LOG.warning(
+                "join: source at %s is not in canonical grid order "
+                "(N->S latitude, W->E longitude in [0, 360)). Consider adding "
+                "the 'canonical_order' filter in a pipe for this source.",
+                path + (i,),
+            )
+        grids.append((i, grid))
+
+    reference = grids[0][1]
+    for i, grid in grids[1:]:
+        check_grids_compatible(
+            reference,
+            grid,
+            f"join: source at {path + (i,)}",
+            reorder_hint=" Reorder the source(s) before joining, e.g. with the 'canonical_order' filter in a pipe.",
+        )
+
+
 class Action(ABC):
     """An "Action" represents a single operation described in the yaml configuration, e.g. a source, a filter,
     pipe, join, etc.
@@ -150,7 +196,9 @@ class Join(Action):
         return f"Join({self.actions})"
 
     def __call__(self, context, argument):
-        results = context.join(action(context, argument) for action in self.actions)
+        results = [action(context, argument) for action in self.actions]
+        _check_join_grids(results, self.path)
+        results = context.join(results)
         return context.register(results, self.path)
 
     def dump(self, dumper) -> None:
