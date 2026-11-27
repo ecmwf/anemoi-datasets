@@ -571,6 +571,12 @@ def _open_dataset(*args: Any, options: Options = None, **kwargs: Any) -> "Datase
         assert not sets, sets
         return complement_factory(args, kwargs, options).mutate()
 
+    if "constants" in kwargs:
+        from anemoi.datasets.usage.gridded.constants import constants_factory
+
+        assert not sets, sets
+        return constants_factory(args, kwargs, options).mutate()
+
     if "synthetic" in kwargs:
         from anemoi.datasets.usage.gridded.synthetic import synthetic_factory
 
