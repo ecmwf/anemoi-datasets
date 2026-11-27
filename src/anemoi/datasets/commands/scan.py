@@ -99,9 +99,9 @@ class Scan(Command):
         for path in tqdm.tqdm(paths, leave=False):
             if not match(path):
                 continue
-            for field in tqdm.tqdm(ekd.from_source("file", path), leave=False):
-                dates.add(field.datetime()["valid_time"])
-                mars = field.metadata(namespace="mars")
+            for field in tqdm.tqdm(ekd.from_source("file", path).to_fieldlist(), leave=False):
+                dates.add(field.time.valid_datetime())
+                mars = field.get(collections="metadata.mars")
                 keys = tuple(mars.get(k) for k in KEYS)
                 gribs[keys].add(path)
                 for k, v in mars.items():

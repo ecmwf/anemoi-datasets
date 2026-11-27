@@ -7,6 +7,7 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
+import datetime
 import itertools
 import logging
 import math
@@ -17,15 +18,57 @@ from typing import Any
 from typing import DefaultDict
 
 import numpy as np
+from anemoi.transform.fields import new_fieldlist_from_list
+from anemoi.transform.metadata import LEVEL_TYPE_TO_LEVTYPE
+from anemoi.transform.metadata import component_value_to_mars
+from anemoi.transform.metadata import mars_value_to_component
 from anemoi.utils.dates import as_timedelta
 from anemoi.utils.humanize import seconds_to_human
 from anemoi.utils.humanize import shorten_list
 from earthkit.data.core.order import build_remapping
+from earthkit.data.field.grib.vertical import GribVerticalBuilder
 
+from anemoi.datasets.create.flavour import FLAVOUR_LEVEL_LABEL
+from anemoi.datasets.create.flavour import FLAVOUR_LEVTYPE_LABEL
 from anemoi.datasets.create.input.result import Result
+from anemoi.datasets.create.recipe.build import NAME_LEVEL_LABEL
 
 LOG = logging.getLogger(__name__)
 QUIET = set()
+
+# ---------------------------------------------------------------------------
+# earthkit 1.0rc12 compatibility shim:
+# earthkit.data.utils.unique.build_remapping always returns None (bug).
+# Patch it to actually return the built remapping.
+# Remove when fixed upstream.
+# ---------------------------------------------------------------------------
+import earthkit.data.utils.unique as _ekd_unique  # noqa: E402
+
+if not getattr(_ekd_unique, "_build_remapping_patched", False):
+    from earthkit.data.core.order import build_remapping as _core_build_remapping  # noqa: E402
+
+    def _patched_unique_build_remapping(remapping, patch):
+        if remapping is not None or patch is not None:
+            return _core_build_remapping(remapping, patch)
+        return None
+
+    _ekd_unique.build_remapping = _patched_unique_build_remapping
+    _ekd_unique._build_remapping_patched = True
+
+
+def _field_metadata_callable(field: Any) -> Any:
+    """Return a callable(key, default=None) backed by field.get(key) for earthkit 1.0.
+
+    Keys are passed through verbatim; callers must already use the
+    ``metadata.``-prefixed form required by earthkit 1.0's ``_get_single``.
+    For remapped synthetic keys (e.g. ``param_level``) the earthkit
+    ``Remapping`` wrapper intercepts the call before it reaches here.
+    """
+
+    def _get(key: str, default: Any = None) -> Any:
+        return field.get(key, default=default)
+
+    return _get
 
 
 # Synthetic variable names with known metadata flags.
@@ -44,6 +87,234 @@ _KNOWN_VARIABLES: dict[str, dict[str, bool]] = {
     "sin_local_time": dict(computed_forcing=True, constant_in_time=False),
     "sin_longitude": dict(computed_forcing=True, constant_in_time=True),
 }
+
+
+def _grib_message(field: Any) -> Any:
+    """Return the GRIB message behind a field, also after filters changed it, or None for fields not from GRIB.
+
+    Raises if earthkit-data no longer has the accessor, rather than reading no GRIB keys.
+    """
+    # Private, but earthkit-data has no public route to the GRIB keys that set() masked: its GRIB encoder uses it too
+    get_grib = getattr(field, "_get_grib", None)
+    if get_grib is not None:
+        return get_grib()
+    if field.get(collections="metadata.ls") and not _computed_forcing(field):
+        raise RuntimeError(f"earthkit-data has no Field._get_grib(): cannot read the GRIB keys of {field}")
+    return None
+
+
+def _grib_key(field: Any, key: str) -> Any:
+    """Return a raw GRIB key, from the field's GRIB message when filters mask the single key."""
+    value = field.get(f"metadata.{key}", default=None)
+    if value is None and (grib := _grib_message(field)) is not None:
+        value = grib.get(key, default=None)
+    return value
+
+
+def _name_level(field: Any) -> Any:
+    """Return the level of a field's name (``{levelist}`` in ``build.variable_naming``), or None.
+
+    This is eccodes' ``levelist`` key, as earthkit-data 0.x gave it. eccodes has none for many single-level
+    fields (e.g. ECMWF soil layers or 10 m fields, filed under MARS ``levtype=sfc``), whose ``vertical.level``
+    is their GRIB level (7, 10). A flavour or a filter that sets the level of such a field is followed, also to
+    its GRIB level (a flavour records it on the field), and one that sets it to None removes it, as in 0.x.
+    Computed forcings have no level.
+    """
+    if _computed_forcing(field):
+        return None
+    # Only readable on fields no filter has changed
+    levelist = field.get("metadata.levelist", default=None)
+    if levelist is not None:
+        return levelist
+    level = field.get("vertical.level", default=None)
+    grib = _grib_message(field)
+    if level is None or grib is None or grib.get("levelist", default=None) is not None:
+        return level
+    if field.get(FLAVOUR_LEVEL_LABEL, default=False):
+        return level
+    # The filters that set the level of such a field change it (e.g. soil_to_levtype_sol)
+    return None if level == grib.get("level", default=None) else level
+
+
+def _with_name_levels(fields: Any) -> Any:
+    """Label each field with the level of its name, read by the ``{levelist}`` of the remapping."""
+    result, changed = [], False
+    for field in fields:
+        level = _name_level(field)
+        if field.get(NAME_LEVEL_LABEL, default=None) != level:
+            field = field.set(**{NAME_LEVEL_LABEL: level})
+            changed = True
+        result.append(field)
+    return new_fieldlist_from_list(result) if changed else fields
+
+
+def _ensemble_member(member: Any) -> int:
+    """Return ``ensemble.member`` (a string in earthkit 1.x) as an int, with 0 for deterministic fields."""
+    return 0 if member is None else int(member)
+
+
+def _raw_key(field: Any, key: str, collection: str) -> Any:
+    """Return a raw GRIB key, from ``metadata.<collection>`` when filters mask the single key."""
+    value = field.get(f"metadata.{key}", default=None)
+    if value is None:
+        value = (field.get(collections=f"metadata.{collection}") or {}).get(key)
+    return value
+
+
+def _computed_forcing(field: Any) -> bool:
+    """Whether a field is a computed forcing, whose GRIB metadata (if any) is its template's."""
+    return _KNOWN_VARIABLES.get(field.get("parameter.variable", default=None), {}).get("computed_forcing", False)
+
+
+def _levtype_set(field: Any, level_type: Any, grib: Any) -> str | None:
+    """Return the MARS levtype of a GRIB field's level type if a flavour or a filter set it, else None.
+
+    Flavours and filters set a MARS levtype, which earthkit-data stores under its own name for the ones it knows
+    (``sfc`` as ``surface``) and as it is for the others (``sol``). A level type decoded from the GRIB message is
+    left to eccodes' levtype: MARS files some under several levtypes (``height_above_ground_level`` is ``sfc`` or
+    ``hl``) and has none for others (``mean_sea``, or COSMO's ``surface`` for HSURF).
+    """
+    if level_type is None:
+        return None
+    levtype = component_value_to_mars("levtype", level_type)
+    if field.get(FLAVOUR_LEVTYPE_LABEL, default=False):
+        return levtype
+    if mars_value_to_component("levtype", levtype) != level_type:
+        return None
+    if level_type == GribVerticalBuilder.build(grib).component.level_type():
+        return None
+    return levtype
+
+
+def _mars_request(field: Any) -> dict[str, Any]:
+    """Return the MARS request of a field, or an empty dict for computed forcings.
+
+    Filters leave ``metadata.mars`` as it was before them, so the keys the components
+    carry are read from the components and the collection provides the others.
+    The result keeps the keys and values earthkit-data 0.x gave (eccodes' mars namespace,
+    or the "default" namespace for sources without one, such as xarray).
+    """
+    if _computed_forcing(field):
+        return {}
+
+    param = field.get("parameter.variable", default=None)
+    member = field.get("ensemble.member", default=None)
+
+    raw = field.get(collections="metadata.mars") or field.get(collections="metadata.default") or {}
+    md = {k: v for k, v in raw.items() if k not in ("param", "levtype", "levelist", "date", "time", "step", "number")}
+
+    if param in (None, "unknown"):
+        param = str(_raw_key(field, "paramId", "parameter") or "unknown")
+    md["param"] = param
+
+    level = field.get("vertical.level", default=None)
+    level_type = field.get("vertical.level_type", default=None)
+    # The single GRIB key is only readable on fields no filter has changed, where it is eccodes' own levtype
+    levtype = field.get("metadata.levtype", default=None)
+    grib = _grib_message(field)
+    if levtype is None and grib is not None:
+        levtype = _levtype_set(field, level_type, grib) or raw.get("levtype")
+    levtype = (
+        levtype
+        or LEVEL_TYPE_TO_LEVTYPE.get(level_type)
+        or raw.get("levtype")
+        or ("sfc" if level is None else level_type)
+    )
+    md["levtype"] = levtype
+    # eccodes gives some surface-like fields a levelist (e.g. cloudTop, COSMO's HSURF), which a flavour sets to None.
+    # Other GRIB fields have none, also when a flavour or a filter sets a level type (e.g. soil_to_levtype_sol).
+    if "levelist" in raw or (grib is None and levtype != "sfc" and level is not None):
+        md["levelist"] = level
+
+    base = field.get("time.base_datetime", default=None)
+    if base is not None:
+        md["date"] = int(base.strftime("%Y%m%d"))
+        md["time"] = base.hour * 100 + base.minute
+
+    step = field.get("time.step", default=None)
+    if step is not None:
+        hours, rest = divmod(step, datetime.timedelta(hours=1))
+        md["step"] = f"{step // datetime.timedelta(minutes=1)}m" if rest else hours
+        # eccodes spells a zero step in the message's unit when it is below an hour ("0m"), keep it unless the
+        # field was moved in time (e.g. by repeated-dates)
+        moved = (md.get("date"), md.get("time")) != (raw.get("date"), raw.get("time"))
+        if not step and isinstance(raw.get("step"), str) and not moved:
+            md["step"] = raw["step"]
+
+    if "number" in raw or (not raw and member is not None):
+        md["number"] = _ensemble_member(member)
+
+    if not raw:
+        # Keys earthkit-data 0.x's "default" namespace added for sources without a mars namespace (xarray)
+        md["variable"] = param
+        if "levelist" in md:
+            md["level"] = md["levelist"]
+        units = field.get("labels.units", default=None)
+        if units is not None:
+            md["units"] = units
+        valid = field.get("time.valid_datetime", default=None)
+        if valid is not None:
+            md["valid_datetime"] = valid.isoformat()
+
+    return md
+
+
+def _resolution(field: Any) -> Any:
+    """Return the grid resolution as earthkit-data 0.x ``field.resolution`` did.
+
+    The GRIB handle behind ``field.geography`` is read because filters mask the single GRIB keys.
+    """
+    if field.geography.grid_type() == "_unstructured":
+        # Grids given as latitude/longitude arrays, as anemoi-transform 0.x reported them, unless
+        # the source labels the field with its resolution (e.g. the anemoi_dataset source)
+        return field.get("labels.resolution", default=None) or "unknown"
+
+    handle = getattr(field.geography, "handle", None)
+    if handle is None:
+        return None
+
+    grid_type = handle.get("gridType", default=None)
+
+    if grid_type in ("reduced_gg", "reduced_rotated_gg"):
+        return handle.get("gridName", default=None)
+
+    if grid_type in ("regular_ll", "rotated_ll"):
+        x = round(handle.get("DxInDegrees") * 1_000_000) / 1_000_000
+        y = round(handle.get("DyInDegrees") * 1_000_000) / 1_000_000
+        return x if x == y else None
+
+    if grid_type in ("lambert", "lambert_azimuthal_equal_area"):
+        x = handle.get("DxInMetres")
+        y = handle.get("DyInMetres")
+        return str(x / 1000).replace(".", "p") + "km" if x == y else None
+
+    return None
+
+
+def _mars_area_and_grid(field: Any) -> tuple[Any, Any]:
+    """Return the MARS ``area`` and ``grid`` of a field, as earthkit-data 0.x ``mars_area`` and ``mars_grid`` did."""
+    handle = getattr(field.geography, "handle", None)
+    if handle is None:
+        area = field.geography.area()
+        return (None if area is None else list(area)), None
+
+    area = [
+        handle.get(key, default=None)
+        for key in (
+            "latitudeOfFirstGridPointInDegrees",
+            "longitudeOfFirstGridPointInDegrees",
+            "latitudeOfLastGridPointInDegrees",
+            "longitudeOfLastGridPointInDegrees",
+        )
+    ]
+    if len(field.shape) == 2:
+        grid = [
+            handle.get("iDirectionIncrementInDegrees", default=None),
+            handle.get("jDirectionIncrementInDegrees", default=None),
+        ]
+    else:
+        grid = handle.get("gridName", default=None)
+    return area, grid
 
 
 def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) -> dict[str, Any]:
@@ -122,41 +393,34 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
         current_variable = c._coords_names[variables_axis_idx]
 
         f = cube[c.coords]
-        md = f.metadata(namespace="mars")
-        if not md:
-            md = f.metadata(namespace="default")
+        md = _mars_request(f)
+        computed = _computed_forcing(f)
 
-        if md.get("param") == "~":
-            md["param"] = f.metadata("param")
-            assert md["param"] not in ("~", "unknown"), (md, f.metadata("param"))
-
-        if md.get("param") == "unknown":
-            md["param"] = str(f.metadata("paramId", default="unknown"))
-            # assert md['param'] != 'unknown', (md, f.metadata('param'))
-
-        startStep = f.metadata("startStep", default=None)
+        startStep = _raw_key(f, "startStep", "time")
         if startStep is not None:
             startStep = as_timedelta(startStep)
 
-        endStep = f.metadata("endStep", default=None)
+        endStep = _raw_key(f, "endStep", "time")
         if endStep is not None:
             endStep = as_timedelta(endStep)
 
-        stepTypeForConversion = f.metadata("stepTypeForConversion", default=None)
-        typeOfStatisticalProcessing = f.metadata("typeOfStatisticalProcessing", default=None)
-        timeRangeIndicator = f.metadata("timeRangeIndicator", default=None)
+        # Keys outside the metadata collections, which filters mask (e.g. a rename after an accumulate)
+        stepTypeForConversion = _grib_key(f, "stepTypeForConversion")
+        stepType = _raw_key(f, "stepType", "time")
+        typeOfStatisticalProcessing = _grib_key(f, "typeOfStatisticalProcessing")
+        timeRangeIndicator = _grib_key(f, "timeRangeIndicator")
 
         # GRIB1 precipitation accumulations are not correctly encoded
         if startStep == endStep and stepTypeForConversion == "accum":
             # in such case of incorrect encoding, P1 refers to endStep and P2 to startStep.
             # Note that this is, on purpose, the opposite of the usual convention.
-            endStep = as_timedelta(f.metadata("P1"))
-            startStep = as_timedelta(f.metadata("P2"))
+            endStep = as_timedelta(_grib_key(f, "P1"))
+            startStep = as_timedelta(_grib_key(f, "P2"))
 
         if startStep is not None and endStep is not None:
             assert endStep >= startStep, (startStep, endStep, md)
 
-        if startStep != endStep:
+        if startStep != endStep and not computed:
             # https://codes.ecmwf.int/grib/format/grib2/ctables/4/10/
             TYPE_OF_STATISTICAL_PROCESSING: dict[int | None, str | None] = {
                 None: None,
@@ -187,6 +451,7 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
                 "min": "minimum",
                 "max": "maximum",
                 "accum": "accumulation",
+                "avg": "average",
             }
 
             #
@@ -207,6 +472,8 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             if process is None:
                 process = STEP_TYPE_FOR_CONVERSION.get(stepTypeForConversion)
             if process is None:
+                process = STEP_TYPE_FOR_CONVERSION.get(stepType)
+            if process is None:
                 process = PATCHES.get(md["param"])
                 if process is not None:
                     LOG.error(f"Unknown process {stepTypeForConversion} for {md['param']}, using {process} instead")
@@ -223,7 +490,12 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
             other[current_variable]["process"] = process
             other[current_variable]["period"] = (startStep, endStep)
 
-        units = f.metadata("units", default=None)
+        # The units as the source wrote them (the GRIB key, or the label the xarray source sets), unless missing
+        # or stale (e.g. computed forcings, or a filter that changed the units)
+        units = f.get("labels.units", default=None) or _raw_key(f, "units", "parameter")
+        pu = f.get("parameter.units", default=None)
+        if pu is not None and (units is None or pu != units):
+            units = str(pu)
         if current_variable in units_seen:
             if units_seen[current_variable] != units:
                 raise ValueError(
@@ -238,8 +510,8 @@ def _fields_metatata(variables: tuple[str, ...], cube: Any, units_seen: dict) ->
 
         other[current_variable]["units"] = units
 
-        grib = {k: f.metadata(k, default=None) for k in ("paramId", "shortName")}
-        if any(grib.values()):
+        grib = {k: _raw_key(f, k, "parameter") for k in ("paramId", "shortName")}
+        if any(grib.values()) and not computed:
             other[current_variable]["grib"] = grib
 
         for k in md.copy().keys():
@@ -287,20 +559,23 @@ def _data_request(data: Any) -> dict[str, Any]:
     for field in data:
         try:
             if date is None:
-                date = field.metadata("valid_datetime")
+                date = field.time.valid_datetime()
 
-            if field.metadata("valid_datetime") != date:
+            if field.time.valid_datetime() != date:
                 continue
 
-            as_mars = field.metadata(namespace="mars")
+            if not field.get(collections="metadata.mars"):
+                continue
+
+            as_mars = _mars_request(field)
             if not as_mars:
                 continue
+
+            param = as_mars["param"]
             step = as_mars.get("step")
             levtype = as_mars.get("levtype", "sfc")
-            param = as_mars["param"]
             levelist = as_mars.get("levelist", None)
-            area = field.mars_area
-            grid = field.mars_grid
+            area, grid = _mars_area_and_grid(field)
 
             if levelist is None:
                 params_levels[levtype].add(param)
@@ -384,14 +659,15 @@ class GriddedResult(Result):
         LOG.info("Sorting dataset %s %s", self.order_by, self.remapping)
         assert self.order_by, self.order_by
 
-        self.patches: dict[str, dict[Any | None, int]] = {"number": {None: 0}}
+        self.patches: dict[str, Any] = {"ensemble.member": _ensemble_member}
 
         try:
-            cube: Any = ds.cube(
+            ds = _with_name_levels(ds)
+            cube: Any = ds.to_cube(
                 self.order_by,
                 remapping=self.remapping,
                 flatten_values=True,
-                patches=self.patches,
+                patch=self.patches,
             )
             cube = cube.squeeze()
             LOG.debug(f"Sorting done in {seconds_to_human(time.time() - self.start)}.")
@@ -461,8 +737,8 @@ class GriddedResult(Result):
                 names += list(a.keys())
 
         print(f"Building a {len(names)}D hypercube using", names)
-        ds = ds.order_by(*args, remapping=remapping, patches=patches)
-        user_coords = ds.unique_values(*names, remapping=remapping, patches=patches, progress_bar=False)
+        ds = ds.order_by(*args, remapping=remapping, patch=patches)
+        user_coords = ds.unique(*names, remapping=remapping, patch=patches, progress_bar=False)
 
         print()
         print("Number of unique values found for each coordinate:")
@@ -489,7 +765,7 @@ class GriddedResult(Result):
             print(f"This means that all the fields in the datasets do not exists for all combinations of {names}.")
 
             for f in ds:
-                metadata = remapping(f.metadata)
+                metadata = remapping(_field_metadata_callable(f))
                 key = tuple(metadata(n, default=None) for n in names)
                 if key in expected:
                     expected.remove(key)
@@ -548,7 +824,7 @@ class GriddedResult(Result):
             duplicated = defaultdict(list)
             for f in ds:
                 # print(f.metadata(namespace="default"))
-                metadata = remapping(f.metadata)
+                metadata = remapping(_field_metadata_callable(f))
                 key = tuple(metadata(n, default=None) for n in names)
                 duplicated[key].append(f)
 
@@ -558,7 +834,11 @@ class GriddedResult(Result):
             for i, (k, v) in enumerate(sorted(duplicated.items())):
                 print(" ", k)
                 for f in v:
-                    x = {k: f.metadata(k, default=None) for k in METADATA if f.metadata(k, default=None) is not None}
+                    x = {
+                        k: f.get(f"metadata.{k}", default=None)
+                        for k in METADATA
+                        if f.get(f"metadata.{k}", default=None) is not None
+                    }
                     print("   ", f, x)
                 if i >= 9 and len(duplicated) > 10:
                     print("...", len(duplicated) - i - 1, "more")
@@ -619,10 +899,9 @@ class GriddedResult(Result):
         self._post_build_coords(from_data, keys_from_config)
 
         first_field: Any = self.datasource[0]
-        grid_points: Any = first_field.grid_points()
-
-        lats: Any = grid_points[0]
-        lons: Any = grid_points[1]
+        lats: Any = first_field.geography.latitudes().flatten()
+        lons: Any = first_field.geography.longitudes().flatten()
+        grid_points: Any = (lats, lons)
 
         assert len(lats) == len(lons), (len(lats), len(lons), first_field)
         assert len(lats) == math.prod(first_field.shape), (len(lats), first_field.shape, first_field)
@@ -642,12 +921,9 @@ class GriddedResult(Result):
         grid_values: list = list(range(len(grid_points[0])))
 
         self._grid_points: Any = grid_points
-        self._resolution: Any = first_field.resolution
+        self._resolution: Any = _resolution(first_field)
         if self._resolution is None:
-            try:
-                self._resolution = first_field.metadata().get("resolution")
-            except Exception:
-                pass
+            self._resolution = first_field.get("metadata.resolution", default=None)
         self._grid_values: Any = grid_values
         self._field_shape: Any = first_field.shape
         self._proj_string: Any = first_field.proj_string if hasattr(first_field, "proj_string") else None

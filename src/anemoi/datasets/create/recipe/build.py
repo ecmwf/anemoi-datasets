@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
 from typing import Annotated
 from typing import Any
@@ -24,6 +25,55 @@ if TYPE_CHECKING:
     from . import Recipe
 
 LOG = logging.getLogger(__name__)
+
+# Label holding the MARS levelist of a field, set on every field before naming (see ``_name_level`` in
+# ``gridded/result.py``): ``vertical.level`` is the GRIB level, which surface fields also have.
+NAME_LEVEL_LABEL = "labels.anemoi_levelist"
+
+# Mapping from legacy bare template keys to earthkit 1.0 component paths.
+# - ``parameter.variable`` survives ``field.set()`` and
+#   ``new_field_from_latitudes_longitudes`` wrapping.
+# - ``level`` is the GRIB level (``vertical.level``), ``levelist`` the MARS one.
+_LEGACY_KEY_MAP = {
+    "param": "parameter.variable",
+    "level": "vertical.level",
+    "levelist": NAME_LEVEL_LABEL,
+}
+
+# Pattern that matches bare {key} or {key:type} template variables but leaves
+# already-prefixed {component.key} forms (e.g. {parameter.variable}) untouched.
+# Group 1: key name (no dots → bare key).  Group 2: optional eccodes type
+# qualifier (e.g. ":d" for double, ":l" for long).
+_BARE_TEMPLATE_VAR = re.compile(r"\{(\w+)(:\w+)?\}")
+
+
+def _to_earthkit10_template(template: str) -> str:
+    """Translate bare ``{key}`` → earthkit 1.0 path ``{component.key}``.
+
+    Known legacy keys (``param``, ``level``, ``levelist``) are mapped to their
+    earthkit 1.0 equivalents (``parameter.variable``, ``vertical.level``, ``NAME_LEVEL_LABEL``).
+    Already-prefixed forms such as ``{parameter.variable}`` are left unchanged
+    (idempotent).  Unknown bare keys fall back to ``{metadata.key}`` so that
+    custom remapping entries still work.
+
+    Eccodes type qualifiers (e.g. ``{level:d}`` for double) are preserved:
+    the base key is mapped and the qualifier is appended.  When a type
+    qualifier is present, the mapping always targets ``metadata.key:type``
+    (not a component path) because component paths like ``vertical.level:d``
+    are not supported.
+    """
+
+    def _replace(m: re.Match) -> str:
+        key = m.group(1)
+        type_qual = m.group(2) or ""  # e.g. ":d" or ""
+
+        if type_qual:
+            # Type-qualified keys must use metadata.key:type — component
+            # paths (e.g. vertical.level:d) do not support eccodes types.
+            return "{metadata." + key + type_qual + "}"
+        return "{" + _LEGACY_KEY_MAP.get(key, f"metadata.{key}") + "}"
+
+    return _BARE_TEMPLATE_VAR.sub(_replace, template)
 
 
 def validate_variable_naming(value):
@@ -145,10 +195,13 @@ class Build(BaseModel):
         # solely on 'statistics.tendencies'.
         self._resolve_tendencies(recipe)
 
-        # Apply variable_naming to remapping
-        # This is for backward compatibility
+        # Apply variable_naming to remapping, translating bare {key} template
+        # variables to {metadata.key} form required by earthkit 1.0's _get_single.
+        # The variable_naming attribute retains the legacy {param}_{levelist} form
+        # for use with field.metadata() in trajectory loading (which still accepts
+        # bare keys); only the remapping dict used with to_cube() needs the prefix.
         if "param_level" in self.remapping:
-            self.remapping["param_level"] = self.variable_naming
+            self.remapping["param_level"] = _to_earthkit10_template(self.variable_naming)
 
     def _resolve_tendencies(self, recipe: Recipe) -> None:
         """Reconcile the deprecated ``build.additions`` flag with ``statistics.tendencies``.

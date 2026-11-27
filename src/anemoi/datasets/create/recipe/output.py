@@ -113,7 +113,9 @@ class GriddedOutput(OutputBase):
     compression. If None, Blosc (lz4, compression level 5, byte shuffle) is used."""
 
     # Fixed value that the deprecated ``order_by`` field must match, if set.
-    # Kept in sync with ``SimpleGriddedContext.order_by``.
+    # Uses the old bare-key form that users would have written in recipes;
+    # ``SimpleGriddedContext.order_by`` now uses ``metadata.``-prefixed keys
+    # internally but the user-facing recipe schema keeps the legacy names.
     _FIXED_ORDER_BY = ["valid_datetime", "param_level", "number"]
 
     @model_validator(mode="after")
