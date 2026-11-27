@@ -182,7 +182,12 @@ class FastArray:
         self._data = np.array(zarr_array[:])
 
     def __getitem__(self, key):
-        """Fast numpy-based indexing."""
+        """Fast numpy-based indexing, rejecting negative steps like zarr does."""
+        for k in key if isinstance(key, tuple) else (key,):
+            if isinstance(k, slice) and k.step is not None and k.step < 0:
+                from zarr.errors import NegativeStepError
+
+                raise NegativeStepError()  # takes no arguments in zarr 2
         return self._data[key]
 
     def __array__(self, dtype=None):
